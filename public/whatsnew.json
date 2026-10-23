@@ -1,5 +1,31 @@
 [
  {
+  "v": "2.86.0",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "المدينة تملأ الشاشة",
+   "items": [
+    "شخصيات عصرية جديدة: صاحب الهودي، الكاجوال، رجل الأعمال، الكاجوال النسائية، سيدة الأعمال",
+    "اختيارك القديم للشخصية ينتقل تلقائياً إلى أقرب شخصية عصرية",
+    "صوت المدينة: أجواء ليلية هادئة، خطوات أثناء المشي، ورنّة عند دخول المباني، مع زر كتم يتذكر اختيارك",
+    "زر ملء الشاشة لتجربة المدينة كاملة",
+    "الشريط السفلي يختفي داخل المدينة ويعود عند الخروج منها",
+    "أزرار المدينة أوضح وأنسب للجوال"
+   ]
+  },
+  "en": {
+   "title": "The city fills the screen",
+   "items": [
+    "New modern characters: Hoodie, Casual, Suit, Casual (F), Business (F)",
+    "Your old character pick moves to the closest modern look automatically",
+    "City sound: a calm night ambience, footsteps while walking and a chime at doors, with a mute button that remembers",
+    "A full-screen button for the whole city experience",
+    "The bottom bar hides inside the city and returns when you leave",
+    "Clearer, phone-friendly city buttons"
+   ]
+  }
+ },
+ {
   "v": "2.85.0",
   "date": "2026-10-23",
   "ar": {
