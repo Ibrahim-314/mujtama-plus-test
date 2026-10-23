@@ -88,7 +88,7 @@ test("1440 English LTR: labels translated, city centred on its page", async () =
   assert.deepEqual(errs, []); await c.close();
 });
 
-test("390 character profile: «شخصيتي» → أنثى → الرحّالة, saved and synced, one character in the city", async () => {
+test("390 character profile: «شخصيتي» → أنثى → سيدة الأعمال, saved and synced, one character in the city", async () => {
   const c = await S.browser.newContext({ ...MOBILE, colorScheme: "dark", timezoneId: "Asia/Riyadh" }); const p = await c.newPage();
   const errs = []; p.on("pageerror", (e) => errs.push(e.message));
   await onboard(p, S.base, "city_d", "مختار الشخصية"); await p.waitForTimeout(1200);
@@ -96,17 +96,17 @@ test("390 character profile: «شخصيتي» → أنثى → الرحّالة,
   await p.click("#cy-page-slot .cy-me"); await p.waitForSelector(".cy-pick.on");
   assert.equal(await p.evaluate(() => document.querySelectorAll(".cy-char").length), 3, "ذكر: 3 characters");
   await p.click('.cy-seg [data-g="f"]');
-  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll(".cy-char")].map((b) => b.dataset.c)), ["rogue", "rogue-hooded"], "أنثى: 2 characters");
-  await p.click('.cy-char[data-c="rogue-hooded"]');
+  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll(".cy-char")].map((b) => b.dataset.c)), ["casual-f", "suit-f"], "أنثى: 2 characters");
+  await p.click('.cy-char[data-c="suit-f"]');
   if (SHOTS) { await p.waitForTimeout(300); await p.screenshot({ path: SHOTS + "/city-390-picker.png" }); }
   const v = await axe(p, ".cy-pick"); assert.deepEqual(v, [], v.join("\n"));
   await p.click(".cy-pick-ok"); await p.waitForFunction(() => !document.querySelector(".cy-pick"));
-  assert.equal(await p.evaluate(() => localStorage.getItem("mp.city.char")), "rogue-hooded");
+  assert.equal(await p.evaluate(() => localStorage.getItem("mp.city.char")), "suit-f");
   assert.equal(await p.evaluate(() => document.querySelectorAll("#cy-page-slot .cy-actor").length), 1, "only the member's own character");
   await p.waitForTimeout(800);
   const srv = await p.evaluate(() => Remote.api("GET", "/api/prefs?ns=city"));
-  assert.equal(srv.prefs.city.char, "rogue-hooded", "synced: " + JSON.stringify(srv));
-  assert.ok((await p.getAttribute("#cy-page-slot .cy-me img", "src")).includes("rogue-hooded"));
+  assert.equal(srv.prefs.city.char, "suit-f", "synced: " + JSON.stringify(srv));
+  assert.ok((await p.getAttribute("#cy-page-slot .cy-me img", "src")).includes("suit-f"));
   assert.deepEqual(errs, []); await c.close();
 });
 
