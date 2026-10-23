@@ -33,20 +33,22 @@
   function setChar(id) {
     if (!valid(id)) return false;
     try { localStorage.setItem(KEY, id); } catch { }
+    pickedHere = true;
     if (signedIn()) call("PUT", "/api/prefs", { ns: "city", values: { char: id } }).catch(() => { });
     return true;
   }
   // adopt the pick made on another device (once per page load)
-  let pulled = null;
+  // v2.86.1 fix: the server read happens once, but every caller gets the pick as it is NOW (the cached promise used to hand
+  // back the id from the first load, so a new pick in «شخصيتي» never changed the 3D character); a pick made in this page
+  // load always wins over the server's older value
+  let pulled = null, pickedHere = false;
   function pull() {
-    if (pulled) return pulled;
     if (!signedIn()) return Promise.resolve(charId());
-    pulled = call("GET", "/api/prefs?ns=city").then((r) => {
+    if (!pulled) pulled = call("GET", "/api/prefs?ns=city").then((r) => {
       let v = r && r.prefs && r.prefs.city && r.prefs.city.char; if (OLD[v]) v = OLD[v];
-      if (valid(v) && v !== charId()) { try { localStorage.setItem(KEY, v); } catch { } }
-      return charId();
-    }, () => charId());
-    return pulled;
+      if (!pickedHere && valid(v) && v !== charId()) { try { localStorage.setItem(KEY, v); } catch { } }
+    }, () => { });
+    return pulled.then(() => charId());
   }
 
   const glOK = (() => { try { const c = document.createElement("canvas"); return !!(window.WebGLRenderingContext && (c.getContext("webgl2") || c.getContext("webgl"))); } catch { return false; } })();
