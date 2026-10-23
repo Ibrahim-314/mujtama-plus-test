@@ -74,6 +74,25 @@ module.exports = (ctx) => {
     await sessionFor(res, u, req, { mfa });
     return { user: pub(u) };
   }
+  /* v2.82.1: demo sign-in for test copies. Off (404) unless config.demoLogin. Always the same fixed fake account
+   * (id u_demo_tester, so it never counts as a "real" account for admin bootstrap), plain user role, no password —
+   * it cannot be used to enter anyone else's account. Data is temporary on the test host. */
+  async function demoAuth(req, res) {
+    if (!config.demoLogin) throw new (require("../lib/core").HttpError)(404, "غير موجود", "not_found");
+    if (!rl.hit("login", req.ip)) throw E.rate();
+    const DEMO_ID = "u_demo_tester";
+    let u = await db.get("SELECT * FROM users WHERE id=$1", [DEMO_ID]);
+    if (!u) {
+      let handle = "demo_tester";
+      while (await db.get("SELECT 1 x FROM users WHERE LOWER(handle)=LOWER($1)", [handle])) handle = "demo_tester" + Math.floor(Math.random() * 999);
+      await db.run("INSERT INTO users(id,handle,name,bio,color,role,password_hash,prefs,created_at) VALUES($1,$2,$3,$4,$5,'user',NULL,$6,$7) ON CONFLICT DO NOTHING",
+        [DEMO_ID, handle, "حساب تجريبي", "حساب وهمي للتجربة فقط — بياناته مؤقتة", COLORS[0], { onboarded: true, interests: [] }, now()]);
+      u = await db.get("SELECT * FROM users WHERE id=$1", [DEMO_ID]);
+    }
+    if (u.status && u.status !== "active") throw E.forbid("الحساب موقوف");
+    await sessionFor(res, u, req, { mfa: true });
+    return { user: pub(u), demo: true };
+  }
   async function logout(req, res) {
     const t = req.cookies.mp_session; if (t) await Sessions.deleteByToken(t);
     res.cookie("mp_session", "", { maxAge: 0 }); return { ok: true };
@@ -150,6 +169,7 @@ module.exports = (ctx) => {
   r.post("/api/auth/register", register);
   r.post("/api/auth/login", login);
   r.post("/api/auth/logout", logout);
+  r.post("/api/auth/demo", demoAuth);
   r.post("/api/auth/pi", piAuth, { piLogin: true }); // CSRF header not required: authenticated by the Pi accessToken
   r.get("/api/me", A(async (req) => ({ user: pub(req.user), prefs: req.user.prefs || {} })));
   r.patch("/api/me", A(async (req) => updateMe(req.user, req.body)));
