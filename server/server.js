@@ -147,6 +147,7 @@ async function createApp(overrides = {}) {
   ctx.services.beta = require("./services/beta")(ctx, config.betaOpts);                         // Phase 54: invite-based beta waves, feedback triage, surveys, cohort dashboard, flag kill switch
   ctx.services.points = require("./services/points")(ctx, config.pointsOpts);                   // Phase 59: contribution points, levels, leaderboard, campaigns, Pi rewards pool
   ctx.services.mjt = require("./services/mjt")(ctx, config.mjtOpts);                            // v2.47 MJT «مجتمع كوين» stage 1: in-app double-entry ledger (not on any chain), points → MJT conversion, rewards, transfers
+  ctx.services.mining = require("./services/mining")(ctx, config.miningOpts);                   // v2.87 «التعدين»: 24-hour MJT mining sessions + daily sign-in reward (migration 079)
   ctx.services.finance = require("./services/finance")(ctx, config.financeOpts);                 // Phase 60: statements, sequential invoices, annual summaries, public finance transparency, reconciliation
   ctx.services.canalytics = require("./services/canalytics")(ctx, config.canalyticsOpts);       // Phase 61: advanced creator analytics (audience, content, earnings, compare, CSV) — extends the studio
   ctx.services.nearby = require("./services/nearby")(ctx, config.nearbyOpts);                   // Phase 66: nearby events + moderated places on a map, coarse opt-in location, city pages
