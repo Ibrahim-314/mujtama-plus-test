@@ -109,12 +109,22 @@
     const city = () => {
       const debug = /[?&]debug=1/.test(location.hash);
       a = (a || "").split("?")[0]; b = (b || "").split("?")[0];
-      if (a === "mjt" && b && MPCity.room && MPCity.room(b)) return;
       if (a && a !== "mjt" && MPCity.hall && MPCity.hall(a)) return; // a building's own hall (city/halls.js)
       if (a === "mjt") {
-        const t = (MPCityScenes.mjt.title || {})[MPCity.util.lang()] || "مجتمع كوين";
-        view.innerHTML = `<div class="wrap cy-page cy-hall">${head(["#/city", T("مدينة المجتمع الرقمية")], t)}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
-        frame(document.getElementById("cy-page-slot"), { scene: "mjt", place: "hall", debug });
+        /* v2.86.1: the hall stays mounted while its stations open and close over it (city/rooms.js): moving between
+         * #/city/mjt and #/city/mjt/<room> never rebuilds the hall, so the character stays where it stood */
+        const room = b && MPCity.stationOf && MPCity.stationOf(b) ? b : "";
+        const up = view.querySelector('.cy-hall[data-scene="mjt"] #cy-page-slot .cy-stage');
+        if (!up) {
+          if (room) { // opened straight on a station (a city building, a link): the character waits at that station's door
+            const sc = MPCityScenes.mjt, pl = sc.places.find((p) => p.id === MPCity.stationOf(room)), pt = pl && sc.streets.nodes[pl.door];
+            if (pt) { try { sessionStorage.setItem("mp.city.at.mjt", JSON.stringify(pt)); } catch { } }
+          }
+          const t = (MPCityScenes.mjt.title || {})[MPCity.util.lang()] || "مجتمع كوين";
+          view.innerHTML = `<div class="wrap cy-page cy-hall" data-scene="mjt">${head(["#/city", T("مدينة المجتمع الرقمية")], t)}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
+          frame(document.getElementById("cy-page-slot"), { scene: "mjt", place: "hall", debug });
+        }
+        if (room && MPCity.room) MPCity.room(room); else if (MPCity.closeRoom) MPCity.closeRoom();
         return;
       }
       view.innerHTML = `<div class="wrap cy-page cy-main">${head(["#/menu", T("المزيد")], T("مدينة المجتمع الرقمية"))}<div id="cy-page-slot" class="cy-slot cy-live"></div>${directory()}</div>`;
