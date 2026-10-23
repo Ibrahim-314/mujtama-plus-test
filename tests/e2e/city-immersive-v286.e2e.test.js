@@ -68,7 +68,7 @@ test("390: MJT stations open over the hall; the new wallet", async () => {
   const errs = []; p.on("pageerror", (e) => errs.push(e.message));
   await onboard(p, S.base, "imm_w", "صاحب المحفظة"); await p.waitForTimeout(1000);
   await p.evaluate(() => { location.hash = "#/city/mjt/send"; });
-  await p.waitForSelector("#cy-page-slot .cy-stage.cy-ready", { timeout: 45000 });
+  await p.waitForSelector("#cy-page-slot .cy-stage.cy-ready", { state: "attached", timeout: 45000 });
   await p.waitForSelector(".cy-st.on .cy-w-card", { timeout: 20000 }); await p.waitForTimeout(500);
   await p.evaluate(() => { document.querySelector("#cy-page-slot .cy-stage").dataset.mark = "same"; });
   if (SHOTS) await p.screenshot({ path: SHOTS + "/v2861-wallet-390.png" });
