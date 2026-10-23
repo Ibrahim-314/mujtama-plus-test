@@ -136,7 +136,7 @@ module.exports = (ctx) => {
   }
 
   const r = ctx.router, A = ctx.requireUser;
-  r.get("/api/health", async () => ({ ok: true, version: config.version, db: ctx.db.dialect, time: now(), pi: config.piEnabled, translate: !!ctx.services.translate?.status().available }));
+  r.get("/api/health", async () => ({ ok: true, version: config.version, db: ctx.db.dialect, time: now(), pi: config.piEnabled, ...(config.demoLogin ? { demo: true } : {}), translate: !!ctx.services.translate?.status().available }));
   r.get("/api/bootstrap", A(async (req) => bootstrap(req.user)));
   r.post("/api/analytics", A(async (req) => (await ingest(req.user, req.body.events), { ok: true })));
   r.get("/api/creator/analytics", A(async (req) => creator(req.user)));
