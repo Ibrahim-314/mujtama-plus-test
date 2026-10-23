@@ -280,7 +280,7 @@ html:root:root:root:root[data-theme=dark]{--bg:#000;--bg-2:#000;--card:#000;--el
       return;
     }
     const t = e.target, typing = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
-    if ((e.key === "Enter" || e.key === " ") && t?.getAttribute?.("role") === "button" && t.tagName !== "BUTTON") { e.preventDefault(); t.click(); return; }
+    if ((e.key === "Enter" || e.key === " ") && t?.getAttribute?.("role") === "button" && t.tagName !== "BUTTON") { e.preventDefault(); if (typeof t.click === "function") t.click(); else t.dispatchEvent(new MouseEvent("click", { bubbles: true })); return; } // v2.83: SVG role=button (city areas) has no .click()
     if (typing || e.ctrlKey || e.metaKey || e.altKey || open) return;
     if (e.key === "j" || e.key === "k") {
       const posts = [...(view?.querySelectorAll("[role=article]") || [])]; if (!posts.length) return;
