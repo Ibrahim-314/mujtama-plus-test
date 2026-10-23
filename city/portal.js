@@ -58,6 +58,8 @@
         } else if (pl.vault) { // the MJT vault: remember which city opened it, and walk in at the gate
           try { sessionStorage.removeItem("mp.city.at.mjt"); } catch { }
           portal(pl, pl.href, { vault: true });
+        } else if (pl.href && city.root.closest(".cy-hall[data-scene=\"mjt\"]") && /^#\/city\/mjt\//.test(pl.href)) {
+          location.hash = pl.href; // v2.86.1: a station inside the hall opens in place over the hall, no full-screen loader
         } else if (pl.href) portal(pl, pl.href);
         else soon(pl, city); // a building whose hall is still being built
         // when the member comes back the character waits at the door it entered
