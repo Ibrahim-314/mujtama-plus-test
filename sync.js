@@ -235,6 +235,18 @@ async function start() {
   hydrate(b); window.MPSession?.set("in"); connectStream(); applyShell(); App.refreshBadges && App.refreshBadges();
   if (!location.hash || location.hash === "#/") location.hash = "#/home";
   route();
+  dailyCheckin();
+}
+/* v2.87: the daily sign-in reward (+1 MJT once per UTC day, server-enforced). Asked once a day per device; a toast says so. */
+function dailyCheckin() {
+  try {
+    const day = new Date().toISOString().slice(0, 10), k = "mp.checkin." + (DB.me || "");
+    if (!DB.me || localStorage.getItem(k) === day) return;
+    setTimeout(() => Remote.api("POST", "/api/mjt/checkin").then((r) => {
+      localStorage.setItem(k, day);
+      if (r && r.credited) { const T = (x) => (window.MPI18n && MPI18n.t ? MPI18n.t(x) : x); toast(T("مكافأة الدخول اليومي") + " +" + r.amount + " MJT"); }
+    }).catch(() => { /* retried on the next start */ }), 1500);
+  } catch { /* storage may be off */ }
 }
 
 /* ---------- Media uploads (real files) ---------- */
