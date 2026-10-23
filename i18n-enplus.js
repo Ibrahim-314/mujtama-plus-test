@@ -3199,6 +3199,10 @@
 "أنثى": "Female",
 "الشخصيات": "Characters",
 "اعتماد الشخصية": "Use this character",
+"ملء الشاشة": "Full screen",
+"الخروج من ملء الشاشة": "Exit full screen",
+"كتم صوت المدينة": "Mute the city",
+"تشغيل صوت المدينة": "Turn on city sound",
 "إغلاق": "Close",
 "غير موجود": "Not found"
 });
