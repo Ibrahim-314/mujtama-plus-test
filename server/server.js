@@ -20,6 +20,9 @@ const config = {
   storageDriver: process.env.STORAGE_DRIVER || "local",
   secureCookies: process.env.NODE_ENV === "production",
   seedDemo: process.env.SEED_DEMO !== "0",
+  /* v2.82.1: «دخول تجريبي» button — test copies only (Render). Needs DEMO_LOGIN=1 AND refuses to turn on under Railway
+   * (production), whatever the env says, so it can never leak into the live app. */
+  demoLogin: process.env.DEMO_LOGIN === "1" && !process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_PROJECT_ID,
   piEnabled: process.env.PI_ENABLED === "1",
   piApiKey: secret("PI_API_KEY"),
   piApi: process.env.PI_API_URL || "https://api.minepi.com",
