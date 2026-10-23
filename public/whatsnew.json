@@ -1,5 +1,29 @@
 [
  {
+  "v": "2.86.1",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "محفظة جديدة وتنقل أسلس في مجتمع كوين",
+   "items": [
+    "اختيار الشخصية يتبدل فوراً في المدينة",
+    "محطات مجتمع كوين تنفتح كلوحة فوق القاعة دون شاشة تحميل أو تغيير صفحة، وتبقى شخصيتك في مكانها",
+    "مشي أسرع بين المحطات",
+    "المحفظة من جديد: بطاقة رصيد، إرسال واستقبال، آخر من أرسلت إليهم، تحقق مباشر من المستلم، مبالغ سريعة و«الأقصى»، شريط حد اليوم، مراجعة قبل التأكيد وإيصال نجاح",
+    "استقبال برمز QR واسم المستخدم مع زر نسخ"
+   ]
+  },
+  "en": {
+   "title": "A new wallet and smoother MJT Coin hall",
+   "items": [
+    "Character choice now switches instantly in the city",
+    "MJT Coin stations open as a panel over the hall, with no loader or page change; your character stays put",
+    "Faster walking between stations",
+    "Rebuilt wallet: balance card, send and receive, recent people, live recipient check, quick amounts and Max, daily limit bar, review step and receipt",
+    "Receive with a QR code and your username, with a copy button"
+   ]
+  }
+ },
+ {
   "v": "2.86.0",
   "date": "2026-10-23",
   "ar": {
