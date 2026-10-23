@@ -15,7 +15,7 @@
     palette: { "--cy-c1": "#1b1626", "--cy-c2": "#2a2440", "--cy-c3": "#2a2140", "--cy-c4": "#110d1a", "--cy-c5": "#ffcf5a", "--cy-c6": "#fff", "--cy-c7": "#ff4fd8", "--cy-c8": "#b48cff", "--cy-c9": "#9b6bff", "--cy-c10": "#ff7ad9", "--cy-c11": "#6d3cf4", "--cy-c12": "#c9a8ff", "--cy-c13": "#120c20", "--cy-c14": "#0b0814", "--cy-c15": "#000", "--cy-c16": "#ffcf5a", "--cy-c17": "#8b5cff", "--cy-c18": "#3cff7a", "--cy-c19": "#ff3b5c", "--cy-c20": "#50a0ff", "--cy-c21": "#ffd850", "--cy-c22": "#111" },
     title: { ar: "مجتمع كوين", en: "MJT Coin" },
     start: "GT", // the member walks in through the gate
-    speed: 120,
+    speed: 175, // v2.86.1: a brisker walk between stations
     corner: 28,
     actorH: 0.105,
     frames: true,
