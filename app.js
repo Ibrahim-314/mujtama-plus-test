@@ -380,7 +380,7 @@ const Views = {
         ${DB.muted.posts.length ? `<button class="u-mt12 btn ghost" id="clrni">إعادة ضبط «غير مهتم» (${DB.muted.posts.length})</button>` : ""}</div>
       <div class="card"><b>Pi Network</b><p class="muted">تسجيل الدخول والمدفوعات عبر Pi تُفعَّل في مرحلة الربط.</p><button class="btn" id="pi">تسجيل الدخول عبر Pi</button></div>
       <div class="card"><b>سجل القرارات والبلاغات</b>${DB.audit.slice(-8).reverse().map(a => `<div class="trend"><span>${a.action}</span><span class="muted">${relTime(a.at)}</span></div>`).join("") || '<p class="muted">لا شيء بعد</p>'}</div>
-      <div class="card"><b>أخرى</b><p><button class="btn ghost" id="reset">إعادة ضبط البيانات التجريبية</button></p><p class="muted">مجتمع بلس · الإصدار <span id="ver"></span></p></div></div>`;
+      <div class="card"><b>أخرى</b><p><button class="btn ghost" id="reset">إعادة ضبط البيانات التجريبية</button></p><p class="muted">مجتمع بلس · الإصدار <span id="ver"></span></p><p><a class="btn ghost" href="#/versions" id="mp-versions-link">سجل الإصدارات: ماذا تغيّر في كل إصدار</a></p></div></div>`;
     view.querySelectorAll("[data-int]").forEach(b => b.onclick = () => { const s = b.dataset.int; DB.interests = DB.interests.includes(s) ? DB.interests.filter(x => x !== s) : [...DB.interests, s]; save(); rerender(); });
     view.querySelectorAll("[data-umt]").forEach(b => b.onclick = () => { DB.muted.topics = DB.muted.topics.filter(x => x !== b.dataset.umt); save(); rerender(); });
     view.querySelectorAll("[data-umu]").forEach(b => b.onclick = () => { DB.muted.users = DB.muted.users.filter(x => x !== b.dataset.umu); save(); rerender(); });
