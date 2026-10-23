@@ -17,7 +17,7 @@ function ensureBuild() {
     for (const f of fs.readdirSync(ROOT)) if (/\.(js|css|html)$/.test(f) || f === "package.json") see(path.join(ROOT, f));
     see(path.join(ROOT, "tools", "build.mjs"));
     const walk = (d) => { let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; } for (const e of ents) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p); else see(p); } };
-    walk(path.join(ROOT, "public")); walk(path.join(ROOT, "vendor")); walk(path.join(ROOT, "video")); // v2.73: video/ modules
+    walk(path.join(ROOT, "public")); walk(path.join(ROOT, "vendor")); walk(path.join(ROOT, "video")); walk(path.join(ROOT, "city")); // v2.73: video/ modules · v2.83: city/
     return m;
   };
   const fresh = () => { try { return fs.existsSync(path.join(dist, "index.html")) && fs.statSync(stamp).mtimeMs >= newest(); } catch { return false; } };
