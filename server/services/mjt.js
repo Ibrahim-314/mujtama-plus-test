@@ -40,7 +40,7 @@ const RATE = UNIT; // minor units per contribution point: 1 point = 1 MJT
 const EARN_KINDS = ["answer_accepted", "engaged_post", "report_confirmed", "wiki_edit", "mentoring"];
 const TOKEN = { name: "مجتمع كوين", nameEn: "Mujtama Coin", symbol: "MJT", decimals: L.DECIMALS, stage: 1,
   stageNote: "رصيد داخل التطبيق فقط — ليس عملة على أي بلوكشين، ولا يُسحب ولا يُباع. ربطه بشبكة Pi التجريبية مرحلة لاحقة." };
-const KIND_AR = { reward: "مكافأة مساهمة", conversion: "تحويل نقاط المساهمة", conversion_reversal: "إلغاء تحويل النقاط", transfer: "تحويل", tip: "إكرامية", adjustment: "تعديل من الإدارة", clawback: "استرجاع مكافأة محتوى محذوف", spend: "شراء", refund: "استرداد", community_reward: "مكافأة نشاط في مجتمع", community_reward_reversal: "استرجاع مكافأة مجتمع" }; // v2.60: community rewards (services/cintegrations.js)
+const KIND_AR = { reward: "مكافأة مساهمة", conversion: "تحويل نقاط المساهمة", conversion_reversal: "إلغاء تحويل النقاط", transfer: "تحويل", tip: "إكرامية", adjustment: "تعديل من الإدارة", clawback: "استرجاع مكافأة محتوى محذوف", spend: "شراء", refund: "استرداد", community_reward: "مكافأة نشاط في مجتمع", community_reward_reversal: "استرجاع مكافأة مجتمع", mining: "تعدين يومي", checkin: "مكافأة الدخول اليومي" }; // v2.60: community rewards (services/cintegrations.js)
 const DEFAULTS = {
   rewards: { enabled: true, dailyCap: 150 * UNIT },
   transfers: { enabled: true, maxSingle: 500 * UNIT, maxDaily: 2000 * UNIT, maxPerHour: 10, minAccountDays: 0 } // v2.74.2: no waiting period by default (owner request); admins can still set one
