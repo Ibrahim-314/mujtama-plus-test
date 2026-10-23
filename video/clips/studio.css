@@ -1,0 +1,75 @@
+/* === v280-studio: «أدوات صانع فيديوتك» — editor scheduling + drafts button, profile tools, drafts page, clip stats (v2.80) === */
+/* editor (dark full-screen, same tokens as vidtik.css) */
+.vt-sched { flex-direction: column; align-items: stretch; gap: 8px; }
+.vt-sw { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 700; cursor: pointer; }
+.vt-sw input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+.vt-sched-at { display: grid; gap: 6px; }
+.vt-at { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: var(--vt-fg); font: inherit; color-scheme: dark; }
+.vt-at:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vt-ed .vt-acts { grid-template-columns: auto auto 1fr; }
+.vt-draft:disabled { opacity: .5; cursor: default; }
+@media (max-width: 380px) { .vt-ed .vt-acts { grid-template-columns: 1fr 1fr; } .vt-ed .vt-acts .vt-pub { grid-column: 1 / -1; } }
+
+/* my profile: tools row, stats button, scheduled tile */
+.vt-tools { display: grid; grid-template-columns: auto 1fr; gap: 8px; margin: 4px 0 12px; }
+.vt-tool { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); font-weight: 750; text-decoration: none; }
+.vt-tool:focus-visible, .vt-stat:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vt-tool-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-size: var(--fs-xs); }
+.vt-best { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); min-width: 0; }
+.vt-best > span { display: grid; min-width: 0; }
+.vt-best b { font-size: var(--fs-xs); }
+.vt-best small { font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-best-h { font-weight: 850; font-size: var(--fs-md); }
+@media (max-width: 420px) { .vt-tools { grid-template-columns: 1fr; } }
+.vt-stat { position: absolute; inset-block-start: 2px; inset-inline-start: 2px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; color: white; filter: drop-shadow(0 1px 3px rgba(0,0,0,.7)); opacity: .9; }
+.vt-li.is-pinned .vt-stat { inset-block-start: 30px; }
+.vt-tile-sched .vt-proc { position: absolute; inset: auto 0 8px; text-align: center; color: white; text-shadow: 0 1px 3px rgba(0,0,0,.8); gap: 4px; }
+.vt-tile-sched { background: linear-gradient(180deg, transparent 45%, rgba(0,0,0,.55)), var(--card); }
+
+/* pages */
+.vs-pg { padding-bottom: 32px; }
+.vs-sub { margin: -4px 2px 14px; font-size: var(--fs-sm); }
+.vs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vs-d { position: relative; display: flex; align-items: stretch; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.vs-d-open { flex: 1; min-width: 0; display: flex; gap: 12px; padding: 10px; color: var(--text); text-decoration: none; }
+.vs-d-open:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.vs-d-th { flex: none; width: 54px; height: 96px; border-radius: 10px; overflow: hidden; background: var(--grad); display: grid; place-items: center; color: white; }
+.vs-d-th img { width: 100%; height: 100%; object-fit: cover; }
+.vs-d-b { min-width: 0; display: grid; align-content: center; gap: 6px; }
+.vs-d-cap { font-weight: 750; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.vs-d-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.vs-d-at { font-size: var(--fs-xs); }
+.vs-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font-size: var(--fs-xs); font-weight: 700; }
+.vs-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-chip.vs-bad { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.vs-del { flex: none; width: 52px; border: 0; border-inline-start: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.vs-del:hover { color: var(--danger); }
+.vs-del:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.vs-del:disabled { opacity: .5; cursor: progress; }
+
+.vs-clip { display: flex; align-items: center; gap: 12px; padding: 10px; margin-bottom: 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.vs-clip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vs-clip img, .vs-clip-ph { flex: none; width: 54px; height: 96px; border-radius: 10px; object-fit: cover; background: var(--grad); display: grid; place-items: center; color: white; }
+.vs-clip > span:last-child { display: grid; gap: 4px; min-width: 0; }
+.vs-clip-cap { font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-kpis { list-style: none; margin: 0 0 12px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.vs-k { display: grid; justify-items: start; gap: 2px; padding: 10px 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--text); }
+.vs-k svg { color: var(--accent-ink); }
+.vs-k b { font-size: var(--fs-xl); font-weight: 850; line-height: 1.2; }
+.vs-k span { font-size: var(--fs-xs); color: var(--muted); }
+.vs-card { padding: 14px; margin-bottom: 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+.vs-h { margin: 0 0 12px; font-size: var(--fs-md); font-weight: 850; }
+.vs-bars { list-style: none; margin: 0; padding: 0; height: 120px; display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; align-items: end; direction: ltr; }
+.vs-bar { position: relative; height: 100%; display: flex; align-items: flex-end; }
+.vs-bar i { display: block; width: 100%; height: var(--h, 0%); border-radius: 6px 6px 2px 2px; background: var(--accent); }
+.vs-axis { display: flex; justify-content: space-between; margin: 6px 0 0; font-size: var(--fs-xs); direction: ltr; }
+.vs-srcs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.vs-src { display: grid; grid-template-columns: minmax(0, 9em) 1fr auto; align-items: center; gap: 10px; color: var(--text); font-size: var(--fs-sm); }
+.vs-src-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-src-bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); overflow: hidden; }
+.vs-src-bar i { display: block; height: 100%; width: var(--w, 0%); background: var(--accent); border-radius: inherit; }
+.vs-src b { font-size: var(--fs-sm); min-width: 3ch; text-align: end; }
+.vs-note { font-size: var(--fs-xs); margin: 4px 2px 0; }
+.vs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) { .vs-bar i, .vs-src-bar i { transition: height .3s ease, width .3s ease; } }
+/* === /v280-studio === */

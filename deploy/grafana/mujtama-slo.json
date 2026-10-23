@@ -1,0 +1,209 @@
+{
+ "__inputs": [
+  {
+   "name": "DS_PROMETHEUS",
+   "label": "Prometheus",
+   "type": "datasource",
+   "pluginId": "prometheus",
+   "pluginName": "Prometheus"
+  }
+ ],
+ "uid": "mujtama-slo",
+ "title": "مجتمع بلس — أهداف الخدمة SLO",
+ "tags": [
+  "mujtama",
+  "slo"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "1m",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "instance",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${DS_PROMETHEUS}"
+    },
+    "query": "label_values(mujtama_app_info, instance)",
+    "includeAll": true,
+    "multi": true,
+    "current": {
+     "text": "All",
+     "value": "$__all"
+    },
+    "refresh": 2
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "gauge",
+   "title": "SLO error budget remaining",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${DS_PROMETHEUS}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "min by (slo) (mujtama_slo_error_budget_remaining_ratio{instance=~\"$instance\"})",
+     "legendFormat": "{{slo}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${DS_PROMETHEUS}"
+     }
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "stat",
+   "title": "Availability (30d, non-5xx)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${DS_PROMETHEUS}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "1 - sum(increase(mujtama_http_requests_total{instance=~\"$instance\",status=\"5xx\"}[30d])) / clamp_min(sum(increase(mujtama_http_requests_total{instance=~\"$instance\"}[30d])),1)",
+     "legendFormat": "availability",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${DS_PROMETHEUS}"
+     }
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Burn rate (1h) vs 99.5% target",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${DS_PROMETHEUS}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 24,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "(sum(rate(mujtama_http_requests_total{instance=~\"$instance\",status=\"5xx\"}[1h])) / clamp_min(sum(rate(mujtama_http_requests_total{instance=~\"$instance\"}[1h])),1e-9)) / 0.005",
+     "legendFormat": "burn 1h",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${DS_PROMETHEUS}"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "(sum(rate(mujtama_http_requests_total{instance=~\"$instance\",status=\"5xx\"}[6h])) / clamp_min(sum(rate(mujtama_http_requests_total{instance=~\"$instance\"}[6h])),1e-9)) / 0.005",
+     "legendFormat": "burn 6h",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${DS_PROMETHEUS}"
+     }
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "Requests under 800 ms (latency SLI)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${DS_PROMETHEUS}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 24,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(mujtama_http_request_duration_seconds_bucket{instance=~\"$instance\",le=\"1\"}[1h])) / clamp_min(sum(rate(mujtama_http_request_duration_seconds_count{instance=~\"$instance\"}[1h])),1e-9)",
+     "legendFormat": "< 1 s bucket",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${DS_PROMETHEUS}"
+     }
+    }
+   ]
+  }
+ ],
+ "description": "Phase 49. Import in Grafana and pick your Prometheus data source."
+}

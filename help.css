@@ -1,0 +1,39 @@
+/* v2.61 page help «؟» (lazy chunk "help", see help-ui.js). Tokens only (DESIGN.md). */
+.hp-has { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s1); }
+/* «؟» never wraps away from its title (en/fr titles are longer): the title leaves room for the button on its own line */
+.hp-has > h2 { flex: 0 1 auto; min-width: 0; max-width: calc(100% - 44px - var(--s1)); }
+/* the 44 px target stays, but it takes only the title's line height in the layout, so adding it never grows the head */
+.hp-has > .hp-btn, .hp-inl > .hp-btn { margin-block: -6px; }
+/* Notifications / Messages heads: «؟» right after the title, the head's own icons keep the far end */
+.hp-inl > h2 { flex: 0 1 auto !important; min-width: 0; }
+.hp-inl > .hp-btn { margin-inline-end: auto; }
+.hp-has > :not(h2):not(.hp-btn) { flex-basis: 100%; }
+.hp-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.hp-btn .hp-q { display: grid; place-items: center; width: 26px; height: 26px; border: 1.5px solid var(--line-2); border-radius: 50%; font-size: var(--fs-sm); font-weight: 750; line-height: 1; transition: background .15s, color .15s, border-color .15s; }
+.hp-btn:hover .hp-q, .hp-btn[aria-expanded="true"] .hp-q { background: var(--accent2); border-color: var(--accent); color: var(--accent-ink); }
+.hp-btn:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 0; border-radius: 50%; }
+.hp-btn.hp-top { border-radius: 14px; }
+/* v2.61 fix: in a page head the 44 px «؟» target must not make the title row taller than the title itself (the help chunk loads
+ * after first paint, so a taller row pushed every page down ~10 px = layout shift + visual-baseline diff). Negative block margins
+ * shrink only its layout box; the visible 26 px circle and the 44 px hit area are unchanged. */
+.hp-has > .hp-btn { margin-block: -10px; }
+/* last-resort fallback only (no page head and no room in the reserved top-bar slot): an overlay at the top inline-end corner of the
+ * screen — zero height, so it never pushes the content (CLS 0); the 26 px badge gets a solid background to read over it */
+.hp-strip { position: relative; z-index: 3; height: 0; margin: 0; pointer-events: none; }
+.hp-strip > .hp-btn { position: absolute; top: calc(-1 * var(--s2)); inset-inline-end: calc(-1 * var(--s2)); pointer-events: auto; }
+.hp-strip .hp-q { background: var(--elev); box-shadow: var(--sh-1); }
+.hp-in { display: grid; gap: var(--s3); }
+.hp-head { display: flex; align-items: center; gap: var(--s2); }
+.hp-head h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--fs-lg); line-height: 1.35; }
+.hp-head h3:focus { outline: none; } .hp-head h3:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.hp-badge { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent2); color: var(--accent-ink); font-weight: 800; }
+.hp-x { flex: none; border: 0; background: none; color: var(--text-2); cursor: pointer; } .hp-x:hover { background: var(--bg-2); }
+.hp-body p { margin: 0 0 var(--s1); color: var(--text-2); font-size: var(--fs-md); line-height: 1.65; }
+.hp-tips { padding: var(--s3); border-radius: var(--r-sm); background: var(--bg-2); }
+.hp-tips h4 { margin: 0 0 var(--s1); color: var(--accent-ink); font-size: var(--fs-sm); }
+.hp-tips ul { margin: 0; padding-inline-start: var(--s5); display: grid; gap: var(--s1); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
+.hp-foot { display: flex; justify-content: flex-end; }
+.hp-foot .btn { min-height: 44px; min-width: 96px; }
+/* desktop popover, anchored under «؟» by help-ui.js (--hp-x / --hp-y) */
+.hp-pop { position: fixed; z-index: 90; inset-inline-start: auto; left: var(--hp-x, 12px); top: var(--hp-y, 72px); width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--elev); box-shadow: var(--sh-3); animation: fade .16s ease; }
+@media (prefers-reduced-motion: reduce) { .hp-pop { animation: none; } }

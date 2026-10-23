@@ -1,0 +1,24 @@
+/* v2.45 Phase 79 — teams & projects (lazy "teams" chunk; loads after work.css and reuses wk-*). Tokens only; logical properties. */
+.wt-board{display:grid;gap:var(--s3)}
+@media (min-width:900px){.wt-board{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}}
+.wt-col{background:var(--surface-2,var(--card));border:1px solid var(--line);border-radius:var(--r-lg,16px);padding:var(--s3)}
+.wt-ch{display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s2);font-size:var(--fs-md)}
+.wt-ch .n{color:var(--muted);font-weight:600;font-size:var(--fs-sm)}
+.wt-tasks,.wt-ups,.wt-replies{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2)}
+.wt-task{padding:var(--s3);margin:0}.wt-task.mine{border-inline-start:3px solid var(--accent)}
+.wt-task p{margin:4px 0;color:var(--text-2);font-size:var(--fs-sm);white-space:pre-wrap}
+.wt-meta{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center;font-size:var(--fs-xs);color:var(--muted);margin-top:var(--s2)}
+.wt-meta .wk-av{width:24px;height:24px;font-size:var(--fs-xs)}
+.wt-late{color:var(--danger);font-weight:700}
+.wt-ta{margin:var(--s2) 0 0}.wt-ta .btn{min-height:44px}
+.wt-uh{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}.wt-uh small{color:var(--muted)}.wt-uh .btn{margin-inline-start:auto;min-height:44px;min-width:44px}
+.wt-uh .wk-av{width:32px;height:32px}
+.wt-up p,.wt-reply p{white-space:pre-wrap;margin:var(--s2) 0}
+.wt-replies{margin:var(--s2) 0;padding-inline-start:var(--s4);border-inline-start:2px solid var(--line)}
+.wt-inv,.wt-mem li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2)}
+.wt-inv .li,.wt-mem .li{flex:1 1 220px}
+.wt-rl select{min-height:44px}
+.wt-ct{display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap;margin:var(--s2) 0 0}
+.wt-items .btn{min-height:44px;min-width:44px}
+.wk-page select[data-role]{min-height:44px}
+.wt-mem small{overflow-wrap:anywhere}.wt-mem .t{min-width:0}

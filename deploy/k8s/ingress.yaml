@@ -1,0 +1,18 @@
+# Origin ingress behind Cloudflare (orange-cloud). WebSocket (/api/ws) and SSE (/api/stream) need long timeouts and no
+# buffering. Sticky sessions are NOT required: realtime fan-out goes through Redis pub/sub when REDIS_URL is set.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-body-size: "210m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mujtama.example.com   # placeholder
+      http:
+        paths:
+          - { path: /, pathType: Prefix, backend: { service: { name: web, port: { name: http } } } }

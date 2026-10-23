@@ -1,0 +1,29 @@
+{
+  "appId": "plus.mujtama.app",
+  "appName": "مجتمع بلس",
+  "webDir": "dist",
+  "backgroundColor": "#faf8ff",
+  "server": {
+    "androidScheme": "https",
+    "allowNavigation": [
+      "*.minepi.com",
+      "sdk.minepi.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#faf8ff"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#faf8ff",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#faf8ff",
+      "showSpinner": false
+    }
+  }
+}

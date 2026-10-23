@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مكتبة مكونات مجتمع بلس</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="feat.css">
+<link rel="stylesheet" href="communities.css">
+<style>
+  body{max-width:1100px;padding:24px 16px 80px}
+  .g-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+  .g-sec{margin:28px 0}.g-sec>h3{font-size:18px;margin:0 0 4px}.g-sec>p{margin:0 0 12px;color:var(--muted)}
+  .g-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .g-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .sw{border-radius:14px;height:64px;box-shadow:var(--sh-1);display:flex;align-items:flex-end;padding:8px;font-size:12px;font-weight:700;color:#fff}
+  .ico{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px;background:var(--card);border-radius:14px;box-shadow:var(--sh-1);font-size:11px;color:var(--muted)}
+  code{font-size:12px;background:var(--bg-2);padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="g-head"><div><h2 style="margin:0">مكتبة مكونات مجتمع بلس</h2><p class="muted" style="margin:4px 0 0">نظام التصميم v2.36 «مجتمع بلس المنقّح» · كل عنصر هنا هو نفسه المستخدم في التطبيق</p></div>
+  <div class="seg" style="width:220px"><button data-t="light" class="on">فاتح</button><button data-t="dark">داكن</button></div></div>
+
+<section class="g-sec"><h3>الألوان</h3><p>الهوية للأفعال الأساسية فقط؛ ألوان الأفعال تميز كل تفاعل.</p>
+  <div class="g-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr))">
+    <div class="sw" style="background:var(--grad)">--grad</div><div class="sw" style="background:var(--accent)">--accent</div>
+    <div class="sw" style="background:var(--like)">--like</div><div class="sw" style="background:var(--info)">--info</div>
+    <div class="sw" style="background:var(--repost)">--repost</div><div class="sw" style="background:var(--warn)">--warn</div>
+    <div class="sw" style="background:var(--danger)">--danger</div><div class="sw" style="background:var(--text)">--text</div>
+    <div class="sw" style="background:var(--muted)">--muted</div><div class="sw" style="background:var(--bg-2);color:var(--text)">--bg-2</div>
+  </div></section>
+
+<section class="g-sec"><h3>الأيقونات</h3><p>خطية بسماكة 1.8، وتمتلئ عند التفعيل. <code>UI.icon(name, size)</code></p><div class="g-grid" id="icons" style="grid-template-columns:repeat(auto-fill,minmax(92px,1fr))"></div></section>
+
+<section class="g-sec"><h3>الأزرار</h3><p>أساسي بتدرج للفعل الرئيسي في الشاشة، وثانوي لكل ما عداه.</p>
+  <div class="g-row"><button class="btn">نشر</button><button class="btn ghost">إلغاء</button><button class="btn" disabled>معطّل</button><button class="btn ghost" style="color:var(--danger)">حذف</button><button class="fab" style="position:static" aria-label="منشور جديد"><svg class="ic"><use href="#i-pen"/></svg></button></div>
+  <div style="max-width:360px;margin-top:10px"><button class="btn block">زر بعرض كامل</button></div></section>
+
+<section class="g-sec"><h3>الحقول</h3>
+  <div class="g-grid"><div><label class="muted">اسم المستخدم</label><input placeholder="username" dir="ltr"></div><div><label class="muted">القائمة</label><select><option>الكل</option><option>المتابَعون</option></select></div><div><label class="muted">نص</label><textarea placeholder="اكتب هنا…" style="min-height:80px"></textarea></div></div></section>
+
+<section class="g-sec"><h3>التبويبات والشرائح</h3>
+  <div class="tabs" style="position:static"><button class="tab on">لك</button><button class="tab">أتابع</button><button class="tab">الأحدث</button><button class="tab">استكشف</button></div>
+  <div class="seg" style="max-width:360px"><button class="on">الكل</button><button>الإشارات</button><button>المتابعات</button></div>
+  <div class="g-row" style="margin-top:8px"><span class="chip">الذكاء الاصطناعي</span><span class="chip">Pi Network</span><span class="badge-v">خبيرة</span></div></section>
+
+<section class="g-sec"><h3>الصور الرمزية</h3>
+  <div class="g-row"><span class="av sm" style="background:#e0559b">س</span><span class="av" style="background:#1f9d8b">ف</span><span class="av ring" style="background:#5b2bd6">ر</span><span class="av lg" style="background:#e88b2a">ن</span></div></section>
+
+<section class="g-sec"><h3>بطاقة منشور</h3><p>تفاعل بلمسة، تفاعلات أخرى بضغطة مطوّلة، قلب بالنقر المزدوج.</p>
+  <div style="max-width:600px"><div class="card post-card"><div class="post-head"><span class="av ring" style="background:#e0559b">س</span><div class="meta"><b class="name">سارة القحطاني</b> <svg class="ic xs verified"><use href="#i-verified"/></svg> <span class="badge-v">خبيرة</span><div class="handle">@sara_ai · منذ ٣ س</div><span class="chip">الذكاء الاصطناعي</span></div><button class="more" aria-label="خيارات"><svg class="ic"><use href="#i-more"/></svg></button></div>
+    <div class="body">النماذج اللغوية الصغيرة صارت تنافس الكبيرة في مهام محددة. السر في جودة البيانات. <a class="tag">#ذكاء_اصطناعي</a></div>
+    <div class="poll"><div class="opt"><div class="bar" style="width:62%"></div><span>جودة البيانات · 62%</span></div><div class="opt"><div class="bar" style="width:38%"></div><span>حجم النموذج · 38%</span></div></div>
+    <div class="actions"><button class="a-like on" aria-pressed="true"><svg class="ic"><use href="#i-heartF"/></svg><span>١٢٤</span></button><button class="a-com"><svg class="ic"><use href="#i-comment"/></svg><span>١٨</span></button><button class="a-rep"><svg class="ic"><use href="#i-repost"/></svg><span>٦</span></button><span class="act views"><svg class="ic sm"><use href="#i-chart"/></svg><span style="margin-inline-start:5px">٢٫٣ ألف</span></span><button class="a-save"><svg class="ic"><use href="#i-bookmark"/></svg></button></div></div></div></section>
+
+<section class="g-sec"><h3>المؤشرات والحالات</h3>
+  <div class="kpi" style="max-width:600px"><div><b>1,240</b><span>نشط يومياً</span></div><div><b>86</b><span>منشور اليوم</span></div><div><b>99.9%</b><span>التوفر</span></div><div><b>0</b><span>أخطاء</span></div></div>
+  <div class="g-grid" style="margin-top:12px"><div class="skel"></div><div class="card"><div class="empty" style="padding:10px">لا إشعارات بعد</div></div></div></section>
+
+<section class="g-sec" id="v232"><h3>v2.32 · الرموز (tokens)</h3><p>هوية واحدة ونظام واحد: كل قيمة من رمز. البنفسجي للهوية وللفعل الأساسي فقط، والأسود المحايد لا يكون لوناً للتفعيل أبداً.</p>
+  <div class="g-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">
+    <div class="sw" style="background:var(--hero-grad)">--hero-grad</div><div class="sw" style="background:var(--accent-soft);color:var(--accent-ink)">--accent-soft</div>
+    <div class="sw" style="background:var(--surface-sunken);color:var(--text)">--surface-sunken</div><div class="sw" style="background:var(--ok-soft);color:var(--text)">--ok-soft</div>
+    <div class="sw" style="background:var(--warn-soft);color:var(--text)">--warn-soft</div><div class="sw" style="background:var(--danger-soft);color:var(--text)">--danger-soft</div><div class="sw" style="background:var(--info-soft);color:var(--text)">--info-soft</div></div>
+  <div class="card" style="margin-top:12px"><b>سلّم الخط</b> (الأوزان 400 / 600 / 700 / 800 للعناوين فقط)
+    <div style="font-size:var(--fs-3xl);font-weight:800">--fs-3xl 26 · بطل الصفحة</div><div style="font-size:var(--fs-2xl);font-weight:800">--fs-2xl 22 · عنوان الصفحة</div>
+    <div style="font-size:var(--fs-xl);font-weight:700">--fs-xl 20 · عنوان اللوح</div><div style="font-size:var(--fs-lg);font-weight:700">--fs-lg 17 · عنوان قسم/بطاقة</div>
+    <div style="font-size:var(--fs-md)">--fs-md 15 · نص وعناوين الصفوف</div><div style="font-size:var(--fs-sm)">--fs-sm 13 · ثانوي</div><div style="font-size:var(--fs-xs)">--fs-xs 12 · بيانات وشارات</div><div style="font-size:var(--fs-num);font-weight:800" class="num">--fs-num 28 · 1,240</div></div>
+  <div class="card"><b>المسافات</b> شبكة 4 نقاط: <code>--s1..--s8</code> = 4 · 8 · 12 · 16 · 20 · 24 · 32 · 40. هامش الصفحة <code>--gutter</code> 16 (12 تحت 380px)، 12 بين البطاقات، 24 بين الأقسام.<br>
+    <b>الزوايا</b> أربع فقط: <code>--r-sm 12</code> حقول وبلاطات · <code>--r 18</code> بطاقات · <code>--r-lg 24</code> ألواح وأبطال · <code>--r-pill</code> أزرار وشرائح.<br>
+    <b>الظلال</b> <code>--sh-1</code> بطاقات · <code>--sh-2</code> مرفوع · <code>--sh-3</code> ألواح وشريط التنقل. <b>الارتفاعات</b> <code>--h-sm 36</code> · <code>--h-md 44</code> (افتراضي، هدف لمس) · <code>--h-lg 52</code>.<br>
+    <b>الأرقام</b> أرقام غربية (latn) في كل الواجهة عبر <code>UI.num(n)</code>، وأرقام المؤشرات جدولية <code>.num</code>. <b>الاتجاه</b> كل وسم ومعرّف واسم لاتيني ورابط داخل <code>&lt;bdi&gt;</code> أو <code>.tag/.men/.ltr-iso</code>: <a class="tag">#PiNetwork</a> · <bdi>@sara_ai</bdi></div></section>
+
+<section class="g-sec"><h3>v2.32 · الأزرار</h3><p>أساسي واحد فقط في كل شاشة (التدرج). المعطّل رمادي هادئ، لا تدرج باهت.</p>
+  <div class="g-row"><button class="btn">أساسي</button><button class="btn secondary">ثانوي</button><button class="btn outline">محدد</button><button class="btn danger">حذف</button><button class="btn" disabled>معطّل</button><button class="btn secondary icon" aria-label="إعدادات"><svg class="ic sm"><use href="#i-settings"/></svg></button></div>
+  <div class="g-row" style="margin-top:8px"><button class="btn sm">صغير 36</button><button class="btn">متوسط 44</button><button class="btn lg">كبير 52</button></div></section>
+
+<section class="g-sec"><h3>v2.32 · رأس الصفحة</h3><p><code>UI.pageHead({ back, title, icon, sub, actions, row })</code> — رجوع ثم عنوان بأيقونة اختيارية في البداية (بلا رموز تعبيرية في نهايته) ثم وصف ثم الأفعال.</p>
+  <div class="card"><header class="page-head"><a class="back" href="#"><span class="fwd" aria-hidden="true">→</span> الإعدادات</a><div class="ph-main"><div><h2><svg class="ic"><use href="#i-shield"/></svg>الأمان</h2><p class="sub">جلساتك وأجهزتك وطرق الدخول في مكان واحد.</p></div><div class="acts"><button class="btn">تفعيل التحقق</button><button class="btn outline">السجل</button></div></div></header></div></section>
+
+<section class="g-sec"><h3>v2.32 · التبويبات والشرائح</h3><p>التفعيل بلون الهوية الخفيف بدل الحبة السوداء. التسميات لا تلتف.</p>
+  <div class="tabs" style="position:static;margin:0"><button class="tab on">لك</button><button class="tab">أتابع</button><button class="tab">زمني</button></div>
+  <div class="seg" style="max-width:360px"><button class="on">المحادثات</button><button>الطلبات</button></div>
+  <div class="g-row" style="margin-top:8px"><button class="chip on" aria-pressed="true">الكل</button><button class="chip">البرمجة 2</button><span class="sbadge role">خبيرة</span><span class="sbadge ok">موثّق</span><span class="sbadge warn">بانتظار</span><span class="sbadge">حساب جديد</span></div></section>
+
+<section class="g-sec"><h3>v2.32 · القوائم والنماذج والتنبيهات</h3>
+  <div class="g-grid"><div class="list"><a class="li" href="#"><span class="ico"><svg class="ic sm"><use href="#i-lock"/></svg></span><span class="t"><b>الخصوصية</b><small>من يرى منشوراتك ويراسلك</small></span><span class="chev">←</span></a><label class="li"><span class="t"><b>إشعارات الإعجاب</b><small>على هذا الجهاز</small></span><input type="checkbox" class="switch" checked></label><label class="li radio-row"><span>تباين عالٍ</span><input type="radio" name="g" checked></label></div>
+  <div><div class="field"><label for="g-f">اسم المجتمع</label><input id="g-f" placeholder="مثلاً: بناة Pi"><span class="hint">يظهر للجميع ويمكن تغييره لاحقاً</span></div>
+    <div class="notice"><svg class="ic sm"><use href="#i-lock"/></svg><span>رسائلك الخاصة مشفّرة طرفاً لطرف.</span></div><div class="notice warn"><svg class="ic sm"><use href="#i-flag"/></svg><span>مدفوعات Pi غير مفعّلة بعد.</span></div></div>
+  <div><div class="card"><div class="empty" style="padding:16px"><span class="empty-t">لا توجد عناصر بعد</span><span class="empty-x">احفظ منشوراً ليظهر هنا</span><a class="btn sm" href="#">استكشف</a></div></div><div class="skel line"></div><div class="skel line" style="width:70%"></div><div class="skel row"></div></div>
+  <div><div class="kpi-tile"><b>1,240</b><span>نشط يومياً</span></div><div class="card hero" style="margin-top:12px"><b>بطاقة بطل واحدة لكل شاشة</b><div class="muted">تستخدم --hero-grad</div></div></div></div></section>
+
+<section class="g-sec" id="v236"><h3>v2.36 · مكونات الوحدات</h3><p>من حزمة <code>feat</code> الكسولة ومن النواة: تُستخدم كما هي في السوق والدورات والتحويلات والإعلانات وغيرها. لا قيم مفردة: الرموز والأدوات <code>u-*</code> فقط.</p>
+  <div class="f-h">عنوان قسم <span class="grow"></span><a href="#">عرض الكل</a></div>
+  <div class="g-grid">
+  <div><b class="u-t-sm c-mu">الشرائح (segments)</b>
+    <div class="seg u-mt8" role="tablist" aria-label="الفترة"><button role="tab" aria-selected="true">7 أيام</button><button role="tab" aria-selected="false">30 يوماً</button><button role="tab" aria-selected="false">الكل</button></div>
+    <div class="seg u-mt8"><button aria-pressed="true">المرسلة</button><button aria-pressed="false">المستلمة</button></div></div>
+  <div><b class="u-t-sm">شريط الشرائح (chip rail)</b>
+    <ul class="f-chips u-mt8" aria-label="الفئات"><li><button class="chip f" aria-pressed="true">الكل</button></li><li><button class="chip f" aria-pressed="false"><svg class="ix" aria-hidden="true"><use href="#i-book"/></svg>كتب</button></li><li><button class="chip f" aria-pressed="false">خدمات</button></li><li><button class="chip f" aria-pressed="false">تعليم</button></li><li><button class="chip f" aria-pressed="false">حرف يدوية</button></li></ul></div>
+  <div><b class="u-t-sm">مؤشرات (KPI tiles)</b>
+    <div class="f-kpis u-mt8"><div class="kpi-tile"><b>12.5</b><span>Pi هذا الشهر</span></div><div class="kpi-tile"><b>38</b><span>داعماً</span></div><div class="kpi-tile"><b>4.8</b><span>التقييم</span></div><div class="kpi-tile"><b>96%</b><span>نسبة الإكمال</span></div></div></div>
+  <div><b class="u-t-sm">البحث + زر التصفية (filter sheet)</b>
+    <div class="fx-host u-mt8"><input type="search" name="q" placeholder="ابحث عن دورة…" aria-label="بحث"><button class="btn outline fx-open on" type="button" aria-haspopup="dialog"><svg class="ix" aria-hidden="true"><use href="#i-sliders"/></svg>تصفية <span class="fx-n">2</span></button></div>
+    <div class="card u-mt8"><div class="sheet-head"><h3>تصفية</h3><button class="icon-btn" aria-label="إغلاق">✕</button></div><div class="fx-body"><label>المدينة<select><option>الرياض</option></select></label><label>المستوى<select><option>مبتدئ</option></select></label></div><div class="sheet-foot g-row"><button class="btn">عرض النتائج</button><button class="btn outline">إعادة الضبط</button></div></div></div>
+  <div><b class="u-t-sm">صف حدث (event row)</b>
+    <a class="card ev-row u-mt8" href="#"><span class="ev-date" style="background:var(--accent)"><b>24</b><small>أكتوبر</small></span><div class="grow"><b>لقاء مطوري Pi</b><div class="muted">٧:٣٠ م · جدة</div><div class="ev-meta">٣٢ سيحضر · بناة Pi</div></div><span class="chev" aria-hidden="true">←</span></a></div>
+  <div><b class="u-t-sm">حالات (status pills) وأدوات u-*</b>
+    <div class="g-row u-mt8"><span class="sbadge ok">مكتمل</span><span class="sbadge warn">بانتظار الدفع</span><span class="sbadge info">قيد الشحن</span><span class="sbadge bad">نزاع</span></div>
+    <p class="u-t-sm c-mu u-mt8"><code>u-m0 u-mt8 u-t-sm u-dflex u-g8 u-f1 u-c-dg …</code> تحل محل <code>style=""</code> في القوالب (المقاسات من مقياس الخط والمسافات).</p></div>
+  </div></section>
+
+<section class="g-sec"><h3>الإشعار المنبثق</h3><div class="g-row"><button class="btn ghost" id="tst">عرض إشعار</button></div></section>
+<div id="toast" class="toast"></div>
+
+<script>
+  // icons come from the same source as the app (ui.js), so the gallery never drifts
+  fetch("ui.js").then(r => r.text()).then(src => {
+    const block = src.slice(src.indexOf("const ICON_PATHS"), src.indexOf("\n};", src.indexOf("const ICON_PATHS"))); const P = Object.fromEntries([...block.matchAll(/(\w+): '([^']*)'/g)].map(m => [m[1], m[2]])); // no eval (CSP)
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg"); s.style.display = "none";
+    s.innerHTML = Object.entries(P).map(([k, v]) => `<symbol id="i-${k}" viewBox="0 0 24 24">${v}</symbol>`).join(""); document.body.prepend(s);
+    document.getElementById("icons").innerHTML = Object.keys(P).map(k => `<div class="ico"><svg class="ic"><use href="#i-${k}"/></svg>${k}</div>`).join("");
+    // feature-module icons (lazy feat chunk sprite) for the v2.36 section
+    fetch("feat-ui.js").then(r => r.text()).then(fs => { const b = fs.slice(fs.indexOf("const P = {"), fs.indexOf("\n  };", fs.indexOf("const P = {"))); s.innerHTML += [...b.matchAll(/(\w+): '([^']*)'/g)].map(m => `<symbol id="i-${m[1]}" viewBox="0 0 24 24">${m[2]}</symbol>`).join(""); }).catch(() => { });
+  }).catch(() => { document.getElementById("icons").innerHTML = '<p class="muted">افتح المكتبة عبر الخادم لعرض الأيقونات</p>'; });
+  document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { document.documentElement.dataset.theme = b.dataset.t; document.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b)); });
+  document.getElementById("tst").onclick = () => { const t = document.getElementById("toast"); t.textContent = "✓ تم الحفظ"; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2000); };
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+dist
+node_modules
+server/node_modules
+vendor
+tests/visual
+*.min.js

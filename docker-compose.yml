@@ -1,0 +1,62 @@
+# Production-like stack: PostgreSQL 17 + PgBouncer (transaction pooling) + app + nightly encrypted backups.
+# Secrets come from files (Docker secrets) — see ops/README.md.
+services:
+  db:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: mujtama, POSTGRES_PASSWORD_FILE: /run/secrets/db_password, POSTGRES_DB: mujtama }
+    secrets: [db_password]
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U mujtama"], interval: 5s, retries: 10 }
+    restart: unless-stopped
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: db
+      DB_USER: mujtama
+      DB_NAME: mujtama
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      AUTH_TYPE: scram-sha-256
+    env_file: [ ops/pgbouncer/pgbouncer.env ]
+    depends_on: { db: { condition: service_healthy } }
+    restart: unless-stopped
+  app:
+    build: .
+    depends_on: { pgbouncer: { condition: service_started } }
+    env_file: .env
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url      # postgres://mujtama:***@pgbouncer:5432/mujtama
+      PI_API_KEY_FILE: /run/secrets/pi_api_key
+      TRUST_PROXY: "1"
+      TURN_SECRET_FILE: /run/secrets/turn_secret          # calls: HMAC key shared with coturn
+      TURN_URLS: "${TURN_URLS:-turn:localhost:3478?transport=udp,turn:localhost:3478?transport=tcp}"
+    secrets: [database_url, pi_api_key, turn_secret]
+    ports: [ "8080:8080" ]
+    volumes: [ "media:/data" ]
+    restart: unless-stopped
+  backup:
+    image: postgres:17-alpine
+    depends_on: { db: { condition: service_healthy } }
+    environment: { PGHOST: db, PGUSER: mujtama, PGDATABASE: mujtama, BACKUP_DIR: /backups, RETAIN_DAYS: "14" }
+    secrets: [db_password, backup_passphrase]
+    volumes: [ "./ops/backup:/ops:ro", "backups:/backups" ]
+    entrypoint: ["/bin/sh", "-c", "apk add --no-cache openssl >/dev/null && while true; do PGPASSWORD=$$(cat /run/secrets/db_password) sh /ops/backup.sh; sleep 86400; done"]
+    restart: unless-stopped
+  # Self-hosted TURN/STUN for calls (Phase 30). REST-API auth (use-auth-secret): the app mints time-limited
+  # credentials from the same shared secret (GET /api/calls/ice). Set TURN_REALM / TURN_EXTERNAL_IP in .env and point
+  # TURN_URLS at the public host. Relay ports must be reachable over UDP; host networking is the simplest on Linux.
+  coturn:
+    image: coturn/coturn:4.6
+    secrets: [turn_secret]
+    environment: { TURN_REALM: "${TURN_REALM:-mujtama.plus}", TURN_EXTERNAL_IP: "${TURN_EXTERNAL_IP:-}" }
+    ports: [ "3478:3478/udp", "3478:3478/tcp", "5349:5349/tcp", "49160-49200:49160-49200/udp" ]
+    entrypoint: ["/bin/sh", "-c", "exec turnserver -n --log-file=stdout --fingerprint --use-auth-secret --static-auth-secret=$$(cat /run/secrets/turn_secret) --realm=$$TURN_REALM $${TURN_EXTERNAL_IP:+--external-ip=$$TURN_EXTERNAL_IP} --listening-port=3478 --tls-listening-port=5349 --min-port=49160 --max-port=49200 --no-multicast-peers --no-cli --stale-nonce=600 --total-quota=400 --user-quota=12 --denied-peer-ip=10.0.0.0-10.255.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255 --denied-peer-ip=192.168.0.0-192.168.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255"]
+    restart: unless-stopped
+secrets:
+  db_password: { file: ./secrets/db_password }
+  database_url: { file: ./secrets/database_url }
+  pi_api_key: { file: ./secrets/pi_api_key }
+  backup_passphrase: { file: ./secrets/backup_passphrase }
+  turn_secret: { file: ./secrets/turn_secret }
+volumes: { pgdata: {}, media: {}, backups: {} }

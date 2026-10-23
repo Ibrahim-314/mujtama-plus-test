@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "commonjs", "moduleResolution": "node", "lib": ["ES2022", "DOM"],
+    "allowJs": true, "checkJs": true, "noEmit": true, "strict": false, "noImplicitAny": false,
+    "skipLibCheck": true, "types": ["node"], "resolveJsonModule": true, "esModuleInterop": true
+  },
+  "include": ["server/lib/**/*.js", "server/repos/**/*.js", "server/services/security.js", "server/services/ops.js", "server/services/identity.js", "server/services/orgs.js", "server/services/reputation.js", "server/services/growth.js", "server/services/automod.js", "server/services/integrity.js", "server/services/protection.js", "server/migrations/*.js", "types/**/*.d.ts"]
+}

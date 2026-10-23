@@ -1,0 +1,18 @@
+# Non-secret settings shared by every role. Connection strings (DATABASE_URL, REDIS_URL, NATS_URL, PI_API_KEY, …)
+# live in the Secret `mujtama-secrets` (see secret.example.yaml — never commit real values).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mujtama-config
+data:
+  NODE_ENV: "production"
+  TRUST_PROXY: "1"
+  SEED_DEMO: "0"
+  # shared media storage is required once there is more than one pod: set S3_ENDPOINT/S3_BUCKET (+ keys in the Secret),
+  # or STORAGE_DRIVER: "db" to keep blobs in PostgreSQL. Local disk is per-pod and NOT shared.
+  MEDIA_WORKER: "external"        # web pods do not process media; worker-media does
+  CDN_CACHE: "1"                  # emit CDN-Cache-Control for the edge (Cloudflare)
+  CDN_EDGE_TTL: "86400"
+  REDIS_SESSION_CACHE_MS: "5000"  # short session cache; logout/revoke invalidate it immediately
+  NATS_QUEUE: "mujtama"
+  PG_POOL: "10"

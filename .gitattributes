@@ -1,0 +1,2 @@
+# Pi App Studio domain validation file must stay byte-exact (no EOL conversion)
+public/pi-app-validation.txt -text

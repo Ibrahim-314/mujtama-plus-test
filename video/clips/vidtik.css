@@ -1,0 +1,136 @@
+/* مجتمع بلس — «فيديوتك» v2.75: editor (#/clips/create) + creator profile (#/clips/@handle). Calm, quiet surfaces;
+ * every control responds on the first touch (touch-action: manipulation, no hover-only states, no layout on tap). */
+/* === v275-vidtik === */
+.vt-ed, .vt-pf { -webkit-tap-highlight-color: transparent; }
+.vt-ed button, .vt-ed a, .vt-ed input, .vt-ed textarea, .vt-pf button, .vt-pf a { touch-action: manipulation; }
+.vt-ed :is(button, a):active, .vt-pf :is(button, a):active { transform: scale(.97); }
+.vt-ed :is(button, a), .vt-pf :is(button, a) { transition: transform .12s ease, background-color .15s ease, opacity .15s ease; }
+.vt-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- palette: one place for Vidtik's own colours (the editor is a dark full-screen surface in both themes) ---------- */
+.vt-ed, .vt-pf { --vt-bg: color-mix(in srgb, black 93%, var(--brand-1)); --vt-fg: color-mix(in srgb, white 95%, var(--brand-1)); --vt-acc-ink: color-mix(in srgb, var(--accent) 35%, white); --vt-err: color-mix(in srgb, var(--danger) 50%, white); --vt-panel: color-mix(in srgb, white 6%, var(--vt-bg)); }
+/* ---------- editor ---------- */
+body.vt-ed-mode { overflow: hidden; }
+.vt-ed { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; background: var(--vt-bg); color: var(--vt-fg); height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
+.vt-ed-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2, 8px); padding: calc(env(safe-area-inset-top) + 8px) 12px 8px; flex: none; }
+.vt-ed-top h1 { margin: 0; font-size: var(--fs-md); font-weight: 700; display: flex; align-items: baseline; gap: 6px; }
+.vt-ed-top h1 small { font-size: var(--fs-xs); font-weight: 600; opacity: .6; }
+.vt-ib { display: inline-grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: inherit; cursor: pointer; padding: 0; text-decoration: none; }
+.vt-ib-sp { width: 40px; height: 40px; }
+.vt-ib:focus-visible, .vt-chip:focus-visible, .vt-btn:focus-visible, .vt-btn-main:focus-visible, .vt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* the steps use display:flex/grid, which would beat the [hidden] attribute: keep hidden really hidden */
+.vt-ed [hidden] { display: none !important; }
+.vt-pick { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 16px 20px 28px; text-align: center; }
+.vt-pick-frame { width: min(46vw, 28dvh, 220px); aspect-ratio: 9 / 16; border-radius: 18px; border: 1.5px dashed rgba(255,255,255,.22); display: grid; place-items: center; background: rgba(255,255,255,.03); }
+.vt-pick-ic { opacity: .55; }
+.vt-pick-t { margin: 0; font-size: var(--fs-sm); opacity: .7; }
+.vt-pick-btns { display: flex; flex-direction: column; gap: 10px; width: min(100%, 320px); }
+.vt-btn-main, .vt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 12px; font-weight: 700; }
+.vt-btn-main { background: var(--accent); color: var(--vt-fg); border: 0; }
+.vt-btn-main:disabled { opacity: .5; cursor: default; transform: none; }
+.vt-ed .vt-btn { background: rgba(255,255,255,.08); color: var(--vt-fg); border: 0; }
+.vt-err { margin: 0; color: var(--vt-err); font-size: var(--fs-sm); }
+
+.vt-edit { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+.vt-stage { position: relative; min-height: 0; display: grid; place-items: center; padding: 0 12px; }
+.vt-frame { position: relative; height: 100%; max-height: 56dvh; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 16px; overflow: hidden; background: black; }
+.vt-nopv { display: none; position: absolute; inset: 0; margin: 0; padding: 24px; place-items: center; text-align: center; font-size: var(--fs-sm); opacity: .75; }
+.vt-frame.nopv .vt-nopv { display: grid; }
+.vt-frame.nopv video { visibility: hidden; }
+.vt-stage video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-up { position: absolute; inset-inline: 12px; top: 0; height: 3px; border-radius: 3px; background: rgba(255,255,255,.12); overflow: hidden; z-index: 1; }
+.vt-up i { position: absolute; inset: 0; background: var(--accent); transform-origin: left center; transform: scaleX(.02); transition: transform .3s ease; }
+[dir="rtl"] .vt-up i { transform-origin: right center; }
+.vt-up.ind i { animation: vt-ind 1.2s ease-in-out infinite; }
+.vt-up.done { opacity: 0; transition: opacity .6s ease .6s; }
+@keyframes vt-ind { 0% { opacity: .35; } 50% { opacity: 1; } 100% { opacity: .35; } }
+.vt-play, .vt-mute { position: absolute; bottom: 10px; background: rgba(0,0,0,.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.vt-play { inset-inline-start: 10px; }
+.vt-mute { inset-inline-end: 10px; }
+
+.vt-panel { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 44dvh; overscroll-behavior: contain; }
+.vt-st { margin: 0; min-height: 1.2em; font-size: var(--fs-xs); opacity: .7; }
+.vt-lbl { font-size: var(--fs-xs); font-weight: 700; opacity: .75; margin: 0; }
+.vt-cap { width: 100%; resize: none; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: inherit; padding: 10px 12px; font: inherit; font-size: 16px; line-height: 1.5; }
+.vt-cap:focus { outline: none; border-color: var(--accent); }
+.vt-cap-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: var(--fs-xs); opacity: .75; }
+.vt-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.vt-tag { padding: 2px 8px; border-radius: 999px; background: rgba(124,92,255,.18); color: var(--vt-acc-ink); }
+.vt-row { display: flex; gap: 12px; align-items: center; }
+.vt-cover .vt-cv { width: 45px; height: 80px; border-radius: 8px; background: black; flex: none; }
+.vt-cover-c { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.vt-range { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+.vt-hint { margin: 0; font-size: var(--fs-xs); opacity: .55; }
+.vt-link { flex-direction: column; align-items: stretch; gap: 6px; }
+.vt-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.vt-chips::-webkit-scrollbar { display: none; }
+.vt-chip { display: inline-flex; align-items: center; gap: 6px; flex: none; max-width: 70vw; min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: inherit; font: inherit; font-size: var(--fs-sm); cursor: pointer; }
+.vt-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-chip[aria-checked="true"] { background: var(--accent); border-color: transparent; color: var(--vt-fg); }
+.vt-acts { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 4px; }
+.vt-guest { padding-top: 15vh; }
+
+@media (min-width: 900px) {
+  .vt-edit { grid-template-rows: none; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; padding: 0 24px 24px; }
+  .vt-frame { max-height: calc(100dvh - 100px); }
+  .vt-panel { max-height: none; justify-content: center; }
+}
+
+/* ---------- creator profile ---------- */
+.vt-pf { max-width: 720px; margin: 0 auto; padding-bottom: 32px; }
+.vt-pf-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.vt-pf .vt-ib { background: var(--surface-2, rgba(127,127,127,.12)); }
+.vt-pf-brand { font-weight: 800; font-size: var(--fs-md); }
+.vt-pf-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 8px 0 16px; }
+.vt-pf-av { width: 88px; height: 88px; border-radius: 50%; display: grid; place-items: center; color: var(--vt-fg); font-size: var(--fs-num); font-weight: 800; }
+.vt-pf-name { margin: 4px 0 0; font-size: var(--fs-lg); display: inline-flex; align-items: center; gap: 6px; }
+.vt-pf-badge { color: var(--accent); display: inline-flex; }
+.vt-pf-h { margin: 0; color: var(--muted); font-size: var(--fs-sm); } /* a muted token, not opacity: contrast stays measurable and AA in both themes */
+.vt-pf-counts { list-style: none; margin: 8px 0 4px; padding: 0; display: flex; gap: 22px; justify-content: center; }
+.vt-pf-counts li { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; }
+.vt-pf-counts b { font-size: var(--fs-md); }
+.vt-pf-counts span { font-size: var(--fs-xs); color: var(--muted); }
+.vt-pf-acts { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+.vt-pf-acts .btn { min-width: 120px; }
+.vt-pf-new { display: inline-flex; align-items: center; gap: 6px; }
+.vt-pf-bio { margin: 6px 0 0; max-width: 46ch; font-size: var(--fs-sm); line-height: 1.6; white-space: pre-line; }
+.vt-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; contain: layout paint; }
+.vt-tile { position: relative; display: block; aspect-ratio: 9 / 16; overflow: hidden; background: var(--vt-panel); color: var(--vt-fg); border-radius: 2px; content-visibility: auto; contain-intrinsic-size: 120px 213px; }
+.vt-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-tile-ph { position: absolute; inset: 0; display: grid; place-items: center; opacity: .5; }
+.vt-tile-st, .vt-tile-dur { position: absolute; bottom: 6px; display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-xs); font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.vt-tile-st { inset-inline-start: 6px; } .vt-tile-dur { inset-inline-end: 6px; }
+.vt-tile-proc { display: grid; place-items: center; }
+.vt-tile-proc img { position: absolute; inset: 0; opacity: .4; }
+.vt-proc { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: var(--fs-xs); font-weight: 700; }
+.vt-spin { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); border-top-color: var(--vt-fg); animation: vt-spin .9s linear infinite; }
+@keyframes vt-spin { to { transform: rotate(360deg); } }
+.vt-pf-empty { margin-top: 24px; }
+.vt-more { height: 1px; }
+.vt-pf-skel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 180px; }
+.vt-pf-skel span { aspect-ratio: 9 / 16; background: var(--surface-2, rgba(127,127,127,.12)); animation: vt-ind 1.4s ease-in-out infinite; }
+/* composer: the old «فيديو قصير» switch became a quiet link to the فيديوتك editor */
+.c3-vidtik { display: inline-flex; align-items: center; gap: 6px; min-height: var(--h-md, 40px); font-size: var(--fs-sm); font-weight: 600; color: var(--accent); text-decoration: none; }
+@media (prefers-reduced-motion: reduce) {
+  .vt-ed *, .vt-pf * { animation: none !important; transition: none !important; }
+}
+/* feed: «＋» opens the editor — top end, mirrors the close button; hides with the overlays in clean mode */
+.vt-new { position: fixed; inset-block-start: calc(env(safe-area-inset-top) + 12px); inset-inline-end: max(12px, env(safe-area-inset-right)); z-index: 5; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.4); color: var(--vt-fg); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: opacity .25s ease, transform .12s ease; }
+.vt-new:active { transform: scale(.94); }
+.vt-new:focus-visible { outline: 3px solid white; outline-offset: 2px; }
+body.shorts-mode.cl-clean .vt-new { opacity: 0 !important; visibility: hidden; pointer-events: none; }
+@media (min-width: 760px) { .vt-new { inset-block-start: 22px; } }
+/* === /v275-vidtik === */
+/* v2.76 pinned clip on the creator profile — v276-pin */
+.vt-li { position: relative; }
+.vt-tile-pin { position: absolute; inset-block-start: 6px; inset-inline-start: 6px; z-index: 1; display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: var(--fs-xs); font-weight: 700; }
+.vt-pin { position: absolute; inset-block-start: 2px; inset-inline-end: 2px; z-index: 2; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: white; cursor: pointer; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .7)); opacity: .85; }
+.vt-pin[aria-pressed="true"] { opacity: 1; color: var(--accent); }
+.vt-pin:disabled { opacity: .5; cursor: progress; }
+.vt-pin:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; opacity: 1; }
+/* v2.82 «قص المقطع» */
+.vt-trim { flex-direction: column; align-items: stretch; gap: 6px; }
+.vt-trim-c { display: flex; flex-direction: column; gap: 6px; }
+.vt-trim-r { display: grid; grid-template-columns: 4.5em 1fr 3.2em; align-items: center; gap: 8px; font-size: var(--fs-sm, var(--fs-xs)); }
+.vt-trim-v { direction: ltr; font-variant-numeric: tabular-nums; text-align: end; font-size: var(--fs-xs); opacity: .85; }

@@ -1,0 +1,31 @@
+/* === v271-scrub === */
+/* clips scrubber (role=slider, replaces MPPlayer's .mp-seek here; CC/speed/mute/full-screen bar kept, lifted above it),
+ * tap icon and «2x» pill. The timeline runs left → right in both directions (dir=ltr on .cl-scrub). MPPlayer's own video
+ * gestures are off in clips mode (pointer-events:none on <video>): the clip section handles tap / long-press instead. */
+body.shorts-mode .short-player video { pointer-events: none; }
+body.shorts-mode .short-player .mp-seek { display: none; }
+body.shorts-mode .short-player .mp-ui { padding-block-end: 24px; }
+body.shorts-mode .short.cl-scrub-on { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.cl-scrub { --cl-p: 0; position: absolute; inset-inline: 0; inset-block-end: 0; z-index: 3; direction: ltr; }
+.cl-scrub-bar { position: relative; height: 24px; display: flex; align-items: flex-end; cursor: pointer; touch-action: none; outline: none; }
+.cl-scrub-track { position: relative; display: block; width: 100%; height: 2px; background: rgb(255 255 255 / .28); transition: height .15s ease; }
+.cl-scrub-fill { position: absolute; inset: 0; background: white; transform: scaleX(var(--cl-p)); transform-origin: left center; }
+.cl-scrub-knob { position: absolute; bottom: 0; left: calc(var(--cl-p) * 100%); width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: white; box-shadow: 0 1px 4px rgb(0 0 0 / .45); opacity: 0; transform: scale(.5); transition: opacity .15s ease, transform .15s ease; }
+.cl-scrub-bar:hover .cl-scrub-track, .cl-scrub-bar:focus-visible .cl-scrub-track, .cl-scrub-drag .cl-scrub-track { height: 6px; }
+.cl-scrub-bar:hover .cl-scrub-knob, .cl-scrub-bar:focus-visible .cl-scrub-knob, .cl-scrub-drag .cl-scrub-knob { opacity: 1; transform: none; }
+.cl-scrub-bar:focus-visible { box-shadow: inset 0 0 0 2px white, inset 0 0 0 4px var(--accent); }
+.cl-scrub-tip { position: absolute; inset-block-end: 30px; left: clamp(68px, calc(var(--cl-p) * 100%), calc(100% - 68px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.cl-scrub-tip[hidden], .cl-scrub-thumb[hidden], .cl-scrub-pill[hidden] { display: none; }
+.cl-scrub-thumb { display: block; width: var(--cl-w, 128px); height: var(--cl-h, 72px); border-radius: 10px; border: 2px solid white; background: black no-repeat; box-shadow: 0 4px 16px rgb(0 0 0 / .5); }
+.cl-scrub-time { padding: 3px 10px; border-radius: 99px; background: rgb(0 0 0 / .7); color: white; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; }
+.cl-scrub-icon { position: absolute; inset: 0; margin: auto; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .45); color: white; opacity: 0; transform: scale(.7); pointer-events: none; z-index: 4; }
+.cl-scrub-icon .ic { width: 38px; height: 38px; }
+.cl-scrub-icon.on { animation: cl-scrub-pop .65s ease-out forwards; }
+@keyframes cl-scrub-pop { 0% { opacity: 0; transform: scale(.7); } 25% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+.cl-scrub-pill { position: absolute; inset-block-start: calc(env(safe-area-inset-top) + 16px); inset-inline: 0; margin: 0 auto; width: max-content; padding: 4px 12px; border-radius: 99px; background: rgb(0 0 0 / .6); color: white; font-size: 13px; font-weight: 800; direction: ltr; pointer-events: none; z-index: 4; }
+@keyframes cl-scrub-fade { 0%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cl-scrub-track, .cl-scrub-knob { transition: none; }
+  .cl-scrub-icon.on { animation: cl-scrub-fade .65s steps(1, end) forwards; }
+}
+/* === end v271-scrub === */

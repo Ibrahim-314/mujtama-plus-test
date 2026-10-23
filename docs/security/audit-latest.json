@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-16T17:52:18.951Z",
+  "target": "local in-memory server (127.0.0.1)",
+  "npm": {
+    ".": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "server": {
+      "unavailable": "ENOLOCK: This command requires an existing lockfile."
+    }
+  },
+  "headers": [
+    {
+      "path": "/ (html)",
+      "csp": true,
+      "nosniff": true,
+      "referrer": "strict-origin-when-cross-origin",
+      "permissions": true,
+      "hsts": null
+    },
+    {
+      "path": "/api/health",
+      "csp": true,
+      "nosniff": true,
+      "referrer": "strict-origin-when-cross-origin",
+      "permissions": true,
+      "hsts": null
+    }
+  ],
+  "probe": {
+    "routes": 589,
+    "requests": 1497,
+    "statuses": {
+      "200": 252,
+      "302": 2,
+      "400": 89,
+      "401": 488,
+      "402": 4,
+      "403": 462,
+      "404": 185,
+      "409": 3,
+      "501": 11
+    },
+    "streams": [
+      "GET /api/stream"
+    ]
+  },
+  "findings": [
+    {
+      "severity": "LOW",
+      "area": "headers",
+      "detail": "/ (html): no Strict-Transport-Security from the app (must be set by the TLS edge; Railway terminates TLS)"
+    },
+    {
+      "severity": "LOW",
+      "area": "headers",
+      "detail": "/api/health: no Strict-Transport-Security from the app (must be set by the TLS edge; Railway terminates TLS)"
+    },
+    {
+      "severity": "LOW",
+      "area": "headers",
+      "detail": "CSP style-src allows 'unsafe-inline' (needed by injected chunk styles; scripts stay hash/self-only)"
+    }
+  ],
+  "summary": {
+    "high": 0,
+    "medium": 0,
+    "low": 3
+  }
+}

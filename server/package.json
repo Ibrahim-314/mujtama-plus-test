@@ -1,0 +1,15 @@
+{
+  "name": "mujtama-plus-server",
+  "version": "2.81.0",
+  "description": "مجتمع بلس — Social Platform Layer backend (services + event bus + SQL)",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "SEED_DEMO=1 node server.js",
+    "migrate": "node scripts/migrate.js",
+    "test": "node --test test/api.test.js"
+  },
+  "optionalDependencies": { "pg": "^8.13.0" }
+}

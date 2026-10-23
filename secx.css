@@ -1,0 +1,15 @@
+/* v2.79 «حماية الحساب» — security center (staff policy card, activity) and #/admin/security. Lazy "secx" chunk. */
+.sec-staff { border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line)); background: color-mix(in srgb, var(--warn) 9%, var(--card)); }
+.sec-staff.is-locked { border-color: color-mix(in srgb, var(--danger) 50%, var(--line)); background: var(--danger-soft); }
+.sec-staff-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; flex: none; background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--text); }
+.sec-staff.is-locked .sec-staff-ic { background: color-mix(in srgb, var(--danger) 18%, transparent); }
+.sec-act { list-style: none; margin: 0; padding: 0; }
+.sec-act-row { gap: 12px; align-items: flex-start; }
+.sec-act-row:last-child { border-bottom: 0; }
+.sec-act-ic { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; flex: none; background: var(--bg-2); color: var(--text-2); margin-top: 2px; }
+.sec-act-row.is-warn .sec-act-ic { background: var(--danger-soft); color: var(--danger); }
+.chip.sec-ok { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok-ink); }
+.chip.sec-no { background: var(--danger-soft); color: var(--text); }
+.sec-danger { border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line)); }
+#pol-grace { width: 100%; min-height: 44px; }
+#pol-on { width: 44px; height: 26px; }

@@ -1,0 +1,8 @@
+node_modules
+server/node_modules
+server/storage
+dist
+tests/visual
+*.sqlite*
+.env
+.git

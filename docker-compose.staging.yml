@@ -1,0 +1,17 @@
+# Staging (Phase 2): same images, isolated database, realistic Arabic demo data, verbose logs.
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml -p mujtama-staging up -d
+services:
+  app:
+    ports: !override [ "8081:8080" ]
+    environment:
+      NODE_ENV: production
+      SEED_DEMO: "0"
+      LOG_LEVEL: debug
+      PI_ENABLED: "0"
+  seed:
+    build: .
+    depends_on: { app: { condition: service_healthy } }
+    environment: { DATABASE_URL_FILE: /run/secrets/database_url, SEED_USERS: "300", SEED_POSTS: "3000" }
+    secrets: [database_url]
+    command: ["node", "server/scripts/seed-demo.js"]
+    restart: "no"

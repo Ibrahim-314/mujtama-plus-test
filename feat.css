@@ -1,0 +1,70 @@
+/* v2.34 D4: shared styles for feature modules (lazy "feat" chunk, fetched before any feature chunk).
+ * Replaces the per-module copies of: inline icons, filter bar + sheet, chip rails, tab segments, form labels,
+ * cover/hero, card grids, row lists, status pills and section heads. Tokens come from theme.css. */
+.ix{width:1.15em;height:1.15em;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;margin-inline-end:.25em}
+.btn .ix{margin-inline-end:.35em}
+/* search + filter bar */
+.fx-host{display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s3);flex-wrap:nowrap}
+.fx-host>label,.fx-host>input,.fx-host>.fx-q{flex:1;min-width:0;margin:0}
+.fx-host input[type=search],.fx-host input[name=q],.fx-host .fx-q input{padding-inline-start:40px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a84a3' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat right 13px center/18px;border-radius:var(--r-pill);min-height:var(--h-md)}
+[dir=ltr] .fx-host input[type=search],[dir=ltr] .fx-host input[name=q]{background-position:left 13px center}
+form.fx-host>label{font-size:0;gap:0}form.fx-host>label input{font-size:var(--fs-md)}
+.fx-host>.btn:not(.fx-open){display:none}
+.fx-open{flex:none;display:inline-flex;align-items:center;gap:6px;padding-inline:14px}
+.fx-open.on{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent-ink)}
+.fx-n{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:var(--r-pill);background:var(--accent);color:#fff;font-size:var(--fs-xs);font-weight:700}
+.fx-body{display:grid;gap:var(--s3);padding-bottom:var(--s3)}
+.fx-body label{display:grid;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--text-2);margin:0}
+.fx-body label input,.fx-body label select{font-weight:400;color:var(--text)}
+.fx-body .chips,.fx-body .f-chips{flex-wrap:wrap;overflow:visible}
+.fx-sheet .sheet-foot{flex-direction:column}
+/* chip rail (one line, scrolls) */
+.f-chips{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;padding:2px 2px var(--s3);margin:0;list-style:none}
+.f-chips::-webkit-scrollbar{display:none}.f-chips>li{flex:none}
+.chip.f{min-height:36px;padding:6px 14px;font-size:var(--fs-sm);margin:0;border:0;cursor:pointer;white-space:nowrap;font-family:inherit;text-decoration:none}
+.chip.f .ix{margin-inline-end:2px}
+/* tabs as a segment (role=tab buttons or links) */
+.seg [role=tab],.seg>a{flex:1 0 auto;border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:8px 12px;min-height:var(--h-md);border-radius:var(--r-pill);white-space:nowrap;text-align:center;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.seg [aria-selected=true],.seg [aria-current=page],.seg>a.on{background:var(--card);box-shadow:var(--sh-1);color:var(--accent-ink);font-weight:700}
+.seg{margin:0 0 var(--s4)}
+/* module forms: stacked labels */
+.f-form label:not(.chk):not(.switch-row):not(.radio-row){display:grid;gap:6px;font-size:var(--fs-sm);font-weight:600;color:var(--text-2);margin-bottom:var(--s3)}
+.f-form label input,.f-form label select,.f-form label textarea{font-weight:400;color:var(--text)}
+.f-err{color:var(--danger);font-size:var(--fs-xs);font-weight:600;margin:4px 0 0}
+.f-hint{color:var(--muted);font-size:var(--fs-xs);margin:4px 0 0}
+/* cover / hero */
+.f-cover{background:var(--hero-grad);color:#fff;border-radius:var(--r-lg);padding:var(--s5);margin-bottom:var(--s4);position:relative;overflow:hidden;box-shadow:var(--sh-2)}
+.f-cover::after{content:"";position:absolute;inset-inline-end:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:#ffffff14}
+.f-cover .muted,.f-cover small{color:#ffffffd0}.f-cover h3{margin:0 0 4px;font-size:var(--fs-xl)}
+/* card grid + media card */
+.f-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);list-style:none;margin:0;padding:0}
+@media (min-width:700px){.f-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.f-card{display:flex;flex-direction:column;height:100%;background:var(--card);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh-1);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);color:inherit;text-decoration:none;transition:box-shadow .15s,transform .15s}
+.f-card:hover{box-shadow:var(--sh-2);transform:translateY(-1px)}.f-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* status pill colours for module chips (sbadge has ok/warn/role in core) */
+.sbadge.info{background:var(--info-soft);color:color-mix(in srgb,var(--info) 70%,var(--text))}
+.sbadge.bad{background:var(--danger-soft);color:color-mix(in srgb,var(--danger) 75%,var(--text))}
+/* section head with the gradient tick (same look as Settings groups) */
+.f-h{display:flex;align-items:center;gap:8px;margin:var(--s5) var(--s1) var(--s2);font-size:var(--fs-sm);font-weight:700;color:var(--muted)}
+.f-h::before{content:"";width:3px;height:12px;border-radius:2px;background:var(--grad)}
+.f-h .grow{flex:1}.f-h a{font-weight:600;color:var(--accent-ink)}
+/* kpi row */
+.f-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);margin-bottom:var(--s3)}
+@media (min-width:600px){.f-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.f-kpis .kpi-tile b{font-size:var(--fs-3xl)}
+.f-more{display:flex;justify-content:center;padding:var(--s4)}
+.f-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* chip rails whose buttons carry no class (biz/collabs/courses filters) */
+.f-chips>button:not(.chip),.f-chips>li>button:not(.chip){flex:none;display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 14px;border:0;border-radius:var(--r-pill);background:var(--bg-2);color:var(--text-2);font:inherit;font-size:var(--fs-sm);font-weight:600;white-space:nowrap;cursor:pointer}
+.f-chips>button[aria-pressed=true],.f-chips>li>button[aria-pressed=true]{background:var(--accent-soft);color:var(--accent-ink)}
+.f-chips .n{font-size:var(--fs-xs);color:var(--muted);font-variant-numeric:tabular-nums}.f-chips [aria-pressed=true] .n{color:inherit}
+/* legacy empty markup inside modules: <div class="empty"><b>title</b>text…</div> */
+.empty>b{display:block;color:var(--text);font-size:var(--fs-lg);font-weight:700;margin-bottom:4px}
+.empty>p{margin:0;font-size:var(--fs-sm);font-weight:500}
+.chip[aria-current]{background:var(--accent-soft);color:var(--accent-ink)}
+.f-chips>a:not(.chip),.f-chips>li>a:not(.chip){flex:none;display:inline-flex;align-items:center;gap:4px;min-height:36px;padding:6px 14px;border-radius:var(--r-pill);background:var(--bg-2);color:var(--text-2);font-size:var(--fs-sm);font-weight:600;white-space:nowrap;text-decoration:none}
+.f-chips>a[aria-current]:not(.chip),.f-chips>li>a[aria-current]{background:var(--accent-soft);color:var(--accent-ink)}
+/* v2.35 D4B: module tabs/period toggles converted to segments keep their aria state as the "on" look */
+.seg>button[aria-pressed=true],.seg>button[aria-selected=true]{background:var(--card);box-shadow:var(--sh-1);color:var(--accent-ink);font-weight:700}
+.seg>button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn .ix,.btn .ic{flex:none}

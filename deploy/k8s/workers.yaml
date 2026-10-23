@@ -1,0 +1,88 @@
+# One Deployment per heavy role (ROLE env). Each claims only its queue job kinds / leased scheduled jobs
+# (see server/lib/scale.js QUEUE_KINDS / SCHED_JOBS), so they scale independently of the web tier.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-media
+  labels: { app.kubernetes.io/name: worker-media }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: worker-media } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: worker-media }
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker-media
+          image: mujtama-plus
+          args: ["node", "server/server.js"]
+          ports: [{ name: http, containerPort: 8080 }]   # health probes only (workers answer /api/health, /healthz, /readyz)
+          env:
+            - { name: ROLE, value: "worker-media" }
+          envFrom:
+            - configMapRef: { name: mujtama-config }
+            - secretRef: { name: mujtama-secrets }
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 20, periodSeconds: 20, failureThreshold: 4 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-notify
+  labels: { app.kubernetes.io/name: worker-notify }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: worker-notify } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: worker-notify }
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker-notify
+          image: mujtama-plus
+          args: ["node", "server/server.js"]
+          ports: [{ name: http, containerPort: 8080 }]   # health probes only (workers answer /api/health, /healthz, /readyz)
+          env:
+            - { name: ROLE, value: "worker-notify" }
+          envFrom:
+            - configMapRef: { name: mujtama-config }
+            - secretRef: { name: mujtama-secrets }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 20, periodSeconds: 20, failureThreshold: 4 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-search
+  labels: { app.kubernetes.io/name: worker-search }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app.kubernetes.io/name: worker-search } }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: worker-search }
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: worker-search
+          image: mujtama-plus
+          args: ["node", "server/server.js"]
+          ports: [{ name: http, containerPort: 8080 }]   # health probes only (workers answer /api/health, /healthz, /readyz)
+          env:
+            - { name: ROLE, value: "worker-search" }
+          envFrom:
+            - configMapRef: { name: mujtama-config }
+            - secretRef: { name: mujtama-secrets }
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits: { memory: 512Mi }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, initialDelaySeconds: 20, periodSeconds: 20, failureThreshold: 4 }

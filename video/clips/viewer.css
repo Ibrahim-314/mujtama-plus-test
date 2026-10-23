@@ -1,0 +1,11 @@
+/* === v273-viewer === break reminder card (calm, centred, light/dark via theme tokens) */
+.cl-brk { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 24px; background: rgb(0 0 0 / .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: cl-brk-in .22s ease; }
+.cl-brk-card { width: min(340px, 100%); padding: 22px 20px 18px; border-radius: var(--r-lg); background: var(--card); color: var(--text); text-align: center; display: grid; gap: 10px; justify-items: center; border: 1px solid var(--line); }
+.cl-brk-ic { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--bg-2); color: var(--accent); }
+.cl-brk-card h2 { margin: 0; font-size: 18px; }
+.cl-brk-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.cl-brk-row { display: grid; gap: 8px; width: 100%; margin-block-start: 6px; }
+.cl-brk-row .btn { min-height: 44px; }
+@keyframes cl-brk-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cl-brk { animation: none; } }
+/* === end v273-viewer === */

@@ -1,0 +1,31 @@
+/* v2.75 «لقطات» clip ↔ product / job link (video/clips/links.js) — v275-links */
+body.shorts-mode .short-info.cl-ov .cl-lk { display: flex; align-items: center; gap: 6px; margin-block-start: 8px; max-width: 100%; }
+.cl-lk-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: min(100%, 300px); padding: 6px 10px 6px 12px; border-radius: 14px; background: rgba(20, 20, 26, .55); border: 1px solid rgba(255, 255, 255, .22); color: white; text-decoration: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-shadow: none; }
+.cl-lk-ic { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 9px; background: rgb(255 201 60); color: rgb(28 28 34); }
+.cl-lk-t { display: grid; min-width: 0; line-height: 1.25; }
+.cl-lk-t bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: var(--fs-sm); }
+.cl-lk-t small { font-size: var(--fs-xs); opacity: .85; }
+.cl-lk-arr { transform: rotate(-90deg); opacity: .8; flex: none; }
+[dir="ltr"] .cl-lk-arr { transform: rotate(90deg); }
+.cl-lk-edit, body.shorts-mode .short-info.cl-ov .cl-lk-add { min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; color: white; font: inherit; font-size: var(--fs-sm); font-weight: 700; opacity: .85; cursor: pointer; text-shadow: 0 1px 6px rgba(0, 0, 0, .5); }
+body.shorts-mode .short-info.cl-ov .cl-lk-add { display: inline-flex; align-items: center; gap: 4px; padding: 0; margin-block: -10px -12px; }
+.cl-lk-edit:hover, .cl-lk-add:hover { opacity: 1; text-decoration: underline; }
+.cl-lk-chip:focus-visible, .cl-lk-edit:focus-visible, .cl-lk-add:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.cl-lk-sheet { display: grid; gap: 10px; }
+.cl-lk-sheet h3 { margin: 0; font-size: var(--fs-lg); }
+.cl-lk-sheet h4 { margin: 6px 0 0; font-size: var(--fs-sm); color: var(--text-2); }
+.cl-lk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cl-lk-opt { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
+.cl-lk-opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent2); color: var(--accent-ink); }
+.cl-lk-opt .cl-lk-t bdi { font-size: var(--fs-md); }
+.cl-lk-empty { margin: 0; color: var(--text-2); }
+.cl-lk-err { margin: 0; min-height: 1.2em; color: var(--danger); font-size: var(--fs-sm); }
+.cl-lk-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.cl-lk-acts .btn { min-height: 44px; flex: 1; }
+/* v2.76 viewer action beside the chip (ask the seller · apply · remind me) and the author's click count — v276-links */
+body.shorts-mode .short-info.cl-ov .cl-lk { flex-wrap: wrap; }
+.cl-lk-act { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .22); background: rgba(20, 20, 26, .55); color: white; font: inherit; font-size: var(--fs-sm); font-weight: 700; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.cl-lk-act[aria-pressed="true"] { background: rgba(255, 255, 255, .92); color: rgb(28 28 34); border-color: transparent; }
+.cl-lk-act:disabled { opacity: .6; cursor: progress; }
+.cl-lk-act:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.cl-lk-n { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px; color: white; font-size: var(--fs-xs); font-weight: 700; opacity: .9; text-shadow: 0 1px 6px rgba(0, 0, 0, .5); }

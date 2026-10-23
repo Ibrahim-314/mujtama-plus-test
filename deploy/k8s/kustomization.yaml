@@ -1,0 +1,22 @@
+# Mujtama+ — Kubernetes manifests (Phase 48). FILES ONLY: nothing here is applied by CI or Railway.
+# Production today is a single Railway service (ROLE=all, in-process adapters). These manifests describe the
+# horizontally scaled shape: web pods behind a Service + per-role workers, each with an HPA.
+#   kubectl apply -k deploy/k8s        (after editing the image and creating the Secret from secret.example.yaml)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mujtama
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - web.yaml
+  - workers.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - ingress.yaml
+images:
+  - name: mujtama-plus
+    newName: ghcr.io/OWNER/mujtama-plus   # placeholder — build from the repo Dockerfile
+    newTag: "2.21.0"
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: mujtama-plus

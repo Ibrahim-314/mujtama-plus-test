@@ -1,0 +1,23 @@
+# Phase 49 — optional Prometheus alert rules mirroring the built-in on-call rules (the app evaluates its own
+# rules every minute without Prometheus; use these only if you run Alertmanager).
+groups:
+  - name: mujtama
+    rules:
+      - alert: MujtamaHighErrorRate
+        expr: sum(rate(mujtama_http_requests_total{status="5xx"}[5m])) / clamp_min(sum(rate(mujtama_http_requests_total[5m])), 1e-9) > 0.05
+        for: 5m
+        labels: { severity: critical }
+        annotations: { summary: "نسبة أخطاء الخادم أعلى من 5٪" }
+      - alert: MujtamaSlowResponses
+        expr: histogram_quantile(0.95, sum by (le) (rate(mujtama_http_request_duration_seconds_bucket[10m]))) > 1.5
+        for: 10m
+        labels: { severity: warning }
+        annotations: { summary: "زمن الاستجابة p95 أعلى من 1.5 ثانية" }
+      - alert: MujtamaQueueBacklog
+        expr: max(mujtama_queue_jobs{status="queued"}) > 500
+        for: 5m
+        labels: { severity: warning }
+      - alert: MujtamaErrorBudgetBurn
+        expr: min(mujtama_slo_error_budget_remaining_ratio) < 0.25
+        for: 15m
+        labels: { severity: warning }

@@ -1,0 +1,40 @@
+/* v2.47 «مجتمع كوين» (MJT) — wallet + admin (lazy "mjt" chunk, after feat.css). Tokens only; logical properties. */
+.mj-page{max-width:720px;margin-inline:auto}
+.mj-page h2:focus{outline:none}
+.mj-hero{margin-bottom:var(--s4)}
+.mj-hero>*{position:relative;z-index:1}
+.mj-lbl{font-size:var(--fs-sm);color:color-mix(in srgb,currentColor 85%,transparent)}
+.mj-big{margin:2px 0 var(--s2);font-size:40px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
+.mj-big small{font-size:var(--fs-md);font-weight:700}
+.mj-stage{display:flex;gap:6px;align-items:flex-start;margin:0 0 var(--s3);font-size:var(--fs-xs);line-height:1.6;max-width:46ch}
+.mj-stage .ic{flex:none;margin-top:2px}
+.mj-today{display:grid;gap:6px;margin-bottom:var(--s3)}
+.mj-today label{font-size:var(--fs-xs)}
+.mj-today progress{appearance:none;-webkit-appearance:none;inline-size:100%;block-size:8px;border:0;border-radius:var(--r-pill);background:color-mix(in srgb,currentColor 22%,transparent);color:inherit;overflow:hidden}
+.mj-today progress::-webkit-progress-bar{background:color-mix(in srgb,currentColor 22%,transparent);border-radius:var(--r-pill)}
+.mj-today progress::-webkit-progress-value{background:currentColor;border-radius:var(--r-pill)}
+.mj-today progress::-moz-progress-bar{background:currentColor;border-radius:var(--r-pill)}
+.mj-acts{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center}
+.mj-acts .btn{min-height:44px}
+.mj-hero .btn{background:white;color:color-mix(in srgb,var(--brand-1) 80%,black)}
+.mj-hero .btn.ghost{background:color-mix(in srgb,currentColor 16%,transparent);color:inherit;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 45%,transparent)}
+.mj-buy-n{margin:var(--s2) 0 0;font-size:var(--fs-xs)}
+.mj-seg{margin-bottom:var(--s3)}
+.mj-n{font-variant-numeric:tabular-nums}
+.mj-hist .li{min-height:60px}
+.mj-amt{display:grid;justify-items:end;gap:2px;flex:none;font-weight:700;font-variant-numeric:tabular-nums;text-align:end}
+.mj-amt.in{color:color-mix(in srgb,var(--ok) 72%,var(--text))}
+.mj-amt small{font-weight:400;font-size:var(--fs-xs);color:var(--muted)}
+.mj-sec{margin-bottom:var(--s3)}
+.mj-sec .f-h{display:flex;align-items:center;gap:6px;margin-top:0}
+.mj-rate{font-size:var(--fs-lg);font-weight:700;margin:0 0 var(--s3)}
+.mj-kinds{box-shadow:none;background:var(--surface-sunken)}
+.mj-kinds .li{min-height:52px}
+.mj-facts{margin:0;padding-inline-start:1.2em;display:grid;gap:6px;color:var(--text-2);line-height:1.7;font-size:var(--fs-sm)}
+.mj-send input{min-height:44px}
+.mj-sw small{display:block;color:var(--muted);font-size:var(--fs-xs);font-weight:400}
+.mj-ok{color:color-mix(in srgb,var(--ok) 72%,var(--text));font-weight:600;margin:0}
+.mj-bad{color:var(--danger);font-weight:600;margin:0}
+.mj-batches{box-shadow:none;background:var(--surface-sunken);margin-top:var(--s3)}
+.mj-page .btn.sm{min-height:44px}
+.mj-page [hidden]{display:none!important}

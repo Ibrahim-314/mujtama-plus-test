@@ -1,0 +1,63 @@
+/* «لقطات» (clips) core stylesheet (video/clips/core.css): layout, snap viewport, immersive mode, accessibility modes.
+ * Part of the lazy "clips" CSS chunk: every <link data-chunk="clips"> is concatenated in index.html order at build time.
+ * @keyframes burst stays in theme.css (shared with .heart-burst). A new feature's styles go in its own video/clips/<feature>.css. */
+/* --- base rules (v2.71 snap pass, owner: v271-snap): one clip = one snap viewport, 100dvh with a 100vh fallback,
+ * mandatory snap that never skips a clip, no scroll chaining, fixed-size sections (posters/videos never shift layout),
+ * GPU-friendly containment. --- */
+body.shorts-mode .topbar, body.shorts-mode #fab, body.shorts-mode .rail { display: none !important; }
+.shorts { height: 100vh; height: 100dvh; overflow-x: hidden; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior: contain; touch-action: pan-y; background: #000; margin: 0 -16px; scrollbar-width: none; }
+.shorts::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) { .shorts { width: min(460px, 100%); margin: 0 auto; border-radius: 22px; height: calc(100vh - 32px); height: calc(100dvh - 32px); margin-top: 16px; } }
+.short { position: relative; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; background: #111 center/cover no-repeat; display: grid; place-items: center; color: #fff; overflow: hidden; contain: strict; }
+.short-player { position: absolute; inset: 0; contain: layout paint; } .short-player .mp-ui { inset-block-end: 70px; }
+.short-player video { display: block; width: 100%; height: 100%; object-fit: cover; background: transparent; } /* fills the fixed box: no shift when metadata/frames arrive; the section's poster shows through until the first frame */
+.short-info { position: absolute; inset-inline: max(14px, env(safe-area-inset-left)) max(70px, env(safe-area-inset-right)); inset-block-end: calc(env(safe-area-inset-bottom) + 90px); display: flex; gap: 10px; align-items: flex-end; z-index: 2; text-shadow: 0 1px 6px rgba(0,0,0,.5); } .short-info p { margin: 4px 0 0; font-size: 14px; }
+.short-actions { position: absolute; inset-inline-end: max(10px, env(safe-area-inset-right)); inset-block-end: calc(env(safe-area-inset-bottom) + 100px); display: flex; flex-direction: column; gap: 16px; z-index: 2; }
+.short-actions > * { border: 0; background: none; color: #fff; display: flex; flex-direction: column; align-items: center; gap: 2px; font: inherit; font-size: 12px; cursor: pointer; filter: drop-shadow(0 1px 4px rgba(0,0,0,.5)); } .short-actions .ic { width: 30px; height: 30px; }
+.short-ph { display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: .85; }
+.burst { position: absolute; inset: 0; margin: auto; width: max-content; height: max-content; color: #ff4d7d; animation: burst .7s ease-out forwards; z-index: 4; will-change: transform, opacity; } .burst .ic { width: 96px; height: 96px; }
+.shorts-back { position: fixed; inset-block-start: calc(env(safe-area-inset-top) + 12px); inset-inline-start: max(12px, env(safe-area-inset-left)); z-index: 5; border: 0; width: 44px; height: 44px; border-radius: 50%; background: rgba(0,0,0,.4); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.shorts-back:focus-visible, .short-actions > *:focus-visible { outline: 3px solid white; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(0,0,0,.6); }
+/* v2.70 clips layout: TikTok-style — dark full-bleed page, each clip fills exactly the space above the (still visible) bottom nav */
+body.shorts-mode { --clips-h: 100dvh; padding: 0; background: black; color-scheme: dark; } /* v2.72 immersive: the bottom nav is hidden in clips, so each clip fills the whole viewport */
+@supports not (height: 1dvh) { body.shorts-mode { --clips-h: 100vh; } }
+html:has(body.shorts-mode) { background: black; overscroll-behavior: none; }
+/* v2.72 immersive clips (user: «اخفي الشريط السفلي»): below 760px the bottom nav pill is hidden while body.shorts-mode is on.
+ * shorts-mode is added by Clips on enter and removed on every non-clips hash change (content-ui.js), so the bar is back
+ * the moment the viewer is left (close X, browser back, Escape, any route). From 760px the nav is the side rail beside the
+ * centred 9:16 column and never overlaps it, so it stays. */
+@media (max-width: 759.98px) { body.shorts-mode .bottomnav { display: none !important; } body.shorts-mode .cl-scrub { inset-block-end: env(safe-area-inset-bottom); } }
+body.shorts-mode .shorts { height: var(--clips-h); margin: 0; width: 100%; overscroll-behavior: contain; }
+body.shorts-mode .short { height: var(--clips-h); }
+body.shorts-mode .short-player .mp-ui { inset-block-end: env(safe-area-inset-bottom); } /* clear of the home indicator now the nav is gone */
+body.shorts-mode .short-info { inset-inline: max(14px, env(safe-area-inset-left)) max(76px, env(safe-area-inset-right)); inset-block-end: calc(env(safe-area-inset-bottom) + 64px); }
+body.shorts-mode .short-actions { inset-inline-end: max(10px, env(safe-area-inset-right)); inset-block-end: calc(env(safe-area-inset-bottom) + 64px); gap: 10px; }
+body.shorts-mode .short-actions > * { min-width: 44px; min-height: 44px; justify-content: center; }
+body.shorts-mode .short-info p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.clips-backdrop { display: none; } /* desktop-only blurred poster behind the 9:16 column (set by the v271-snap JS block) */
+@media (min-width: 760px) {
+  body.shorts-mode { --clips-h: calc(100dvh - 32px); background: rgb(14 14 18); }
+  @supports not (height: 1dvh) { body.shorts-mode { --clips-h: calc(100vh - 32px); } }
+  html:has(body.shorts-mode) { background: rgb(14 14 18); }
+  body.shorts-mode .shorts { position: relative; z-index: 1; width: min(calc(var(--clips-h) * 9 / 16), 100%); margin: 16px auto; border-radius: 22px; outline: 1px solid rgba(255,255,255,.08); box-shadow: var(--sh-3); }
+  body.shorts-mode .clips-backdrop { display: block; position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: rgb(14 14 18); contain: strict; will-change: transform; } /* own layer: the blurred child is rastered into it once and cached, so scrolling the column never re-runs the blur */
+  body.shorts-mode .clips-backdrop::before { content: ""; position: absolute; inset-block-start: 50%; inset-inline-start: 50%; width: 32vw; height: 32vh; background-image: var(--clips-bd, none); background-color: var(--clips-bd-c, rgb(14 14 18)); background-position: center; background-size: cover; filter: blur(14px) brightness(.45) saturate(1.2); transform: translate(-50%, -50%) scale(3.4); } /* blurred at ~1/3 size then scaled: a 9x smaller filter area, never promoted to its own layer, so it rasters once and stays off the scroll path */
+  body.shorts-mode .clips-backdrop::after { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,.15), rgba(0,0,0,.6)); }
+}
+/* accessibility modes: high contrast keeps text legible; forced colors keeps every control visible; reduced motion = instant jumps */
+@media (prefers-contrast: more) {
+  .short-info, .short-actions > * { text-shadow: 0 0 2px black, 0 1px 8px black; filter: none; }
+  .shorts-back { background: black; outline: 1px solid white; }
+  body.shorts-mode .clips-backdrop::before { filter: blur(14px) brightness(.25); }
+}
+@media (prefers-reduced-transparency: reduce) { body.shorts-mode .clips-backdrop { display: none; } }
+@media (forced-colors: active) {
+  body.shorts-mode .clips-backdrop { display: none; }
+  .shorts { outline: 1px solid CanvasText; }
+  .short { border-block-end: 1px solid CanvasText; }
+  .short-info, .short-actions > *, .shorts-back { forced-color-adjust: auto; color: CanvasText; background: Canvas; border: 1px solid CanvasText; }
+  .short-actions > *:focus-visible, .shorts-back:focus-visible { outline: 3px solid Highlight; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shorts { scroll-behavior: auto; }
+}

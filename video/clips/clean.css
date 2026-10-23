@@ -1,0 +1,17 @@
+/* === v273-clean === clean screen: one tap hides everything over the clip; the thin progress line stays */
+.cl-pp { position: absolute; z-index: 3; inset-inline-end: 10px; inset-block-end: calc(env(safe-area-inset-bottom) + 26px); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; background: none; color: white; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cl-pp::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: rgb(0 0 0 / .32); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.cl-pp .ic { position: relative; width: 16px; height: 16px; }
+.cl-pp:focus-visible { outline: 2px solid white; outline-offset: -2px; }
+@media (hover: hover) { .cl-pp:hover::before { background: rgb(0 0 0 / .5); } }
+
+body.shorts-mode .short-info, body.shorts-mode .short-actions, body.shorts-mode .cl-tabs, body.shorts-mode .shorts-back,
+body.shorts-mode .cl-pp, body.shorts-mode .cl-ser, body.shorts-mode .short-player .mp-ui { transition: opacity .25s ease, visibility 0s linear 0s; }
+body.shorts-mode.cl-clean .short-info, body.shorts-mode.cl-clean .short-actions, body.shorts-mode.cl-clean .cl-tabs,
+body.shorts-mode.cl-clean .shorts-back, body.shorts-mode.cl-clean .cl-pp, body.shorts-mode.cl-clean .cl-ser,
+body.shorts-mode.cl-clean .short-player .mp-ui, body.shorts-mode.cl-clean .cl-up {
+  opacity: 0 !important; visibility: hidden; pointer-events: none; transition: opacity .25s ease, visibility 0s linear .25s;
+}
+body.shorts-mode.cl-clean .cl-scrub-track { background: rgb(255 255 255 / .18); }
+@media (prefers-reduced-motion: reduce) { body.shorts-mode .short-info, body.shorts-mode .short-actions, body.shorts-mode .cl-tabs, body.shorts-mode .shorts-back, body.shorts-mode .cl-pp, body.shorts-mode .cl-ser, body.shorts-mode .short-player .mp-ui { transition: none !important; } }
+/* === end v273-clean === */

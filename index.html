@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5b2bd6">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<title>مجتمع بلس</title>
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="communities.css" data-chunk="communities">
+<link rel="stylesheet" href="creation.css" data-chunk="creation">
+<link rel="stylesheet" href="composer.css" data-chunk="composer">
+<link rel="stylesheet" href="feat.css" data-chunk="feat">
+<link rel="stylesheet" href="mentor.css" data-chunk="mentor">
+<link rel="stylesheet" href="vcreators.css" data-chunk="vcreators">
+<link rel="stylesheet" href="charity.css" data-chunk="charity">
+<link rel="stylesheet" href="knowledge.css" data-chunk="knowledge">
+<link rel="stylesheet" href="work.css" data-chunk="work">
+<link rel="stylesheet" href="teams.css" data-chunk="teams">
+<link rel="stylesheet" href="proreviews.css" data-chunk="proreviews">
+<link rel="stylesheet" href="mjt.css" data-chunk="mjt">
+<link rel="stylesheet" href="menu.css" data-chunk="menu">
+<link rel="stylesheet" href="aihub.css" data-chunk="aihub">
+<link rel="stylesheet" href="secx.css" data-chunk="secx">
+<link rel="stylesheet" href="cadmin.css" data-chunk="cadmin">
+<link rel="stylesheet" href="help.css" data-chunk="help">
+<link rel="stylesheet" href="video/clips/core.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/tabs.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/overlay.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/scrub.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/rail.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/comments.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/pages.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/series.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/links.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/clean.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/viewer.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/vidtik.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/challenges.css" data-chunk="clips">
+<link rel="stylesheet" href="video/clips/studio.css" data-chunk="clips">
+<script src="https://sdk.minepi.com/pi-sdk.js" async id="pi-sdk"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1 class="vh" id="pg-h1">مجتمع بلس</h1>
+  <a href="#/home" class="brand"><span class="logo">+</span><span>مجتمع بلس</span></a>
+  <div class="top-actions">
+    <a href="#/search" class="icon-btn" title="بحث" aria-label="بحث">🔎</a>
+    <a href="#/messages" class="icon-btn" title="الرسائل" aria-label="الرسائل">✉️<span class="badge" id="msgBadge"></span></a>
+  </div>
+</header>
+<main id="view" tabindex="-1"></main>
+<button class="fab" id="fab" title="منشور جديد" aria-label="منشور جديد">✎</button>
+<nav class="bottomnav" aria-label="التنقل الرئيسي">
+  <a href="#/home" data-r="home"><span>🏠</span><small>الرئيسية</small></a>
+  <a href="#/explore" data-r="explore"><span>🔍</span><small>استكشف</small></a>
+  <a href="#/communities" data-r="communities"><span>👥</span><small>المجتمعات</small></a>
+  <a href="#/notifications" data-r="notifications"><span>🔔<i class="badge" id="notifBadge"></i></span><small>الإشعارات</small></a>
+  <a href="#/menu" data-r="menu"><span>☰</span><small>المزيد</small></a>
+</nav>
+<div id="sheet" class="sheet hidden"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>window.__deferRoute = location.protocol.startsWith("http");</script>
+<script src="platform.js"></script>
+<script src="pi-adapter.js"></script>
+<script src="store.js"></script>
+<script src="feed.js"></script>
+<script src="app.js"></script>
+<script src="registry.js"></script>
+<script src="v12.js"></script>
+<script src="sync.js"></script>
+<script src="ui.js"></script>
+<script src="nav.js"></script>
+<script src="security-ui.js"></script>
+<script src="automod-ui.js"></script>
+<script src="identity-ui.js"></script>
+<script src="richtext.js"></script>
+<script src="video/player/sources.js"></script>
+<script src="video/player/player.js"></script>
+<script src="video/player/resume.js"></script>
+<script src="video/player/chapters.js"></script>
+<script src="content-ui.js"></script>
+<script src="notify-core.js"></script>
+<script src="chunks.js"></script>
+<script src="composer-core.js" data-chunk="composercore"></script>
+<script src="composer-ui.js" data-chunk="composer"></script>
+<script src="community-ui.js" data-chunk="communities"></script>
+<script src="discovery-ui.js" data-chunk="discovery"></script>
+<script src="v12-screens.js" data-chunk="v12x"></script>
+<script src="settings-hub.js" data-chunk="setx"></script>
+<script src="comms-ui.js" data-chunk="comms"></script>
+<script src="comms-core.js" data-chunk="comms-core"></script>
+<script src="calls-core.js" data-chunk="calls"></script>
+<script src="calls-ui.js" data-chunk="callsui"></script>
+<script src="notify-ui.js" data-chunk="notify"></script>
+<script src="compliance-ui.js" data-chunk="compliance"></script>
+<script src="integrity-ui.js" data-chunk="integrity"></script>
+<script src="protection-core.js" data-chunk="protcore"></script>
+<script src="protection-ui.js" data-chunk="protection"></script>
+<script src="minors-core.js" data-chunk="minorscore"></script>
+<script src="minors-ui.js" data-chunk="minors"></script>
+<script src="pi-ui.js" data-chunk="pi"></script>
+<script src="tips-ui.js" data-chunk="tips"></script>
+<script src="paid-ui.js" data-chunk="paid"></script>
+<script src="feat-ui.js" data-chunk="feat"></script>
+<script src="market-ui.js" data-chunk="market"></script>
+<script src="ads-ui.js" data-chunk="ads"></script>
+<script src="vendor/hls.light.min.js" data-chunk="hls"></script>
+<script src="i18n-ui.js" data-chunk="i18n"></script>
+<script src="i18n-en.js" data-chunk="i18n-en"></script>
+<script src="i18n-enplus.js" data-chunk="i18n-enplus"></script>
+<script src="i18n-enextra.js" data-chunk="i18n-enextra"></script>
+<script src="ai-ui.js" data-chunk="ai"></script>
+<script src="aihub-ui.js" data-chunk="aihub"></script>
+<script src="assistant-ui.js" data-chunk="assistant"></script>
+<script src="a11y-ui.js" data-chunk="a11y"></script>
+<script src="prefs-ui.js" data-chunk="prefs"></script>
+<script src="wellbeing-ui.js" data-chunk="wellbeing"></script>
+<script src="pwa-ui.js" data-chunk="pwa"></script>
+<script src="dev-ui.js" data-chunk="dev" data-parent="ai"></script>
+<script src="launch-ui.js" data-chunk="launch"></script>
+<script src="transfers-ui.js" data-chunk="transfers"></script>
+<script src="subs-ui.js" data-chunk="subs"></script>
+<script src="secx-ui.js" data-chunk="secx"></script>
+<script src="econ-ui.js" data-chunk="econ"></script>
+<script src="digital-ui.js" data-chunk="digital"></script>
+<script src="beta-ui.js" data-chunk="beta"></script>
+<script src="points-ui.js" data-chunk="points"></script>
+<script src="finance-ui.js" data-chunk="finance"></script>
+<script src="attn-ui.js" data-chunk="attn"></script>
+<script src="canalytics-ui.js" data-chunk="canalytics"></script>
+<script src="help-ui.js" data-chunk="help"></script>
+<script src="video/player/qoe.js" data-chunk="qoe"></script>
+<script src="help-content.js" data-chunk="helpcontent"></script>
+<script src="help-content-en.js" data-chunk="helpcontent-en"></script>
+<script src="nearby-ui.js" data-chunk="nearby"></script>
+<script src="study-ui.js" data-chunk="study"></script>
+<script src="series-ui.js" data-chunk="series"></script>
+<script src="biz-ui.js" data-chunk="biz"></script>
+<script src="courses-ui.js" data-chunk="courses"></script>
+<script src="collabs-ui.js" data-chunk="collabs"></script>
+<script src="hijri-ui.js" data-chunk="hijri"></script>
+<script src="certs-ui.js" data-chunk="certs"></script>
+<script src="mentor-ui.js" data-chunk="mentor"></script>
+<script src="vcreators-ui.js" data-chunk="vcreators"></script>
+<script src="charity-ui.js" data-chunk="charity"></script>
+<script src="knowledge-ui.js" data-chunk="knowledge"></script>
+<script src="creation-ui.js" data-chunk="creation"></script>
+<script src="work-ui.js" data-chunk="work"></script>
+<script src="teams-ui.js" data-chunk="teams"></script>
+<script src="proreviews-ui.js" data-chunk="proreviews"></script>
+<script src="mjt-ui.js" data-chunk="mjt"></script>
+<script src="menu-ui.js" data-chunk="menu"></script>
+<script src="cadmin-ui.js" data-chunk="cadmin"></script>
+<script src="cnotify-ui.js" data-chunk="cnotify"></script>
+<script src="video/clips/core.js" data-chunk="clips"></script>
+<script src="video/clips/snap.js" data-chunk="clips"></script>
+<script src="video/clips/tabs.js" data-chunk="clips"></script>
+<script src="video/clips/overlay.js" data-chunk="clips"></script>
+<script src="video/clips/scrub.js" data-chunk="clips"></script>
+<script src="video/clips/rail.js" data-chunk="clips"></script>
+<script src="video/clips/comments.js" data-chunk="clips"></script>
+<script src="video/clips/pages.js" data-chunk="clips"></script>
+<script src="video/clips/series.js" data-chunk="clips"></script>
+<script src="video/clips/links.js" data-chunk="clips"></script>
+<script src="video/clips/clean.js" data-chunk="clips"></script>
+<script src="video/clips/viewer.js" data-chunk="clips"></script>
+<script src="video/clips/create.js" data-chunk="clips"></script>
+<script src="video/clips/creator.js" data-chunk="clips"></script>
+<script src="video/clips/challenges.js" data-chunk="clips"></script>
+<script src="video/clips/studio.js" data-chunk="clips"></script>
+<script src="video/clips/warm.js" data-chunk="clips"></script>
+<script src="video/clips/boot.js" data-chunk="clips"></script>
+</body>
+</html>

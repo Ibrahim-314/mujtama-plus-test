@@ -1,0 +1,72 @@
+/* === v271-rail === action rail (inline-end, centred-low), smooth double-tap burst, tip sheet */
+body.shorts-mode .short-actions.cl-rail { inset-inline-end: 6px; inset-block-end: clamp(64px, 14%, 140px); gap: 4px; align-items: center; }
+.short-actions.cl-rail > .cl-rail-btn { min-width: 52px; min-height: 52px; padding: 2px; gap: 2px; border-radius: 16px; background: none; color: white; filter: none; -webkit-tap-highlight-color: transparent; }
+.cl-rail-ic { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.28); transition: transform .16s ease, background-color .16s ease, color .16s ease; }
+.short-actions.cl-rail .cl-rail-ic .ic { width: 28px; height: 28px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.65)); }
+.cl-rail-n { font-size: 12px; font-weight: 700; line-height: 1.15; min-height: 1.15em; color: white; text-shadow: 0 1px 3px rgba(0,0,0,.85); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-rail-n::before { content: attr(data-n); }
+.cl-rail-btn:hover .cl-rail-ic { background: rgba(0,0,0,.45); }
+.cl-rail-btn:active .cl-rail-ic { transform: scale(.88); }
+.cl-rail-btn:focus-visible { outline: 3px solid white; outline-offset: 1px; box-shadow: 0 0 0 6px rgba(0,0,0,.55); }
+.cl-rail-like[aria-pressed="true"] .cl-rail-ic { color: rgb(255 77 125); }
+.cl-rail-save[aria-pressed="true"] .cl-rail-ic { color: rgb(255 201 60); }
+.short .burst { pointer-events: none; animation: cl-rail-burst .75s cubic-bezier(.2,.8,.3,1.15) forwards; filter: drop-shadow(0 4px 14px rgba(0,0,0,.45)); }
+@keyframes cl-rail-burst { 0% { transform: scale(.3); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 55% { transform: scale(.96); opacity: 1; } 100% { transform: scale(1.05) translateY(-14px); opacity: 0; } }
+@keyframes cl-rail-fade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .short .burst { animation: cl-rail-fade .6s linear forwards; } .cl-rail-ic { transition: none; } .cl-rail-btn:active .cl-rail-ic { transform: none; } }
+.cl-rail-sheet { position: fixed; inset: 0; z-index: 60; display: grid; align-items: end; }
+.cl-rail-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.cl-rail-panel { position: relative; width: min(460px, 100%); margin-inline: auto; display: grid; gap: 8px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 20px 20px 0 0; background: rgb(28 28 34); color: white; box-shadow: 0 -8px 30px rgba(0,0,0,.4); }
+.cl-rail-st { margin: 0 0 4px; font-size: 16px; }
+.cl-rail-opt { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); color: white; font: inherit; text-align: start; text-decoration: none; cursor: pointer; }
+.cl-rail-opt[disabled] { cursor: not-allowed; color: rgba(255,255,255,.78); border-style: dashed; }
+.cl-rail-opt .ic { width: 22px; height: 22px; flex: none; }
+.cl-rail-close { min-height: 44px; border: 0; border-radius: 12px; background: rgba(255,255,255,.14); color: white; font: inherit; cursor: pointer; }
+.cl-rail-opt:focus-visible, .cl-rail-close:focus-visible { outline: 3px solid white; outline-offset: 2px; }
+.cl-rail-toast { position: fixed; z-index: 61; inset-inline: 0; inset-block-end: calc(var(--nav-h, 64px) + 24px); margin-inline: auto; width: max-content; max-width: 90vw; padding: 10px 16px; border-radius: 12px; background: rgb(28 28 34 / .95); color: white; font-size: 14px; opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none; }
+.cl-rail-toast.on { opacity: 1; transform: none; }
+@media (min-width: 760px) { .cl-rail-sheet { align-items: center; } .cl-rail-panel { border-radius: 20px; } }
+/* === end v271-rail === */
+/* === v274-tip === in-place MJT tip sheet (always on the dark clips surface, light/dark app themes alike) */
+.cl-tip { gap: 10px; max-height: min(88vh, 720px); overflow-y: auto; overscroll-behavior: contain; }
+.cl-tip-head { display: flex; align-items: center; gap: 10px; }
+.cl-tip-head .cl-rail-st { margin: 0; }
+.cl-tip-who { margin: 2px 0 0; font-size: 13px; }
+.cl-tip-muted { color: rgba(255,255,255,.72); }
+.cl-tip-av { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; background: rgba(255,255,255,.14); }
+.cl-tip-av-i { display: inline-grid; place-items: center; font-weight: 700; color: white; }
+.cl-tip-sum { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 13px; }
+.cl-tip-faces { display: inline-flex; flex: none; }
+.cl-tip-faces .cl-tip-av { width: 26px; height: 26px; font-size: 12px; border: 2px solid rgb(28 28 34); }
+.cl-tip-faces .cl-tip-av + .cl-tip-av { margin-inline-start: -8px; }
+.cl-tip-num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; direction: ltr; display: inline-block; }
+.cl-tip-form { display: grid; gap: 10px; }
+.cl-tip-amts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cl-tip-chip { min-height: 52px; display: grid; place-content: center; gap: 0; border-radius: 14px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: white; font: inherit; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, transform .12s ease; }
+.cl-tip-chip b { font-size: 18px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.cl-tip-chip small { font-size: 11px; color: rgba(255,255,255,.78); }
+.cl-tip-chip[aria-pressed="true"] { background: rgb(255 201 60); border-color: rgb(255 201 60); color: rgb(28 28 34); }
+.cl-tip-chip[aria-pressed="true"] small { color: rgb(28 28 34 / .8); }
+.cl-tip-chip:active { transform: scale(.95); }
+.cl-tip-field { display: grid; gap: 4px; font-size: 13px; color: rgba(255,255,255,.85); }
+.cl-tip-in { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(0,0,0,.25); color: white; font: inherit; font-size: 16px; }
+.cl-tip-in::placeholder { color: rgba(255,255,255,.55); }
+.cl-tip-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.cl-tip-check input { width: 20px; height: 20px; accent-color: rgb(255 201 60); }
+.cl-tip-bal { margin: 0; font-size: 13px; color: rgba(255,255,255,.85); }
+.cl-tip-err { margin: 0; min-height: 1.2em; font-size: 13px; color: rgb(255 160 160); }
+.cl-tip-err:empty { min-height: 0; }
+.cl-tip-send { min-height: 52px; border: 0; border-radius: 14px; background: rgb(255 201 60); color: rgb(28 28 34); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+.cl-tip-send[disabled] { background: rgba(255,255,255,.16); color: rgba(255,255,255,.7); cursor: not-allowed; }
+.cl-tip-send[aria-busy="true"] { opacity: .75; }
+.cl-tip-done { display: flex; align-items: center; gap: 12px; margin: 0; padding: 14px; border-radius: 14px; background: rgb(255 201 60 / .14); line-height: 1.6; }
+.cl-tip-done-ic { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: rgb(255 201 60); color: rgb(28 28 34); flex: none; }
+.cl-tip-done-ic .ic { width: 26px; height: 26px; }
+.cl-tip-chip:focus-visible, .cl-tip-in:focus-visible, .cl-tip-send:focus-visible, .cl-tip-check input:focus-visible { outline: 3px solid white; outline-offset: 2px; }
+.cl-tip-burst { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.cl-tip-burst span { position: absolute; inset-block-end: 22%; inset-inline-end: 34px; color: rgb(255 201 60); animation: cl-tip-rise 1.2s cubic-bezier(.2,.7,.3,1) forwards; animation-delay: calc(var(--i) * 70ms); opacity: 0; filter: drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.cl-tip-burst .ic { width: 28px; height: 28px; }
+@keyframes cl-tip-rise { 0% { transform: translate(0, 0) scale(.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate(calc((var(--i) - 2.5) * 14px), -220px) scale(1.1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cl-tip-burst span { animation: cl-rail-fade .8s linear forwards; opacity: 1; } .cl-tip-chip { transition: none; } .cl-tip-chip:active { transform: none; } }
+@media (max-width: 340px) { .cl-tip-amts { grid-template-columns: repeat(2, 1fr); } }
+/* === end v274-tip === */

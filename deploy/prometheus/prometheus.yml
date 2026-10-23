@@ -1,0 +1,10 @@
+# Phase 49 — example scrape config (self-hosted Prometheus; nothing here is deployed by the app).
+# The app exposes /metrics only when METRICS_TOKEN is set; put the same value in metrics_token.txt.
+global: { scrape_interval: 30s, evaluation_interval: 1m }
+rule_files: [alerts.yml]
+scrape_configs:
+  - job_name: mujtama-web
+    scheme: https
+    metrics_path: /metrics
+    authorization: { type: Bearer, credentials_file: /etc/prometheus/metrics_token.txt }
+    static_configs: [{ targets: ["mujtama.example"] }]   # replace with your host
