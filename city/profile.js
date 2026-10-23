@@ -1,6 +1,5 @@
-/* مجتمع بلس — «المدينة» on the profile and its own page (city/profile.js).
- *   MPCityMountProfile(slot)  fills the slot city/entry.js put at the top of #/me (kept alive across re-renders)
- *   #/town                    the city on its own page (deep link; ?debug=1 adds the calibration overlay)
+/* مجتمع بلس — «مدينة المجتمع الرقمية» page (city/profile.js).
+ *   #/city                    «مدينة المجتمع الرقمية» on its own page, reached from «المزيد» (?debug=1 adds the calibration overlay)
  * A one-time hint tells a newcomer how the city works; it leaves after the first walk and never returns. */
 (function CityProfile() {
   "use strict";
@@ -74,26 +73,26 @@
     requestAnimationFrame(() => { o.classList.add("on"); (grid.querySelector(".on") || ok).focus(); });
   }
 
-  window.MPCityMountProfile = (slot) => {
-    if (!slot || slot._city) return;
-    slot._city = frame(slot, { scene: "main", place: "profile", keepAlive: true });
-    slot.classList.add("cy-live");
-  };
-
-  // the city on its own page — a deep link and the calibration view
-  MPRoutes.extend((a) => ({
-    town: () => {
+  /* «مدينة المجتمع الرقمية» — its own page, reached from «المزيد» only, never from the app's other pages (owner 2026-10-23).
+   *   #/city              the city
+   *   #/city/mjt          the MJT hall behind the vault door
+   *   #/city/mjt/<room>   one of the hall's rooms (city/rooms.js): balance · history · send · earn · stats
+   *   #/town[/…]          the old address, sent to #/city */
+  const head = (back, title) => UI.pageHead({ back, title, id: "cy-pg-h" });
+  MPRoutes.extend((a, b) => {
+    const city = () => {
       const debug = /[?&]debug=1/.test(location.hash);
-      // #/town/mjt — the MJT hall behind the vault door: its own page, its own scene, back to the city it came from
+      a = (a || "").split("?")[0]; b = (b || "").split("?")[0];
+      if (a === "mjt" && b && MPCity.room && MPCity.room(b)) return;
       if (a === "mjt") {
-        let from = "#/me"; try { from = sessionStorage.getItem("mp.city.from") || from; } catch { }
         const t = (MPCityScenes.mjt.title || {})[MPCity.util.lang()] || "مجتمع كوين";
-        view.innerHTML = `<div class="wrap cy-page cy-hall">${window.UI && UI.pageHead ? UI.pageHead({ back: [from, from === "#/town" ? T("مدينتك") : T("ملفي")], title: t }) : `<h2>${esc(t)}</h2>`}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
+        view.innerHTML = `<div class="wrap cy-page cy-hall">${head(["#/city", T("مدينة المجتمع الرقمية")], t)}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
         frame(document.getElementById("cy-page-slot"), { scene: "mjt", place: "hall", debug });
         return;
       }
-      view.innerHTML = `<div class="wrap cy-page">${window.UI && UI.pageHead ? UI.pageHead({ back: ["#/me", T("ملفي")], title: T("مدينتك") }) : `<h2>${esc(T("مدينتك"))}</h2>`}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
+      view.innerHTML = `<div class="wrap cy-page">${head(["#/menu", T("المزيد")], T("مدينة المجتمع الرقمية"))}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
       frame(document.getElementById("cy-page-slot"), { scene: "main", place: "page", debug });
-    }
-  }));
+    };
+    return { city, town: () => { location.replace("#/city" + (a ? "/" + a : "") + (b ? "/" + b : "")); } };
+  });
 })();
