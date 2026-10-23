@@ -60,3 +60,40 @@ test("390: bottom bar hides in the city and returns; sound + full screen tools; 
   assert.deepEqual(errs, []);
   await c.close();
 });
+
+/* v2.86.1: stations open IN the hall (no page change, no loader), the hall is never rebuilt while moving between stations,
+ * and the wallet is a real wallet (card, send/receive tabs, quick amounts, review step, QR to receive) */
+test("390: MJT stations open over the hall; the new wallet", async () => {
+  const c = await S.browser.newContext({ ...MOBILE, colorScheme: "dark", timezoneId: "Asia/Riyadh" }); const p = await c.newPage();
+  const errs = []; p.on("pageerror", (e) => errs.push(e.message));
+  await onboard(p, S.base, "imm_w", "صاحب المحفظة"); await p.waitForTimeout(1000);
+  await p.evaluate(() => { location.hash = "#/city/mjt/send"; });
+  await p.waitForSelector("#cy-page-slot .cy-stage.cy-ready", { timeout: 45000 });
+  await p.waitForSelector(".cy-st.on .cy-w-card", { timeout: 20000 }); await p.waitForTimeout(500);
+  await p.evaluate(() => { document.querySelector("#cy-page-slot .cy-stage").dataset.mark = "same"; });
+  if (SHOTS) await p.screenshot({ path: SHOTS + "/v2861-wallet-390.png" });
+  assert.deepEqual(await axe(p, ".cy-st-panel"), []);
+  // quick amounts fill the amount; an amount above the balance stops at the review step with a message
+  await p.fill('#cy-sf input[name="to"]', "someone");
+  await p.fill('#cy-sf input[name="amount"]', "999999");
+  await p.click("#cy-sf .cy-w-go");
+  assert.equal(await p.isVisible("#cy-err"), true, "over-balance error");
+  // receive tab: the member's handle and a QR
+  await p.click("#cy-wt-r");
+  assert.equal(await p.isVisible("#cy-wp-r"), true);
+  await p.waitForSelector("#cy-qr svg", { timeout: 10000 });
+  assert.match(await p.textContent(".cy-w-me"), /@imm_w/);
+  if (SHOTS) await p.screenshot({ path: SHOTS + "/v2861-wallet-recv-390.png" });
+  assert.deepEqual(await axe(p, ".cy-st-panel"), []);
+  // another station from the dock: same hall, panel content changes in place
+  await p.click('.cy-rm-nav a[href="#/city/mjt/balance"]');
+  await p.waitForSelector('.cy-st-panel[data-room="balance"] .cy-rm-hero', { timeout: 15000 });
+  assert.equal(await p.evaluate(() => document.querySelector("#cy-page-slot .cy-stage")?.dataset.mark), "same", "hall not rebuilt");
+  // Escape closes the panel back to the hall, still the same hall
+  await p.keyboard.press("Escape");
+  await p.waitForFunction(() => location.hash === "#/city/mjt" && !document.querySelector(".cy-st"), null, { timeout: 10000 });
+  assert.equal(await p.evaluate(() => document.querySelector("#cy-page-slot .cy-stage")?.dataset.mark), "same", "hall kept after closing");
+  assert.equal(await p.evaluate(() => document.body.classList.contains("cy-st-open")), false);
+  assert.deepEqual(errs, []);
+  await c.close();
+});
