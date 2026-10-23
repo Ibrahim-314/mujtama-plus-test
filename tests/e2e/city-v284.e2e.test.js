@@ -42,10 +42,10 @@ test("390 dark: «المزيد» → مدينة المجتمع الرقمية, n
   await p.waitForFunction(() => !document.querySelector("#cy-page-slot .cy-actor").classList.contains("walk"), null, { timeout: 15000 });
   const after = await p.evaluate(() => getComputedStyle(document.querySelector("#cy-page-slot .cy-actors")).getPropertyValue("--x"));
   assert.notEqual(before, after, "moved"); assert.equal(await p.$("#cy-page-slot .cy-hint"), null, "hint gone after the first walk");
-  // a building with no hall yet: «قيد البناء», the city stays
-  await tapScene(p, 120, 780); await p.waitForSelector("#cy-page-slot .cy-soon.on", { timeout: 15000 });
-  assert.equal(await p.evaluate(() => location.hash), "#/city", "the store never opens an app page");
-  await p.waitForFunction(() => !document.querySelector("#cy-page-slot .cy-actor.walk"), null, { timeout: 15000 });
+  // v2.85: the store opens its own hall inside the city (never an app page), then back to the city
+  await tapScene(p, 120, 780); await p.waitForFunction(() => location.hash === "#/city/store", null, { timeout: 15000 }).catch(async (e) => { throw new Error("hash=" + await p.evaluate(() => location.hash + " busy=" + !!document.querySelector(".cy-portal") + " walk=" + !!document.querySelector(".cy-actor.walk"))); });
+  await p.waitForSelector('.cy-hallpg[data-hall="store"]', { timeout: 15000 });
+  await p.evaluate(() => { location.hash = "#/city"; }); await p.waitForSelector("#cy-page-slot .cy-stage.cy-ready", { timeout: 45000 }); await p.waitForTimeout(600);
   // building tap → walk to its door → portal → its own system
   await tapScene(p, 740, 900);
   await p.waitForSelector(".cy-portal.cy-vault .cy-v-door", { timeout: 15000 });
