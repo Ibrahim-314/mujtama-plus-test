@@ -107,6 +107,8 @@ test("390 character profile: «شخصيتي» → أنثى → سيدة الأع
   const srv = await p.evaluate(() => Remote.api("GET", "/api/prefs?ns=city"));
   assert.equal(srv.prefs.city.char, "suit-f", "synced: " + JSON.stringify(srv));
   assert.ok((await p.getAttribute("#cy-page-slot .cy-me img", "src")).includes("suit-f"));
+  // v2.86.1: the 3D character itself changes (not only the button's picture)
+  if (await p.$("#cy-page-slot .cy-actor.cy-3d")) await p.waitForFunction(() => document.querySelector("#cy-page-slot .cy-actor.cy-3d")?.dataset.char === "suit-f", null, { timeout: 30000 });
   assert.deepEqual(errs, []); await c.close();
 });
 
@@ -139,7 +141,7 @@ test("390 MJT hall: 6 neon boards, stations open the city's own rooms with real 
     rv = await axe(p); assert.deepEqual(rv, [], r + ": " + rv.join("\n"));
   }
   assert.equal(await p.evaluate(() => [...document.querySelectorAll("#view a[href]")].filter((a) => !/^#\/(city|menu)/.test(a.getAttribute("href"))).length), 0, "rooms link only inside the city");
-  await p.click(".cy-room .page-head .back"); await p.waitForFunction(() => location.hash === "#/city/mjt", null, { timeout: 10000 });
+  await p.click(".cy-st-x"); await p.waitForFunction(() => location.hash === "#/city/mjt", null, { timeout: 10000 });
   await hall();
   await p.evaluate(() => scrollTo(0, document.body.scrollHeight)); await p.waitForTimeout(300);
   await tapHall(490, 1300); // the exit gate (bottom of the hall, scrolled into view)
