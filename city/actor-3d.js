@@ -95,9 +95,10 @@
       if (st.mixer) st.mixer.update(dt);
       draw1(); loop();
     }
-    function loop() { if (!raf && !dead && st.renderer && onScreen && !document.hidden && !rm) raf = requestAnimationFrame(tick); }
+    function loop() { if (!raf && !dead && st.renderer && onScreen && !document.hidden && !rm && !document.body.classList.contains("cy-st-open")) raf = requestAnimationFrame(tick); }
     const vis = () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else { last = 0; loop(); } };
     document.addEventListener("visibilitychange", vis);
+    addEventListener("cy-st-close", () => { last = 0; loop(); }); // v2.87: a station page closed, the hall shows again
     const io = "IntersectionObserver" in window ? new IntersectionObserver((e) => { onScreen = e.some((x) => x.isIntersecting); if (!onScreen) { cancelAnimationFrame(raf); raf = 0; } else { last = 0; loop(); } }) : null;
     if (io) io.observe(a);
     const ro = "ResizeObserver" in window ? new ResizeObserver(size) : null; if (ro) ro.observe(canvas);
