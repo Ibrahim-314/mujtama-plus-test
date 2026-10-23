@@ -1,5 +1,29 @@
 [
  {
+  "v": "2.82.0",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "فيديوتك وتحسينات المقاطع",
+   "items": [
+    "قسم المقاطع صار اسمه «فيديوتك»",
+    "وضع توفير البيانات يشغّل المقاطع بجودة 360p ويوفّر أكثر",
+    "المقاطع التالية تتجهّز مسبقًا فتفتح أسرع",
+    "فصول داخل الفيديوهات الطويلة للتنقل السريع",
+    "إصلاح أزرار مركز الأمان: إضافة مفتاح الدخول وتسجيل الخروج من الجلسات"
+   ]
+  },
+  "en": {
+   "title": "Vidtik and clip improvements",
+   "items": [
+    "The clips section is now called Vidtik",
+    "Data saver plays clips at 360p to save more",
+    "Upcoming clips are prepared ahead so they open faster",
+    "Chapters in long videos for quick jumping",
+    "Security center buttons fixed: adding a passkey and signing out sessions"
+   ]
+  }
+ },
+ {
   "v": "2.81.0",
   "date": "2026-10-22",
   "ar": {
