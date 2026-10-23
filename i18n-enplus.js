@@ -1,6 +1,14 @@
 /* v2.69 en coverage (lazy chunk `i18n-enplus`, loaded with i18n-en): UI strings that were still Arabic in the English UI.
  * Team tr-en-01..18 + integrator. Keys never repeat a key of i18n-en.js. Arabic output unchanged. */
 (window.MPI18N = window.MPI18N || {}).en = Object.assign(window.MPI18N.en || {}, {
+"مدينتك": "Your city",
+"ملفي": "My profile",
+"مدينة": "city",
+"ادخل": "Enter",
+"جارٍ الدخول إلى": "Entering",
+"جارٍ فتح خزنة": "Opening the vault of",
+"العودة إلى المدينة": "Back to the city",
+"اضغط على مبنى أو شارع، وستمشي شخصيتك إليه": "Tap a building or a street and your character walks there",
 "{name} الدخول عبر Pi يُعدّ تحققاً قوياً ويكفي لاستيفاء السياسة.": "{name} Signing in with Pi counts as strong verification and meets the policy.",
 "محاولات دخول فاشلة متكررة على حسابك": "Repeated failed sign-in attempts on your account",
 "فعّل التحقق بخطوتين للإبقاء على صلاحيات الإشراف": "Turn on two-step verification to keep your staff powers",
@@ -3066,5 +3074,13 @@
 "حرّك المقبضين لقص بداية المقطع أو نهايته": "Drag the handles to trim the start or end of the clip",
 "باقي نحو": "About left:",
 "نكمل الرفع من حيث توقف": "Resuming the upload where it stopped",
+"شخصيتي": "My character",
+"اختر شخصيتك في المدينة. تظهر شخصيتك وحدها في مدينتك.": "Pick your character for the city. Only your own character appears in your city.",
+"الجنس": "Gender",
+"ذكر": "Male",
+"أنثى": "Female",
+"الشخصيات": "Characters",
+"اعتماد الشخصية": "Use this character",
+"إغلاق": "Close",
 "غير موجود": "Not found"
 });
