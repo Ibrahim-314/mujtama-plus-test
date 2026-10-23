@@ -52,7 +52,7 @@
   ROUTES.clips = ["shorts", "clips"]; // v2.71: «لقطات» full-screen view (clips-ui.js + clips.css); core keeps the route + MPPlayer
   ROUTES.v12x = ["series", "events", "event", "lists", "list", "interests", "trends", "admin", "decisions"]; // v2.81: the v1.2 screens (v12-screens.js) left the core bundle
   ROUTES.setx = ["settings"]; // v2.81: the settings hub (settings-hub.js) left the core bundle
-  ROUTES.launch = ["faq", "tickets", "ambassadors", "waitlist", "about", "staff"]; ROUTES.pwa = ["share", "app"];
+  ROUTES.launch = ["faq", "tickets", "ambassadors", "waitlist", "about", "staff"]; ROUTES.pwa = ["share", "app", "versions"];
   const loaded = {}, pending = {}, cssDone = {}, cssPend = {};
   const FEAT = "market nearby study series biz courses collabs hijri certs mentor vcreators charity knowledge work teams proreviews mjt canalytics points creation communities tips transfers ads dev digital subs wellbeing menu cadmin aihub".split(" ");
   const has = (n) => !!((window.__CHUNKS || {})[n] || (window.__CSS || {})[n]);
