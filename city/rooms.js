@@ -14,7 +14,7 @@
   const api = (m, p, b) => Remote.api(m, p, b);
   const { T, esc, reduced } = MPCity.util;
   const enc = encodeURIComponent;
-  const $ = (s) => view.querySelector(s);
+  const $ = (s) => document.querySelector("body > .cy-st " + s) || view.querySelector(s); // v2.87: the station page lives on <body>
   const say = (m) => (typeof toast === "function" ? toast(m) : null);
   const ic = (n, c = "sm") => (window.UI && UI.icon ? UI.icon(n, c) : "");
   const signed = () => typeof DB !== "undefined" && !!DB.me;
@@ -25,6 +25,7 @@
   // the wallet's own small icons, inline (they do not depend on the app's sprite)
   const SVG = {
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    back: '<path d="M15 18l-6-6 6-6"/>',
     copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
     check: '<path d="M20 6 9 17l-5-5"/>',
     user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
@@ -33,7 +34,7 @@
     shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>'
   };
   const svgI = (n) => `<svg class="cy-wi" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${SVG[n] || ""}</svg>`;
-  const KIND_ICO = { reward: "award", conversion: "swap", conversion_reversal: "swap", transfer: "send", tip: "gift", adjustment: "shield", clawback: "flag", spend: "bag", refund: "refresh" };
+  const KIND_ICO = { reward: "award", conversion: "swap", conversion_reversal: "swap", transfer: "send", tip: "gift", adjustment: "shield", clawback: "flag", spend: "bag", refund: "refresh", mining: "sparkle", checkin: "calendar" };
 
   const ROOMS = {
     balance: { t: "الرصيد", i: "coin", acc: "#ffcf5a" },
@@ -56,11 +57,12 @@
     if (!sh) return;
     sh.classList.remove("on"); document.body.classList.remove("cy-st-open");
     if (sheetKey) { removeEventListener("keydown", sheetKey, true); sheetKey = null; }
+    dispatchEvent(new Event("cy-st-close")); // the hall's 3D loop resumes (actor-3d.js)
     const gone = () => sh.remove();
-    if (instant || reduced()) gone(); else setTimeout(gone, 280);
+    if (instant || reduced()) gone(); else setTimeout(gone, 150);
     view.querySelector("#cy-page-slot .cy-stage")?.focus?.({ preventScroll: true });
   }
-  MPCity.closeRoom = () => closeSheet(view.querySelector(".cy-st"));
+  MPCity.closeRoom = () => closeSheet(document.querySelector("body > .cy-st"));
   function shell(id, body) {
     const r = ROOMS[id];
     const hall = view.querySelector('.cy-hall[data-scene="mjt"]');
@@ -73,27 +75,25 @@
       view.querySelectorAll(".cy-rm-nav a").forEach((a) => a.style.setProperty("--cy-acc", a.dataset.acc));
       return $("#cy-rm");
     }
-    let sh = hall.querySelector(".cy-st");
+    let sh = document.querySelector("body > .cy-st");
     if (!sh) {
       sh = document.createElement("div"); sh.className = "cy-st";
       sh.innerHTML = `<div class="cy-st-scrim" data-close="1" aria-hidden="true"></div>
-        <section class="cy-st-panel cy-room" role="dialog" aria-modal="true" aria-labelledby="cy-rm-h">
+        <section class="cy-st-panel cy-room" role="region" aria-labelledby="cy-rm-h">
           <div class="cy-st-grip" aria-hidden="true"></div>
           <header class="cy-st-head"><span class="cy-st-ico" aria-hidden="true"></span><h2 id="cy-rm-h" tabindex="-1"></h2>
-            <button type="button" class="cy-st-x" data-close="1" aria-label="${esc(T("إغلاق"))}">${svgI("x")}</button></header>
+            <button type="button" class="cy-st-x" data-close="1" aria-label="${esc(T("رجوع إلى القاعة"))}">${svgI("back")}</button></header>
           <div class="cy-st-nav"></div><div class="cy-st-scroll" tabindex="0" aria-label="${esc(T(r.t))}"><div class="cy-rm-body" id="cy-rm"></div></div></section>`;
       const pal = ((window.MPCityScenes || {}).mjt || {}).palette || {}; for (const k in pal) sh.style.setProperty(k, pal[k]);
-      hall.append(sh);
+      // on <body>: the hall's own layers (transforms) would otherwise trap a fixed page inside them
+      document.body.append(sh);
+      const leave = () => { if (!/^#\/city\/mjt(\/|$)/.test(location.hash)) { removeEventListener("hashchange", leave); closeSheet(sh, true); } };
+      addEventListener("hashchange", leave);
       sh.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) { e.preventDefault(); location.hash = "#/city/mjt"; } });
-      // swipe the grip down to close
-      let y0 = null; const panel = sh.querySelector(".cy-st-panel"), grip = sh.querySelector(".cy-st-head");
-      grip.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; y0 = e.clientY; panel.style.transition = "none"; });
-      addEventListener("pointermove", (e) => { if (y0 == null) return; const d = Math.max(0, e.clientY - y0); panel.style.transform = `translateY(${d}px)`; }, { passive: true });
-      addEventListener("pointerup", (e) => { if (y0 == null) return; const d = e.clientY - y0; y0 = null; panel.style.transition = ""; panel.style.transform = ""; if (d > 90) location.hash = "#/city/mjt"; });
       sheetKey = (e) => { if (e.key === "Escape" && sh.isConnected) { e.preventDefault(); location.hash = "#/city/mjt"; } };
       addEventListener("keydown", sheetKey, true);
       document.body.classList.add("cy-st-open");
-      requestAnimationFrame(() => requestAnimationFrame(() => sh.classList.add("on")));
+      requestAnimationFrame(() => sh.classList.add("on"));
     }
     const panel = sh.querySelector(".cy-st-panel");
     panel.dataset.room = id; panel.style.setProperty("--cy-acc", r.acc); sh.style.setProperty("--cy-acc", r.acc);
@@ -277,21 +277,120 @@
     function Sound() { try { MPCity.sound && MPCity.sound.coin && MPCity.sound.coin(); } catch { /* sound is optional */ } }
   }
 
-  /* ---------- التعدين ---------- */
+  /* ---------- التعدين (v2.87) ----------
+   * A 24-hour session mines a fixed amount (5 MJT by default) that the server fixes when it starts; the counter here is
+   * only a picture of started_at → ends_at on the server's clock (offset-corrected), so it rises live and can never lie.
+   * The daily sign-in reward is claimed on arrival. Owner 2026-10-24: «العضو يربح كل 24 ساعه ويشوف عداد التعدين يرتفع معه». */
+  const pad = (n) => String(n).padStart(2, "0");
+  const hms = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${pad(Math.floor(t / 3600))}:${pad(Math.floor(t / 60) % 60)}:${pad(t % 60)}`; };
   async function earn(box) {
-    let me, cfg; try { [me, cfg] = await Promise.all([api("GET", "/api/mjt/me"), api("GET", "/api/mjt/config")]); } catch (e) { return fail(box, e); }
+    let st, ck = null;
+    try { ck = await api("POST", "/api/mjt/checkin"); } catch { /* the reward is optional; mining still opens */ }
+    try { st = await api("GET", "/api/mjt/mining"); } catch (e) { return fail(box, e); }
     if (!box.isConnected) return;
-    const pct = Math.max(0, Math.min(100, (Number(me.today.earned) / (Number(me.today.cap) || 1)) * 100));
-    box.innerHTML = `<section class="cy-rm-card cy-rm-mine" aria-labelledby="cy-mine-l">
-        <div class="cy-rm-core" aria-hidden="true"><span class="cy-rm-orbit o1"></span><span class="cy-rm-orbit o2"></span><span class="cy-rm-gauge"></span><span class="cy-rm-coin">${ic("coin")}</span></div>
-        <p class="cy-rm-lbl" id="cy-mine-l">${esc(T("تعدين اليوم"))}</p>
-        <p class="cy-rm-big"><bdi dir="ltr" class="cy-rm-n" data-count>${esc(me.today.earned)}</bdi> <small>/ ${num(me.today.cap)} MJT</small></p>
-        <p class="cy-rm-note">${esc(cfg.earn.enabled ? T("كل مساهمة مفيدة تُعدِّن لك مجتمع كوين") : T("المكافآت متوقفة مؤقتاً."))}</p></section>
-      <section class="cy-rm-card"><h3 class="cy-rm-h3">${ic("award", "xs")}${esc(T("ما يُعدِّن لك"))}</h3>
-        <ul class="cy-rm-list kinds">${cfg.earn.kinds.map((k) => `<li class="cy-rm-li"><span class="cy-rm-t"><b>${esc(k.label)}</b>${k.dailyCap != null ? `<small>${esc(T("حتى"))} ${num(k.dailyCap)} ${esc(T("مرات يومياً"))}</small>` : ""}</span><span class="cy-rm-amt in">${num("+" + k.mjt)}<small>MJT</small></span></li>`).join("")}</ul>
-        <p class="cy-rm-hint">${esc(cfg.rate.text)} · ${esc(T("بحد أقصى"))} ${num(cfg.earn.dailyCap)} MJT ${esc(T("يومياً"))}</p></section>`;
-    box.querySelector(".cy-rm-gauge").style.setProperty("--p", pct.toFixed(1) + "%");
-    countUp(box.querySelector("[data-count]"), me.today.earned);
+    if (ck && ck.credited) { say(T("مكافأة الدخول اليومي") + " +" + ck.amount + " MJT"); Sound(); }
+    paintMine(box, st, ck && ck.credited);
+  }
+  function Sound() { try { MPCity.sound && MPCity.sound.coin && MPCity.sound.coin(); } catch { /* optional */ } }
+  function paintMine(box, st, fresh) {
+    const off = Date.parse(st.now) - Date.now(), S = st.session, C = st.checkin;
+    const R = 92, CIRC = 2 * Math.PI * R;
+    const perHour = (Number(st.rate) / 24);
+    const phase = !st.enabled ? "off" : !S ? "idle" : S.ready ? "ready" : "run";
+    const btn = { idle: [T("ابدأ التعدين"), "start"], run: [T("جارٍ التعدين…"), ""], ready: [T("استلم") + " " + (S ? S.amount : "") + " MJT", "claim"], off: [T("التعدين متوقف مؤقتاً"), ""] }[phase];
+    box.innerHTML = `<section class="cy-mn" data-phase="${phase}" aria-labelledby="cy-mn-l">
+        <div class="cy-mn-core">
+          <div class="cy-mn-halo" aria-hidden="true"></div>
+          <svg class="cy-mn-ring" viewBox="0 0 220 220" aria-hidden="true">
+            <defs><linearGradient id="cy-mn-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset=".5" stop-color="#ffcf5a"/><stop offset="1" stop-color="#ff8a3d"/></linearGradient></defs>
+            <circle class="cy-mn-track" cx="110" cy="110" r="${R}"/>
+            <circle class="cy-mn-ticks" cx="110" cy="110" r="${R + 14}"/>
+            <circle class="cy-mn-arc" cx="110" cy="110" r="${R}" stroke="url(#cy-mn-g)" stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${CIRC.toFixed(1)}"/>
+          </svg>
+          <div class="cy-mn-orbit" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="cy-mn-mid">
+            <span class="cy-mn-coin" aria-hidden="true">${ic("coin")}</span>
+            <p class="cy-mn-lbl" id="cy-mn-l">${esc(T(phase === "ready" ? "اكتمل التعدين" : phase === "run" ? "يُعدَّن الآن" : "تعدين اليوم"))}</p>
+            <p class="cy-mn-num" aria-live="off"><bdi dir="ltr" data-live>0.000000</bdi></p>
+            <p class="cy-mn-of"><bdi dir="ltr">/ ${esc(S ? S.amount : st.rate)} MJT</bdi></p>
+          </div>
+        </div>
+        <div class="cy-mn-chips">
+          <span class="cy-mn-chip">${ic("trendUp", "xs")}<bdi dir="ltr">+${esc(perHour.toFixed(3))}</bdi> ${esc(T("في الساعة"))}</span>
+          <span class="cy-mn-chip" data-left>${ic("clock", "xs")}<span>${phase === "run" ? `${esc(T("متبقٍ"))} <bdi dir="ltr" data-cd>--:--:--</bdi>` : esc(T("دورة كل 24 ساعة"))}</span></span>
+        </div>
+        <button type="button" class="cy-mn-go" data-a="${btn[1]}"${btn[1] ? "" : " disabled"}><span class="cy-mn-go-in">${phase === "run" ? '<i class="cy-mn-dot" aria-hidden="true"></i>' : ic(phase === "ready" ? "party" : "sparkle", "sm")}<span>${esc(btn[0])}</span></span></button>
+        ${st.frozen ? `<p class="cy-mn-warn" role="status">${ic("lock", "xs")}<span>${esc(T("محفظتك موقوفة مؤقتاً: يستمر تعدينك ويُستلم بعد التفعيل."))}</span></p>` : ""}
+        <p class="cy-mn-sr" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="cy-mn-card cy-mn-daily${C.today ? " done" : ""}${fresh ? " fresh" : ""}" aria-labelledby="cy-mn-dl">
+        <div class="cy-mn-dh"><span class="cy-mn-dico" aria-hidden="true">${ic("calendar", "sm")}</span>
+          <div><h3 id="cy-mn-dl">${esc(T("مكافأة الدخول اليومي"))}</h3><p>${esc(T(C.today ? "استلمت مكافأة اليوم" : "ادخل كل يوم واكسب"))} <bdi dir="ltr" class="cy-mn-plus">+${esc(C.amount)} MJT</bdi></p></div>
+          <span class="cy-mn-streak" title="${esc(T("أيام متتالية"))}"><b><bdi dir="ltr">${C.streak}</bdi></b><small>${esc(T("يوم"))}</small></span></div>
+        <ol class="cy-mn-week" aria-label="${esc(T("آخر 7 أيام"))}">${C.week.map((d, i) => `<li class="${d.done ? "on" : ""}${i === 6 ? " today" : ""}" aria-label="${esc(d.day)} ${esc(T(d.done ? "تم" : "لم يتم"))}"><i aria-hidden="true">${d.done ? svgI("check") : ""}</i><span>${esc(dayName(d.day))}</span></li>`).join("")}</ol>
+      </section>
+
+      <div class="cy-mn-tiles">
+        <div class="cy-mn-tile"><span>${esc(T("مجموع ما عدّنته"))}</span><b><bdi dir="ltr">${esc(st.totals.mined)}</bdi></b><small>MJT</small></div>
+        <div class="cy-mn-tile"><span>${esc(T("دورات مكتملة"))}</span><b><bdi dir="ltr">${st.totals.sessions}</bdi></b><small>${esc(T("دورة"))}</small></div>
+        <div class="cy-mn-tile"><span>${esc(T("أيام تعدين متتالية"))}</span><b><bdi dir="ltr">${st.totals.streak}</bdi></b><small>${esc(T("يوم"))}</small></div>
+        <div class="cy-mn-tile"><span>${esc(T("رصيدك"))}</span><b><bdi dir="ltr">${esc(st.balance)}</bdi></b><small>MJT</small></div>
+      </div>
+
+      ${st.recent.length ? `<section class="cy-mn-card"><h3 class="cy-mn-h3">${ic("receipt", "xs")}${esc(T("آخر الدورات"))}</h3>
+        <ul class="cy-mn-log">${st.recent.map((r) => `<li><span class="cy-mn-li-i" aria-hidden="true">${ic("coin", "xs")}</span><span class="cy-mn-li-t"><b>${esc(T("تعدين يومي"))}</b><small>${esc(day(r.claimedAt || r.startedAt))}</small></span><bdi dir="ltr" class="cy-mn-li-a">+${esc(r.amount)}</bdi></li>`).join("")}</ul></section>` : ""}
+
+      <section class="cy-mn-card cy-mn-how"><h3 class="cy-mn-h3">${ic("help", "xs")}${esc(T("كيف يعمل التعدين"))}</h3>
+        <ol><li><b>1</b><span>${esc(T("اضغط «ابدأ التعدين» مرة كل 24 ساعة."))}</span></li>
+          <li><b>2</b><span>${esc(T("يرتفع العداد معك حتى يكتمل"))} <bdi dir="ltr">${esc(st.rate)} MJT</bdi>.</span></li>
+          <li><b>3</b><span>${esc(T("استلم ما عدّنته وابدأ دورة جديدة، وادخل يومياً لمكافأة الدخول."))}</span></li></ol>
+        <p class="cy-mn-fine">${ic("lock", "xs")}<span>${esc(T("رصيد داخل التطبيق فقط — ليس عملة على أي بلوكشين، ولا يُسحب ولا يُباع."))}</span></p></section>`;
+
+    const live = box.querySelector("[data-live]"), cd = box.querySelector("[data-cd]"), arc = box.querySelector(".cy-mn-arc"), sec = box.querySelector(".cy-mn");
+    const t0 = S ? Date.parse(S.startedAt) : 0, t1 = S ? Date.parse(S.endsAt) : 0, total = S ? Number(S.amount) : 0;
+    let raf = 0, lastPaint = 0, flipped = false;
+    function frame(t) {
+      raf = 0; if (!live.isConnected) return;
+      if (t - lastPaint >= (reduced() ? 1000 : 80)) {
+        lastPaint = t;
+        const now = Date.now() + off, k = S ? Math.max(0, Math.min(1, (now - t0) / (t1 - t0))) : 0;
+        live.textContent = (total * k).toFixed(6);
+        arc.style.strokeDashoffset = (CIRC * (1 - k)).toFixed(2);
+        sec.style.setProperty("--k", k.toFixed(4));
+        if (cd) cd.textContent = hms(t1 - now);
+        if (phase === "run" && k >= 1 && !flipped) { flipped = true; refresh(); return; }
+      }
+      if (phase === "run" || phase === "ready") raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    if (phase !== "run" && phase !== "ready") { live.textContent = "0.000000"; }
+    async function refresh() { try { const n = await api("GET", "/api/mjt/mining"); if (box.isConnected) paintMine(box, n); } catch { /* keep */ } }
+
+    const go = box.querySelector(".cy-mn-go");
+    go.addEventListener("click", () => busy(go, async () => {
+      const a = go.dataset.a; if (!a) return;
+      go.classList.add("press");
+      const r = await api("POST", a === "claim" ? "/api/mjt/mining/claim" : "/api/mjt/mining/start");
+      if (!box.isConnected) return;
+      cancelAnimationFrame(raf);
+      const got = r.claimed;
+      if (a === "claim") {
+        // claimed: start the next session straight away so the member never has to come back twice
+        const n = await api("POST", "/api/mjt/mining/start").catch(() => null);
+        paintMine(box, n ? n.state : r.state);
+      } else paintMine(box, r.state);
+      if (got) { burst(box, got); Sound(); const s2 = box.querySelector(".cy-mn-sr"); if (s2) s2.textContent = T("استلمت") + " " + got + " MJT"; }
+    }));
+  }
+  function dayName(d) { try { return new Intl.DateTimeFormat(MPCity.util.lang() === "en" ? "en" : "ar", { weekday: "narrow", timeZone: "UTC" }).format(new Date(d + "T12:00:00Z")); } catch { return d.slice(8); } }
+  /* a short gold burst over the core when coins land (skipped with reduced motion) */
+  function burst(box, amt) {
+    const core = box.querySelector(".cy-mn-core"); if (!core) return;
+    const b = document.createElement("div"); b.className = "cy-mn-burst"; b.setAttribute("aria-hidden", "true");
+    b.innerHTML = `<b><bdi dir="ltr">+${esc(amt)}</bdi> MJT</b>` + (reduced() ? "" : Array.from({ length: 14 }, (_, i) => `<i data-i="${i}"></i>`).join(""));
+    b.querySelectorAll("i").forEach((i, n) => { const a = (n / 14) * Math.PI * 2; i.style.setProperty("--dx", Math.cos(a) * 120 + "px"); i.style.setProperty("--dy", Math.sin(a) * 120 + "px"); });
+    core.append(b); setTimeout(() => b.remove(), 1500);
   }
 
   /* ---------- الإحصاءات ---------- */
