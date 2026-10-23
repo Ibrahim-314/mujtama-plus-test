@@ -22,11 +22,11 @@ test("at walks a polyline with heading", () => {
   const a = P.at([[0, 0], [10, 0], [10, 10]], 15); assert.deepEqual(a.point, [10, 5]); assert.equal(a.segment, 1); assert.ok(Math.abs(a.angle - Math.PI / 2) < 1e-9);
 });
 test("inside", () => { assert.ok(P.inside([5, 5], [[0, 0], [10, 0], [10, 10], [0, 10]])); assert.ok(!P.inside([15, 5], [[0, 0], [10, 0], [10, 10], [0, 10]])); });
-test("main scene: connected streets, every place has a door, area, labels, icon and an existing route", () => {
+test("main scene: connected streets, every place has a door, area, labels, icon; only city pages (#/city/…) or «قيد البناء»", () => {
   global.window = {}; require("../../city/scenes/main.js"); const sc = global.window.MPCityScenes.main; delete global.window;
   assert.deepEqual(P.check(sc), []);
   const g = P.graph(sc.streets);
-  for (const pl of sc.places) { assert.ok(pl.icon, pl.id); assert.ok(/^#\/[a-z]/.test(pl.href), pl.id); assert.ok(P.route(g, sc.start, pl.door), pl.id + " reachable"); }
+  for (const pl of sc.places) { assert.ok(pl.icon, pl.id); assert.ok(pl.href === undefined || /^#\/city\//.test(pl.href), pl.id + " links only inside the city"); assert.ok(P.route(g, sc.start, pl.door), pl.id + " reachable"); }
   // doors sit outside every building's tap area except their own (you never walk through a wall to reach one)
   for (const pl of sc.places) for (const o of sc.places) if (o !== pl) assert.ok(!P.inside(g.nodes[pl.door], o.area), `${pl.id} door inside ${o.id}`);
 });
@@ -37,7 +37,7 @@ test("MJT hall scene: connected floor, every station reachable from the gate, op
   assert.deepEqual(sc.places.map((p) => p.id).sort(), ["balance", "exit", "mining", "records", "stats", "wallet"]);
   for (const pl of sc.places) {
     assert.ok(pl.icon && pl.sign && pl.label.ar && pl.label.en, pl.id);
-    assert.ok(pl.back || /^#\/(mjt|points)/.test(pl.href), pl.id + " opens its own system");
+    assert.ok(pl.back || /^#\/city\/mjt\/(balance|history|send|earn|stats)$/.test(pl.href), pl.id + " opens its own city room");
     assert.ok(P.route(g, sc.start, pl.door), pl.id + " reachable");
   }
   for (const pl of sc.places) for (const o of sc.places) if (o !== pl) assert.ok(!P.inside(g.nodes[pl.door], o.area), `${pl.id} door inside ${o.id}`);
