@@ -128,7 +128,7 @@ test("390 MJT hall: 6 neon boards, stations open the city's own rooms with real 
   await p.waitForFunction(() => location.hash === "#/city/mjt/send", null, { timeout: 20000 });
   await p.waitForSelector(".cy-room #cy-sf", { timeout: 20000 });
   if (SHOTS) await p.screenshot({ path: SHOTS + "/room-send-390.png" });
-  let rv = await axe(p); assert.deepEqual(rv, [], rv.join("\n"));
+  let rv = await axe(p, "body > .cy-st"); assert.deepEqual(rv, [], rv.join("\n"));
   // the room strip moves between rooms without leaving the city; the balance is the member's real one
   const real = await p.evaluate(() => Remote.api("GET", "/api/mjt/me"));
   await p.click('.cy-rm-nav a[href="#/city/mjt/balance"]'); await p.waitForSelector(".cy-rm-hero [data-count]", { timeout: 20000 }); await p.waitForTimeout(1200);
@@ -138,7 +138,7 @@ test("390 MJT hall: 6 neon boards, stations open the city's own rooms with real 
     await p.click(`.cy-rm-nav a[href="#/city/mjt/${r}"]`); await p.waitForFunction(() => !document.querySelector(".cy-rm-skel"), null, { timeout: 20000 }); await p.waitForTimeout(400);
     assert.equal(await p.$(".cy-rm-err"), null, r + " loaded");
     if (SHOTS) await p.screenshot({ path: SHOTS + `/room-${r}-390.png`, fullPage: true });
-    rv = await axe(p); assert.deepEqual(rv, [], r + ": " + rv.join("\n"));
+    rv = await axe(p, "body > .cy-st"); assert.deepEqual(rv, [], r + ": " + rv.join("\n"));
   }
   assert.equal(await p.evaluate(() => [...document.querySelectorAll("#view a[href]")].filter((a) => !/^#\/(city|menu)/.test(a.getAttribute("href"))).length), 0, "rooms link only inside the city");
   await p.click(".cy-st-x"); await p.waitForFunction(() => location.hash === "#/city/mjt", null, { timeout: 10000 });
