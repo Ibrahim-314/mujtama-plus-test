@@ -210,6 +210,7 @@ function showAuth(mode = "login") {
       <label class="u-db u-mt8 muted">اسم المستخدم</label><input id="a-handle" dir="ltr" autocomplete="username" placeholder="username">
       <label class="u-db u-mt8 muted">كلمة المرور</label><input id="a-pass" type="password" dir="ltr" autocomplete="${mode === "register" ? "new-password" : "current-password"}" placeholder="8 أحرف على الأقل">
       <button class="u-mt14 btn block" id="a-go">${mode === "register" ? "إنشاء الحساب" : "دخول"}</button>${piBtn}
+      ${Remote.health?.demo ? `<button class="u-mt10 btn ghost block" id="demo-login">دخول تجريبي</button><p class="muted u-tc" style="font-size:12px;margin:6px 0 0">حساب وهمي لنسخة التجربة فقط، وبياناته مؤقتة وقد تُمسح.</p>` : ""}
       <p class="u-c-dg u-mh1e muted" id="a-err"></p></div>
     <p class="u-tc muted">الإصدار <bdi>${verLabel(Remote.health?.version || APP_VERSION)}</bdi></p></div>`;
   view.querySelectorAll("[data-m]").forEach(b => b.onclick = () => showAuth(b.dataset.m));
@@ -217,6 +218,11 @@ function showAuth(mode = "login") {
     const body = { handle: $("#a-handle").value.trim(), password: $("#a-pass").value, name: $("#a-name")?.value.trim() };
     try { await Remote.api("POST", mode === "register" ? "/api/auth/register" : "/api/auth/login", body); await start(); }
     catch (e) { $("#a-err").textContent = e.message; }
+  };
+  if ($("#demo-login")) $("#demo-login").onclick = async (ev) => {
+    ev.currentTarget.disabled = true;
+    try { await Remote.api("POST", "/api/auth/demo", {}); await start(); }
+    catch (e) { $("#a-err").textContent = e.message; ev.currentTarget.disabled = false; }
   };
   if ($("#pi-login")) $("#pi-login").onclick = async () => {
     try { const auth = await PiAdapter.authenticate(); if (!auth) throw new Error("تعذر الدخول بـ Pi"); await Remote.api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); await start(); }
