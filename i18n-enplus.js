@@ -2,6 +2,7 @@
  * Team tr-en-01..18 + integrator. Keys never repeat a key of i18n-en.js. Arabic output unchanged. */
 (window.MPI18N = window.MPI18N || {}).en = Object.assign(window.MPI18N.en || {}, {
 "مدينتك": "Your city",
+"سجل الإصدارات: ماذا تغيّر في كل إصدار": "Release history: what changed in each version",
 "آخر تحديث": "Last update",
 "آخر موعد": "Deadline",
 "أحدث الفرص في المدينة": "Newest openings in the city",
