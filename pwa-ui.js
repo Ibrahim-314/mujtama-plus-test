@@ -115,6 +115,18 @@ body.mp-offline .mp-off{opacity:1;transform:none}
     bar("mp-updated", `<div class="mp-upd-h"><b>${en ? "Updated to version" : "تم التحديث إلى الإصدار"} <bdi>${esc(fmtVer(cur))}</bdi></b>${n.title ? `<span class="mp-upd-v">${esc(n.title)}</span>` : ""}</div><button class="mp-pwa-x" data-a="x" aria-label="${en ? "Close" : "إغلاق"}">×</button>${listHtml(n.items, 5)}`,
       { '[data-a="x"]': (el) => el.remove() }).classList.add("mp-upd");
   }
+  /* v2.85: «سجل الإصدارات» — a permanent page with every release's notes from /whatsnew.json (#/versions) */
+  async function versionsView() {
+    const en = isEn();
+    view.innerHTML = `<div class="wrap mp-vers"><h1 class="u-my8">${en ? "Release history" : "سجل الإصدارات"}</h1><p class="muted">${en ? "What changed in each version of Mujtama+." : "ماذا تغيّر في كل إصدار من مجتمع بلس."}</p><div id="mp-vers-list" aria-busy="true"><p class="muted">${en ? "Loading…" : "جارٍ التحميل…"}</p></div></div>`;
+    const list = await notesFetch(); const box = document.getElementById("mp-vers-list"); if (!box) return;
+    const cur = String((typeof DB !== "undefined" && DB.serverVersion) || "__APP_VERSION__").replace(/^mp-/, "");
+    box.removeAttribute("aria-busy");
+    if (!Array.isArray(list) || !list.length) { box.innerHTML = `<p class="muted">${en ? "No release notes yet." : "لا توجد ملاحظات إصدار بعد."}</p>`; return; }
+    box.innerHTML = list.filter((x) => x && x.v).map((x, i) => { const n = (en ? x.en : x.ar) || x.ar || x.en || {}; const isCur = x.v === cur;
+      return `<details class="card mp-vers-i"${i === 0 ? " open" : ""}><summary><b>${en ? "Version" : "الإصدار"} <bdi>${esc(fmtVer(x.v))}</bdi></b>${isCur ? ` <span class="badge">${en ? "Current" : "الحالي"}</span>` : ""}${n.title ? ` — ${esc(n.title)}` : ""}${x.date ? `<br><small class="muted"><bdi>${esc(x.date)}</bdi></small>` : ""}</summary>${listHtml(n.items, 50)}</details>`; }).join("");
+  }
+  if (window.MPRoutes) MPRoutes.extend(() => ({ versions: () => versionsView() }));
   setTimeout(showUpdated, 2500);
   async function checkUpdate(manual) {
     const reg = SW && await SW.getRegistration().catch(() => null); if (!reg) { if (manual) T("التحديثات غير متاحة في هذا المتصفح"); return false; }
