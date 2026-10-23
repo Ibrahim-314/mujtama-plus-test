@@ -1,5 +1,25 @@
 [
  {
+  "v": "2.87.0",
+  "date": "2026-10-24",
+  "ar": {
+   "title": "التعدين اليومي في مجتمع كوين",
+   "items": [
+    "ابدأ دورة تعدين مدتها 24 ساعة واكسب 5 MJT، مع عدّاد حي يرتفع أمامك",
+    "مكافأة دخول يومية 1 MJT تُضاف تلقائياً، مع سلسلة الأيام المتتالية",
+    "محطات مجتمع كوين والمحفظة صارت صفحات كاملة تفتح فوراً بدون نوافذ منبثقة"
+   ]
+  },
+  "en": {
+   "title": "Daily mining in Mujtama Coin",
+   "items": [
+    "Start a 24-hour mining cycle and earn 5 MJT, with a live counter rising as you watch",
+    "A daily 1 MJT sign-in reward, added automatically, with your day streak",
+    "Mujtama Coin stations and the wallet are now full pages that open instantly, no pop-ups"
+   ]
+  }
+ },
+ {
   "v": "2.86.1",
   "date": "2026-10-23",
   "ar": {
