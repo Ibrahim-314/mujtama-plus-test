@@ -410,3 +410,68 @@
   .cy-hl-pulse, .cy-hl-d { animation: none; } .cy-hl-bar i, .cy-hl-chev, .cy-dir a, .cy-hl-it { transition: none; }
 }
 .cy-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ================= v2.86 «المدينة تملأ الشاشة»: the city owns the screen, full screen, sound, HUD ================= */
+/* inside #/city… the app's bottom bar (a side rail on wide screens) and the floating button step aside */
+body.cy-city .bottomnav, body.cy-city .fab { transform: translateY(calc(100% + 24px + env(safe-area-inset-bottom))) !important; opacity: 0; pointer-events: none; visibility: hidden;
+  transition: transform .35s var(--ease, ease), opacity .25s, visibility 0s .35s; }
+body.cy-city, body.cy-city.has-fab { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+@media (min-width: 760px) {
+  body.cy-city .bottomnav { transform: translateX(calc(-100% - 24px)) !important; }
+  [dir="rtl"] body.cy-city .bottomnav, body.cy-city[dir="rtl"] .bottomnav { transform: translateX(calc(100% + 24px)) !important; }
+  body.cy-city { margin-inline: auto; padding-bottom: 24px; }
+  body.cy-city .topbar { inset-inline: 0; margin: auto; }
+}
+
+/* the HUD: one glass rail of round tools (sound · full screen) beside «شخصيتي» — same height, same glow family */
+.cy-tools { pointer-events: auto; display: inline-flex; gap: 6px; margin-inline-start: auto; }
+.cy-head .cy-bal ~ .cy-tools { margin-inline-start: 0; }
+.cy-tool { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%; cursor: pointer; color: #efe6ff;
+  background: rgba(17, 13, 26, .78); border: 1.5px solid rgba(190, 160, 255, .45); box-shadow: 0 0 14px rgba(168, 117, 255, .3);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: transform .15s ease, border-color .2s, box-shadow .2s, color .2s; -webkit-tap-highlight-color: transparent; }
+.cy-tool:hover { border-color: #c9a8ff; box-shadow: 0 0 18px rgba(168, 117, 255, .55); }
+.cy-tool:active { transform: scale(.92); }
+.cy-tool:focus-visible { outline: 2px solid #ffcf5a; outline-offset: 2px; }
+.cy-tool[aria-pressed="true"].cy-tool-fs { color: #46e3d4; border-color: #46e3d4; box-shadow: 0 0 16px rgba(70, 227, 212, .45); }
+.cy-tool-snd[aria-pressed="false"] { color: #9d8cbf; border-color: rgba(157, 140, 191, .4); box-shadow: none; }
+.cy-ti { width: 20px; height: 20px; }
+.cy-me { min-height: 40px; box-sizing: border-box; }
+.cy-head { align-items: center; }
+/* the city name chip reads as a sign: neon dot + Cairo weight */
+.cy-chip { font-family: MPCityCairo, system-ui, sans-serif; font-weight: 800; letter-spacing: .1px; box-shadow: 0 0 14px rgba(168, 117, 255, .25); min-height: 40px; box-sizing: border-box; }
+.cy-bal { min-height: 40px; box-sizing: border-box; }
+
+/* the map's frame: a deeper night glass with a thin neon edge, the character's spot reads at a glance */
+.cy-page .cy-frame { border-radius: 24px; box-shadow: 0 0 0 1px rgba(190, 160, 255, .22), 0 0 32px -6px rgba(168, 117, 255, .35), 0 24px 50px -28px rgba(20, 6, 50, .8); }
+.cy-page .cy-frame::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 7;
+  background: linear-gradient(180deg, rgba(10, 6, 20, .55), transparent 18%, transparent 82%, rgba(10, 6, 20, .5)); }
+.cy-head, .cy-hint, .cy-soon { z-index: 8; }
+
+/* ---------- full screen / immersive: the map fills the whole screen ---------- */
+body.cy-imm { padding-top: env(safe-area-inset-top) !important; padding-bottom: 0 !important; }
+body.cy-imm .topbar { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+body.cy-imm .cy-page { padding-top: 0; }
+body.cy-imm .cy-page #cy-pg-h { margin-block: 4px 6px; }
+body.cy-imm .cy-page.cy-main .cy-slot, body.cy-imm .cy-page.cy-hall .cy-slot { max-width: none; margin: 0 calc(-1 * var(--s4, 16px)); }
+body.cy-imm .cy-page.cy-main .cy-frame, body.cy-imm .cy-page.cy-hall .cy-frame { border-radius: 0; min-height: calc(100dvh - env(safe-area-inset-top) - 64px); display: grid; align-items: center;
+  background: radial-gradient(130% 80% at 50% 45%, #2a1d55 0%, #140d26 55%, #07040e 100%); }
+body.cy-imm .cy-page .cy-stage { width: min(100vw, calc((100dvh - env(safe-area-inset-top) - 64px) * var(--cy-ar, 1))); }
+@media (min-width: 760px) { body.cy-imm { margin: 0 !important; max-width: none; } body.cy-imm .wrap.cy-page { max-width: none; } }
+/* a hall or room opened from full screen stays full screen: only the app chrome is gone, the page reads normally */
+body.cy-imm .cy-hallpg, body.cy-imm .cy-room { padding-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) { body.cy-city .bottomnav, body.cy-city .fab, .cy-tool { transition: none; } }
+
+/* v2.86: the HUD fits a phone — five controls on one row: the scene chip and «شخصيتي» keep their icon/face, their words
+   stay in the accessible name (the chip's words move to a tooltip-like title) */
+@media (max-width: 560px) {
+  .cy-head { gap: 6px; inset-inline: 8px; top: 8px; }
+  .cy-head .cy-chip { padding: 0; width: 40px; height: 40px; justify-content: center; flex: none; }
+  .cy-head .cy-chip > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .cy-head .cy-me > span { display: none; }
+  [dir="rtl"] .cy-head .cy-me, .cy-head .cy-me { padding: 2px 6px; }
+  .cy-tool { width: 38px; height: 38px; }
+  .cy-tools { gap: 5px; }
+}
+/* full screen: the page heading steps aside too, the city is the whole screen */
+body.cy-imm .cy-page.cy-main #cy-pg-h { display: none; }
