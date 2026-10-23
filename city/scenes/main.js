@@ -3,6 +3,8 @@
  * (2026-10-22 v2), cleaned of baked text. Edit with the debug overlay (#/town?debug=1), which draws the graph, the hit
  * areas, the sign boards and the occluders over the art and prints tapped coordinates.
  *
+ * The city has its own pages only (owner 2026-10-23: no links to the app's pages): a place with an `href` opens its hall
+ * (#/city/…); a place without one shows «قيد البناء» until its hall is built.
  * Every place is a GATEWAY to its own independent system (user rule 2026-10-22: «كل نظام مستقل بذاته»): the city never
  * merges systems, it only opens the one you walked into.
  *   sign: the empty neon board on the art, as three corners [topStart, topEnd, bottomStart] — the live neon label is drawn
@@ -39,25 +41,25 @@
       [[318, 560], [332, 486], [402, 456], [478, 466], [524, 494], [524, 640], [318, 640]]
     ],
     places: [
-      { id: "vidtik", icon: "clapper", label: { ar: "فيديوتك", en: "Vidtik" }, accent: "#ff4fd8", door: "VD", href: "#/clips",
+      { id: "vidtik", icon: "clapper", label: { ar: "فيديوتك", en: "Vidtik" }, accent: "#ff4fd8", door: "VD",
         area: [[0, 170], [330, 10], [400, 60], [400, 450], [318, 520], [300, 610], [230, 620], [0, 500]], sign: [[150, 300], [360, 192], [150, 380]] },
-      { id: "communities", icon: "community", label: { ar: "المجتمعات", en: "Communities" }, accent: "#a875ff", door: "CM", href: "#/communities",
+      { id: "communities", icon: "community", label: { ar: "المجتمعات", en: "Communities" }, accent: "#a875ff", door: "CM",
         area: [[440, 40], [640, 0], [784, 40], [784, 330], [600, 430], [560, 470], [440, 430]], sign: [[470, 130], [640, 218], [467, 190]] },
-      { id: "work", icon: "brief", label: { ar: "العمل الحر", en: "Work" }, accent: "#46e3d4", door: "WD", href: "#/jobs",
+      { id: "work", icon: "brief", label: { ar: "العمل الحر", en: "Work" }, accent: "#46e3d4", door: "WD",
         area: [[322, 490], [402, 458], [478, 466], [524, 494], [524, 780], [440, 810], [322, 720]], sign: [[342, 484], [466, 552], [340, 542]] },
-      { id: "courses", icon: "cap", label: { ar: "الدورات", en: "Courses" }, accent: "#5d7bff", door: "CD", href: "#/courses",
+      { id: "courses", icon: "cap", label: { ar: "الدورات", en: "Courses" }, accent: "#5d7bff", door: "CD",
         area: [[524, 440], [784, 440], [784, 690], [620, 720], [590, 860], [524, 800]], sign: [[550, 456], [686, 528], [548, 516]] },
-      { id: "store", icon: "bag", label: { ar: "المتجر", en: "Store" }, accent: "#ff7a59", door: "SD", href: "#/market",
+      { id: "store", icon: "bag", label: { ar: "المتجر", en: "Store" }, accent: "#ff7a59", door: "SD",
         area: [[0, 690], [130, 620], [272, 690], [272, 880], [150, 920], [0, 870]], sign: [[124, 738], [264, 656], [124, 792]] },
-      { id: "mjt", icon: "coin", label: { ar: "مجتمع كوين", en: "MJT Coin" }, accent: "#ffcf5a", door: "MD", href: "#/town/mjt", vault: true, // the vault door opens onto the MJT hall (scenes/mjt.js)
+      { id: "mjt", icon: "coin", label: { ar: "مجتمع كوين", en: "MJT Coin" }, accent: "#ffcf5a", door: "MD", href: "#/city/mjt", vault: true, // the vault door opens onto the MJT hall (scenes/mjt.js)
         area: [[592, 700], [700, 672], [784, 700], [784, 1060], [650, 1010], [592, 950]], sign: [[602, 748], [718, 810], [602, 830]] },
-      { id: "local", icon: "store", label: { ar: "أعمال محلية", en: "Local business" }, accent: "#ffc94d", door: "LB", href: "#/biz",
+      { id: "local", icon: "store", label: { ar: "أعمال محلية", en: "Local business" }, accent: "#ffc94d", door: "LB",
         area: [[262, 930], [372, 880], [530, 960], [560, 1110], [440, 1170], [392, 1080], [262, 1030]], sign: [[264, 956], [358, 902], [264, 982]] },
-      { id: "records", icon: "receipt", label: { ar: "السجلات", en: "Records" }, accent: "#c8a0ff", door: "RD", href: "#/mjt",
+      { id: "records", icon: "receipt", label: { ar: "السجلات", en: "Records" }, accent: "#c8a0ff", door: "RD",
         area: [[0, 1110], [110, 1050], [252, 1100], [252, 1250], [120, 1310], [0, 1250]], sign: [[137, 1160], [246, 1095], [137, 1186]] },
-      { id: "harvest", icon: "sparkle", label: { ar: "التعدين", en: "Mining" }, accent: "#ffd76a", door: "TD", href: "#/mjt",
+      { id: "harvest", icon: "sparkle", label: { ar: "التعدين", en: "Mining" }, accent: "#ffd76a", door: "TD",
         area: [[600, 1040], [784, 1030], [784, 1280], [690, 1300], [612, 1250]], sign: [[614, 1218], [676, 1250], [614, 1240]] },
-      { id: "wallet", icon: "wallet", label: { ar: "المحفظة", en: "Wallet" }, accent: "#b9a2ff", door: "GD", href: "#/mjt",
+      { id: "wallet", icon: "wallet", label: { ar: "المحفظة", en: "Wallet" }, accent: "#b9a2ff", door: "GD",
         area: [[440, 1180], [530, 1170], [575, 1260], [560, 1341], [440, 1341]], sign: [[458, 1174], [530, 1212], [456, 1204]] }
     ],
     marks: [{ kind: "play", at: [52, 440], size: 22, skew: -0.15, accent: "#ff4fd8" }],
