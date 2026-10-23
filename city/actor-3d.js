@@ -1,9 +1,9 @@
 /* مجتمع بلس — «المدينة» character renderer "3d" (city/actor-3d.js). The member's own character — one of the five KayKit
- * Adventurers (CC0, weapons removed, 4 animations: Idle, Walking_A, Interact, Cheer; public/city/chars/*.glb ≈ 130 KB gz
- * each) — rendered live with three.js (public/city/three-city.js, ≈ 146 KB gz, loaded only here, only once).
+ * modern city people (v2.86: Quaternius Ultimate Modular Men/Women, CC0, trimmed to 4 animations: Idle, Walking_A,
+ * Interact, Cheer, quantized; public/city/chars/*.glb ≈ 300 KB gz each, only the member's own pick is fetched) — rendered live with three.js (public/city/three-city.js, ≈ 146 KB gz, loaded only here, only once).
  *
- *   MPCity.chars            the five characters, by gender (ذكر: الفارس، الساحر، المحارب · أنثى: المغامِرة، الرحّالة)
- *   MPCity.charId()         the member's pick (localStorage, synced to the server prefs namespace "city"); default knight
+ *   MPCity.chars            the five characters, by gender (ذكر: الهودي، الكاجوال، رجل الأعمال · أنثى: الكاجوال، سيدة الأعمال)
+ *   MPCity.charId()         the member's pick (localStorage, synced to the server prefs namespace "city"); default hoodie
  *   MPCity.setChar(id)      save a pick (the picker in city/profile.js calls it and re-dresses the city)
  *
  * Only ONE character is ever in the city: the member's own (owner rule 2026-10-23). It stands on a small holo base with the
@@ -14,16 +14,19 @@
   "use strict";
   const { el, esc, reduced } = MPCity.util;
 
+  // v2.86: modern city people (Quaternius Ultimate Modular Men/Women, CC0) — 3 men · 2 women; the KayKit adventurers retired
   const CHARS = [
-    { id: "knight", g: "m", label: { ar: "الفارس", en: "Knight" } },
-    { id: "mage", g: "m", label: { ar: "الساحر", en: "Mage" } },
-    { id: "barbarian", g: "m", label: { ar: "المحارب", en: "Barbarian" } },
-    { id: "rogue", g: "f", label: { ar: "المغامِرة", en: "Adventurer" } },
-    { id: "rogue-hooded", g: "f", label: { ar: "الرحّالة", en: "Wanderer" } }
+    { id: "hoodie", g: "m", label: { ar: "صاحب الهودي", en: "Hoodie" } },
+    { id: "casual", g: "m", label: { ar: "الكاجوال", en: "Casual" } },
+    { id: "suit", g: "m", label: { ar: "رجل الأعمال", en: "Business" } },
+    { id: "casual-f", g: "f", label: { ar: "الكاجوال", en: "Casual" } },
+    { id: "suit-f", g: "f", label: { ar: "سيدة الأعمال", en: "Business" } }
   ];
-  const KEY = "mp.city.char", DEF = "knight";
+  // a pick made before v2.86 maps to the nearest modern look (same gender)
+  const OLD = { knight: "suit", mage: "casual", barbarian: "hoodie", rogue: "casual-f", "rogue-hooded": "suit-f" };
+  const KEY = "mp.city.char", DEF = "hoodie";
   const valid = (id) => CHARS.some((c) => c.id === id);
-  const charId = () => { try { const v = localStorage.getItem(KEY); return valid(v) ? v : DEF; } catch { return DEF; } };
+  const charId = () => { try { const v = localStorage.getItem(KEY); return valid(v) ? v : (OLD[v] || DEF); } catch { return DEF; } };
   const signedIn = () => typeof S !== "undefined" && S.me && !!S.me();
   const call = (m, p, b) => (typeof Remote !== "undefined" && Remote.api ? Remote.api(m, p, b) : Promise.reject(new Error("no api")));
 
@@ -39,7 +42,7 @@
     if (pulled) return pulled;
     if (!signedIn()) return Promise.resolve(charId());
     pulled = call("GET", "/api/prefs?ns=city").then((r) => {
-      const v = r && r.prefs && r.prefs.city && r.prefs.city.char;
+      let v = r && r.prefs && r.prefs.city && r.prefs.city.char; if (OLD[v]) v = OLD[v];
       if (valid(v) && v !== charId()) { try { localStorage.setItem(KEY, v); } catch { } }
       return charId();
     }, () => charId());
