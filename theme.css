@@ -981,3 +981,6 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 .vt-strip-ph { display: grid; place-items: center; width: 100%; height: 100%; }
 .vt-strip-n { position: absolute; inset-inline-start: 6px; inset-block-end: 6px; display: inline-flex; align-items: center; gap: 3px; color: white; font-size: var(--fs-xs); font-weight: 700; text-shadow: 0 1px 4px rgba(0, 0, 0, .7); }
 .vt-strip-t:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* v2.83 «المدينة»: the city's place at the top of #/me is reserved before its lazy chunk lands (no layout shift) */
+.cy-slot { position: relative; max-width: 640px; margin: 0 auto 12px; }
+.cy-skel { aspect-ratio: 1 / 1; max-height: min(78vh, 640px); border-radius: 0 0 26px 26px; background: radial-gradient(120% 90% at 50% 40%, rgb(42 33 64), rgb(27 22 38) 60%, rgb(17 13 26)); }
