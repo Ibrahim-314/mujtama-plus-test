@@ -1,5 +1,73 @@
 [
  {
+  "v": "2.85.0",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "قاعات مدينة المجتمع الرقمية",
+   "items": [
+    "ست قاعات جديدة داخل المدينة: ساحة المجتمعات، استوديو فيديوتك، برج العمل الحر، أكاديمية المدينة، سوق المدينة، حي الأعمال المحلية",
+    "كل قاعة تعرض بياناتك الحقيقية بتصميم المدينة، والتفاصيل تفتح داخل المدينة نفسها",
+    "شريط رصيد MJT أعلى خريطة المدينة يفتح قاعة الرصيد مباشرة",
+    "دليل المدينة أسفل الخريطة يعرّفك بكل مبنى وقاعاته",
+    "مباني السجلات والتعدين والمحفظة صارت تفتح قاعات MJT الخاصة بها",
+    "بطاقات نيون جديدة بمؤشرات وأشرطة تقدم ولون خاص لكل مبنى، بالعربية والإنجليزية",
+    "صفحة «سجل الإصدارات» الثابتة: تجد فيها ما تغيّر في كل إصدار متى ما رجعت لها"
+   ]
+  },
+  "en": {
+   "title": "Digital City halls",
+   "items": [
+    "Six new halls inside the city: Communities Square, Vidtik Studio, Freelance Tower, City Academy, City Market, Local Business District",
+    "Each hall shows your real data in the city's design, and details open inside the city",
+    "An MJT balance bar on top of the city map opens the balance hall",
+    "A city guide under the map explains every building and its halls",
+    "The Records, Mining and Wallet buildings now open their MJT halls",
+    "New neon cards with stats, progress bars and a color per building, in Arabic and English",
+    "A permanent Release history page: see what changed in every version anytime"
+   ]
+  }
+ },
+ {
+  "v": "2.84.0",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "مدينة المجتمع الرقمية",
+   "items": [
+    "مدينة المجتمع صارت صفحة مستقلة تدخلها من «المزيد»",
+    "قاعة MJT داخل المدينة: الرصيد، السجل، التحويل، الكسب، والإحصاءات ببياناتك الحقيقية",
+    "المباني التي لم تكتمل تظهر بعلامة «قيد البناء»"
+   ]
+  },
+  "en": {
+   "title": "Digital Community City",
+   "items": [
+    "The community city is now its own page, opened from More",
+    "MJT hall inside the city: balance, history, send, earn and stats with your real data",
+    "Buildings not ready yet show «Under construction»"
+   ]
+  }
+ },
+ {
+  "v": "2.83.0",
+  "date": "2026-10-23",
+  "ar": {
+   "title": "أساس المدينة الرقمية",
+   "items": [
+    "خريطة مدينة نيون بلافتات عربية حيّة وطريق مضيء",
+    "اختيار شخصيتك في المدينة وحفظها في حسابك",
+    "قاعة خزنة MJT ببوابة متحركة"
+   ]
+  },
+  "en": {
+   "title": "Digital city foundation",
+   "items": [
+    "A neon city map with live Arabic signs and a glowing route",
+    "Pick your city character, saved to your account",
+    "MJT vault hall with an animated portal door"
+   ]
+  }
+ },
+ {
   "v": "2.82.0",
   "date": "2026-10-23",
   "ar": {
