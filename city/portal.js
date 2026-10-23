@@ -2,7 +2,8 @@
  * full-screen portal takes over — the building's emblem assembles from light inside orbiting rings, «جارٍ الدخول إلى …»
  * and a progress line — and the building's own system opens underneath. The city only opens the door; the system it
  * leads to stays independent. Reduced motion: a short cross-fade, no rings or particles.
- * MPCity.portal(place, href) can also be called by a feature (e.g. an interior's «خروج»). */
+ * MPCity.portal(place, href) can also be called by a feature (e.g. an interior's «خروج»).
+ * The city links only to its own pages (#/city/…): a building with no hall yet shows a «قيد البناء» card instead. */
 (function CityPortal() {
   "use strict";
   const { el, esc, T, label, reduced } = MPCity.util;
@@ -33,6 +34,17 @@
     }, hold);
   }
 
+  /* a building whose own hall is not built yet: a small neon card over the city — the city never sends the member to the
+   * app's pages (owner 2026-10-23) */
+  function soon(pl, city) {
+    const old = city.root.querySelector(".cy-soon"); if (old) old.remove();
+    const c = el("div", "cy-soon", { role: "status", "aria-live": "polite" });
+    c.style.setProperty("--cy-acc", pl.accent || "#a875ff");
+    c.innerHTML = `${pl.icon ? `<svg class="ic" aria-hidden="true"><use href="#i-${esc(pl.icon)}"/></svg>` : ""}<span><b>${esc(label(pl))}</b><small>${esc(T("قاعة هذا المبنى قيد البناء، وستُفتح قريباً داخل المدينة"))}</small></span>`;
+    city.root.append(c); requestAnimationFrame(() => c.classList.add("on"));
+    setTimeout(() => { c.classList.remove("on"); setTimeout(() => c.remove(), 300); }, 3200);
+  }
+
   MPCity.portal = portal;
   MPCity.use((city) => {
     city.on("arrive", (goal) => {
@@ -42,12 +54,12 @@
       city.root.classList.add("cy-entering");
       setTimeout(() => {
         if (pl.back) { // an interior's «خروج»: back to the city the member came from (profile or #/town)
-          let to = "#/me"; try { to = sessionStorage.getItem("mp.city.from") || to; } catch { }
-          portal(pl, to, { text: T("العودة إلى المدينة") });
+          portal(pl, "#/city", { text: T("العودة إلى المدينة") });
         } else if (pl.vault) { // the MJT vault: remember which city opened it, and walk in at the gate
-          try { sessionStorage.setItem("mp.city.from", city.opts.place === "page" ? "#/town" : "#/me"); sessionStorage.removeItem("mp.city.at.mjt"); } catch { }
+          try { sessionStorage.removeItem("mp.city.at.mjt"); } catch { }
           portal(pl, pl.href, { vault: true });
-        } else portal(pl, pl.href);
+        } else if (pl.href) portal(pl, pl.href);
+        else soon(pl, city); // a building whose hall is still being built
         // when the member comes back the character waits at the door it entered
         setTimeout(() => { if (a && a.exit) a.exit(); city.root.classList.remove("cy-entering"); }, 900);
       }, MPCity.util.reduced() ? 0 : 380);
