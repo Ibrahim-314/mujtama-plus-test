@@ -79,19 +79,47 @@
    *   #/city/mjt/<room>   one of the hall's rooms (city/rooms.js): balance · history · send · earn · stats
    *   #/town[/…]          the old address, sent to #/city */
   const head = (back, title) => UI.pageHead({ back, title, id: "cy-pg-h" });
+
+  /* v2.85 «دليل المدينة»: every building as a neon card under the map (one tap walks the character there and opens its
+   * hall), so the city is quick to use and works fully without the map (keyboard, screen readers) */
+  const DIR_SUB = { vidtik: "مقاطعك وأرقامها والرائج", communities: "مجتمعاتك وما يناسبك", work: "طلباتك وأحدث الفرص", courses: "تقدمك في الدورات", store: "منتجاتك وجديد السوق",
+    mjt: "خزنة مجتمع كوين", local: "أنشطتك والأعلى تقييماً", records: "كل حركات رصيدك", harvest: "تعدين اليوم", wallet: "أرسل واستقبل" };
+  function directory() {
+    const pl = ((MPCityScenes.main || {}).places || []).filter((p) => p.href);
+    return `<section class="cy-dir" aria-labelledby="cy-dir-h"><h3 id="cy-dir-h">${esc(T("دليل المدينة"))}</h3><ul>${pl.map((p) => `<li><a href="${esc(p.href)}" data-place="${esc(p.id)}" data-acc="${esc(p.accent || "#a875ff")}"><span class="cy-dir-i"><svg class="ic" aria-hidden="true"><use href="#i-${esc(p.icon)}"/></svg></span><span class="cy-dir-t"><b>${esc((p.label && p.label[MPCity.util.lang()]) || p.label.ar)}</b><small>${esc(T(DIR_SUB[p.id] || ""))}</small></span></a></li>`).join("")}</ul></section>`;
+  }
+  function wireDir(city) {
+    const box = document.querySelector(".cy-dir"); if (!box) return;
+    box.querySelectorAll("a[data-acc]").forEach((a) => a.style.setProperty("--cy-acc", a.dataset.acc));
+    box.addEventListener("click", (e) => {
+      const a = e.target.closest("a[data-place]"); if (!a || !city || MPCity.util.reduced()) return;
+      if (city.walkTo(a.dataset.place)) { e.preventDefault(); document.getElementById("cy-page-slot")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    });
+  }
+  /* the city's gold balance chip, top of the map: the member's real MJT balance, opens the balance room */
+  function hud(city) {
+    if (!city || typeof DB === "undefined" || !DB.me) return;
+    const h = city.root.closest(".cy-frame")?.querySelector(".cy-head"); if (!h) return;
+    const a = el("a", "cy-bal", { href: "#/city/mjt/balance" });
+    a.innerHTML = `<svg class="ic sm" aria-hidden="true"><use href="#i-coin"/></svg><span class="cy-sr">${esc(T("رصيدك"))}</span><bdi dir="ltr">…</bdi><small>MJT</small>`;
+    h.querySelector(".cy-chip")?.after(a);
+    Remote.api("GET", "/api/mjt/me").then((m) => { const b = a.querySelector("bdi"); if (b) b.textContent = String(m.balance.mjt); }, () => a.remove());
+  }
   MPRoutes.extend((a, b) => {
     const city = () => {
       const debug = /[?&]debug=1/.test(location.hash);
       a = (a || "").split("?")[0]; b = (b || "").split("?")[0];
       if (a === "mjt" && b && MPCity.room && MPCity.room(b)) return;
+      if (a && a !== "mjt" && MPCity.hall && MPCity.hall(a)) return; // a building's own hall (city/halls.js)
       if (a === "mjt") {
         const t = (MPCityScenes.mjt.title || {})[MPCity.util.lang()] || "مجتمع كوين";
         view.innerHTML = `<div class="wrap cy-page cy-hall">${head(["#/city", T("مدينة المجتمع الرقمية")], t)}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
         frame(document.getElementById("cy-page-slot"), { scene: "mjt", place: "hall", debug });
         return;
       }
-      view.innerHTML = `<div class="wrap cy-page">${head(["#/menu", T("المزيد")], T("مدينة المجتمع الرقمية"))}<div id="cy-page-slot" class="cy-slot cy-live"></div></div>`;
-      frame(document.getElementById("cy-page-slot"), { scene: "main", place: "page", debug });
+      view.innerHTML = `<div class="wrap cy-page cy-main">${head(["#/menu", T("المزيد")], T("مدينة المجتمع الرقمية"))}<div id="cy-page-slot" class="cy-slot cy-live"></div>${directory()}</div>`;
+      const c = frame(document.getElementById("cy-page-slot"), { scene: "main", place: "page", debug });
+      hud(c); wireDir(c);
     };
     return { city, town: () => { location.replace("#/city" + (a ? "/" + a : "") + (b ? "/" + b : "")); } };
   });
