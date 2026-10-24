@@ -106,25 +106,70 @@ function nearLayer(W, H, seed) {
 }
 
 
-/** the MJT Core — the golden tower of the story, standing alone in the middle of the view on its own layer */
+/** the MJT Core — the golden supertall of the story. Stepped glass tiers with gold setback rims, vertical
+ * mullions, a sky reflection, a glowing halo crown carrying the MJT coin, and a needle spire. Own layer, centred. */
 function coreLayer(W, H) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
-  const cx = W / 2, bw = W * 0.34, top = H * 0.16;
-  // soft beam into the sky
-  const beam = x.createLinearGradient(0, 0, 0, top); beam.addColorStop(0, "rgba(255,200,90,0)"); beam.addColorStop(1, "rgba(255,200,90,.45)");
-  x.fillStyle = beam; x.fillRect(cx - W * 0.03, 0, W * 0.06, top);
+  const cx = W / 2, rnd = rand(71);
+  // tiers bottom→top: [yTop, halfWidth]
+  const tiers = [[0.60, 0.34], [0.43, 0.27], [0.31, 0.205], [0.235, 0.15]].map(([y, w]) => [y * H, w * W]);
+  const crownTop = H * 0.15, spireTop = H * 0.035;
+  // atmospheric glow behind the whole tower
+  const glow = x.createRadialGradient(cx, H * 0.25, 0, cx, H * 0.25, W * 0.55);
+  glow.addColorStop(0, "rgba(255,190,90,.20)"); glow.addColorStop(1, "rgba(255,190,90,0)");
+  x.fillStyle = glow; x.fillRect(0, 0, W, H * 0.7);
+  const glass = (x0, x1) => {
+    const g = x.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, "#0b0a10"); g.addColorStop(0.22, "#1d1a1f"); g.addColorStop(0.36, "#5a4526");
+    g.addColorStop(0.42, "#2c2418"); g.addColorStop(0.7, "#141218"); g.addColorStop(1, "#08070b");
+    return g;
+  };
+  let bottom = H;
+  for (const [yTop, hw] of tiers) {
+    const x0 = cx - hw, x1 = cx + hw;
+    x.fillStyle = glass(x0, x1); x.fillRect(x0, yTop, hw * 2, bottom - yTop);
+    // vertical reflection of the sky fading down the face
+    const v = x.createLinearGradient(0, yTop, 0, bottom); v.addColorStop(0, "rgba(120,140,190,.16)"); v.addColorStop(1, "rgba(0,0,0,0)");
+    x.fillStyle = v; x.fillRect(x0, yTop, hw * 2, bottom - yTop);
+    // mullions
+    const step = Math.max(3, W * 0.024);
+    for (let mx = x0 + step; mx < x1 - 1; mx += step) { x.fillStyle = "rgba(255,210,140,.10)"; x.fillRect(mx, yTop, 1, bottom - yTop); }
+    // floor bands + sparse warm windows
+    const fh = Math.max(3, H * 0.0065);
+    for (let fy = yTop + fh; fy < bottom; fy += fh) {
+      x.fillStyle = "rgba(0,0,0,.35)"; x.fillRect(x0, fy, hw * 2, 1);
+      for (let mx = x0 + 1; mx < x1 - step; mx += step) if (rnd() < 0.11) { x.fillStyle = `rgba(255,${190 + rnd() * 40 | 0},130,${0.2 + rnd() * 0.3})`; x.fillRect(mx + 2, fy + 1, step - 4, fh - 2); }
+    }
+    // gold setback rim with a soft glow
+    x.save(); x.shadowColor = "rgba(255,196,90,.9)"; x.shadowBlur = W * 0.03;
+    x.fillStyle = "#ffcf6a"; x.fillRect(x0 - W * 0.006, yTop, hw * 2 + W * 0.012, Math.max(2, H * 0.004)); x.restore();
+    // corner edge highlight
+    x.fillStyle = "rgba(255,214,150,.35)"; x.fillRect(x0, yTop, Math.max(1, W * 0.004), bottom - yTop);
+    bottom = yTop;
+  }
+  // central light seam
+  const seam = x.createLinearGradient(0, tiers[3][0], 0, H); seam.addColorStop(0, "rgba(255,206,110,.75)"); seam.addColorStop(1, "rgba(255,206,110,.05)");
+  x.fillStyle = seam; x.fillRect(cx - W * 0.004, tiers[3][0], W * 0.008, H - tiers[3][0]);
+  // crown: tapered gold-framed lantern
+  const cb = tiers[3][0], chw = tiers[3][1] * 0.86, ctw = chw * 0.55;
+  const cg = x.createLinearGradient(cx - chw, 0, cx + chw, 0); cg.addColorStop(0, "#3a2a10"); cg.addColorStop(0.4, "#c8932f"); cg.addColorStop(0.55, "#ffe08a"); cg.addColorStop(1, "#4a3412");
+  x.save(); x.shadowColor = "rgba(255,200,90,.8)"; x.shadowBlur = W * 0.05;
+  x.fillStyle = cg; x.beginPath(); x.moveTo(cx - chw, cb); x.lineTo(cx - ctw, crownTop); x.lineTo(cx + ctw, crownTop); x.lineTo(cx + chw, cb); x.closePath(); x.fill(); x.restore();
+  // lantern ribs
+  x.strokeStyle = "rgba(60,40,10,.55)"; x.lineWidth = Math.max(1, W * 0.004);
+  for (let i = -3; i <= 3; i++) { x.beginPath(); x.moveTo(cx + i * chw / 3.5, cb); x.lineTo(cx + i * ctw / 3.5, crownTop); x.stroke(); }
   // halo ring around the crown
-  x.strokeStyle = "rgba(255,200,90,.55)"; x.lineWidth = H * 0.004; x.beginPath(); x.ellipse(cx, top + H * 0.05, bw * 0.95, H * 0.018, 0, 0, Math.PI * 2); x.stroke();
-  // body: tapering, warm metal with a lit edge
-  const g = x.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0); g.addColorStop(0, "#1c1408"); g.addColorStop(0.35, "#4a3412"); g.addColorStop(0.55, "#2a1d0b"); g.addColorStop(1, "#120c05");
-  x.fillStyle = g; x.beginPath(); x.moveTo(cx, top - H * 0.08); x.lineTo(cx + bw * 0.32, top + H * 0.03); x.lineTo(cx + bw * 0.5, H); x.lineTo(cx - bw * 0.5, H); x.lineTo(cx - bw * 0.32, top + H * 0.03); x.closePath(); x.fill();
-  // spire
-  x.fillStyle = "#ffcf5c"; x.fillRect(cx - W * 0.006, top - H * 0.15, W * 0.012, H * 0.08);
-  // gold rings (bands) up the tower and a column of warm windows
-  for (let i = 0; i < 14; i++) { const y = top + H * 0.06 + i * H * 0.058, k = (y - top) / (H - top), half = bw * (0.32 + 0.18 * k); x.fillStyle = `rgba(255,194,61,${0.85 - i * 0.03})`; x.fillRect(cx - half, y, half * 2, Math.max(2, H * 0.005)); }
-  for (let y = top + H * 0.09; y < H; y += H * 0.022) for (let k = -2; k <= 2; k++) { if (Math.random() < 0.35) continue; x.fillStyle = `rgba(255,214,140,${0.35 + Math.random() * 0.4})`; x.fillRect(cx + k * bw * 0.11 - 2, y, 4, H * 0.008); }
-  // the MJT mark near the crown
-  x.fillStyle = "#ffd36b"; x.font = `800 ${Math.round(W * 0.07)}px sans-serif`; x.textAlign = "center"; x.fillText("MJT", cx, top + H * 0.115);
+  x.save(); x.shadowColor = "rgba(255,210,120,1)"; x.shadowBlur = W * 0.04; x.strokeStyle = "rgba(255,222,150,.9)"; x.lineWidth = Math.max(2, H * 0.003);
+  x.beginPath(); x.ellipse(cx, (cb + crownTop) / 2, chw * 1.55, H * 0.012, 0, 0, Math.PI * 2); x.stroke(); x.restore();
+  // MJT coin emblem
+  const ey = cb + (crownTop - cb) * 0.45, er = chw * 0.55;
+  x.fillStyle = "#1a1206"; x.beginPath(); x.arc(cx, ey, er, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = "#ffd36b"; x.lineWidth = Math.max(2, er * 0.14); x.beginPath(); x.arc(cx, ey, er * 0.86, 0, Math.PI * 2); x.stroke();
+  x.fillStyle = "#ffd36b"; x.font = `800 ${Math.round(er * 0.72)}px sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("MJT", cx, ey + er * 0.04);
+  // spire + aviation light
+  const sg = x.createLinearGradient(0, spireTop, 0, crownTop); sg.addColorStop(0, "#fff1c4"); sg.addColorStop(1, "#c8932f");
+  x.fillStyle = sg; x.beginPath(); x.moveTo(cx, spireTop); x.lineTo(cx + W * 0.012, crownTop); x.lineTo(cx - W * 0.012, crownTop); x.closePath(); x.fill();
+  x.save(); x.shadowColor = "#ff3b3b"; x.shadowBlur = W * 0.04; x.fillStyle = "#ff5a5a"; x.beginPath(); x.arc(cx, spireTop, Math.max(2, W * 0.008), 0, Math.PI * 2); x.fill(); x.restore();
   return { cv };
 }
 
@@ -132,11 +177,11 @@ function coreLayer(W, H) {
  * with three virtual planes behind the wall (far / mid / near) and the painted layers are composited — true parallax as
  * the player walks, zero cost outside the window, and the city is never visible anywhere but through the glass.
  * Flying cars and rain on the glass are added in the same pass. */
-const L = { far: { z: -40, w: 120, h: 60, y: 4 }, mid: { z: -22, w: 70, h: 26.25, y: -9 }, near: { z: -8, w: 24, h: 24, y: -6 }, core: { z: -16, w: 9, h: 30, y: -9 }, cars: -15 };
+const L = { far: { z: -40, w: 120, h: 60, y: 4 }, mid: { z: -22, w: 70, h: 26.25, y: -9 }, near: { z: -8, w: 24, h: 24, y: -6 }, core: { z: -16, w: 10, h: 34, y: -10 }, cars: -15 };
 
 export function windowMaterial({ hi = true } = {}) {
   const k = hi ? 1 : 0.5;
-  const far = farLayer(2048 * k, 1024 * k, 11), mid = midLayer(2048 * k, 768 * k, 29), near = nearLayer(1024 * k, 1024 * k, 47), core = coreLayer(256 * (hi ? 2 : 1), 1024 * k);
+  const far = farLayer(2048 * k, 1024 * k, 11), mid = midLayer(2048 * k, 768 * k, 29), near = nearLayer(1024 * k, 1024 * k, 47), core = coreLayer(hi ? 768 : 384, hi ? 2600 : 1300);
   const plane = (o) => `vec4(${o.z.toFixed(2)}, ${o.w.toFixed(2)}, ${o.h.toFixed(2)}, ${o.y.toFixed(2)})`;
   return new ShaderMaterial({
     uniforms: { tFar: { value: tex(far.cv) }, tMid: { value: tex(mid.cv) }, tNear: { value: tex(near.cv) }, tCore: { value: tex(core.cv) }, uTime: { value: 0 } },
