@@ -37,8 +37,9 @@ export const CHAPTER0 = {
       label: { ar: "الباب", en: "Door" }, verb: { ar: "افتح", en: "Open" },
       lines: [
         { ar: "الباب مقفل. الشاشة الصغيرة بجانبه تقول: «بانتظار التصريح».", en: "The door is locked. The little screen beside it says: “Awaiting clearance.”" },
-        { ar: "يبدو أن المدينة لم تفتح أبوابها لك بعد… قريباً.", en: "It seems the city has not opened its doors to you yet… soon." }
-      ]
+        { ar: "يبدو أن المدينة لم تفتح أبوابها لك بعد… أكمل استكشاف شقتك.", en: "It seems the city has not opened its doors to you yet… finish exploring your apartment." }
+      ],
+      open: { ar: "الباب مفتوح. الشارع ينتظرك", en: "The door is open. The street awaits" }
     },
     boxes: {
       label: { ar: "الصناديق", en: "Boxes" }, verb: { ar: "افحص", en: "Inspect" },
@@ -58,6 +59,6 @@ export const CHAPTER0 = {
   },
   done: [
     { ar: "عرفت مكانك الآن، {name}. الحاسوب يعدّن، والمدينة تنتظر.", en: "Now you know your place, {name}. The computer is mining, and the city is waiting." },
-    { ar: "حين يُفتح ذلك الباب… تبدأ رحلتك الحقيقية. الفصل 1 قريباً.", en: "When that door opens… your real journey begins. Chapter 1 is coming soon." }
+    { ar: "سمعت؟ ضوء الباب صار ذهبياً… لقد فُتح لك. اخرج إلى الشارع وامشِ إلى برج MJT.", en: "Hear that? The door light turned gold… it is open for you. Step out and walk to the MJT tower." }
   ]
 };
