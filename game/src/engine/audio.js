@@ -13,7 +13,7 @@ const chord = (...ns) => ns.map(N);
 /* ---------- the tracks: chords per bar, a bass line, an arpeggio and drums on a 16-step grid ---------- */
 const TRACKS = {
   title: {
-    bpm: 88, padCut: 1400, padGain: 0.11, arpGain: 0.05, bassGain: 0.16, kick: [0, 8], hat: [4, 12], hatGain: 0.018, kickGain: 0.32,
+    bpm: 88, padCut: 1400, padGain: 0.11, arpGain: 0.05, bassGain: 0.16, kick: [0, 8], hat: [4, 12], hatGain: 0.008, kickGain: 0.26,
     bars: [chord("A3", "C4", "E4", "B4"), chord("F3", "A3", "C4", "E4"), chord("C3", "E3", "G3", "D4"), chord("G3", "B3", "D4", "F#4")],
     bass: [N("A1"), N("F1"), N("C2"), N("G1")], bassSteps: [0, 3, 6, 8, 11, 14],
     arp: [0, 1, 2, 3, 2, 1, 2, 3], arpOct: 12, arpEvery: 2
@@ -149,12 +149,10 @@ export class Audio {
     if (!name) { this.cur.ambient = null; return; }
     const c = this.ctx, g = c.createGain(); g.gain.value = 0.0001; g.connect(this.bus.ambient); g.gain.setTargetAtTime(1, c.currentTime + 0.3, 1.2);
     const nodes = [];
-    const loop = (type, freq, gain, q = 0.7, rate = 1) => { const s = c.createBufferSource(); s.buffer = this.noiseBuf; s.loop = true; s.playbackRate.value = rate; const f = c.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; const v = c.createGain(); v.gain.value = gain; s.connect(f).connect(v).connect(g); s.start(); nodes.push(s); return { f, v }; };
     const lfo = (param, rate, depth) => { const o = c.createOscillator(), d = c.createGain(); o.frequency.value = rate; d.gain.value = depth; o.connect(d).connect(param); o.start(); nodes.push(o); };
     if (name === "city") {
-      const hum = loop("lowpass", 220, 0.5, 0.5, 0.5); lfo(hum.v.gain, 0.07, 0.18);
-      const wind = loop("bandpass", 600, 0.12, 1.2); lfo(wind.f.frequency, 0.05, 260); lfo(wind.v.gain, 0.11, 0.06);
-      const drone = c.createOscillator(); drone.type = "sine"; drone.frequency.value = 55; const dg = c.createGain(); dg.gain.value = 0.05; drone.connect(dg).connect(g); drone.start(); nodes.push(drone);
+      // v2.89.1: no noise loops (read as hiss on phones) — a soft breathing drone only
+      for (const [f, v] of [[55, 0.04], [110.5, 0.012]]) { const o = c.createOscillator(); o.type = "sine"; o.frequency.value = f; const og = c.createGain(); og.gain.value = v; o.connect(og).connect(g); o.start(); nodes.push(o); lfo(og.gain, 0.06, v * 0.5); }
     } else if (name === "room") {
       // no noise at all: just a very soft, slowly breathing low tone — the city far below, felt more than heard
       for (const [f, v] of [[55, 0.035], [82.4, 0.018]]) { const o = c.createOscillator(); o.type = "sine"; o.frequency.value = f; const og = c.createGain(); og.gain.value = v; o.connect(og).connect(g); o.start(); nodes.push(o); lfo(og.gain, 0.05 + f / 4000, v * 0.5); }
@@ -177,7 +175,7 @@ export class Audio {
       case "coin": tone(1318, 0, 0.5, "sine", 0.14); tone(1760, 0.08, 0.7, "sine", 0.12); tone(2637, 0.08, 0.4, "triangle", 0.04); break;
       case "locked": tone(140, 0, 0.12, "square", 0.08); tone(110, 0.15, 0.18, "square", 0.08); break;
       case "open": tone(400, 0, 0.4, "triangle", 0.1, 900); tone(1200, 0.2, 0.3, "sine", 0.06); break;
-      case "type": tone(1800 + Math.random() * 400, 0, 0.02, "square", 0.015); break;
+      case "type": tone(1100 + Math.random() * 150, 0, 0.025, "sine", 0.008); break;
       case "scan": tone(300, 0, 0.9, "sawtooth", 0.035, 1600); tone(2400, 0.7, 0.2, "sine", 0.05); break;
       case "ping": tone(1975, 0, 0.6, "sine", 0.08); tone(2960, 0.03, 0.5, "sine", 0.03); break;
       case "reveal": [392, 523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, i * 0.09, 0.9, "triangle", 0.07)); tone(65, 0, 1.6, "sine", 0.25, 40); break;
