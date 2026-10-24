@@ -1,0 +1,11 @@
+/* The app side of «المدينة الرقمية»: while the game is mounted the app's chrome steps aside and the game owns the screen.
+ * The game's own styles are in game/src/ui/game.css (loaded with the game). */
+body.gm-on { overflow: hidden; overscroll-behavior: none; }
+body.gm-on .topbar, body.gm-on .bottomnav, body.gm-on .sidebar, body.gm-on .fab, body.gm-on #install-banner { visibility: hidden !important; }
+#gm-root { position: fixed; inset: 0; z-index: 2147483000; background: #03040f; }
+body.gm-on .cy-st { z-index: 2147483100; }
+.gm-boot { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; color: #eaf2ff; font-weight: 700; background: radial-gradient(circle at 50% 40%, #12123a, #02030b 70%); }
+.gm-boot i { width: 64px; height: 64px; border-radius: 50%; border: 3px solid rgba(255, 194, 61, 0.2); border-top-color: #ffc23d; animation: gm-boot-spin 1s linear infinite; }
+.gm-boot.err a { color: #ffc23d; }
+@keyframes gm-boot-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gm-boot i { animation: none; } }
