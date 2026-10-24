@@ -41,6 +41,8 @@
 /* ---------- panels / modal ---------- */
 .gm-modal { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(2, 3, 14, 0.62); opacity: 0; transition: opacity 0.2s ease; }
 .gm-modal.on { opacity: 1; }
+/* the hidden attribute must win over display:grid/flex, or an invisible layer swallows every tap */
+.gm [hidden] { display: none !important; }
 .gm-panel { width: min(420px, 100%); max-height: 100%; overflow: auto; padding: 22px; background: linear-gradient(160deg, rgba(16, 22, 58, 0.94), rgba(8, 10, 30, 0.96));
   box-shadow: inset 0 0 0 1px var(--gm-line), 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(47, 230, 255, 0.08);
   clip-path: polygon(22px 0, 100% 0, 100% calc(100% - 22px), calc(100% - 22px) 100%, 0 100%, 0 22px); transform: translateY(14px) scale(0.98); transition: transform 0.25s cubic-bezier(.2, .9, .3, 1.2); }
