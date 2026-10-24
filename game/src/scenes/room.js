@@ -4,7 +4,7 @@
  * v2.89: the city is no longer a 3D skyline around the room — it is painted into the window glass with parallax
  * (world/windowview.js), so the whole GPU budget goes to the room: wood floor, wainscot, curtains, art, contact shadows.
  * The player walks with the joystick / keys or by tapping the floor; glowing markers show what can be used.
- * The computer is the MJT terminal (mining, wallet, records — the real pages); the door stays locked until chapter 1. */
+ * The computer runs MJT OS (a Windows-11-style desktop: mining program + wallet/records launchers); the door stays locked until chapter 1. */
 import {
   Scene, PerspectiveCamera, Color, HemisphereLight, DirectionalLight, PointLight, Mesh, BoxGeometry, PlaneGeometry,
   MeshStandardMaterial, MeshBasicMaterial, Group, Vector3, Raycaster, Vector2, CanvasTexture, RepeatWrapping,
@@ -19,6 +19,8 @@ import { t, tl, fill } from "../engine/i18n.js";
 import { esc, icon } from "../ui/ui.js";
 import { openPause } from "../ui/menus.js";
 import { CHAPTER0 as C } from "../story/chapter0.js";
+import { openOS } from "../os/desktop.js";
+import "../os/apps.js";
 
 const W = 4, D = 3, H = 3, TH = 0.16; // half width (x), half depth (z), wall height, wall thickness
 const WIN = { x0: -1.7, x1: 1.7, y0: 0.75, y1: 2.65 };
@@ -307,7 +309,7 @@ export async function create(game, params = {}) {
       } else if (th.id === "computer") {
         await player.gesture("Interact");
         if (!done("computer")) await game.ui.dialog(lines(C.things.computer.first), tl(C.narrator));
-        mark("computer"); terminal(); busy = false; return;
+        mark("computer"); busy = false; await computer(); return;
       } else if (th.id === "door") {
         game.audio.sfx("locked"); doorPad.material.color.setRGB(4, 0.4, 0.6); await player.gesture("Interact");
         await game.ui.dialog(lines(C.things.door.lines), tl(C.narrator)); doorPad.material.color.copy(new Color(PALETTE.red).multiplyScalar(2));
@@ -331,28 +333,13 @@ export async function create(game, params = {}) {
     doorLed.material.color.copy(new Color(PALETTE.gold).multiplyScalar(3)); busy = false;
   }
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3600); }
-  function terminal() {
-    const s = mining?.session;
-    let status = t("جهاز التعدين متوقف — ابدأ دورة جديدة", "The miner is idle — start a new cycle");
-    if (!game.member) status = t("سجّل الدخول لتبدأ التعدين", "Sign in to start mining");
-    else if (s?.ready) status = t("اكتملت الدورة — استلم أرباحك", "Cycle complete — claim your coins");
-    else if (s) { const left = Math.max(0, Date.parse(s.endsAt) - Date.now()), hh = Math.floor(left / 3600e3), mm = Math.floor(left / 60e3) % 60; status = fill(t("يعدّن الآن — متبقٍ {h}س {m}د", "Mining — {h}h {m}m left"), { h: hh, m: mm }); }
-    const opt = (id, ic, l, d) => `<button type="button" class="gm-term-o" data-st="${id}">${icon(ic)}<span><b>${esc(l)}</b><small>${esc(d)}</small></span></button>`;
-    const p = game.ui.modal(`
-      <header class="gm-ph term">${icon("chip")}<h2>${esc(t("طرفية مجتمع كوين", "Mujtama Coin terminal"))}</h2><button type="button" class="gm-ico" data-a="x" aria-label="${esc(t("إغلاق", "Close"))}" data-sfx="back">${icon("x")}</button></header>
-      <p class="gm-term-s ${s ? (s.ready ? "ready" : "run") : ""}">${esc(status)}</p>
-      <div class="gm-term">
-        ${opt("earn", "spark", t("التعدين", "Mining"), t("دورة 24 ساعة · 5 MJT", "24-hour cycle · 5 MJT"))}
-        ${opt("send", "wallet", t("المحفظة", "Wallet"), t("أرسل واستقبل", "Send and receive"))}
-        ${opt("balance", "coin", t("الرصيد", "Balance"), t("رصيدك ومكافآت اليوم", "Your balance and today's rewards"))}
-        ${opt("history", "list", t("السجلات", "Records"), t("كل حركة", "Every movement"))}
-        ${opt("stats", "chart", t("الإحصاءات", "Stats"), t("من أين يأتي رصيدك", "Where your coins come from"))}
-      </div>`, "gm-termm");
-    p.addEventListener("click", (e) => {
-      const st = e.target.closest("[data-st]")?.dataset.st; if (st) { game.ui.closeModal(); game.openStation(st); return; }
-      if (e.target.closest("[data-a=x]")) game.ui.closeModal();
-    });
-    p.querySelector(".gm-term-o")?.focus();
+  // the computer: the camera leans in to the monitor (like the window) and MJT OS boots on screen
+  async function computer() {
+    const m = things.find((x) => x.id === "computer").mark;
+    cine = { from: camera.position.clone(), to: new Vector3(m.x - 1.25, m.y + 0.15, m.z + 0.05), look: new Vector3(m.x, m.y - 0.1, m.z), k: 0 };
+    game.audio.sfx("whoosh"); await new Promise((r) => setTimeout(r, 850));
+    busy = true;
+    openOS(game, { user: name, onClose: () => { cine = null; busy = false; refreshBal(); game.host.api("GET", "/api/mjt/mining").then((x) => { mining = x; }).catch(() => { }); } });
   }
   $("#gm-act").addEventListener("click", () => { if (near) use(near); });
   game.input.on("action", () => { if (game.scenes.name === "room" && near && !busy && !game.ui.modalOpen) use(near); });
