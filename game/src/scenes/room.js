@@ -309,7 +309,7 @@ export async function create(game, params = {}) {
       } else if (th.id === "computer") {
         await player.gesture("Interact");
         if (!done("computer")) await game.ui.dialog(lines(C.things.computer.first), tl(C.narrator));
-        mark("computer"); busy = false; await computer(); return;
+        mark("computer"); busy = false; computer(); return;
       } else if (th.id === "door") {
         game.audio.sfx("locked"); doorPad.material.color.setRGB(4, 0.4, 0.6); await player.gesture("Interact");
         await game.ui.dialog(lines(C.things.door.lines), tl(C.narrator)); doorPad.material.color.copy(new Color(PALETTE.red).multiplyScalar(2));
@@ -333,13 +333,81 @@ export async function create(game, params = {}) {
     doorLed.material.color.copy(new Color(PALETTE.gold).multiplyScalar(3)); busy = false;
   }
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3600); }
-  // the computer: the camera leans in to the monitor (like the window) and MJT OS boots on screen
-  async function computer() {
-    const m = things.find((x) => x.id === "computer").mark;
-    cine = { from: camera.position.clone(), to: new Vector3(m.x - 1.25, m.y + 0.15, m.z + 0.05), look: new Vector3(m.x, m.y - 0.1, m.z), k: 0 };
-    game.audio.sfx("whoosh"); await new Promise((r) => setTimeout(r, 850));
-    busy = true;
-    openOS(game, { user: name, onClose: () => { cine = null; busy = false; refreshBal(); game.host.api("GET", "/api/mjt/mining").then((x) => { mining = x; }).catch(() => { }); } });
+  // the computer: two views. OUTSIDE (default) — the camera stands back and the MJT OS desktop is drawn on the
+  // monitor itself, in perspective, inside the room. INSIDE — the camera dives into the screen and the OS fills the
+  // display. A button switches views; «خروج إلى الغرفة» in Start (or ✕) returns to the room. While a view is still,
+  // the 3D loop is paused so the computer costs nothing (this was the lag: the room re-rendered at full DPR behind it).
+  let osHook = null;
+  const SW = 0.62, SH = 0.38, OSW = 960, OSH = Math.round(OSW * SH / SW);
+  const scrW = new Vector3(), corner = new Vector3();
+  function fitDist(cover, margin) {
+    const vh = Math.tan((camera.fov * Math.PI) / 360), hh = vh * camera.aspect;
+    const dW = SW / 2 / (hh * margin), dH = SH / 2 / (vh * margin);
+    return cover ? Math.min(dW, dH) : Math.max(dW, dH);
+  }
+  const viewAt = (d) => { screen.getWorldPosition(scrW); return new Vector3(scrW.x - d, scrW.y, scrW.z); };
+  function quad(w, h, p) { // CSS matrix3d mapping the w×h box onto the 4 projected corners (TL, TR, BR, BL)
+    const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = p;
+    const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2, sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3, den = dx1 * dy2 - dx2 * dy1;
+    const g = (sx * dy2 - dx2 * sy) / den, k = (dx1 * sy - sx * dy1) / den;
+    const a = x1 - x0 + g * x1, b = x3 - x0 + k * x3, d = y1 - y0 + g * y1, e = y3 - y0 + k * y3;
+    return `matrix3d(${a / w},${d / w},0,${g / w},${b / h},${e / h},0,${k / h},0,0,1,0,${x0},${y0},0,1)`;
+  }
+  function computer() {
+    busy = true; showAct(null);
+    const pcOn = (on) => { game.root.classList.toggle("gm-pc", on); for (const th of things) th.m.visible = !on; };
+    pcOn(true);
+    let mode = "out", alive = true, lastT = "", settleT = 0;
+    const os = openOS(game, {
+      user: name,
+      onOutside: () => goOut(),
+      onClose: () => {
+        alive = false; osHook = null; pcOn(false); removeEventListener("resize", onResize); clearTimeout(settleT);
+        game.loop.pause(false); cine = null; busy = false; refreshBal();
+        game.host.api("GET", "/api/mjt/mining").then((x) => { mining = x; }).catch(() => { });
+      }
+    });
+    const panel = os.panel, wrap = panel.parentElement;
+    wrap.classList.add("os-out"); panel.style.width = OSW + "px"; panel.style.height = OSH + "px";
+    wrap.insertAdjacentHTML("beforeend", `<div class="os-cam">
+      <button type="button" class="os-cb" data-c="exit" data-sfx="back">${icon("back")}<span>${esc(t("الغرفة", "Room"))}</span></button>
+      <button type="button" class="os-cb in" data-c="in">${icon("full")}<span>${esc(t("ادخل الشاشة", "Enter the screen"))}</span></button></div>`);
+    const place = () => {
+      camera.updateMatrixWorld(); const r = game.renderer.gl.domElement.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+      const pts = [[-SW / 2, SH / 2], [SW / 2, SH / 2], [SW / 2, -SH / 2], [-SW / 2, -SH / 2]].map(([x, y]) => {
+        corner.set(x, y, 0); screen.localToWorld(corner); corner.project(camera);
+        return [(corner.x + 1) / 2 * r.width + r.left - wr.left, (1 - corner.y) / 2 * r.height + r.top - wr.top];
+      });
+      const tf = quad(OSW, OSH, pts); if (tf !== lastT) { panel.style.transform = tf; lastT = tf; }
+    };
+    const camTo = (pos, sp) => new Promise((res) => {
+      game.loop.pause(false); screen.getWorldPosition(scrW);
+      cine = { from: camera.position.clone(), to: pos, lf: look.clone(), look: scrW.clone(), k: 0, sp, t0: performance.now(), done: res };
+    });
+    const settle = () => { clearTimeout(settleT); settleT = setTimeout(() => { if (alive && cine && !cine.done) game.loop.pause(true); }, 60); };
+    async function goOut(first) {
+      mode = "out"; wrap.classList.remove("os-full"); wrap.classList.add("os-out"); osHook = place;
+      if (!first) { game.loop.pause(false); place(); }
+      panel.classList.add("os-fade"); requestAnimationFrame(() => panel.classList.remove("os-fade"));
+      await camTo(viewAt(fitDist(false, camera.aspect < 0.8 ? 0.94 : 0.78)), first ? 1.1 : 1.6);
+      if (alive && mode === "out") { place(); settle(); }
+    }
+    async function goIn() {
+      if (mode !== "out") return; mode = "dive"; game.audio.sfx("whoosh");
+      await camTo(viewAt(fitDist(true, 1) * 0.86), 1.5);
+      if (!alive) return;
+      mode = "in"; osHook = null; wrap.classList.remove("os-out"); wrap.classList.add("os-full"); panel.style.transform = ""; lastT = "";
+      panel.classList.add("os-fade"); requestAnimationFrame(() => requestAnimationFrame(() => panel.classList.remove("os-fade")));
+      settle();
+    }
+    const onResize = () => { if (!alive) return; if (mode === "out") { game.loop.pause(false); setTimeout(() => goOut(), 80); } };
+    addEventListener("resize", onResize);
+    wrap.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-c]")?.dataset.c;
+      if (c === "exit") { os.close(); return; }
+      if (c === "in" || (mode === "out" && e.target.closest(".gm-panel"))) { e.stopPropagation(); goIn(); }
+    }, true);
+    game.audio.sfx("whoosh"); goOut(true);
   }
   $("#gm-act").addEventListener("click", () => { if (near) use(near); });
   game.input.on("action", () => { if (game.scenes.name === "room" && near && !busy && !game.ui.modalOpen) use(near); });
@@ -414,10 +482,16 @@ export async function create(game, params = {}) {
       if (busy && !$("#gm-act").hidden) showAct(null);
       // camera
       goalCam();
-      if (cine) { cine.k = Math.min(1, cine.k + dt * 1.2); const e = 1 - Math.pow(1 - cine.k, 3); camera.position.lerpVectors(cine.from, cine.to, e); look.lerp(cine.look, Math.min(1, dt * 3)); }
+      if (cine) {
+        cine.k = cine.t0 ? Math.min(1, (performance.now() - cine.t0) / 1000 * cine.sp) : Math.min(1, cine.k + dt * (cine.sp || 1.2)); const e = cine.lf ? cine.k * cine.k * (3 - 2 * cine.k) : 1 - Math.pow(1 - cine.k, 3);
+        camera.position.lerpVectors(cine.from, cine.to, e);
+        if (cine.lf) look.lerpVectors(cine.lf, cine.look, e); else look.lerp(cine.look, Math.min(1, dt * 3));
+        if (cine.k === 1 && cine.done) { const d = cine.done; cine.done = null; setTimeout(d, 0); }
+      }
       else if (intro && intro.k > 0) { intro.k = Math.min(1, intro.k + dt * 0.45); const e = intro.k * intro.k * (3 - 2 * intro.k); camera.position.lerp(camP, Math.min(1, dt * (0.6 + e * 3))); look.lerp(camT, Math.min(1, dt * (0.6 + e * 3))); }
       else if (!intro) { camera.position.lerp(camP, Math.min(1, dt * 3)); look.lerp(camT, Math.min(1, dt * 4)); }
       camera.lookAt(look);
+      if (osHook) osHook();
       // the living room: monitor, news board, rain, city, door light
       if (Math.floor(time * 4) !== Math.floor((time - dt) * 4)) scr.tick(time);
       if (Math.floor(time * 6) !== Math.floor((time - dt) * 6)) news.tick(time);
