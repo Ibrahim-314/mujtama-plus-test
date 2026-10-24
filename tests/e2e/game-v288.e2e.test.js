@@ -47,7 +47,10 @@ async function run(label, ctxOpts) {
   await p.waitForTimeout(800);
   await shot(p, label + "-1-title");
 
-  // title → menu → new game
+  // title → menu → new game: the press button must be the top element under its own centre (no invisible layer over it)
+  const top = await p.evaluate(() => { const b = document.querySelector("#gm-press").getBoundingClientRect(); return document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.id; });
+  assert.equal(top, "gm-press", "nothing covers «المس للبدء»");
+  for (const id of await p.$$eval("#gm-root [hidden]", (els) => els.filter((e) => getComputedStyle(e).display !== "none").map((e) => e.id || e.className))) assert.fail("hidden but displayed: " + id);
   await tap(p, "#gm-press");
   await visible(p, "#gm-tmenu [data-a=new]");
   await shot(p, label + "-2-menu");
