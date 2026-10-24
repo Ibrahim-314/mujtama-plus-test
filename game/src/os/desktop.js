@@ -14,6 +14,37 @@ const APPS = new Map();
 export function register(app) { APPS.set(app.id, app); }
 export const apps = () => [...APPS.values()];
 
+/* wallpaper: a preset (layered CSS gradients) or the member's own photo (downscaled JPEG data URL), kept on this
+ * device. { kind: "preset", id } | { kind: "img", data, fit: cover|contain|center, x, y (focal %), dim 0..70, blur 0..12 } */
+export const WALLS = {
+  mjt: { name: ["مجتمع الذهبي", "MJT Gold"], css: "" },
+  aurora: { name: ["الشفق", "Aurora"], css: "radial-gradient(60% 50% at 20% 30%, rgba(46,230,190,.55), transparent 70%), radial-gradient(55% 45% at 75% 25%, rgba(120,90,255,.55), transparent 70%), radial-gradient(80% 60% at 50% 110%, rgba(30,120,255,.5), transparent 70%), linear-gradient(180deg, #040814, #0a1430)" },
+  dunes: { name: ["كثبان الربع الخالي", "Desert dunes"], css: "radial-gradient(120% 60% at 30% 120%, #7a3c12 0%, transparent 60%), radial-gradient(110% 55% at 80% 115%, #b8642a 0%, transparent 60%), radial-gradient(140% 70% at 50% 130%, #e3a35a 0%, transparent 65%), linear-gradient(180deg, #1b1033 0%, #6b3a5a 45%, #f0a565 75%, #f7c98a 100%)" },
+  night: { name: ["ليل المدينة", "City night"], css: "radial-gradient(40% 30% at 70% 25%, rgba(255,214,140,.35), transparent 70%), repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 46px), linear-gradient(180deg, #02030a 0%, #0c1230 60%, #2a1d4a 100%)" },
+  bloom: { name: ["ويندوز أزرق", "Bloom"], css: "radial-gradient(35% 45% at 50% 55%, rgba(120,200,255,.95), rgba(40,110,255,.5) 45%, transparent 70%), radial-gradient(60% 70% at 50% 60%, rgba(30,70,200,.6), transparent 75%), linear-gradient(180deg, #031030, #061a4a)" },
+  graphite: { name: ["جرافيت", "Graphite"], css: "radial-gradient(90% 70% at 50% 0%, #2b2f3a 0%, transparent 70%), linear-gradient(180deg, #15171d, #0b0c10)" },
+  rose: { name: ["وردي هادئ", "Rose"], css: "radial-gradient(70% 60% at 25% 20%, #ffb3c7 0%, transparent 60%), radial-gradient(70% 60% at 85% 80%, #a98bff 0%, transparent 60%), linear-gradient(135deg, #3a1d3f, #1b1430)" },
+  forest: { name: ["غابة", "Forest"], css: "radial-gradient(70% 50% at 50% 0%, rgba(190,255,200,.35), transparent 70%), linear-gradient(180deg, #0d2a1f 0%, #0a1f17 50%, #06120d 100%)" }
+};
+const WKEY = "mjtos.wall", PKEY = "mjtos.photos";
+export const wallGet = () => { try { return JSON.parse(localStorage.getItem(WKEY)) || { kind: "preset", id: "mjt" }; } catch { return { kind: "preset", id: "mjt" }; } };
+export const wallSet = (w) => { try { localStorage.setItem(WKEY, JSON.stringify(w)); return true; } catch { return false; } };
+export const photosGet = () => { try { return JSON.parse(localStorage.getItem(PKEY)) || []; } catch { return []; } };
+export const photosSet = (a) => { try { localStorage.setItem(PKEY, JSON.stringify(a)); return true; } catch { return false; } };
+export function paintWall(el, w = wallGet()) {
+  if (!el) return;
+  const img = el.querySelector(".os-wimg") || el.appendChild(Object.assign(document.createElement("b"), { className: "os-wimg" }));
+  el.classList.toggle("custom", w.kind !== "preset" || w.id !== "mjt");
+  if (w.kind === "img" && w.data) {
+    const fit = w.fit === "contain" ? "contain" : w.fit === "center" ? "auto" : "cover";
+    Object.assign(img.style, { background: `#06070d url("${w.data}") ${w.x ?? 50}% ${w.y ?? 50}% / ${fit} no-repeat`, filter: w.blur ? `blur(${w.blur}px)` : "", inset: w.blur ? `-${w.blur * 2}px` : "0" });
+    img.style.setProperty("--dim", String((w.dim || 0) / 100));
+  } else {
+    const p = WALLS[w.id] || WALLS.mjt;
+    Object.assign(img.style, { background: p.css || "none", filter: "", inset: "0" }); img.style.setProperty("--dim", "0");
+  }
+}
+
 const G = {
   start: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="8.4" height="8.4" rx="1.4"/><rect x="12.6" y="3" width="8.4" height="8.4" rx="1.4"/><rect x="3" y="12.6" width="8.4" height="8.4" rx="1.4"/><rect x="12.6" y="12.6" width="8.4" height="8.4" rx="1.4"/></svg>',
   min: '<svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>',
@@ -48,8 +79,9 @@ export function openOS(game, { onClose, onOutside, user = "" } = {}) {
       </nav>
     </div>`, "gm-osm");
   const $ = (s) => panel.querySelector(s), root = $("#gm-os");
+  paintWall($(".os-wall"));
   const wins = new Map(); let z = 10, alive = true;
-  const ctx = { game, t, close: () => close(), toast };
+  const ctx = { game, t, close: () => close(), toast, wall: (w) => paintWall($(".os-wall"), w) };
 
   // desktop icons + start pins + taskbar pins
   const list = apps();
