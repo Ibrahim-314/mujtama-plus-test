@@ -101,7 +101,7 @@ export async function create(game, params = {}) {
   // ---------- the room ----------
   const room = new Group(); scene.add(room);
   const wallMat = new MeshStandardMaterial({ map: wallTexture(), color: 0xd8d0ee, roughness: 0.92, metalness: 0 });
-  const ft = floorTextures(q.dpr > 1 ? 1024 : 512);
+  const ft = floorTextures(q.dpr > 1.5 ? 2048 : 1024);
   const floor = new Mesh(new PlaneGeometry(W * 2, D * 2), new MeshStandardMaterial({ map: ft.map, roughnessMap: ft.rough, roughness: 0.8, metalness: 0.02, color: 0xd2b8a4 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; room.add(floor);
   // the diorama base: a thick slab under the floor with a thin gold edge, so the room reads as a crafted model
@@ -132,7 +132,7 @@ export async function create(game, params = {}) {
   const bar = (w, h, x, y) => { const m = new Mesh(new BoxGeometry(w, h, 0.08), frameM); m.position.set(x, y, -D - 0.02); room.add(m); };
   bar(WIN.x1 - WIN.x0 + 0.1, 0.07, 0, WIN.y0); bar(WIN.x1 - WIN.x0 + 0.1, 0.07, 0, WIN.y1); bar(0.06, WIN.y1 - WIN.y0, 0, (WIN.y0 + WIN.y1) / 2);
   bar(0.06, WIN.y1 - WIN.y0, WIN.x0 + (WIN.x1 - WIN.x0) / 4, (WIN.y0 + WIN.y1) / 2); bar(0.06, WIN.y1 - WIN.y0, WIN.x1 - (WIN.x1 - WIN.x0) / 4, (WIN.y0 + WIN.y1) / 2);
-  const glass = new Mesh(new PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), windowMaterial({ hi: q.dpr > 1 }));
+  const glass = new Mesh(new PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), windowMaterial({ hi: q.dpr > 1.5 }));
   glass.position.set(0, (WIN.y0 + WIN.y1) / 2, -D - 0.03); room.add(glass);
   const sill = new Mesh(new BoxGeometry(WIN.x1 - WIN.x0 + 0.3, 0.05, 0.3), frameM); sill.position.set(0, WIN.y0 - 0.01, -D + 0.12); room.add(sill);
 
