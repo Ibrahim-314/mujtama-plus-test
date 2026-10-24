@@ -69,6 +69,11 @@ fs.writeFileSync(
   fs.readFileSync(path.join(ROOT, "sw.js"), "utf8").replace(/const VERSION = "[^"]+"/, `const VERSION = "mp-${release}"`).replaceAll("__APP_VERSION__", APP_VER) /* v2.68: the SW also knows the human version number */
 );
 fs.cpSync(path.join(ROOT, "vendor"), path.join(DIST, "vendor"), { recursive: true, filter: (f) => !f.endsWith("hls.light.min.js") }); // v2.70: hls.js ships only as the hashed lazy «hls» chunk
+/* v2.88 «المدينة الرقمية»: the game is its own program in game/ (built by game/build.mjs); its bundle, chunks, styles and
+ * assets are served at /game/… — the app only loads game/bridge.js (the "town" chunk), which imports /game/game.js on #/city. */
+{ const G = path.join(ROOT, "game"), GD = path.join(DIST, "game"); fs.mkdirSync(GD, { recursive: true });
+  for (const f of ["game.js", "game.css"]) if (fs.existsSync(path.join(G, f))) fs.copyFileSync(path.join(G, f), path.join(GD, f)); else throw new Error("game/" + f + " missing: run node game/build.mjs");
+  for (const d of ["chunks", "assets"]) fs.cpSync(path.join(G, d), path.join(GD, d), { recursive: true }); }
 /* public/: plain static files copied verbatim to the dist root (e.g. /pi-app-validation.txt for Pi App Studio).
  * Not compressed, not hashed, not rewritten; served as ordinary static files before the SPA fallback. */
 const PUBLIC = path.join(ROOT, "public");
