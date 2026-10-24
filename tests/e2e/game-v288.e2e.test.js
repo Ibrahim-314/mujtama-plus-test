@@ -14,7 +14,8 @@ const SHOTS = process.env.GAME_SHOTS;
 const shot = async (p, name) => { if (!SHOTS) return; fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name + ".png") }); };
 const tap = (p, sel) => p.$eval(sel, (el) => el.click());
 const until = (p, fn, arg, ms = 30000) => p.waitForFunction(fn, arg, { timeout: ms, polling: 100 });
-const visible = (p, sel, ms) => until(p, (s) => { const e = document.querySelector(s); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; }, sel, ms);
+const visible0 = (p, sel, ms) => until(p, (s) => { const e = document.querySelector(s); return !!e && !e.hidden && e.getBoundingClientRect().height > 0; }, sel, ms);
+const visible = async (p, sel, ms) => { try { await visible0(p, sel, ms); } catch (e) { await shot(p, "FAIL-" + sel.replace(/[^a-z0-9]+/gi, "_")); const st = await p.evaluate(() => ({ cls: document.querySelector("#gm-modal")?.className, html: document.querySelector("#gm-modal")?.innerHTML.slice(0, 300), dlg: !document.querySelector("#gm-dlg")?.hidden })); console.log("FAILSTATE", JSON.stringify(st)); throw e; } };
 /** advance a dialogue to its end (taps: first finishes the typing, the next moves on) */
 async function talk(p, ms = 40000) {
   await visible(p, "#gm-dlg", ms);
@@ -98,9 +99,23 @@ async function run(label, ctxOpts) {
   await p.evaluate(() => { window.MPGame.room.use("computer"); });
   await talk(p);
   // MJT OS: desktop + taskbar + start menu, the Mining program opens in a window
-  await visible(p, "#gm-os .os-bar");
-  await p.waitForTimeout(900);
+  // outside view: the desktop is drawn on the monitor in the room, then «ادخل الشاشة» dives in
+  await visible(p, "#gm-modal.os-out .os-cb.in");
+  await until(p, () => window.MPGame.loop.paused);
+  await shot(p, label + "-5o-outside");
+  assert.ok(await p.evaluate(() => /matrix3d/.test(document.querySelector("#gm-modal .gm-panel").style.transform)), "OS sits on the monitor in perspective");
+  assert.ok(await p.evaluate(() => window.MPGame.loop.paused), "3D loop rests while the view is still");
+  await tap(p, "#gm-modal .os-cb.in");
+  await visible(p, "#gm-modal.os-full #gm-os .os-bar");
+  await p.waitForTimeout(700);
   await shot(p, label + "-5a-desktop");
+  // back outside and in again via the taskbar button
+  await tap(p, "#gm-os [data-os=out]");
+  await visible(p, "#gm-modal.os-out .os-cb.in");
+  await until(p, () => window.MPGame.loop.paused);
+  await tap(p, "#gm-modal .os-cb.in");
+  await visible(p, "#gm-modal.os-full #gm-os .os-bar");
+  await p.waitForTimeout(500);
   await tap(p, "#gm-os [data-os=start]");
   await visible(p, "#gm-os .os-start .os-pin[data-app=mining]");
   await shot(p, label + "-5b-start");
