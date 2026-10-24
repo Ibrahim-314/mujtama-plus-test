@@ -125,8 +125,27 @@ async function run(label, ctxOpts) {
   assert.equal(await p.evaluate(() => document.querySelectorAll("#gm-modal [data-st=earn]").length), 0, "old mining terminal is gone");
   await p.waitForTimeout(700);
   await shot(p, label + "-5-terminal");
-  // the wallet launcher still opens the real station page
+  // wallet / balance / records are real programs on live MJT data; photos changes the wallpaper
+  await tap(p, "#gm-os .os-win[data-win=mining] [data-w=x]");
+  await tap(p, "#gm-os .os-desk [data-app=balance]");
+  await until(p, () => !!document.querySelector("#gm-os .os-win[data-win=balance] .wl-amt"));
+  await p.waitForTimeout(400); await shot(p, label + "-5c-balance");
+  await tap(p, "#gm-os .os-win[data-win=balance] [data-w=x]");
+  await tap(p, "#gm-os .os-desk [data-app=history]");
+  await until(p, () => !!document.querySelector("#gm-os .os-win[data-win=history] .rc-list li"));
+  await p.waitForTimeout(400); await shot(p, label + "-5d-records");
+  await tap(p, "#gm-os .os-win[data-win=history] [data-w=x]");
+  await tap(p, "#gm-os .os-desk [data-app=photos]");
+  await visible(p, "#gm-os .os-win[data-win=photos] [data-wall=aurora]");
+  await tap(p, "#gm-os .os-win[data-win=photos] [data-wall=aurora]");
+  await until(p, () => document.querySelector("#gm-os .os-wall").classList.contains("custom") && JSON.parse(localStorage.getItem("mjtos.wall")).id === "aurora");
+  await p.waitForTimeout(400); await shot(p, label + "-5e-photos");
+  await tap(p, "#gm-os .os-win[data-win=photos] [data-w=x]");
   await tap(p, "#gm-os .os-desk [data-app=send]");
+  await visible(p, "#gm-os .os-win[data-win=send] .wl-amt");
+  await p.waitForTimeout(400); await shot(p, label + "-5f-wallet");
+  // «الصفحة الكاملة» still opens the real station page
+  await tap(p, "#gm-os .os-win[data-win=send] [data-full=send]");
   await until(p, () => location.hash === "#/city/mjt/send");
   await visible(p, "body > .cy-st", 30000);
   assert.ok(await p.evaluate(() => document.querySelector("#gm-root").classList.contains("gm-behind")), "game paused behind the station");
