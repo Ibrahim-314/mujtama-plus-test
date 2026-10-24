@@ -20,12 +20,13 @@ const G = {
   max: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></svg>',
   power: '<svg viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.6 6.6a8 8 0 1 0 10.8 0"/></svg>',
+  eye: '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M9 20h6M12 16v4"/></svg>',
   search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>'
 };
 const glyph = (a, cls = "") => `<span class="os-gl ${cls}" style="--tint:${a.tint || "#4cc2ff"}">${a.glyph}</span>`;
 const nm = (a) => tl({ ar: a.name[0], en: a.name[1] });
 
-export function openOS(game, { onClose, user = "" } = {}) {
+export function openOS(game, { onClose, onOutside, user = "" } = {}) {
   const panel = game.ui.modal(`
     <div class="os" id="gm-os" dir="${document.dir || "rtl"}">
       <div class="os-wall" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -36,14 +37,14 @@ export function openOS(game, { onClose, user = "" } = {}) {
         <h3>${esc(t("المثبّتة", "Pinned"))}</h3>
         <div class="os-pins"></div>
         <footer><span class="os-me"><b>${esc(String(user || t("أنت", "You")).slice(0, 24))}</b></span>
-          <button type="button" class="os-pow" data-os="off" aria-label="${esc(t("إيقاف التشغيل", "Shut down"))}">${G.power}</button></footer>
+          <button type="button" class="os-pow" data-os="off">${G.power}<span>${esc(t("خروج إلى الغرفة", "Exit to the room"))}</span></button></footer>
       </div>
       <nav class="os-bar">
         <div class="os-bar-c">
           <button type="button" class="os-tb os-sb" data-os="start" aria-label="${esc(t("ابدأ", "Start"))}">${G.start}</button>
           <span class="os-tasks"></span>
         </div>
-        <div class="os-tray"><span class="os-bal"></span><time class="os-clock"></time></div>
+        <div class="os-tray"><button type="button" class="os-tb os-outb" data-os="out" aria-label="${esc(t("عرض من الخارج", "View from outside"))}">${G.eye}</button><span class="os-ti"><span class="os-bal"></span><time class="os-clock"></time></span></div>
       </nav>
     </div>`, "gm-osm");
   const $ = (s) => panel.querySelector(s), root = $("#gm-os");
@@ -98,6 +99,7 @@ export function openOS(game, { onClose, user = "" } = {}) {
     if (win && act) { const id = win.dataset.win; if (act === "x") shut(id); else if (act === "min") { const w = wins.get(id); w.min = true; win.hidden = true; tasks(); } else win.classList.toggle("maxd"); return; }
     if (b.dataset.os === "start") { game.audio.sfx("tap"); startMenu(); return; }
     if (b.dataset.os === "off") { close(); return; }
+    if (b.dataset.os === "out") { startMenu(false); onOutside?.(); return; }
     if (b.dataset.app) open(b.dataset.app);
   });
   root.addEventListener("pointerdown", (e) => { const w = e.target.closest(".os-win"); if (w && Number(w.style.zIndex) !== z) focus(w.dataset.win); });
@@ -112,5 +114,5 @@ export function openOS(game, { onClose, user = "" } = {}) {
     game.audio.sfx("back"); game.ui.closeModal(); onClose?.();
   }
   root.classList.add("boot"); setTimeout(() => root.classList.remove("boot"), 700);
-  return { open, close, root };
+  return { open, close, root, panel };
 }
