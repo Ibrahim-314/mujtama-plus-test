@@ -1,7 +1,7 @@
 /* Chapter 1 — «الشارع». v2.94 stage 4: the apartment door opens onto the Digital City's boulevard; the player walks
  * (tap the road, or the joystick / keys) to the MJT tower — the Core from world/skyline.js — and goes in: the tower's
- * doors light up, the camera pushes in through a gold flash and the MJT hall (the terminal pages: balance, records,
- * wallet, mining, stats) opens over the paused street. Closing the hall leaves the player at the tower doors.
+ * doors light up, the camera pushes in through a gold flash and the tower's own screen (os/tower.js: balance, wallet,
+ * records, mining in the MJT OS style) opens over the still street. Closing it leaves the player at the tower doors.
  * Built to be light on phones: the skyline is one instanced mesh with a shader, the street is a handful of planes and two
  * instanced meshes, the only real lights are a hemisphere + one directional (the character needs them), everything else
  * glows through emissive colour and bloom. Low tier: fewer buildings/particles (config.QUALITY via the renderer). */
@@ -19,6 +19,7 @@ import { t, tl, fill } from "../engine/i18n.js";
 import { esc, icon } from "../ui/ui.js";
 import { openPause } from "../ui/menus.js";
 import { CHAPTER1 as C } from "../story/chapter1.js";
+import { openTower } from "../os/tower.js";
 
 const CORE_Z = -46;               // the tower's centre
 const GATE_Z = CORE_Z + 8.2;      // the face of the tower's doors (body radius ≈ 7.5 at the base)
@@ -207,11 +208,11 @@ export async function create(game, params = {}) {
         await wait(900); game.audio.sfx("whoosh"); flash(true); await wait(380);
         if (!game.save.flag("street.tower")) { game.save.set({ flags: { "street.tower": true } }); game.audio.sfx("ping"); paintObj(); }
         game.save.flush();
-        // the MJT hall: the terminal pages open over the paused street (the hall's room strip moves between them)
-        game.host.openStation("balance");
+        // inside the tower: its own game screen (MJT OS style) over the still street; closing it puts the player back outside
+        inHall = true; game.loop.pause(true);
+        game.street.tower = openTower(game, { onClose: () => { game.street.tower = null; game.loop.pause(false); onStationClose(); } });
         await wait(250); flash(false);
-        // when the hall closes the player is back outside the doors (onStationClose clears busy)
-        inHall = true; return;
+        return;
       }
       if (th.id === "home") {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
@@ -310,6 +311,6 @@ export async function create(game, params = {}) {
       life.update(dt, time, player.pos);
     },
     exit() { flash(false); game.save.flush(); },
-    dispose() { game.street = null; game.renderer.onResize = null; game.bus.off("station-closed", onStationClose); game.input.clear(); }
+    dispose() { game.street?.tower?.close(); game.street = null; game.renderer.onResize = null; game.bus.off("station-closed", onStationClose); game.input.clear(); }
   };
 }
