@@ -8,7 +8,7 @@
 import {
   Scene, PerspectiveCamera, Color, HemisphereLight, DirectionalLight, PointLight, Mesh, BoxGeometry, PlaneGeometry,
   MeshStandardMaterial, MeshBasicMaterial, Group, Vector3, Raycaster, Vector2, CanvasTexture, RepeatWrapping,
-  SRGBColorSpace, OctahedronGeometry, RingGeometry, AdditiveBlending, PMREMGenerator, DoubleSide
+  SRGBColorSpace, OctahedronGeometry, RingGeometry, AdditiveBlending, PMREMGenerator, DoubleSide, CylinderGeometry, InstancedMesh, Object3D, SphereGeometry
 } from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { windowMaterial } from "../world/windowview.js";
@@ -186,8 +186,6 @@ export async function create(game, params = {}) {
     place("lampSquareTable", { x: -1.85, z: -2.72, y: 0.48, height: 0.42, solid: false }),
     place("desk", { x: 3.35, z: -1.55, size: 1.5, rot: -Math.PI / 2 }),
     place("chairDesk", { x: 2.45, z: -1.5, size: 0.62, rot: Math.PI / 2 }),
-    place("computerScreen", { x: 3.62, z: -1.55, y: 0.76, size: 0.7, rot: -Math.PI / 2, solid: false }),
-    place("computerKeyboard", { x: 3.25, z: -1.55, y: 0.76, size: 0.46, rot: -Math.PI / 2, solid: false }),
     place("bookcaseOpenLow", { x: 2.75, z: -2.72, size: 0.95 }),
     place("books", { x: 2.6, z: -2.72, y: 0.46, size: 0.3, solid: false }),
     place("speaker", { x: 3.72, z: -2.72, height: 1.05 }),
@@ -229,7 +227,42 @@ export async function create(game, params = {}) {
     if (Math.floor(time * 2) % 2) { x.fillStyle = "#2fe6ff"; x.fillRect(12, 148, 8, 3); }
   });
   const screen = new Mesh(new PlaneGeometry(0.62, 0.38), new MeshBasicMaterial({ map: scr.tex, color: new Color(1.6, 1.6, 1.6), toneMapped: true }));
-  screen.position.set(3.575, 1.04, -1.55); screen.rotation.y = -Math.PI / 2; room.add(screen);
+  const deskTop = items[3]?.box?.max?.y || 0.76; // the monitor floats on its stand above the real desk top
+  screen.position.set(3.575, deskTop + 0.34, -1.55); screen.rotation.y = -Math.PI / 2; room.add(screen);
+  // a real-looking workstation (procedural, ~10 draw calls): thin-bezel monitor on an aluminium arm-stand, a slim
+  // aluminium keyboard with instanced keycaps, a mouse on a pad. Group local +z faces the chair (world -x).
+  {
+    const alu = new MeshStandardMaterial({ color: 0xc3c7cf, roughness: 0.3, metalness: 0.88 });
+    const aluDark = new MeshStandardMaterial({ color: 0x8d929c, roughness: 0.38, metalness: 0.85 });
+    const glass = new MeshStandardMaterial({ color: 0x07080b, roughness: 0.12, metalness: 0.35 });
+    const shell = new MeshStandardMaterial({ color: 0xd9dbe0, roughness: 0.42, metalness: 0.55 });
+    const keyM = new MeshStandardMaterial({ color: 0x101217, roughness: 0.62, metalness: 0.15 });
+    const padM = new MeshStandardMaterial({ color: 0x14151b, roughness: 0.95, metalness: 0 });
+    const box = (w, h, d, m, x, y, z, g) => { const o = new Mesh(new BoxGeometry(w, h, d), m); o.position.set(x, y, z); g.add(o); return o; };
+    const mon = new Group(); mon.position.copy(screen.position); mon.rotation.y = -Math.PI / 2; room.add(mon);
+    box(0.62 + 0.016, 0.38 + 0.016 + 0.016, 0.012, glass, 0, -0.008, -0.007, mon); // black glass front, slim bezel + chin
+    box(0.62 + 0.02, 0.38 + 0.036, 0.016, shell, 0, -0.008, -0.02, mon); // aluminium back shell edge
+    box(0.5, 0.27, 0.03, shell, 0, -0.01, -0.04, mon); // rear hump
+    const led = box(0.008, 0.003, 0.002, new MeshBasicMaterial({ color: 0x5cf2ff }), 0.27, -0.205, -0.0005, mon);
+    led.material.color.multiplyScalar(2);
+    const neck = box(0.07, 0.31, 0.014, alu, 0, -0.19, -0.085, mon); neck.rotation.x = -0.16;
+    box(0.075, 0.035, 0.03, aluDark, 0, -0.06, -0.065, mon); // hinge
+    const base = new Mesh(new CylinderGeometry(0.11, 0.115, 0.012, 40), alu); base.scale.set(1.2, 1, 0.85); base.position.set(0, -0.334, -0.075); mon.add(base);
+    // keyboard
+    const kb = new Group(); kb.position.set(3.2, deskTop + 0.002, -1.55); kb.rotation.y = -Math.PI / 2; room.add(kb);
+    const kbM = new MeshStandardMaterial({ color: 0x3b3f47, roughness: 0.35, metalness: 0.8 });
+    const body = box(0.43, 0.012, 0.135, kbM, 0, 0.006, 0, kb); body.rotation.x = 0.04;
+    const COLS = 15, P = 0.0272, KW = 0.0235, KD = 0.0225, rows = [];
+    for (let r = 0; r < 4; r++) for (let c = 0; c < COLS; c++) rows.push([(c - (COLS - 1) / 2) * P, (r - 2) * 0.0255]);
+    for (const c of [-6.5, -5.5, -4.5, 4.5, 5.5, 6.5]) rows.push([c * P, 2 * 0.0255]);
+    const keys = new InstancedMesh(new BoxGeometry(KW, 0.006, KD), keyM, rows.length + 1), d = new Object3D();
+    rows.forEach(([x, z], i) => { d.position.set(x, 0.0145 - z * 0.04, z); d.scale.set(1, 1, 1); d.updateMatrix(); keys.setMatrixAt(i, d.matrix); });
+    d.position.set(0, 0.0145 - 0.051 * 0.04, 0.051); d.scale.set(8.2, 1, 1); d.updateMatrix(); keys.setMatrixAt(rows.length, d.matrix); // space bar
+    kb.add(keys);
+    // mouse on a pad, to the right hand
+    const pad = new Mesh(new BoxGeometry(0.2, 0.003, 0.24), padM); pad.position.set(0.34, 0.0015, 0.01); kb.add(pad);
+    const mouse = new Mesh(new SphereGeometry(1, 20, 14), kbM); mouse.scale.set(0.029, 0.014, 0.05); mouse.position.set(0.34, 0.006, 0.03); kb.add(mouse);
+  }
   const monGlow = new PointLight(PALETTE.cyan, 2.2, 3.5, 1.6); monGlow.position.set(3.1, 1.15, -1.55); scene.add(monGlow);
 
   // the city board: a holographic news panel on the left wall
@@ -345,7 +378,7 @@ export async function create(game, params = {}) {
     const dW = SW / 2 / (hh * margin), dH = SH / 2 / (vh * margin);
     return cover ? Math.min(dW, dH) : Math.max(dW, dH);
   }
-  const viewAt = (d) => { screen.getWorldPosition(scrW); return new Vector3(scrW.x - d, scrW.y, scrW.z); };
+  const viewAt = (d, up = 0) => { screen.getWorldPosition(scrW); return new Vector3(scrW.x - d, scrW.y + up, scrW.z); };
   function quad(w, h, p) { // CSS matrix3d mapping the w×h box onto the 4 projected corners (TL, TR, BR, BL)
     const [[x0, y0], [x1, y1], [x2, y2], [x3, y3]] = p;
     const dx1 = x1 - x2, dx2 = x3 - x2, dy1 = y1 - y2, dy2 = y3 - y2, sx = x0 - x1 + x2 - x3, sy = y0 - y1 + y2 - y3, den = dx1 * dy2 - dx2 * dy1;
@@ -380,8 +413,8 @@ export async function create(game, params = {}) {
       });
       const tf = quad(OSW, OSH, pts); if (tf !== lastT) { panel.style.transform = tf; lastT = tf; }
     };
-    const camTo = (pos, sp) => new Promise((res) => {
-      game.loop.pause(false); screen.getWorldPosition(scrW);
+    const camTo = (pos, sp, ly = 0) => new Promise((res) => {
+      game.loop.pause(false); screen.getWorldPosition(scrW); scrW.y += ly;
       cine = { from: camera.position.clone(), to: pos, lf: look.clone(), look: scrW.clone(), k: 0, sp, t0: performance.now(), done: res };
     });
     const settle = () => { clearTimeout(settleT); settleT = setTimeout(() => { if (alive && cine && !cine.done) game.loop.pause(true); }, 60); };
@@ -389,7 +422,7 @@ export async function create(game, params = {}) {
       mode = "out"; wrap.classList.remove("os-full"); wrap.classList.add("os-out"); osHook = place;
       if (!first) { game.loop.pause(false); place(); }
       panel.classList.add("os-fade"); requestAnimationFrame(() => panel.classList.remove("os-fade"));
-      await camTo(viewAt(fitDist(false, camera.aspect < 0.8 ? 0.94 : 0.78)), first ? 1.1 : 1.6);
+      await camTo(viewAt(fitDist(false, camera.aspect < 0.8 ? 0.9 : 0.5), 0.13), first ? 1.1 : 1.6, -0.09); // a little above and back: the stand, keyboard and mouse sit in frame
       if (alive && mode === "out") { place(); settle(); }
     }
     async function goIn() {
