@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.95.0",
+    "date": "2026-10-24",
+    "ar": {
+      "title": "شارع المدينة صار حيًّا",
+      "items": [
+        "عماير على جانبي الشارع: أبراج زجاجية، مبانٍ حجرية، وبيوت حجازية برواشين",
+        "محلات بلافتات عربية مضيئة: مقهى، مخبز، بقالة، صيدلية، عطور، مكتبة",
+        "نخيل وأشجار في أحواض مضاءة، وناس يمشون على الرصيف ويتوقفون لك"
+      ]
+    },
+    "en": {
+      "title": "The city street comes alive",
+      "items": [
+        "Buildings line the street: glass towers, stone blocks and Hijazi houses with rawashin",
+        "Shops with glowing Arabic signs: café, bakery, market, pharmacy, oud, books",
+        "Palms and trees in lit planters, and people walking the pavements who stop for you"
+      ]
+    }
+  },
+  {
     "v": "2.94.0",
     "date": "2026-10-24",
     "ar": {
