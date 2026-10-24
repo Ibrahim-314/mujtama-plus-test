@@ -1,542 +1,562 @@
 [
- {
-  "v": "2.87.0",
-  "date": "2026-10-24",
-  "ar": {
-   "title": "التعدين اليومي في مجتمع كوين",
-   "items": [
-    "ابدأ دورة تعدين مدتها 24 ساعة واكسب 5 MJT، مع عدّاد حي يرتفع أمامك",
-    "مكافأة دخول يومية 1 MJT تُضاف تلقائياً، مع سلسلة الأيام المتتالية",
-    "محطات مجتمع كوين والمحفظة صارت صفحات كاملة تفتح فوراً بدون نوافذ منبثقة"
-   ]
+  {
+    "v": "2.88.0",
+    "date": "2026-10-24",
+    "ar": {
+      "title": "لعبة مدينة مجتمع",
+      "items": [
+        "المدينة صارت لعبة ثلاثية الأبعاد: شاشة بداية، اختيار شخصيتك واسمك، وغرفتك الخاصة",
+        "تحرّك بعصا التحكم أو لوحة المفاتيح، تحدّث، وتابع أهداف القصة",
+        "الحاسوب ومحطة التعدين والمحفظة تفتح من داخل اللعبة، ويُحفظ تقدمك"
+      ]
+    },
+    "en": {
+      "title": "The Mujtama city game",
+      "items": [
+        "The city is now a 3D game: title screen, pick your character and name, and your own room",
+        "Move with the joystick or keyboard, talk, and follow story objectives",
+        "The computer, mining station and wallet open inside the game, and your progress is saved"
+      ]
+    }
   },
-  "en": {
-   "title": "Daily mining in Mujtama Coin",
-   "items": [
-    "Start a 24-hour mining cycle and earn 5 MJT, with a live counter rising as you watch",
-    "A daily 1 MJT sign-in reward, added automatically, with your day streak",
-    "Mujtama Coin stations and the wallet are now full pages that open instantly, no pop-ups"
-   ]
-  }
- },
- {
-  "v": "2.86.1",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "محفظة جديدة وتنقل أسلس في مجتمع كوين",
-   "items": [
-    "اختيار الشخصية يتبدل فوراً في المدينة",
-    "محطات مجتمع كوين تنفتح كلوحة فوق القاعة دون شاشة تحميل أو تغيير صفحة، وتبقى شخصيتك في مكانها",
-    "مشي أسرع بين المحطات",
-    "المحفظة من جديد: بطاقة رصيد، إرسال واستقبال، آخر من أرسلت إليهم، تحقق مباشر من المستلم، مبالغ سريعة و«الأقصى»، شريط حد اليوم، مراجعة قبل التأكيد وإيصال نجاح",
-    "استقبال برمز QR واسم المستخدم مع زر نسخ"
-   ]
+  {
+    "v": "2.87.0",
+    "date": "2026-10-24",
+    "ar": {
+      "title": "التعدين اليومي في مجتمع كوين",
+      "items": [
+        "ابدأ دورة تعدين مدتها 24 ساعة واكسب 5 MJT، مع عدّاد حي يرتفع أمامك",
+        "مكافأة دخول يومية 1 MJT تُضاف تلقائياً، مع سلسلة الأيام المتتالية",
+        "محطات مجتمع كوين والمحفظة صارت صفحات كاملة تفتح فوراً بدون نوافذ منبثقة"
+      ]
+    },
+    "en": {
+      "title": "Daily mining in Mujtama Coin",
+      "items": [
+        "Start a 24-hour mining cycle and earn 5 MJT, with a live counter rising as you watch",
+        "A daily 1 MJT sign-in reward, added automatically, with your day streak",
+        "Mujtama Coin stations and the wallet are now full pages that open instantly, no pop-ups"
+      ]
+    }
   },
-  "en": {
-   "title": "A new wallet and smoother MJT Coin hall",
-   "items": [
-    "Character choice now switches instantly in the city",
-    "MJT Coin stations open as a panel over the hall, with no loader or page change; your character stays put",
-    "Faster walking between stations",
-    "Rebuilt wallet: balance card, send and receive, recent people, live recipient check, quick amounts and Max, daily limit bar, review step and receipt",
-    "Receive with a QR code and your username, with a copy button"
-   ]
-  }
- },
- {
-  "v": "2.86.0",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "المدينة تملأ الشاشة",
-   "items": [
-    "شخصيات عصرية جديدة: صاحب الهودي، الكاجوال، رجل الأعمال، الكاجوال النسائية، سيدة الأعمال",
-    "اختيارك القديم للشخصية ينتقل تلقائياً إلى أقرب شخصية عصرية",
-    "صوت المدينة: أجواء ليلية هادئة، خطوات أثناء المشي، ورنّة عند دخول المباني، مع زر كتم يتذكر اختيارك",
-    "زر ملء الشاشة لتجربة المدينة كاملة",
-    "الشريط السفلي يختفي داخل المدينة ويعود عند الخروج منها",
-    "أزرار المدينة أوضح وأنسب للجوال"
-   ]
+  {
+    "v": "2.86.1",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "محفظة جديدة وتنقل أسلس في مجتمع كوين",
+      "items": [
+        "اختيار الشخصية يتبدل فوراً في المدينة",
+        "محطات مجتمع كوين تنفتح كلوحة فوق القاعة دون شاشة تحميل أو تغيير صفحة، وتبقى شخصيتك في مكانها",
+        "مشي أسرع بين المحطات",
+        "المحفظة من جديد: بطاقة رصيد، إرسال واستقبال، آخر من أرسلت إليهم، تحقق مباشر من المستلم، مبالغ سريعة و«الأقصى»، شريط حد اليوم، مراجعة قبل التأكيد وإيصال نجاح",
+        "استقبال برمز QR واسم المستخدم مع زر نسخ"
+      ]
+    },
+    "en": {
+      "title": "A new wallet and smoother MJT Coin hall",
+      "items": [
+        "Character choice now switches instantly in the city",
+        "MJT Coin stations open as a panel over the hall, with no loader or page change; your character stays put",
+        "Faster walking between stations",
+        "Rebuilt wallet: balance card, send and receive, recent people, live recipient check, quick amounts and Max, daily limit bar, review step and receipt",
+        "Receive with a QR code and your username, with a copy button"
+      ]
+    }
   },
-  "en": {
-   "title": "The city fills the screen",
-   "items": [
-    "New modern characters: Hoodie, Casual, Suit, Casual (F), Business (F)",
-    "Your old character pick moves to the closest modern look automatically",
-    "City sound: a calm night ambience, footsteps while walking and a chime at doors, with a mute button that remembers",
-    "A full-screen button for the whole city experience",
-    "The bottom bar hides inside the city and returns when you leave",
-    "Clearer, phone-friendly city buttons"
-   ]
-  }
- },
- {
-  "v": "2.85.0",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "قاعات مدينة المجتمع الرقمية",
-   "items": [
-    "ست قاعات جديدة داخل المدينة: ساحة المجتمعات، استوديو فيديوتك، برج العمل الحر، أكاديمية المدينة، سوق المدينة، حي الأعمال المحلية",
-    "كل قاعة تعرض بياناتك الحقيقية بتصميم المدينة، والتفاصيل تفتح داخل المدينة نفسها",
-    "شريط رصيد MJT أعلى خريطة المدينة يفتح قاعة الرصيد مباشرة",
-    "دليل المدينة أسفل الخريطة يعرّفك بكل مبنى وقاعاته",
-    "مباني السجلات والتعدين والمحفظة صارت تفتح قاعات MJT الخاصة بها",
-    "بطاقات نيون جديدة بمؤشرات وأشرطة تقدم ولون خاص لكل مبنى، بالعربية والإنجليزية",
-    "صفحة «سجل الإصدارات» الثابتة: تجد فيها ما تغيّر في كل إصدار متى ما رجعت لها"
-   ]
+  {
+    "v": "2.86.0",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "المدينة تملأ الشاشة",
+      "items": [
+        "شخصيات عصرية جديدة: صاحب الهودي، الكاجوال، رجل الأعمال، الكاجوال النسائية، سيدة الأعمال",
+        "اختيارك القديم للشخصية ينتقل تلقائياً إلى أقرب شخصية عصرية",
+        "صوت المدينة: أجواء ليلية هادئة، خطوات أثناء المشي، ورنّة عند دخول المباني، مع زر كتم يتذكر اختيارك",
+        "زر ملء الشاشة لتجربة المدينة كاملة",
+        "الشريط السفلي يختفي داخل المدينة ويعود عند الخروج منها",
+        "أزرار المدينة أوضح وأنسب للجوال"
+      ]
+    },
+    "en": {
+      "title": "The city fills the screen",
+      "items": [
+        "New modern characters: Hoodie, Casual, Suit, Casual (F), Business (F)",
+        "Your old character pick moves to the closest modern look automatically",
+        "City sound: a calm night ambience, footsteps while walking and a chime at doors, with a mute button that remembers",
+        "A full-screen button for the whole city experience",
+        "The bottom bar hides inside the city and returns when you leave",
+        "Clearer, phone-friendly city buttons"
+      ]
+    }
   },
-  "en": {
-   "title": "Digital City halls",
-   "items": [
-    "Six new halls inside the city: Communities Square, Vidtik Studio, Freelance Tower, City Academy, City Market, Local Business District",
-    "Each hall shows your real data in the city's design, and details open inside the city",
-    "An MJT balance bar on top of the city map opens the balance hall",
-    "A city guide under the map explains every building and its halls",
-    "The Records, Mining and Wallet buildings now open their MJT halls",
-    "New neon cards with stats, progress bars and a color per building, in Arabic and English",
-    "A permanent Release history page: see what changed in every version anytime"
-   ]
-  }
- },
- {
-  "v": "2.84.0",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "مدينة المجتمع الرقمية",
-   "items": [
-    "مدينة المجتمع صارت صفحة مستقلة تدخلها من «المزيد»",
-    "قاعة MJT داخل المدينة: الرصيد، السجل، التحويل، الكسب، والإحصاءات ببياناتك الحقيقية",
-    "المباني التي لم تكتمل تظهر بعلامة «قيد البناء»"
-   ]
+  {
+    "v": "2.85.0",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "قاعات مدينة المجتمع الرقمية",
+      "items": [
+        "ست قاعات جديدة داخل المدينة: ساحة المجتمعات، استوديو فيديوتك، برج العمل الحر، أكاديمية المدينة، سوق المدينة، حي الأعمال المحلية",
+        "كل قاعة تعرض بياناتك الحقيقية بتصميم المدينة، والتفاصيل تفتح داخل المدينة نفسها",
+        "شريط رصيد MJT أعلى خريطة المدينة يفتح قاعة الرصيد مباشرة",
+        "دليل المدينة أسفل الخريطة يعرّفك بكل مبنى وقاعاته",
+        "مباني السجلات والتعدين والمحفظة صارت تفتح قاعات MJT الخاصة بها",
+        "بطاقات نيون جديدة بمؤشرات وأشرطة تقدم ولون خاص لكل مبنى، بالعربية والإنجليزية",
+        "صفحة «سجل الإصدارات» الثابتة: تجد فيها ما تغيّر في كل إصدار متى ما رجعت لها"
+      ]
+    },
+    "en": {
+      "title": "Digital City halls",
+      "items": [
+        "Six new halls inside the city: Communities Square, Vidtik Studio, Freelance Tower, City Academy, City Market, Local Business District",
+        "Each hall shows your real data in the city's design, and details open inside the city",
+        "An MJT balance bar on top of the city map opens the balance hall",
+        "A city guide under the map explains every building and its halls",
+        "The Records, Mining and Wallet buildings now open their MJT halls",
+        "New neon cards with stats, progress bars and a color per building, in Arabic and English",
+        "A permanent Release history page: see what changed in every version anytime"
+      ]
+    }
   },
-  "en": {
-   "title": "Digital Community City",
-   "items": [
-    "The community city is now its own page, opened from More",
-    "MJT hall inside the city: balance, history, send, earn and stats with your real data",
-    "Buildings not ready yet show «Under construction»"
-   ]
-  }
- },
- {
-  "v": "2.83.0",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "أساس المدينة الرقمية",
-   "items": [
-    "خريطة مدينة نيون بلافتات عربية حيّة وطريق مضيء",
-    "اختيار شخصيتك في المدينة وحفظها في حسابك",
-    "قاعة خزنة MJT ببوابة متحركة"
-   ]
+  {
+    "v": "2.84.0",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "مدينة المجتمع الرقمية",
+      "items": [
+        "مدينة المجتمع صارت صفحة مستقلة تدخلها من «المزيد»",
+        "قاعة MJT داخل المدينة: الرصيد، السجل، التحويل، الكسب، والإحصاءات ببياناتك الحقيقية",
+        "المباني التي لم تكتمل تظهر بعلامة «قيد البناء»"
+      ]
+    },
+    "en": {
+      "title": "Digital Community City",
+      "items": [
+        "The community city is now its own page, opened from More",
+        "MJT hall inside the city: balance, history, send, earn and stats with your real data",
+        "Buildings not ready yet show «Under construction»"
+      ]
+    }
   },
-  "en": {
-   "title": "Digital city foundation",
-   "items": [
-    "A neon city map with live Arabic signs and a glowing route",
-    "Pick your city character, saved to your account",
-    "MJT vault hall with an animated portal door"
-   ]
-  }
- },
- {
-  "v": "2.82.0",
-  "date": "2026-10-23",
-  "ar": {
-   "title": "فيديوتك وتحسينات المقاطع",
-   "items": [
-    "قسم المقاطع صار اسمه «فيديوتك»",
-    "وضع توفير البيانات يشغّل المقاطع بجودة 360p ويوفّر أكثر",
-    "المقاطع التالية تتجهّز مسبقًا فتفتح أسرع",
-    "فصول داخل الفيديوهات الطويلة للتنقل السريع",
-    "إصلاح أزرار مركز الأمان: إضافة مفتاح الدخول وتسجيل الخروج من الجلسات"
-   ]
+  {
+    "v": "2.83.0",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "أساس المدينة الرقمية",
+      "items": [
+        "خريطة مدينة نيون بلافتات عربية حيّة وطريق مضيء",
+        "اختيار شخصيتك في المدينة وحفظها في حسابك",
+        "قاعة خزنة MJT ببوابة متحركة"
+      ]
+    },
+    "en": {
+      "title": "Digital city foundation",
+      "items": [
+        "A neon city map with live Arabic signs and a glowing route",
+        "Pick your city character, saved to your account",
+        "MJT vault hall with an animated portal door"
+      ]
+    }
   },
-  "en": {
-   "title": "Vidtik and clip improvements",
-   "items": [
-    "The clips section is now called Vidtik",
-    "Data saver plays clips at 360p to save more",
-    "Upcoming clips are prepared ahead so they open faster",
-    "Chapters in long videos for quick jumping",
-    "Security center buttons fixed: adding a passkey and signing out sessions"
-   ]
-  }
- },
- {
-  "v": "2.81.0",
-  "date": "2026-10-22",
-  "ar": {
-   "title": "تطبيق أخف وأسرع",
-   "items": [
-    "أول مقطع في فيديوتك يفتح مرة واحدة فقط بدل مرتين",
-    "التطبيق يفتح أسرع: أجزاء الإعدادات وشاشات إضافية تُحمّل عند الحاجة فقط",
-    "صور التطبيق أخف بأكثر من النصف بنفس الجودة",
-    "المقاطع لا تُخزّن على جوالك بعد مشاهدتها، فيبقى التخزين أخف"
-   ]
+  {
+    "v": "2.82.0",
+    "date": "2026-10-23",
+    "ar": {
+      "title": "فيديوتك وتحسينات المقاطع",
+      "items": [
+        "قسم المقاطع صار اسمه «فيديوتك»",
+        "وضع توفير البيانات يشغّل المقاطع بجودة 360p ويوفّر أكثر",
+        "المقاطع التالية تتجهّز مسبقًا فتفتح أسرع",
+        "فصول داخل الفيديوهات الطويلة للتنقل السريع",
+        "إصلاح أزرار مركز الأمان: إضافة مفتاح الدخول وتسجيل الخروج من الجلسات"
+      ]
+    },
+    "en": {
+      "title": "Vidtik and clip improvements",
+      "items": [
+        "The clips section is now called Vidtik",
+        "Data saver plays clips at 360p to save more",
+        "Upcoming clips are prepared ahead so they open faster",
+        "Chapters in long videos for quick jumping",
+        "Security center buttons fixed: adding a passkey and signing out sessions"
+      ]
+    }
   },
-  "en": {
-   "title": "Lighter and faster",
-   "items": [
-    "The first Vidtik clip opens once instead of twice",
-    "Faster start: settings and extra screens load only when needed",
-    "App images are less than half the size at the same quality",
-    "Clips are no longer kept in your phone's storage after watching"
-   ]
-  }
- },
- {
-  "v": "2.79.0",
-  "date": "2026-10-22",
-  "ar": {
-   "title": "حماية الحساب",
-   "items": [
-    "سجل نشاط الأمان في مركز الأمان: كل دخول من جهاز جديد وكل تغيير مهم في حسابك",
-    "تنبيه فوري إذا تكررت محاولات دخول فاشلة على حسابك",
-    "الدخول عبر Pi يُعدّ تحققاً قوياً",
-    "تنبيه عند قرب نفاد الرموز الاحتياطية"
-   ]
+  {
+    "v": "2.81.0",
+    "date": "2026-10-22",
+    "ar": {
+      "title": "تطبيق أخف وأسرع",
+      "items": [
+        "أول مقطع في فيديوتك يفتح مرة واحدة فقط بدل مرتين",
+        "التطبيق يفتح أسرع: أجزاء الإعدادات وشاشات إضافية تُحمّل عند الحاجة فقط",
+        "صور التطبيق أخف بأكثر من النصف بنفس الجودة",
+        "المقاطع لا تُخزّن على جوالك بعد مشاهدتها، فيبقى التخزين أخف"
+      ]
+    },
+    "en": {
+      "title": "Lighter and faster",
+      "items": [
+        "The first Vidtik clip opens once instead of twice",
+        "Faster start: settings and extra screens load only when needed",
+        "App images are less than half the size at the same quality",
+        "Clips are no longer kept in your phone's storage after watching"
+      ]
+    }
   },
-  "en": {
-   "title": "Account protection",
-   "items": [
-    "Security activity in the Security center: every new-device sign-in and important account change",
-    "An instant alert when failed sign-in attempts repeat on your account",
-    "Signing in with Pi counts as strong verification",
-    "A reminder when your backup codes are running low"
-   ]
-  }
- },
- {
-  "v": "2.78.0",
-  "date": "2026-10-22",
-  "ar": {
-   "title": "تحدي الأسبوع في فيديوتك",
-   "items": [
-    "كل أسبوع تحدٍّ جديد بوسم واحد — انشر لقطة بالوسم فتدخل المنافسة تلقائياً",
-    "صفحة للتحدي فيها الفكرة والوقت المتبقي وترتيبك وأفضل اللقطات",
-    "زر «شارك بلقطة» يفتح المحرر والوسم مكتوب جاهز",
-    "الفائزون الثلاثة يظهرون على منصة التتويج ويصلهم إشعار"
-   ]
+  {
+    "v": "2.79.0",
+    "date": "2026-10-22",
+    "ar": {
+      "title": "حماية الحساب",
+      "items": [
+        "سجل نشاط الأمان في مركز الأمان: كل دخول من جهاز جديد وكل تغيير مهم في حسابك",
+        "تنبيه فوري إذا تكررت محاولات دخول فاشلة على حسابك",
+        "الدخول عبر Pi يُعدّ تحققاً قوياً",
+        "تنبيه عند قرب نفاد الرموز الاحتياطية"
+      ]
+    },
+    "en": {
+      "title": "Account protection",
+      "items": [
+        "Security activity in the Security center: every new-device sign-in and important account change",
+        "An instant alert when failed sign-in attempts repeat on your account",
+        "Signing in with Pi counts as strong verification",
+        "A reminder when your backup codes are running low"
+      ]
+    }
   },
-  "en": {
-   "title": "Weekly challenge on Vidtik",
-   "items": [
-    "A new hashtag challenge every week — post a clip with the hashtag to enter",
-    "A challenge page with the idea, time left, your rank and the top clips",
-    "“Join with a clip” opens the editor with the hashtag ready",
-    "The top three get a podium and a notification"
-   ]
-  }
- },
- {
-  "v": "2.77.0",
-  "date": "2026-10-22",
-  "ar": {
-   "title": "مركز الذكاء: اربط حسابك في الذكاء الاصطناعي",
-   "items": [
-    "ربط OpenRouter بضغطة واحدة عبر تسجيل دخول رسمي آمن",
-    "ربط Gemini وGroq وOpenAI وClaude وDeepSeek وMistral وGrok بمفتاحك",
-    "مفاتيحك محفوظة مشفّرة ولا تُعرض مرة أخرى",
-    "اختر النموذج وحادث مباشرة دون حفظ نصوص محادثتك"
-   ]
+  {
+    "v": "2.78.0",
+    "date": "2026-10-22",
+    "ar": {
+      "title": "تحدي الأسبوع في فيديوتك",
+      "items": [
+        "كل أسبوع تحدٍّ جديد بوسم واحد — انشر لقطة بالوسم فتدخل المنافسة تلقائياً",
+        "صفحة للتحدي فيها الفكرة والوقت المتبقي وترتيبك وأفضل اللقطات",
+        "زر «شارك بلقطة» يفتح المحرر والوسم مكتوب جاهز",
+        "الفائزون الثلاثة يظهرون على منصة التتويج ويصلهم إشعار"
+      ]
+    },
+    "en": {
+      "title": "Weekly challenge on Vidtik",
+      "items": [
+        "A new hashtag challenge every week — post a clip with the hashtag to enter",
+        "A challenge page with the idea, time left, your rank and the top clips",
+        "“Join with a clip” opens the editor with the hashtag ready",
+        "The top three get a podium and a notification"
+      ]
+    }
   },
-  "en": {
-   "title": "AI Hub: link your own AI account",
-   "items": [
-    "One-tap OpenRouter linking with secure official sign-in",
-    "Link Gemini, Groq, OpenAI, Claude, DeepSeek, Mistral and Grok with your key",
-    "Your keys are stored encrypted and never shown again",
-    "Pick a model and chat right away; your chat text isn't stored"
-   ]
-  }
- },
- {
-  "v": "2.76.0",
-  "date": "2026-10-22",
-  "ar": {
-   "title": "روابط فيديوتك: من الفيديو إلى الفعل مباشرة",
-   "items": [
-    "اربط فيديوك بمجتمع تديره أو فعالية قادمة أو دورة، إضافة إلى المنتج والوظيفة",
-    "«اسأل البائع» من فيديو المنتج: تُفتح المحادثة ومعها رسالة جاهزة",
-    "«قدّم الآن» من فيديو الوظيفة: تفتح صفحة التقديم مباشرة",
-    "«ذكّرني» على فيديو الفعالية: تذكير قبل موعدها بساعة",
-    "عدد نقرات المشاهدين على رابط فيديوك يظهر لك وحدك",
-    "«يظهر في فيديوتك» في صفحة المنتج والوظيفة: الفيديوهات التي تعرضها",
-    "ثبّت فيديو تعريفياً أعلى ملفك في فيديوتك"
-   ]
+  {
+    "v": "2.77.0",
+    "date": "2026-10-22",
+    "ar": {
+      "title": "مركز الذكاء: اربط حسابك في الذكاء الاصطناعي",
+      "items": [
+        "ربط OpenRouter بضغطة واحدة عبر تسجيل دخول رسمي آمن",
+        "ربط Gemini وGroq وOpenAI وClaude وDeepSeek وMistral وGrok بمفتاحك",
+        "مفاتيحك محفوظة مشفّرة ولا تُعرض مرة أخرى",
+        "اختر النموذج وحادث مباشرة دون حفظ نصوص محادثتك"
+      ]
+    },
+    "en": {
+      "title": "AI Hub: link your own AI account",
+      "items": [
+        "One-tap OpenRouter linking with secure official sign-in",
+        "Link Gemini, Groq, OpenAI, Claude, DeepSeek, Mistral and Grok with your key",
+        "Your keys are stored encrypted and never shown again",
+        "Pick a model and chat right away; your chat text isn't stored"
+      ]
+    }
   },
-  "en": {
-   "title": "Vidtik links: from video to action",
-   "items": [
-    "Link your video to a community you run, an upcoming event or a course, as well as a product or job",
-    "“Ask the seller” from a product video opens the chat with a ready message",
-    "“Apply now” from a job video opens the application straight away",
-    "“Remind me” on an event video: a reminder an hour before it starts",
-    "See how many viewers tapped your video's link (only you see it)",
-    "“Featured on Vidtik” on product and job pages shows the videos that feature them",
-    "Pin an intro video to the top of your Vidtik profile"
-   ]
-  }
- },
- {
-  "v": "2.75.0",
-  "date": "2026-10-21",
-  "ar": {
-   "title": "فيديوتك: محرر وملف صانع جديدان",
-   "items": [
-    "«لقطات» صار اسمها «فيديوتك»، ومقاطعك القديمة باقية كما هي",
-    "محرر فيديوتك بملء الشاشة: اختر من الجهاز أو صوّر، وصف ووسوم، غلاف تختاره، وربط منتج أو وظيفة",
-    "رفع يتحمّل انقطاع الشبكة ويُكمل من حيث توقف",
-    "ملف صانع فيديوتك: شبكة مقاطعه، المتابعة، والأرقام في صفحة واحدة",
-    "جودة أعلى من أول ظهور حسب سرعة اتصالك، وتجهيز المقطع التالي مسبقاً لتمرير أسلس",
-    "في محرر المنشورات: «انشر في فيديوتك» بدل «فيديو قصير»"
-   ]
+  {
+    "v": "2.76.0",
+    "date": "2026-10-22",
+    "ar": {
+      "title": "روابط فيديوتك: من الفيديو إلى الفعل مباشرة",
+      "items": [
+        "اربط فيديوك بمجتمع تديره أو فعالية قادمة أو دورة، إضافة إلى المنتج والوظيفة",
+        "«اسأل البائع» من فيديو المنتج: تُفتح المحادثة ومعها رسالة جاهزة",
+        "«قدّم الآن» من فيديو الوظيفة: تفتح صفحة التقديم مباشرة",
+        "«ذكّرني» على فيديو الفعالية: تذكير قبل موعدها بساعة",
+        "عدد نقرات المشاهدين على رابط فيديوك يظهر لك وحدك",
+        "«يظهر في فيديوتك» في صفحة المنتج والوظيفة: الفيديوهات التي تعرضها",
+        "ثبّت فيديو تعريفياً أعلى ملفك في فيديوتك"
+      ]
+    },
+    "en": {
+      "title": "Vidtik links: from video to action",
+      "items": [
+        "Link your video to a community you run, an upcoming event or a course, as well as a product or job",
+        "“Ask the seller” from a product video opens the chat with a ready message",
+        "“Apply now” from a job video opens the application straight away",
+        "“Remind me” on an event video: a reminder an hour before it starts",
+        "See how many viewers tapped your video's link (only you see it)",
+        "“Featured on Vidtik” on product and job pages shows the videos that feature them",
+        "Pin an intro video to the top of your Vidtik profile"
+      ]
+    }
   },
-  "en": {
-   "title": "Vidtik: new editor and creator profile",
-   "items": [
-    "Clips is now Vidtik, and your existing videos stay as they are",
-    "Full-screen Vidtik editor: pick from your device or record, caption and hashtags, choose a cover, link a product or job",
-    "Uploads survive network drops and resume where they stopped",
-    "Vidtik creator profile: their video grid, Follow, and counts on one page",
-    "Sharper from the first frame based on your connection, with the next video prepared ahead for smoother scrolling",
-    "In the post composer: “Post to Vidtik” replaces “Short video”"
-   ]
-  }
- },
- {
-  "v": "2.74.0",
-  "date": "2026-10-21",
-  "ar": {
-   "title": "ادعم صانع اللقطة بمجتمع كوين",
-   "items": [
-    "أرسل إكرامية MJT من اللقطة نفسها دون مغادرتها: 5 أو 10 أو 25 أو 50 أو مبلغ تختاره",
-    "رسالة قصيرة اختيارية، وخيار الإرسال دون إظهار اسمك",
-    "مجموع إكراميات كل لقطة وأبرز داعميها",
-    "سجل المحفظة يُظهر الإكراميات المرسلة والمستلمة مع رابط اللقطة، والاستوديو يعرض إكراميات آخر ٣٠ يوماً"
-   ]
+  {
+    "v": "2.75.0",
+    "date": "2026-10-21",
+    "ar": {
+      "title": "فيديوتك: محرر وملف صانع جديدان",
+      "items": [
+        "«لقطات» صار اسمها «فيديوتك»، ومقاطعك القديمة باقية كما هي",
+        "محرر فيديوتك بملء الشاشة: اختر من الجهاز أو صوّر، وصف ووسوم، غلاف تختاره، وربط منتج أو وظيفة",
+        "رفع يتحمّل انقطاع الشبكة ويُكمل من حيث توقف",
+        "ملف صانع فيديوتك: شبكة مقاطعه، المتابعة، والأرقام في صفحة واحدة",
+        "جودة أعلى من أول ظهور حسب سرعة اتصالك، وتجهيز المقطع التالي مسبقاً لتمرير أسلس",
+        "في محرر المنشورات: «انشر في فيديوتك» بدل «فيديو قصير»"
+      ]
+    },
+    "en": {
+      "title": "Vidtik: new editor and creator profile",
+      "items": [
+        "Clips is now Vidtik, and your existing videos stay as they are",
+        "Full-screen Vidtik editor: pick from your device or record, caption and hashtags, choose a cover, link a product or job",
+        "Uploads survive network drops and resume where they stopped",
+        "Vidtik creator profile: their video grid, Follow, and counts on one page",
+        "Sharper from the first frame based on your connection, with the next video prepared ahead for smoother scrolling",
+        "In the post composer: “Post to Vidtik” replaces “Short video”"
+      ]
+    }
   },
-  "en": {
-   "title": "Support clip creators with Mujtama Coin",
-   "items": [
-    "Send an MJT tip right from the clip: 5, 10, 25, 50 or your own amount",
-    "Optional short message, and an option to tip without showing your name",
-    "Each clip’s tip total and top supporters",
-    "Wallet history shows tips sent and received with a link to the clip; Studio shows the last 30 days of tips"
-   ]
-  }
- },
- {
-  "v": "2.73.0",
-  "date": "2026-10-21",
-  "ar": {
-   "title": "مشاهدة أريح في «لقطات»",
-   "items": [
-    "لمسة واحدة تخفي الواجهة ولمسة تُظهرها، وزر إيقاف صغير بجانب شريط التقدم",
-    "إخفاء تلقائي للواجهة بعد 3 أو 5 أو 10 ثوانٍ من الإعدادات",
-    "انتقال تلقائي للّقطة التالية (اختياري)",
-    "تذكير استراحة بعد 20 أو 40 أو 60 دقيقة مشاهدة (اختياري)"
-   ]
+  {
+    "v": "2.74.0",
+    "date": "2026-10-21",
+    "ar": {
+      "title": "ادعم صانع اللقطة بمجتمع كوين",
+      "items": [
+        "أرسل إكرامية MJT من اللقطة نفسها دون مغادرتها: 5 أو 10 أو 25 أو 50 أو مبلغ تختاره",
+        "رسالة قصيرة اختيارية، وخيار الإرسال دون إظهار اسمك",
+        "مجموع إكراميات كل لقطة وأبرز داعميها",
+        "سجل المحفظة يُظهر الإكراميات المرسلة والمستلمة مع رابط اللقطة، والاستوديو يعرض إكراميات آخر ٣٠ يوماً"
+      ]
+    },
+    "en": {
+      "title": "Support clip creators with Mujtama Coin",
+      "items": [
+        "Send an MJT tip right from the clip: 5, 10, 25, 50 or your own amount",
+        "Optional short message, and an option to tip without showing your name",
+        "Each clip’s tip total and top supporters",
+        "Wallet history shows tips sent and received with a link to the clip; Studio shows the last 30 days of tips"
+      ]
+    }
   },
-  "en": {
-   "title": "More comfortable Clips viewing",
-   "items": [
-    "Tap once to hide the interface, tap again to show it; a small pause button sits by the progress bar",
-    "Auto-hide the interface after 3, 5 or 10 seconds (Settings)",
-    "Optional auto-advance to the next clip",
-    "Optional break reminder after 20, 40 or 60 minutes of watching"
-   ]
-  }
- },
- {
-  "v": "2.72.0",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "«لقطات» بملء الشاشة",
-   "items": [
-    "إخفاء الشريط السفلي داخل اللقطات ورجوعه فور الخروج",
-    "مساحة أكبر للّقطة مع احترام حافة الشاشة في الجوال"
-   ]
+  {
+    "v": "2.73.0",
+    "date": "2026-10-21",
+    "ar": {
+      "title": "مشاهدة أريح في «لقطات»",
+      "items": [
+        "لمسة واحدة تخفي الواجهة ولمسة تُظهرها، وزر إيقاف صغير بجانب شريط التقدم",
+        "إخفاء تلقائي للواجهة بعد 3 أو 5 أو 10 ثوانٍ من الإعدادات",
+        "انتقال تلقائي للّقطة التالية (اختياري)",
+        "تذكير استراحة بعد 20 أو 40 أو 60 دقيقة مشاهدة (اختياري)"
+      ]
+    },
+    "en": {
+      "title": "More comfortable Clips viewing",
+      "items": [
+        "Tap once to hide the interface, tap again to show it; a small pause button sits by the progress bar",
+        "Auto-hide the interface after 3, 5 or 10 seconds (Settings)",
+        "Optional auto-advance to the next clip",
+        "Optional break reminder after 20, 40 or 60 minutes of watching"
+      ]
+    }
   },
-  "en": {
-   "title": "Full-screen Clips",
-   "items": [
-    "Bottom bar hides inside Clips and returns when you leave",
-    "More room for each clip, clear of the phone's home indicator"
-   ]
-  }
- },
- {
-  "v": "2.71.0",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "«لقطات» بتصميم جديد",
-   "items": [
-    "تبويبا «لك» و«المتابَعون»",
-    "طبقة معلومات الناشر فوق اللقطة",
-    "شريط تقدم مع معاينة وسرعة تشغيل 2x",
-    "شريط تفاعل جانبي",
-    "لوحة تعليقات جديدة",
-    "تمرير لقطة لقطة أنعم",
-    "صف لقطات في صفحة «استكشف»",
-    "دعم صانع المحتوى بعملة Pi: غير مفعّل بعد"
-   ]
+  {
+    "v": "2.72.0",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "«لقطات» بملء الشاشة",
+      "items": [
+        "إخفاء الشريط السفلي داخل اللقطات ورجوعه فور الخروج",
+        "مساحة أكبر للّقطة مع احترام حافة الشاشة في الجوال"
+      ]
+    },
+    "en": {
+      "title": "Full-screen Clips",
+      "items": [
+        "Bottom bar hides inside Clips and returns when you leave",
+        "More room for each clip, clear of the phone's home indicator"
+      ]
+    }
   },
-  "en": {
-   "title": "Clips, redesigned",
-   "items": [
-    "“For you” and “Following” tabs",
-    "Creator info overlay on each clip",
-    "Progress bar with preview and 2x speed",
-    "Side action rail",
-    "New comments sheet",
-    "Smoother clip-by-clip swiping",
-    "Clips row in Explore",
-    "Pi creator tips: not active yet"
-   ]
-  }
- },
- {
-  "v": "2.70.0",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "«لقطات»: الفيديو القصير بحلّة جديدة",
-   "items": [
-    "«لقطات»: الاسم الجديد للفيديو القصير",
-    "تشغيل متكيّف مع سرعة الإنترنت",
-    "بدء أسرع",
-    "تحميل بالدفعات وتنقّل أسلس",
-    "رفع قابل للاستئناف للفيديوهات الكبيرة",
-    "قياس جودة التشغيل للمشرفين"
-   ]
+  {
+    "v": "2.71.0",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "«لقطات» بتصميم جديد",
+      "items": [
+        "تبويبا «لك» و«المتابَعون»",
+        "طبقة معلومات الناشر فوق اللقطة",
+        "شريط تقدم مع معاينة وسرعة تشغيل 2x",
+        "شريط تفاعل جانبي",
+        "لوحة تعليقات جديدة",
+        "تمرير لقطة لقطة أنعم",
+        "صف لقطات في صفحة «استكشف»",
+        "دعم صانع المحتوى بعملة Pi: غير مفعّل بعد"
+      ]
+    },
+    "en": {
+      "title": "Clips, redesigned",
+      "items": [
+        "“For you” and “Following” tabs",
+        "Creator info overlay on each clip",
+        "Progress bar with preview and 2x speed",
+        "Side action rail",
+        "New comments sheet",
+        "Smoother clip-by-clip swiping",
+        "Clips row in Explore",
+        "Pi creator tips: not active yet"
+      ]
+    }
   },
-  "en": {
-   "title": "Clips: short video, rebuilt",
-   "items": [
-    "“Clips”: the new name for short videos",
-    "Adaptive playback that matches your connection speed",
-    "Faster start",
-    "Paged loading and smoother swiping",
-    "Resumable uploads for large videos",
-    "Playback quality metrics for moderators"
-   ]
-  }
- },
- {
-  "v": "2.69.1",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "وضوح النص في كل أوضاع العرض",
-   "items": [
-    "إصلاح النص الأبيض المختفي داخل البطاقات الملونة عند تفعيل وضع عسر القراءة",
-    "تحسين وضوح النص في وضع التباين العالي",
-    "فحص تلقائي لوضوح النص في كل الصفحات وكل أوضاع العرض"
-   ]
+  {
+    "v": "2.70.0",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "«لقطات»: الفيديو القصير بحلّة جديدة",
+      "items": [
+        "«لقطات»: الاسم الجديد للفيديو القصير",
+        "تشغيل متكيّف مع سرعة الإنترنت",
+        "بدء أسرع",
+        "تحميل بالدفعات وتنقّل أسلس",
+        "رفع قابل للاستئناف للفيديوهات الكبيرة",
+        "قياس جودة التشغيل للمشرفين"
+      ]
+    },
+    "en": {
+      "title": "Clips: short video, rebuilt",
+      "items": [
+        "“Clips”: the new name for short videos",
+        "Adaptive playback that matches your connection speed",
+        "Faster start",
+        "Paged loading and smoother swiping",
+        "Resumable uploads for large videos",
+        "Playback quality metrics for moderators"
+      ]
+    }
   },
-  "en": {
-   "title": "Readable text in every display mode",
-   "items": [
-    "Fixed white text disappearing inside coloured cards with dyslexia mode on",
-    "Better text legibility in high-contrast mode",
-    "Automatic readability check across all pages and display modes"
-   ]
-  }
- },
- {
-  "v": "2.69.0",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "واجهة إنجليزية كاملة",
-   "items": [
-    "ترجمة آلاف النصوص التي كانت تظهر بالعربي في الوضع الإنجليزي",
-    "فحص تلقائي يمنع ظهور نصوص بلا ترجمة مستقبلاً"
-   ]
+  {
+    "v": "2.69.1",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "وضوح النص في كل أوضاع العرض",
+      "items": [
+        "إصلاح النص الأبيض المختفي داخل البطاقات الملونة عند تفعيل وضع عسر القراءة",
+        "تحسين وضوح النص في وضع التباين العالي",
+        "فحص تلقائي لوضوح النص في كل الصفحات وكل أوضاع العرض"
+      ]
+    },
+    "en": {
+      "title": "Readable text in every display mode",
+      "items": [
+        "Fixed white text disappearing inside coloured cards with dyslexia mode on",
+        "Better text legibility in high-contrast mode",
+        "Automatic readability check across all pages and display modes"
+      ]
+    }
   },
-  "en": {
-   "title": "Full English interface",
-   "items": [
-    "Thousands of interface texts that still showed in Arabic are now in English",
-    "An automatic check keeps new texts from shipping untranslated"
-   ]
-  }
- },
- {
-  "v": "2.68.2",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "حماية أقوى",
-   "items": [
-    "فصل مفتاح تشفير الإعدادات الحساسة عن قاعدة البيانات",
-    "إيقاف إعادة إنشاء بيانات التجربة تلقائياً في التطبيق الحقيقي"
-   ]
+  {
+    "v": "2.69.0",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "واجهة إنجليزية كاملة",
+      "items": [
+        "ترجمة آلاف النصوص التي كانت تظهر بالعربي في الوضع الإنجليزي",
+        "فحص تلقائي يمنع ظهور نصوص بلا ترجمة مستقبلاً"
+      ]
+    },
+    "en": {
+      "title": "Full English interface",
+      "items": [
+        "Thousands of interface texts that still showed in Arabic are now in English",
+        "An automatic check keeps new texts from shipping untranslated"
+      ]
+    }
   },
-  "en": {
-   "title": "Stronger protection",
-   "items": [
-    "Encryption key for sensitive settings now kept outside the database",
-    "Demo data is no longer re-created automatically in production"
-   ]
-  }
- },
- {
-  "v": "2.68.1",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "نسخ احتياطي تلقائي",
-   "items": [
-    "نسخة احتياطية مشفّرة يومية لكل بيانات التطبيق خارج الخادم",
-    "فحص صحة تلقائي عند كل نشر مع إعادة تشغيل الخادم إن توقف"
-   ]
+  {
+    "v": "2.68.2",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "حماية أقوى",
+      "items": [
+        "فصل مفتاح تشفير الإعدادات الحساسة عن قاعدة البيانات",
+        "إيقاف إعادة إنشاء بيانات التجربة تلقائياً في التطبيق الحقيقي"
+      ]
+    },
+    "en": {
+      "title": "Stronger protection",
+      "items": [
+        "Encryption key for sensitive settings now kept outside the database",
+        "Demo data is no longer re-created automatically in production"
+      ]
+    }
   },
-  "en": {
-   "title": "Automatic backups",
-   "items": [
-    "Daily encrypted off-server backup of all app data",
-    "Automatic health check on every release, with restart if the server stops"
-   ]
-  }
- },
- {
-  "v": "2.68.0",
-  "date": "2026-10-20",
-  "ar": {
-   "title": "تحديث الثبات والأمان",
-   "items": [
-    "إصلاح ثغرتين كانتا قد توقفان الخادم بطلب تالف",
-    "حماية عامة تمنع توقف التطبيق عند أي خطأ مفاجئ",
-    "اتصال أمتن بقاعدة البيانات وإيقاف وتشغيل أنظف عند النشر",
-    "إصلاح وضع عدم الاتصال حتى لا تظهر صفحة خاطئة بدل التطبيق",
-    "تنبيه التحديثات الجديد: ترى رقم الإصدار وملخص الجديد قبل التحديث"
-   ]
+  {
+    "v": "2.68.1",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "نسخ احتياطي تلقائي",
+      "items": [
+        "نسخة احتياطية مشفّرة يومية لكل بيانات التطبيق خارج الخادم",
+        "فحص صحة تلقائي عند كل نشر مع إعادة تشغيل الخادم إن توقف"
+      ]
+    },
+    "en": {
+      "title": "Automatic backups",
+      "items": [
+        "Daily encrypted off-server backup of all app data",
+        "Automatic health check on every release, with restart if the server stops"
+      ]
+    }
   },
-  "en": {
-   "title": "Stability and security update",
-   "items": [
-    "Fixed two flaws that could stop the server with a malformed request",
-    "A global safety net keeps the app running on unexpected errors",
-    "Sturdier database connections and cleaner restarts during releases",
-    "Offline mode no longer shows the wrong page instead of the app",
-    "New update notice: see the version number and what's new before updating"
-   ]
-  }
- },
- {
-  "v": "2.67.0",
-  "date": "2026-10-19",
-  "ar": {
-   "title": "إصلاحات التطبيق",
-   "items": [
-    "لغات الواجهة الآن العربية والإنجليزية",
-    "حماية خصوصية القاصرين في «أشخاص قد تعرفهم»",
-    "ترجمات إنجليزية ناقصة وإصلاحات في الإرشاد والاقتصاد"
-   ]
+  {
+    "v": "2.68.0",
+    "date": "2026-10-20",
+    "ar": {
+      "title": "تحديث الثبات والأمان",
+      "items": [
+        "إصلاح ثغرتين كانتا قد توقفان الخادم بطلب تالف",
+        "حماية عامة تمنع توقف التطبيق عند أي خطأ مفاجئ",
+        "اتصال أمتن بقاعدة البيانات وإيقاف وتشغيل أنظف عند النشر",
+        "إصلاح وضع عدم الاتصال حتى لا تظهر صفحة خاطئة بدل التطبيق",
+        "تنبيه التحديثات الجديد: ترى رقم الإصدار وملخص الجديد قبل التحديث"
+      ]
+    },
+    "en": {
+      "title": "Stability and security update",
+      "items": [
+        "Fixed two flaws that could stop the server with a malformed request",
+        "A global safety net keeps the app running on unexpected errors",
+        "Sturdier database connections and cleaner restarts during releases",
+        "Offline mode no longer shows the wrong page instead of the app",
+        "New update notice: see the version number and what's new before updating"
+      ]
+    }
   },
-  "en": {
-   "title": "App fixes",
-   "items": [
-    "Interface languages are now Arabic and English",
-    "Minors' privacy protected in “People you may know”",
-    "Missing English strings plus mentoring and economy fixes"
-   ]
+  {
+    "v": "2.67.0",
+    "date": "2026-10-19",
+    "ar": {
+      "title": "إصلاحات التطبيق",
+      "items": [
+        "لغات الواجهة الآن العربية والإنجليزية",
+        "حماية خصوصية القاصرين في «أشخاص قد تعرفهم»",
+        "ترجمات إنجليزية ناقصة وإصلاحات في الإرشاد والاقتصاد"
+      ]
+    },
+    "en": {
+      "title": "App fixes",
+      "items": [
+        "Interface languages are now Arabic and English",
+        "Minors' privacy protected in “People you may know”",
+        "Missing English strings plus mentoring and economy fixes"
+      ]
+    }
   }
- }
 ]
