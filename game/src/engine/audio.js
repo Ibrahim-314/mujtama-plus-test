@@ -42,16 +42,21 @@ export class Audio {
   unlock() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      const c = this.ctx = new AC();
-      this.master = c.createGain(); this.master.gain.value = 0.9; this.master.connect(c.destination);
-      const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.connect(this.master);
+      // phones: a larger output buffer ("playback") stops the audio thread from running dry while WebGL keeps the CPU busy —
+      // that underrun was the crackle players heard. Lite mode also halves the voices and shortens the reverb.
+      this.lite = matchMedia?.("(pointer: coarse)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+      let c; try { c = new AC({ latencyHint: this.lite ? "playback" : "balanced" }); } catch { c = new AC(); }
+      this.ctx = c;
+      this.master = c.createGain(); this.master.gain.value = 0.7; this.master.connect(c.destination);
+      const comp = c.createDynamicsCompressor(); comp.threshold.value = -20; comp.knee.value = 12; comp.ratio.value = 6; comp.attack.value = 0.004; comp.release.value = 0.2; comp.connect(this.master);
       this.out = comp;
-      this.rev = c.createConvolver(); this.rev.buffer = this.impulse(2.8); this.revGain = c.createGain(); this.revGain.gain.value = 0.32; this.rev.connect(this.revGain).connect(comp);
+      this.rev = c.createConvolver(); this.rev.buffer = this.impulse(this.lite ? 1.4 : 2.4); this.revGain = c.createGain(); this.revGain.gain.value = this.lite ? 0.22 : 0.28; this.rev.connect(this.revGain).connect(comp);
       this.bus = {};
       for (const k of ["music", "ambient", "sfx"]) { const g = c.createGain(); g.gain.value = this.vol[k]; g.connect(comp); this.bus[k] = g; }
-      this.delay = c.createDelay(1); this.delay.delayTime.value = 0.34; const fb = c.createGain(); fb.gain.value = 0.32; const dl = c.createBiquadFilter(); dl.type = "lowpass"; dl.frequency.value = 2400;
+      this.delay = c.createDelay(1); this.delay.delayTime.value = 0.34; const fb = c.createGain(); fb.gain.value = 0.25; const dl = c.createBiquadFilter(); dl.type = "lowpass"; dl.frequency.value = 2400;
       this.delay.connect(dl).connect(fb).connect(this.delay); dl.connect(this.bus.music);
       this.noiseBuf = this.noise(2);
+      document.addEventListener("visibilitychange", () => (document.hidden ? this.suspend() : this.resume()));
     }
     if (this.ctx.state === "suspended") this.ctx.resume();
     if (this.want.music && this.cur.music?.name !== this.want.music) this.music(this.want.music);
@@ -64,8 +69,8 @@ export class Audio {
   suspend() { if (this.ctx && this.ctx.state === "running") this.ctx.suspend(); }
   resume() { if (this.ctx && this.ctx.state === "suspended") this.ctx.resume(); }
 
-  impulse(sec) { const c = this.ctx, len = Math.floor(c.sampleRate * sec), b = c.createBuffer(2, len, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); } return b; }
-  noise(sec) { const c = this.ctx, len = Math.floor(c.sampleRate * sec), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; return b; }
+  impulse(sec) { const c = this.ctx, chs = this.lite ? 1 : 2, len = Math.floor(c.sampleRate * sec), b = c.createBuffer(chs, len, c.sampleRate); for (let ch = 0; ch < chs; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); } return b; }
+  noise(sec) { const c = this.ctx, len = Math.floor(c.sampleRate * sec), b = c.createBuffer(1, len, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; const x = Math.floor(c.sampleRate * 0.05); for (let i = 0; i < x; i++) { const k = i / x; d[i] = d[i] * k + d[len - x + i] * (1 - k); } return b; }
   env(g, t, a, peak, d, sustain, r, end) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setTargetAtTime(sustain, t + a, d); g.gain.setTargetAtTime(0.0001, end, r); }
 
   /* ---------- music ---------- */
@@ -78,13 +83,16 @@ export class Audio {
     const send = this.ctx.createGain(); send.gain.value = 0.55; g.connect(send).connect(this.rev);
     this.cur.music = { name, gain: g, tr: TRACKS[name] };
     this.step = 0; this.nextAt = this.ctx.currentTime + 0.1;
-    if (!this.timer) this.timer = setInterval(() => this.sched(), 40);
+    if (!this.timer) this.timer = setInterval(() => this.sched(), 50);
   }
   stopSeq() { clearInterval(this.timer); this.timer = 0; }
   sched() {
     const m = this.cur.music; if (!m || !this.ctx) return;
-    const tr = m.tr, sp = 60 / tr.bpm / 4;
-    while (this.nextAt < this.ctx.currentTime + 0.25) { this.play(tr, m.gain, this.step, this.nextAt, sp); this.nextAt += sp; this.step = (this.step + 1) % (16 * tr.bars.length); }
+    const tr = m.tr, sp = 60 / tr.bpm / 4, now = this.ctx.currentTime;
+    // a throttled timer (busy frame, backgrounded tab) must never replay the missed steps all at once — that pile-up
+    // of overlapping notes clipped into a loud burst. Skip ahead on the grid instead.
+    if (this.nextAt < now - 0.02) { const miss = Math.ceil((now + 0.05 - this.nextAt) / sp); this.nextAt += miss * sp; this.step = (this.step + miss) % (16 * tr.bars.length); }
+    while (this.nextAt < this.ctx.currentTime + 0.3) { this.play(tr, m.gain, this.step, this.nextAt, sp); this.nextAt += sp; this.step = (this.step + 1) % (16 * tr.bars.length); }
   }
   play(tr, out, step, t, sp) {
     const bar = Math.floor(step / 16), s = step % 16, ch = tr.bars[bar];
@@ -98,25 +106,28 @@ export class Audio {
   pad(out, f, t, len, tr) {
     const c = this.ctx, g = c.createGain(), lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = tr.padCut; lp.Q.value = 0.6;
     lp.frequency.setValueAtTime(tr.padCut * 0.6, t); lp.frequency.linearRampToValueAtTime(tr.padCut, t + len * 0.5); lp.frequency.linearRampToValueAtTime(tr.padCut * 0.7, t + len);
-    for (const d of [-7, 6]) { const o = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d; o.connect(lp); o.start(t); o.stop(t + len + 1.6); }
+    const dets = this.lite ? [0] : [-7, 6], lvl = this.lite ? 1.4 : 1;
+    let last; for (const d of dets) { const o = last = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d; o.connect(lp); o.start(t); o.stop(t + len + 1.6); }
+    last.onended = () => { lp.disconnect(); g.disconnect(); };
+    tr = { ...tr, padGain: tr.padGain * lvl };
     lp.connect(g).connect(out); this.env(g, t, 0.9, tr.padGain / 2, 0.8, tr.padGain / 2.6, 0.5, t + len - 0.1);
   }
   bass(out, f, t, len, gain) {
     const c = this.ctx, o = c.createOscillator(), o2 = c.createOscillator(), g = c.createGain(), lp = c.createBiquadFilter();
     o.type = "sine"; o2.type = "sawtooth"; o.frequency.value = f; o2.frequency.value = f; lp.type = "lowpass"; lp.frequency.value = 320;
     const m = c.createGain(); m.gain.value = 0.25; o2.connect(m).connect(lp); o.connect(lp); lp.connect(g).connect(out);
-    this.env(g, t, 0.01, gain, 0.15, gain * 0.6, 0.08, t + len); o.start(t); o2.start(t); o.stop(t + len + 0.5); o2.stop(t + len + 0.5);
+    this.env(g, t, 0.01, gain, 0.15, gain * 0.6, 0.08, t + len); o.start(t); o2.start(t); o.stop(t + len + 0.5); o2.stop(t + len + 0.5); o.onended = () => { lp.disconnect(); g.disconnect(); m.disconnect(); };
   }
   pluck(out, f, t, len, gain, keys) {
     const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = keys ? "sine" : "triangle"; o.frequency.value = f;
     if (keys) { const mod = c.createOscillator(), mg = c.createGain(); mod.frequency.value = f * 2; mg.gain.value = f * 0.8; mod.connect(mg).connect(o.frequency); mod.start(t); mod.stop(t + len + 0.6); mg.gain.setTargetAtTime(0, t, 0.12); }
-    o.connect(g); g.connect(out); g.connect(this.delay);
+    o.connect(g); g.connect(out); if (!this.lite || !keys) g.connect(this.delay); o.onended = () => g.disconnect();
     this.env(g, t, 0.005, gain, 0.12, gain * 0.25, 0.15, t + len); o.start(t); o.stop(t + len + 0.8);
   }
   kick(out, t, gain) {
     const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = "sine";
     o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18);
-    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g).connect(out); o.start(t); o.stop(t + 0.35);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32); o.connect(g).connect(out); o.start(t); o.stop(t + 0.35); o.onended = () => g.disconnect();
   }
   hat(out, t, gain) { this.burst(out, t, 0.04, "highpass", 7000, gain); }
   snare(out, t, gain) { this.burst(out, t, 0.16, "bandpass", 1800, gain); }
@@ -124,7 +135,7 @@ export class Audio {
     const c = this.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     s.buffer = this.noiseBuf; s.playbackRate.value = 0.8 + Math.random() * 0.4; f.type = type; f.frequency.value = freq; f.Q.value = q;
     g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
-    s.connect(f).connect(g).connect(out); s.start(t, Math.random()); s.stop(t + len + 0.05);
+    s.connect(f).connect(g).connect(out); s.start(t, Math.random()); s.stop(t + len + 0.05); s.onended = () => { f.disconnect(); g.disconnect(); };
   }
 
   /* ---------- ambient beds ---------- */
@@ -155,7 +166,7 @@ export class Audio {
   sfx(name, opt = {}) {
     if (!this.ready) return;
     const c = this.ctx, t = c.currentTime + 0.005, out = this.bus.sfx;
-    const tone = (f, at, len, type = "sine", gain = 0.2, to) => { const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t + at); if (to) o.frequency.exponentialRampToValueAtTime(to, t + at + len); g.gain.setValueAtTime(0.0001, t + at); g.gain.linearRampToValueAtTime(gain, t + at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + at + len); o.connect(g).connect(out); const s = c.createGain(); s.gain.value = 0.25; g.connect(s).connect(this.rev); o.start(t + at); o.stop(t + at + len + 0.05); };
+    const tone = (f, at, len, type = "sine", gain = 0.2, to) => { const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f, t + at); if (to) o.frequency.exponentialRampToValueAtTime(to, t + at + len); g.gain.setValueAtTime(0.0001, t + at); g.gain.linearRampToValueAtTime(gain, t + at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + at + len); o.connect(g).connect(out); const s = c.createGain(); s.gain.value = 0.25; g.connect(s).connect(this.rev); o.start(t + at); o.stop(t + at + len + 0.05); o.onended = () => { g.disconnect(); s.disconnect(); }; };
     switch (name) {
       case "hover": tone(1500, 0, 0.05, "sine", 0.05); break;
       case "click": tone(700, 0, 0.06, "square", 0.05); tone(1050, 0.04, 0.08, "sine", 0.09); break;
