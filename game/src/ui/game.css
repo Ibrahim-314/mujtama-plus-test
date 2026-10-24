@@ -12,7 +12,7 @@
 .gm-ui button, .gm-ui a, .gm-ui input, .gm-ui label, .gm-ui nav, .gm-ui section { pointer-events: auto; }
 .gm-scene, .gm-layer { position: absolute; inset: 0; pointer-events: none; }
 .gm-vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0, 0, 8, 0.55) 100%); }
-.gm-vignette::after { content: ""; position: absolute; inset: 0; opacity: 0.05; background: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px); }
+
 .gm-fade { position: absolute; inset: 0; background: #02030b; opacity: 0; pointer-events: none; transition: opacity var(--d, 450ms) ease; z-index: 30; }
 .gm-fade.on { opacity: 1; pointer-events: auto; }
 .gm-i { width: 22px; height: 22px; flex: none; }
