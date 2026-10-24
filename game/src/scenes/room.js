@@ -1,15 +1,17 @@
 /* Chapter 0 — the player's apartment, forty floors above the Digital City.
  * A cut-away room (back wall with a panoramic window, two side walls, open towards the camera), furnished with CC0
  * models, lit at night by the city outside, a moon light, warm lamps, the monitor's glow and neon strips.
+ * v2.89: the city is no longer a 3D skyline around the room — it is painted into the window glass with parallax
+ * (world/windowview.js), so the whole GPU budget goes to the room: wood floor, wainscot, curtains, art, contact shadows.
  * The player walks with the joystick / keys or by tapping the floor; glowing markers show what can be used.
  * The computer is the MJT terminal (mining, wallet, records — the real pages); the door stays locked until chapter 1. */
 import {
-  Scene, PerspectiveCamera, Color, FogExp2, HemisphereLight, DirectionalLight, PointLight, Mesh, BoxGeometry, PlaneGeometry,
+  Scene, PerspectiveCamera, Color, HemisphereLight, DirectionalLight, PointLight, Mesh, BoxGeometry, PlaneGeometry,
   MeshStandardMaterial, MeshBasicMaterial, Group, Vector3, Raycaster, Vector2, CanvasTexture, RepeatWrapping,
-  SRGBColorSpace, OctahedronGeometry, RingGeometry, AdditiveBlending, ShaderMaterial, PMREMGenerator, DoubleSide
+  SRGBColorSpace, OctahedronGeometry, RingGeometry, AdditiveBlending, PMREMGenerator, DoubleSide
 } from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { buildSkyline } from "../world/skyline.js";
+import { windowMaterial } from "../world/windowview.js";
 import { place, strip, liveScreen } from "../world/props.js";
 import { loadCharacter, Player } from "../world/player.js";
 import { PALETTE, ASSET, charById } from "../config.js";
@@ -22,38 +24,90 @@ const W = 4, D = 3, H = 3, TH = 0.16; // half width (x), half depth (z), wall he
 const WIN = { x0: -1.7, x1: 1.7, y0: 0.75, y1: 2.65 };
 const DOOR = { z0: 1.0, z1: 2.1, h: 2.2 };
 
-function floorTexture() {
+/** warm oak planks: per-plank tone, long grain lines, knots, dark seams; a matching roughness map (seams matte, wood satin) */
+function floorTextures(n = 1024) {
+  const cv = document.createElement("canvas"); cv.width = cv.height = n; const x = cv.getContext("2d");
+  const rc = document.createElement("canvas"); rc.width = rc.height = n / 2; const r = rc.getContext("2d");
+  r.fillStyle = "#5a5a5a"; r.fillRect(0, 0, n / 2, n / 2);
+  const rows = 8, ph = n / rows, tones = ["#6b4a33", "#74513a", "#5f412d", "#7a5840", "#684733", "#704d36"];
+  for (let i = 0; i < rows; i++) {
+    const y = i * ph; let xx = -((i * 397) % n);
+    while (xx < n) {
+      const len = n * (0.45 + ((i * 7 + Math.floor(xx)) % 5) * 0.08);
+      x.fillStyle = tones[(i * 3 + Math.abs(Math.floor(xx / 50))) % tones.length]; x.fillRect(xx, y, len, ph);
+      // grain
+      for (let g = 0; g < 26; g++) { const gy = y + Math.random() * ph; x.strokeStyle = `rgba(${Math.random() < 0.5 ? "40,24,14" : "150,110,80"},${0.08 + Math.random() * 0.12})`; x.lineWidth = 0.6 + Math.random() * 1.4; x.beginPath(); x.moveTo(xx, gy); for (let s = 0; s <= 8; s++) x.lineTo(xx + (len * s) / 8, gy + Math.sin(s * 1.3 + g) * 1.6); x.stroke(); }
+      if (Math.random() < 0.35) { const kx = xx + Math.random() * len, ky = y + ph * (0.3 + Math.random() * 0.4); const kg = x.createRadialGradient(kx, ky, 0, kx, ky, ph * 0.18); kg.addColorStop(0, "rgba(35,20,10,.75)"); kg.addColorStop(1, "rgba(35,20,10,0)"); x.fillStyle = kg; x.fillRect(kx - ph * 0.3, ky - ph * 0.3, ph * 0.6, ph * 0.6); }
+      x.fillStyle = "#24160d"; x.fillRect(xx, y, 2, ph); r.fillStyle = "#c8c8c8"; r.fillRect(xx / 2, y / 2, 1.5, ph / 2);
+      xx += len;
+    }
+    x.fillStyle = "#1e120a"; x.fillRect(0, y, n, 2.5); r.fillStyle = "#d0d0d0"; r.fillRect(0, y / 2, n / 2, 1.5);
+    const sh = x.createLinearGradient(0, y, 0, y + ph); sh.addColorStop(0, "rgba(255,230,200,.05)"); sh.addColorStop(1, "rgba(0,0,0,.08)"); x.fillStyle = sh; x.fillRect(0, y, n, ph);
+  }
+  const t = new CanvasTexture(cv); t.wrapS = t.wrapT = RepeatWrapping; t.repeat.set(2, 2); t.colorSpace = SRGBColorSpace; t.anisotropy = 8;
+  const rt = new CanvasTexture(rc); rt.wrapS = rt.wrapT = RepeatWrapping; rt.repeat.set(2, 2);
+  return { map: t, rough: rt };
+}
+/** soft dark blob used as a contact shadow under furniture */
+function blobTexture() {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128; const x = cv.getContext("2d");
+  const g = x.createRadialGradient(64, 64, 8, 64, 64, 64); g.addColorStop(0, "rgba(0,0,0,.75)"); g.addColorStop(0.55, "rgba(0,0,0,.35)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new CanvasTexture(cv);
+}
+/** a fabric curtain: vertical folds with light and shadow */
+function curtainTexture() {
+  const cv = document.createElement("canvas"); cv.width = 256; cv.height = 32; const x = cv.getContext("2d");
+  const g = x.createLinearGradient(0, 0, 256, 0); for (let i = 0; i <= 12; i++) g.addColorStop(i / 12, i % 2 ? "#3b1d4f" : "#5a2d73"); x.fillStyle = g; x.fillRect(0, 0, 256, 32);
+  const t = new CanvasTexture(cv); t.colorSpace = SRGBColorSpace; return t;
+}
+/** framed art: a small synthwave sunset or an abstract MJT print */
+function artTexture(kind) {
+  const cv = document.createElement("canvas"); cv.width = 256; cv.height = 320; const x = cv.getContext("2d");
+  if (kind === 0) {
+    const g = x.createLinearGradient(0, 0, 0, 320); g.addColorStop(0, "#1a0b3d"); g.addColorStop(0.55, "#c2367a"); g.addColorStop(0.62, "#ffb347"); g.addColorStop(0.62, "#14082a"); g.addColorStop(1, "#05020d"); x.fillStyle = g; x.fillRect(0, 0, 256, 320);
+    x.fillStyle = "#ffd36b"; x.beginPath(); x.arc(128, 190, 60, Math.PI, 0); x.fill(); x.fillStyle = "#1a0b3d"; for (let i = 0; i < 5; i++) x.fillRect(60, 150 + i * 9, 136, 3 + i);
+    x.strokeStyle = "#ff3fb4"; x.lineWidth = 2; for (let i = 0; i < 8; i++) { x.beginPath(); x.moveTo(128, 200); x.lineTo(-200 + i * 93, 320); x.stroke(); } for (let i = 0; i < 6; i++) { const y = 205 + i * i * 4; x.beginPath(); x.moveTo(0, y); x.lineTo(256, y); x.stroke(); }
+  } else {
+    x.fillStyle = "#0d1426"; x.fillRect(0, 0, 256, 320);
+    x.strokeStyle = "#ffc23d"; x.lineWidth = 10; x.beginPath(); x.arc(128, 150, 80, 0, Math.PI * 2); x.stroke();
+    x.fillStyle = "#2fe6ff"; x.font = "bold 70px sans-serif"; x.textAlign = "center"; x.fillText("MJT", 128, 175);
+    x.fillStyle = "rgba(255,255,255,.5)"; x.font = "16px sans-serif"; x.fillText("MUJTAMA COIN", 128, 285);
+  }
+  const t = new CanvasTexture(cv); t.colorSpace = SRGBColorSpace; return t;
+}
+/** the void around the diorama: a soft navy radial glow, darker at the edges */
+function voidTexture() {
   const cv = document.createElement("canvas"); cv.width = cv.height = 512; const x = cv.getContext("2d");
-  x.fillStyle = "#1a1c2c"; x.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 8; i++) { const y = i * 64; x.fillStyle = i % 2 ? "#1c1f31" : "#181a29"; x.fillRect(0, y, 512, 64); x.fillStyle = "#0d0e18"; x.fillRect(0, y, 512, 2); const off = (i * 173) % 512; x.fillRect(off, y, 2, 64); x.fillRect((off + 256) % 512, y, 2, 64); }
-  for (let i = 0; i < 3000; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`; x.fillRect(Math.random() * 512, Math.random() * 512, 2, 1); }
-  const t = new CanvasTexture(cv); t.wrapS = t.wrapT = RepeatWrapping; t.repeat.set(2.5, 2); t.colorSpace = SRGBColorSpace; t.anisotropy = 4; return t;
+  const g = x.createRadialGradient(256, 230, 20, 256, 256, 360); g.addColorStop(0, "#1a1d3a"); g.addColorStop(0.6, "#0a0b1c"); g.addColorStop(1, "#020208");
+  x.fillStyle = g; x.fillRect(0, 0, 512, 512); const t = new CanvasTexture(cv); t.colorSpace = SRGBColorSpace; return t;
 }
 function wallTexture() {
   const cv = document.createElement("canvas"); cv.width = 256; cv.height = 256; const x = cv.getContext("2d");
-  x.fillStyle = "#20233a"; x.fillRect(0, 0, 256, 256);
-  x.strokeStyle = "#191b2e"; x.lineWidth = 3; for (let i = 0; i <= 256; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 256); x.stroke(); }
-  for (let i = 0; i < 1500; i++) { x.fillStyle = `rgba(0,0,0,${Math.random() * 0.08})`; x.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  // warm plaster with a fine trowel texture
+  x.fillStyle = "#3a3550"; x.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2600; i++) { const l = Math.random() < 0.5; x.fillStyle = `rgba(${l ? "255,240,230" : "0,0,0"},${Math.random() * (l ? 0.035 : 0.07)})`; x.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 3, 1 + Math.random() * 2); }
   const t = new CanvasTexture(cv); t.wrapS = t.wrapT = RepeatWrapping; t.colorSpace = SRGBColorSpace; return t;
 }
 
 export async function create(game, params = {}) {
   const save = game.save.data || {}; const name = save.name || "";
-  const scene = new Scene(); scene.background = new Color(0x03040f); scene.fog = new FogExp2(0x070a24, 0.004);
+  const scene = new Scene(); scene.background = voidTexture();
   const camera = new PerspectiveCamera(46, 1, 0.1, 1500);
   const q = game.renderer.q;
   // soft reflections for the furniture (very low, the night stays dark)
   const pm = new PMREMGenerator(game.renderer.gl); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.18; pm.dispose();
 
-  // ---------- the city outside the window ----------
-  const city = buildSkyline({ quality: { skyline: q.skyline * 0.85, particles: q.particles * 0.6 }, radius: 150, seed: 23, fogD: 0.0075 });
-  city.group.position.set(-10, -46, -150); scene.add(city.group);
 
   // ---------- the room ----------
   const room = new Group(); scene.add(room);
-  const wallMat = new MeshStandardMaterial({ map: wallTexture(), color: 0xb9bfe0, roughness: 0.85, metalness: 0.05 });
-  const floor = new Mesh(new PlaneGeometry(W * 2, D * 2), new MeshStandardMaterial({ map: floorTexture(), roughness: 0.38, metalness: 0.15 }));
+  const wallMat = new MeshStandardMaterial({ map: wallTexture(), color: 0xd8d0ee, roughness: 0.92, metalness: 0 });
+  const ft = floorTextures(q.dpr > 1 ? 1024 : 512);
+  const floor = new Mesh(new PlaneGeometry(W * 2, D * 2), new MeshStandardMaterial({ map: ft.map, roughnessMap: ft.rough, roughness: 0.8, metalness: 0.02, color: 0xd2b8a4 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; room.add(floor);
+  // the diorama base: a thick slab under the floor with a thin gold edge, so the room reads as a crafted model
+  const slab = new Mesh(new BoxGeometry(W * 2 + TH * 2 + 0.2, 0.5, D * 2 + TH + 0.2), new MeshStandardMaterial({ color: 0x14121f, roughness: 0.6, metalness: 0.3 }));
+  slab.position.set(0, -0.251, -TH / 2); room.add(slab);
+  room.add(strip(new Vector3(-W - TH - 0.1, -0.02, D + 0.1), new Vector3(W + TH + 0.1, -0.02, D + 0.1), PALETTE.gold, 1.4, 0.02));
   const wall = (w, h, d, x, y, z, rep = [1, 1]) => { const m = wallMat.clone(); m.map = wallMat.map.clone(); m.map.needsUpdate = true; m.map.repeat.set(rep[0], rep[1]); const o = new Mesh(new BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.receiveShadow = true; o.castShadow = true; room.add(o); return o; };
   // back wall around the window
   const bz = -D - TH / 2;
@@ -78,15 +132,8 @@ export async function create(game, params = {}) {
   const bar = (w, h, x, y) => { const m = new Mesh(new BoxGeometry(w, h, 0.08), frameM); m.position.set(x, y, -D - 0.02); room.add(m); };
   bar(WIN.x1 - WIN.x0 + 0.1, 0.07, 0, WIN.y0); bar(WIN.x1 - WIN.x0 + 0.1, 0.07, 0, WIN.y1); bar(0.06, WIN.y1 - WIN.y0, 0, (WIN.y0 + WIN.y1) / 2);
   bar(0.06, WIN.y1 - WIN.y0, WIN.x0 + (WIN.x1 - WIN.x0) / 4, (WIN.y0 + WIN.y1) / 2); bar(0.06, WIN.y1 - WIN.y0, WIN.x1 - (WIN.x1 - WIN.x0) / 4, (WIN.y0 + WIN.y1) / 2);
-  const glass = new Mesh(new PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), new ShaderMaterial({
-    transparent: true, depthWrite: false, uniforms: { uTime: { value: 0 } },
-    vertexShader: "varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
-    fragmentShader: `uniform float uTime; varying vec2 vU; float h(float x){ return fract(sin(x * 91.7) * 43758.5); }
-      void main(){ float col = floor(vU.x * 90.0); float sp = 0.15 + h(col) * 0.35; float y = fract(vU.y + uTime * sp + h(col * 3.1));
-        float drop = smoothstep(0.0, 0.02, y) * smoothstep(0.08, 0.02, y) * step(0.55, h(col * 7.3)) * smoothstep(0.5, 0.0, abs(fract(vU.x * 90.0) - 0.5));
-        float a = 0.05 + drop * 0.35; gl_FragColor = vec4(vec3(0.6, 0.75, 1.0) * (0.2 + drop), a); }`
-  }));
-  glass.position.set(0, (WIN.y0 + WIN.y1) / 2, -D + 0.01); room.add(glass);
+  const glass = new Mesh(new PlaneGeometry(WIN.x1 - WIN.x0, WIN.y1 - WIN.y0), windowMaterial({ hi: q.dpr > 1 }));
+  glass.position.set(0, (WIN.y0 + WIN.y1) / 2, -D - 0.03); room.add(glass);
   const sill = new Mesh(new BoxGeometry(WIN.x1 - WIN.x0 + 0.3, 0.05, 0.3), frameM); sill.position.set(0, WIN.y0 - 0.01, -D + 0.12); room.add(sill);
 
   // neon: ceiling-edge strips (cyan), baseboard (gold), window outline (magenta)
@@ -97,12 +144,37 @@ export async function create(game, params = {}) {
   room.add(strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(-W + 0.03, 0.04, D), PALETTE.gold, 1.6, 0.025));
   room.add(strip(new Vector3(WIN.x0, WIN.y1 + 0.06, -D + 0.06), new Vector3(WIN.x1, WIN.y1 + 0.06, -D + 0.06), PALETTE.magenta, 2.4, 0.03));
 
+  // ---------- finishing: wainscot, chair rail, wall caps, curtains, art ----------
+  const wainM = new MeshStandardMaterial({ color: 0x1d1a2c, roughness: 0.55, metalness: 0.1 });
+  const trimM = new MeshStandardMaterial({ color: 0x0f0d18, roughness: 0.35, metalness: 0.5 });
+  const slabAt = (w, h, d, x, y, z, m) => { const o = new Mesh(new BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.receiveShadow = true; room.add(o); return o; };
+  // lower panelling on the back wall (either side of the window) and the left wall, with vertical panel grooves
+  const WH = 0.85;
+  slabAt(W + WIN.x0 - 0.02, WH, 0.03, (-W + WIN.x0) / 2, WH / 2, -D + 0.015, wainM);
+  slabAt(W - WIN.x1 - 0.02, WH, 0.03, (W + WIN.x1) / 2, WH / 2, -D + 0.015, wainM);
+  slabAt(0.03, WH, D * 2, -W + 0.015, WH / 2, 0, wainM);
+  for (let gx = -W + 0.5; gx < W; gx += 0.5) if (gx < WIN.x0 - 0.05 || gx > WIN.x1 + 0.05) slabAt(0.015, WH - 0.12, 0.01, gx, WH / 2, -D + 0.035, trimM);
+  for (let gz = -D + 0.5; gz < D; gz += 0.5) slabAt(0.01, WH - 0.12, 0.015, -W + 0.035, WH / 2, gz, trimM);
+  slabAt(W * 2, 0.04, 0.05, 0, WH, -D + 0.025, trimM); slabAt(0.05, 0.04, D * 2, -W + 0.025, WH, 0, trimM);
+  // crown caps on top of the cut-away walls (the walls read as solid, not paper)
+  const capM = new MeshStandardMaterial({ color: 0x0b0a12, roughness: 0.4, metalness: 0.4 });
+  slabAt(W * 2 + TH * 2, 0.04, TH + 0.02, 0, H + 0.02, -D - TH / 2, capM);
+  slabAt(TH + 0.02, 0.04, D * 2 + TH, -W - TH / 2, H + 0.02, -TH / 2, capM);
+  slabAt(TH + 0.02, 0.04, D * 2 + TH, W + TH / 2, H + 0.02, -TH / 2, capM);
+  // curtains gathered at both sides of the window, on a thin rod
+  const curM = new MeshStandardMaterial({ map: curtainTexture(), roughness: 0.95, side: DoubleSide });
+  for (const cx of [WIN.x0 - 0.22, WIN.x1 + 0.22]) { const c = new Mesh(new BoxGeometry(0.5, WIN.y1 - WIN.y0 + 0.45, 0.06), curM); c.position.set(cx, (WIN.y0 + WIN.y1) / 2 + 0.1, -D + 0.1); c.castShadow = true; room.add(c); }
+  slabAt(WIN.x1 - WIN.x0 + 1.2, 0.025, 0.025, 0, WIN.y1 + 0.28, -D + 0.12, trimM);
+  // framed art on the back wall, between the window and the corners
+  const artFrame = (kind, x, y, w, h) => { slabAt(w + 0.07, h + 0.07, 0.035, x, y, -D + 0.02, trimM); const a = new Mesh(new PlaneGeometry(w, h), new MeshStandardMaterial({ map: artTexture(kind), roughness: 0.5, emissive: 0xffffff, emissiveIntensity: 0.12, emissiveMap: null })); a.material.emissiveMap = a.material.map; a.position.set(x, y, -D + 0.04); room.add(a); };
+  artFrame(0, -2.95, 1.75, 0.62, 0.78); artFrame(1, 3.0, 1.85, 0.5, 0.62);
+
   // ---------- lights ----------
-  scene.add(new HemisphereLight(0x3c4c9a, 0x0c0c16, 0.55));
-  const moon = new DirectionalLight(0x9db2ff, 1.4); moon.position.set(-3, 9, -12); moon.target.position.set(0, 0, 0);
+  scene.add(new HemisphereLight(0x4a4f8a, 0x1a1210, 0.5));
+  const moon = new DirectionalLight(0x9db2ff, 0.85); moon.position.set(-3, 9, -12); moon.target.position.set(0, 0, 0);
   if (q.shadows) { moon.castShadow = true; moon.shadow.mapSize.set(1024, 1024); Object.assign(moon.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); moon.shadow.bias = -0.0008; moon.shadow.normalBias = 0.03; }
   scene.add(moon, moon.target);
-  const cityGlow = new PointLight(0xffb34d, 5, 9, 1.6); cityGlow.position.set(0, 1.8, -2.2); scene.add(cityGlow);
+  const cityGlow = new PointLight(0xa685ff, 4, 9, 1.6); cityGlow.position.set(0, 1.8, -2.2); scene.add(cityGlow);
 
   // ---------- furniture (CC0 Kenney Furniture Kit) ----------
   const colliders = [], add = (o) => { room.add(o); if (o.solid) colliders.push(o.box); return o; };
@@ -128,10 +200,15 @@ export async function create(game, params = {}) {
     place("cardboardBoxClosed", { x: 3.4, z: 2.6, y: 0.62, size: 0.45, rot: 0.4, solid: false })
   ]).catch((e) => { console.error(e); return []; });
   items.forEach(add);
+  // contact shadows: a soft dark blob under every solid piece grounds it on the floor (cheap ambient occlusion)
+  const blobT = blobTexture(), blobM = new MeshBasicMaterial({ map: blobT, transparent: true, depthWrite: false, opacity: 0.85 });
+  for (const it of items) { if (!it.solid) continue; const b = it.box, w = b.max.x - b.min.x, d = b.max.z - b.min.z; const s = new Mesh(new PlaneGeometry(w * 1.35, d * 1.35), blobM); s.rotation.x = -Math.PI / 2; s.position.set((b.min.x + b.max.x) / 2, 0.004, (b.min.z + b.max.z) / 2); room.add(s); }
+  // a soft cyan LED under the desk
+  room.add(strip(new Vector3(3.0, 0.7, -2.2), new Vector3(3.0, 0.7, -0.9), PALETTE.cyan, 2, 0.02));
   // the bed gets a magenta glow underneath; the lamps their warm light
   room.add(strip(new Vector3(-4, 0.06, -0.92), new Vector3(-2.1, 0.06, -0.92), PALETTE.magenta, 2.2, 0.03));
   const lampL = new PointLight(0xffa860, 4.5, 5, 1.8); lampL.position.set(-1.85, 1.0, -2.6); scene.add(lampL);
-  const lampF = new PointLight(0xffc285, 5, 6, 1.8); lampF.position.set(-3.6, 1.6, 2.45); scene.add(lampF);
+  const lampF = new PointLight(0xffc285, 3.2, 5, 2); lampF.position.set(-3.6, 1.6, 2.45); scene.add(lampF);
 
   // the monitor: a live MJT miner screen (real mining state)
   let mining = null;
@@ -304,7 +381,8 @@ export async function create(game, params = {}) {
     const portrait = camera.aspect < 0.8, halfH = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
     const dist = portrait ? Math.min(12, Math.max(8.6, 2.9 / Math.tan(halfH))) : 7.4, hgt = portrait ? dist * 0.78 : 6.0;
     const tx = Math.max(-1.6, Math.min(1.6, player.pos.x * (portrait ? 0.8 : 0.55))), tz = Math.max(-1.4, Math.min(1.2, player.pos.z * 0.45));
-    camT.set(tx, 0.7, tz - 0.4); camP.set(tx * 0.9, hgt, tz + dist);
+    // portrait: aim further back so the room sits in the middle of the screen below the HUD, not in its top half
+    camT.set(tx, 0.7, tz - (portrait ? 1.6 : 0.4)); camP.set(tx * 0.9, hgt, tz + dist);
   };
   goalCam(); camera.position.copy(camP); camera.lookAt(camT);
   const look = camT.clone();
@@ -356,7 +434,7 @@ export async function create(game, params = {}) {
       // the living room: monitor, news board, rain, city, door light
       if (Math.floor(time * 4) !== Math.floor((time - dt) * 4)) scr.tick(time);
       if (Math.floor(time * 6) !== Math.floor((time - dt) * 6)) news.tick(time);
-      glass.material.uniforms.uTime.value = time; city.update(dt, time);
+      glass.material.uniforms.uTime.value = time;
       monGlow.intensity = 3.6 + Math.sin(time * 9) * 0.25 + (Math.random() < 0.02 ? -1.5 : 0);
       saveT += dt; if (saveT > 8) { saveT = 0; savePos(); }
     },
