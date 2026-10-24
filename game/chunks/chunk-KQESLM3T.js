@@ -1,0 +1,1 @@
+var l="activeDelayIndices";function a(t){let e=t._getGlobalContextVariable(l,null);return e||(e=new Set,t._setGlobalContextVariable(l,e)),e}function n(t,e){a(t).add(e)}function i(t,e){t._getGlobalContextVariable(l,null)?.delete(e)}function o(t,e){return t._getGlobalContextVariable(l,null)?.has(e)??!1}export{n as a,i as b,o as c};
