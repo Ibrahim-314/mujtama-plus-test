@@ -97,11 +97,22 @@ async function run(label, ctxOpts) {
   // the computer → terminal → mining station over the paused game
   await p.evaluate(() => { window.MPGame.room.use("computer"); });
   await talk(p);
-  await visible(p, "#gm-modal [data-st=earn]");
-  await p.waitForTimeout(500);
+  // MJT OS: desktop + taskbar + start menu, the Mining program opens in a window
+  await visible(p, "#gm-os .os-bar");
+  await p.waitForTimeout(900);
+  await shot(p, label + "-5a-desktop");
+  await tap(p, "#gm-os [data-os=start]");
+  await visible(p, "#gm-os .os-start .os-pin[data-app=mining]");
+  await shot(p, label + "-5b-start");
+  await tap(p, "#gm-os .os-start .os-pin[data-app=mining]");
+  await visible(p, "#gm-os .os-win[data-win=mining] .mn-go");
+  await until(p, () => !!document.querySelector("#gm-os .mn-kpi div"));
+  assert.equal(await p.evaluate(() => document.querySelectorAll("#gm-modal [data-st=earn]").length), 0, "old mining terminal is gone");
+  await p.waitForTimeout(700);
   await shot(p, label + "-5-terminal");
-  await tap(p, "#gm-modal [data-st=earn]");
-  await until(p, () => location.hash === "#/city/mjt/earn");
+  // the wallet launcher still opens the real station page
+  await tap(p, "#gm-os .os-desk [data-app=send]");
+  await until(p, () => location.hash === "#/city/mjt/send");
   await visible(p, "body > .cy-st", 30000);
   assert.ok(await p.evaluate(() => document.querySelector("#gm-root").classList.contains("gm-behind")), "game paused behind the station");
   await p.waitForTimeout(600);
