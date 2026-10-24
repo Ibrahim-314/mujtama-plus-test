@@ -36,9 +36,9 @@ export const charById = (id) => CHARS.find((c) => c.id === id) || CHARS[0];
 
 /** Render quality tiers. "auto" picks one from the device and steps down if the frame rate drops. */
 export const QUALITY = {
-  low: { dpr: 1, bloom: false, shadows: false, particles: 0.35, skyline: 0.55 },
-  medium: { dpr: 1.5, bloom: true, shadows: false, particles: 0.7, skyline: 0.8 },
-  high: { dpr: 2, bloom: true, shadows: true, particles: 1, skyline: 1 }
+  low: { dpr: 1.5, bloom: false, shadows: false, particles: 0.35, skyline: 0.55 },
+  medium: { dpr: 2.5, bloom: true, shadows: false, particles: 0.7, skyline: 0.8 },
+  high: { dpr: 3, bloom: true, shadows: true, particles: 1, skyline: 1 }
 };
 
 /** Where assets live (copied to the site root by game/build.mjs). */
