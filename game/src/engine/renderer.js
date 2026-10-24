@@ -1,7 +1,7 @@
 /* The renderer: WebGL2 through three.js, ACES filmic tone mapping, and a post-processing chain
  * (render → bloom → output) that makes every emissive surface glow like neon. Three quality tiers (config.QUALITY);
  * "auto" picks one from the device and steps down by itself when the frame rate stays low. */
-import { WebGLRenderer, SRGBColorSpace, ACESFilmicToneMapping, PCFSoftShadowMap, Vector2, HalfFloatType } from "three";
+import { WebGLRenderer, SRGBColorSpace, ACESFilmicToneMapping, PCFSoftShadowMap, Vector2, HalfFloatType, WebGLRenderTarget } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -20,7 +20,7 @@ export class Renderer {
   /** @param {HTMLCanvasElement} canvas @param {string} quality auto|low|medium|high */
   constructor(canvas, quality = "auto") {
     this.canvas = canvas;
-    this.gl = new WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance", stencil: false });
+    this.gl = new WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance", stencil: false });
     this.gl.outputColorSpace = SRGBColorSpace;
     this.gl.toneMapping = ACESFilmicToneMapping;
     this.gl.toneMappingExposure = 1.05;
@@ -45,9 +45,12 @@ export class Renderer {
   build() {
     this.composer?.dispose(); this.composer = null; this.bloom = null;
     if (!this.scene || !this.q.bloom) return;
-    const c = new EffectComposer(this.gl); c.renderTarget1.texture.type = HalfFloatType; c.renderTarget2.texture.type = HalfFloatType;
+    const s0 = this.size(), pr = this.gl.getPixelRatio();
+    // 4x MSAA on the main target: clean edges at full device resolution (the canvas has no antialias with post)
+    const rt = new WebGLRenderTarget(s0.w * pr, s0.h * pr, { type: HalfFloatType, samples: 4 });
+    const c = new EffectComposer(this.gl, rt);
     c.addPass(new RenderPass(this.scene, this.camera));
-    const s = this.size();
+    const s = s0;
     this.bloom = new UnrealBloomPass(new Vector2(s.w / 2, s.h / 2), this.bloomCfg.strength, this.bloomCfg.radius, this.bloomCfg.threshold);
     c.addPass(this.bloom);
     c.addPass(new OutputPass());
