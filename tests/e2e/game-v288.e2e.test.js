@@ -155,6 +155,44 @@ async function run(label, ctxOpts) {
   await until(p, () => !document.querySelector("#gm-root")?.classList.contains("gm-behind"));
   assert.ok(await p.evaluate(() => window.MPGame?.scenes.name === "room"), "back in the room after the station");
 
+  // v2.94 stage 4 — the door: locked until chapter 0 is complete, then it slides open onto the street
+  await p.evaluate(() => { window.MPGame.room.use("door"); });
+  await talk(p); // locked lines
+  await until(p, () => !!window.MPGame.save.flag("room.done"), null, 20000);
+  await until(p, () => document.querySelector("#gm-dlg")?.classList.contains("on"), null, 20000);
+  await talk(p, 40000); // chapter 0 complete (window + computer + door)
+  assert.ok(await p.evaluate(() => !!window.MPGame.save.flag("room.done")), "chapter 0 complete");
+  await until(p, () => !window.MPGame.room || window.MPGame.scenes.busy === false);
+  p.evaluate(() => { window.MPGame.room.use("door"); }).catch(() => {});
+  await until(p, () => window.MPGame.room && window.MPGame.room.door() > 0.3, null, 45000).catch(async (e) => { console.log("DOORSTATE", JSON.stringify(await p.evaluate(() => ({ flags: window.MPGame.save.data.flags, door: window.MPGame.room?.door(), scene: window.MPGame.scenes.name, dlg: !document.querySelector("#gm-dlg")?.hidden, act: document.querySelector("#gm-act")?.hidden })))); await shot(p, "FAIL-door"); throw e; });
+  await shot(p, label + "-8a-door");
+  await until(p, () => window.MPGame?.scenes.name === "street" && !window.MPGame.scenes.busy, null, 60000);
+  await until(p, () => document.querySelector("#gm-dlg")?.classList.contains("on"), null, 20000);
+  await talk(p, 40000); // street intro
+  await p.waitForTimeout(1500);
+  await shot(p, label + "-8b-street");
+  // walk a few metres up the road towards the tower, through the same path a tap on the road takes
+  await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.street.state().intro, null, 20000);
+  const z0 = await p.evaluate(() => window.MPGame.street.player.pos.z);
+  assert.ok(await p.evaluate(() => { const s = window.MPGame.street; return s.walk(0, s.player.pos.z - 6); }), "street accepts a walk");
+  await until(p, (a) => window.MPGame.street.player.pos.z < a - 0.5, z0, 20000).catch(async (e) => { console.log("STREETSTATE", JSON.stringify(await p.evaluate(() => ({ st: window.MPGame.street.state(), pos: window.MPGame.street.player.pos, modal: window.MPGame.ui.modalOpen })))); throw e; });
+  // up to the tower and in: the MJT hall opens over the paused street
+  await p.evaluate(() => { const s = window.MPGame.street; s.player.pos.set(0, 0, s.gate + 2); });
+  p.evaluate(() => { window.MPGame.street.use("tower"); }).catch(() => {});
+  await until(p, () => location.hash === "#/city/mjt/balance", null, 20000);
+  await visible(p, "body > .cy-st", 30000);
+  assert.ok(await p.evaluate(() => !!window.MPGame.save.flag("street.tower")), "tower goal done");
+  await p.waitForTimeout(500);
+  await shot(p, label + "-8c-hall");
+  await p.evaluate(() => window.MPCity.closeRoom());
+  await until(p, () => !document.querySelector("#gm-root")?.classList.contains("gm-behind"));
+  assert.ok(await p.evaluate(() => window.MPGame?.scenes.name === "street"), "back on the street after the hall");
+  // and home again: the room, the door closes behind the player
+  p.evaluate(() => { window.MPGame.street.use("home"); }).catch(() => {});
+  await until(p, () => window.MPGame?.scenes.name === "room" && !window.MPGame.scenes.busy, null, 60000);
+  await until(p, () => window.MPGame.room.door() === 0, null, 20000);
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-root").classList.contains("gm-flash-on")), "flash cleared");
+
   // pause → settings → back → exit to the app
   await tap(p, "#gm-menu");
   await visible(p, "#gm-modal [data-a=settings]");
