@@ -104,7 +104,7 @@ function signTexture(r, accent) {
   const t = new CanvasTexture(cv); t.colorSpace = SRGBColorSpace; return t;
 }
 
-/** @param {{ quality?: {skyline:number, particles:number}, rain?: boolean, radius?: number, seed?: number, fog?: number, fogD?: number, plaza?: boolean }} o */
+/** @param {{ quality?: {skyline:number, particles:number}, rain?: boolean, radius?: number, seed?: number, fog?: number, fogD?: number, plaza?: boolean, keep?: (x: number, z: number) => boolean }} o */
 export function buildSkyline(o = {}) {
   const q = o.quality || { skyline: 1, particles: 1 }, R = o.radius || 150, rnd = rand(o.seed || 7);
   const fogC = o.fog ?? PALETTE.fog, fogD = o.fogD ?? 0.0105;
@@ -128,6 +128,7 @@ export function buildSkyline(o = {}) {
   for (let gx = -cells; gx <= cells; gx++) for (let gz = -cells; gz <= cells; gz++) {
     const cx = gx * B, cz = gz * B, d = Math.hypot(cx, cz);
     if (d > R || (o.plaza !== false && Math.abs(gx) <= 1 && Math.abs(gz) <= 1)) continue;
+    if (o.keep && !o.keep(cx, cz)) continue; // v2.94: a scene can keep a lot clear (the street in front of the Core)
     if (rnd() > q.skyline) continue;
     const parts = rnd() < 0.5 ? 1 : rnd() < 0.6 ? 2 : 4, inner = B - road;
     for (let i = 0; i < parts; i++) {
