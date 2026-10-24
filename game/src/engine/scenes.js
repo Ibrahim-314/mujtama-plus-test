@@ -9,10 +9,13 @@ export class Scenes {
     if (this.busy) return; this.busy = true;
     const g = this.game, ui = g.ui;
     try {
-      if (this.cur) { await ui.fade(true, params.fade ?? 450); this.cur.exit?.(); this.free(this.cur); this.cur = null; }
       const make = this.reg[name]; if (!make) throw new Error("scene " + name);
+      const mod = make(); // the next scene's code downloads during the fade (no GPU work until the old scene is gone)
+      if (this.cur) { await ui.fade(true, params.fade ?? 450); this.cur.exit?.(); this.free(this.cur); this.cur = null; this.name = null; }
       ui.clearScene();
-      const s = await (await make()).create(g, params);
+      // let the black frame paint and the freed scene be collected before building the next one
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+      const s = await (await mod).create(g, params);
       this.cur = s; this.name = name;
       g.renderer.setBloom(s.bloom || { strength: 0.85, radius: 0.55, threshold: 0.78 });
       g.renderer.setScene(s.scene, s.camera);
