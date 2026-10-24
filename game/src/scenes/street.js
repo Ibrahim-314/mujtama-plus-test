@@ -12,6 +12,7 @@ import {
 } from "three";
 import { buildSkyline } from "../world/skyline.js";
 import { strip } from "../world/props.js";
+import { buildStreetLife } from "../world/streetlife.js";
 import { loadCharacter, Player } from "../world/player.js";
 import { PALETTE, ASSET, charById } from "../config.js";
 import { t, tl, fill } from "../engine/i18n.js";
@@ -77,7 +78,7 @@ export async function create(game, params = {}) {
 
   // ---------- the city around the street ----------
   // the skyline's centre is the Core; the lot in front of it (the street and the apartment block) is kept clear
-  const city = buildSkyline({ quality: q, radius: low ? 95 : 120, seed: 11, plaza: true, keep: (x, z) => !(Math.abs(x) < 13 && z > 22) });
+  const city = buildSkyline({ quality: q, radius: low ? 95 : 120, seed: 11, plaza: true, keep: (x, z) => !(Math.abs(x) < 26 && z > 16) });
   city.group.position.z = CORE_Z; scene.add(city.group);
   scene.add(new HemisphereLight(0x9fb4ff, 0x20122a, 1.25));
   const key = new DirectionalLight(0xffd59a, 1.6); key.position.set(0, 30, CORE_Z + 10); key.target.position.set(0, 0, 0); scene.add(key, key.target);
@@ -115,6 +116,10 @@ export async function create(game, params = {}) {
     const pool = new Mesh(poolG, poolM); pool.rotation.x = -Math.PI / 2; pool.position.set(x - s * 0.9, 0.08, z); scene.add(pool);
   }
   scene.add(poles, heads);
+
+  // the life of the street: buildings with shops along both pavements, palms and trees in planters, people walking by
+  const life = buildStreetLife({ road: ROAD, walk: WALK, zHome: HOME_Z, zEnd: CORE_Z + 18, lampZ, low });
+  scene.add(life.group);
 
   // the apartment block behind the player: a lit facade with the entrance the player just came out of
   const facade = new Mesh(new BoxGeometry(18, 46, 10), [
@@ -159,7 +164,7 @@ export async function create(game, params = {}) {
   const player = new Player(ch, game.audio); player.addTo(scene);
   const back = params.from === "tower";
   player.pos.set(0, 0, back ? GATE_Z + 2.2 : HOME_Z - 1.4); player.heading = back ? 0 : Math.PI;
-  const world = { colliders: [], bounds: { minX: -WALK + 0.2, maxX: WALK - 0.2, minZ: GATE_Z + 0.55, maxZ: HOME_Z - 0.45 } };
+  const world = { colliders: life.colliders, bounds: { minX: -WALK + 0.2, maxX: WALK - 0.2, minZ: GATE_Z + 0.55, maxZ: HOME_Z - 0.45 } };
 
   // ---------- HUD (the room's styles) ----------
   const c0 = charById(save.char);
@@ -302,6 +307,7 @@ export async function create(game, params = {}) {
       } else if (!intro) { camera.position.lerp(camP, Math.min(1, dt * 3)); look.lerp(camT, Math.min(1, dt * 3.5)); }
       camera.lookAt(look);
       city.update(dt, time);
+      life.update(dt, time, player.pos);
     },
     exit() { flash(false); game.save.flush(); },
     dispose() { game.street = null; game.renderer.onResize = null; game.bus.off("station-closed", onStationClose); game.input.clear(); }
