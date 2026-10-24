@@ -24,11 +24,13 @@ const TRACKS = {
     bass: [N("D2"), N("Bb1"), N("F1"), N("C2")], bassSteps: [0, 8],
     arp: [0, 2, 1, 3, 2, 0, 3, 1], arpOct: 24, arpEvery: 2
   },
+  // the apartment: a calm, warm ambient piece — pure sine/triangle tones, no drums, no noise (v2.88.3: the old lo-fi
+  // beat with rain noise read as hiss on phone speakers)
   room: {
-    bpm: 72, padCut: 1100, padGain: 0.075, arpGain: 0.035, bassGain: 0.13, kick: [0, 7, 10], hat: [2, 6, 10, 14], hatGain: 0.012, kickGain: 0.22, snare: [4, 12],
-    bars: [chord("D3", "F3", "A3", "C4"), chord("G2", "B2", "D3", "F3"), chord("C3", "E3", "G3", "B3"), chord("A2", "C3", "E3", "G3")],
-    bass: [N("D2"), N("G1"), N("C2"), N("A1")], bassSteps: [0, 7, 10],
-    arp: [3, 2, 1, 2, 0, 1, 2, 3], arpOct: 12, arpEvery: 4, keys: true
+    bpm: 60, padCut: 900, padGain: 0.09, arpGain: 0.03, bassGain: 0.08, kick: [], hat: [], hatGain: 0, kickGain: 0, padWave: "triangle", soft: true,
+    bars: [chord("D3", "F3", "A3", "C4"), chord("Bb2", "D3", "F3", "A3"), chord("F3", "A3", "C4", "E4"), chord("C3", "E3", "G3", "B3")],
+    bass: [N("D2"), N("Bb1"), N("F2"), N("C2")], bassSteps: [0],
+    arp: [0, 2, 3, 1, 2, 0, 3, 2], arpOct: 12, arpEvery: 4, keys: true
   }
 };
 
@@ -98,7 +100,7 @@ export class Audio {
     const bar = Math.floor(step / 16), s = step % 16, ch = tr.bars[bar];
     if (s === 0) for (const n of ch) this.pad(out, midi(n), t, sp * 16, tr);
     if (tr.bassSteps.includes(s)) this.bass(out, midi(tr.bass[bar] + (s === 14 || s === 11 ? 12 : 0)), t, sp * 2.5, tr.bassGain);
-    if (s % tr.arpEvery === 0) { const i = tr.arp[(s / tr.arpEvery) % tr.arp.length] % ch.length; this.pluck(out, midi(ch[i] + tr.arpOct), t, sp * 1.6, tr.arpGain, tr.keys); }
+    if (s % tr.arpEvery === 0) { const i = tr.arp[(s / tr.arpEvery) % tr.arp.length] % ch.length; this.pluck(out, midi(ch[i] + tr.arpOct), t, sp * (tr.soft ? 3 : 1.6), tr.arpGain, tr.keys, tr.soft); }
     if (tr.kick.includes(s)) this.kick(out, t, tr.kickGain);
     if (tr.hat.includes(s)) this.hat(out, t, tr.hatGain);
     if (tr.snare?.includes(s)) this.snare(out, t, 0.05);
@@ -106,8 +108,8 @@ export class Audio {
   pad(out, f, t, len, tr) {
     const c = this.ctx, g = c.createGain(), lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = tr.padCut; lp.Q.value = 0.6;
     lp.frequency.setValueAtTime(tr.padCut * 0.6, t); lp.frequency.linearRampToValueAtTime(tr.padCut, t + len * 0.5); lp.frequency.linearRampToValueAtTime(tr.padCut * 0.7, t + len);
-    const dets = this.lite ? [0] : [-7, 6], lvl = this.lite ? 1.4 : 1;
-    let last; for (const d of dets) { const o = last = c.createOscillator(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d; o.connect(lp); o.start(t); o.stop(t + len + 1.6); }
+    const dets = this.lite || tr.soft ? [0] : [-7, 6], lvl = this.lite && !tr.soft ? 1.4 : 1;
+    let last; for (const d of dets) { const o = last = c.createOscillator(); o.type = tr.padWave || "sawtooth"; o.frequency.value = f; o.detune.value = d; o.connect(lp); o.start(t); o.stop(t + len + 1.6); }
     last.onended = () => { lp.disconnect(); g.disconnect(); };
     tr = { ...tr, padGain: tr.padGain * lvl };
     lp.connect(g).connect(out); this.env(g, t, 0.9, tr.padGain / 2, 0.8, tr.padGain / 2.6, 0.5, t + len - 0.1);
@@ -118,11 +120,12 @@ export class Audio {
     const m = c.createGain(); m.gain.value = 0.25; o2.connect(m).connect(lp); o.connect(lp); lp.connect(g).connect(out);
     this.env(g, t, 0.01, gain, 0.15, gain * 0.6, 0.08, t + len); o.start(t); o2.start(t); o.stop(t + len + 0.5); o2.stop(t + len + 0.5); o.onended = () => { lp.disconnect(); g.disconnect(); m.disconnect(); };
   }
-  pluck(out, f, t, len, gain, keys) {
+  pluck(out, f, t, len, gain, keys, soft) {
     const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = keys ? "sine" : "triangle"; o.frequency.value = f;
-    if (keys) { const mod = c.createOscillator(), mg = c.createGain(); mod.frequency.value = f * 2; mg.gain.value = f * 0.8; mod.connect(mg).connect(o.frequency); mod.start(t); mod.stop(t + len + 0.6); mg.gain.setTargetAtTime(0, t, 0.12); }
+    if (keys && !soft) { const mod = c.createOscillator(), mg = c.createGain(); mod.frequency.value = f * 2; mg.gain.value = f * 0.8; mod.connect(mg).connect(o.frequency); mod.start(t); mod.stop(t + len + 0.6); mg.gain.setTargetAtTime(0, t, 0.12); }
     o.connect(g); g.connect(out); if (!this.lite || !keys) g.connect(this.delay); o.onended = () => g.disconnect();
-    this.env(g, t, 0.005, gain, 0.12, gain * 0.25, 0.15, t + len); o.start(t); o.stop(t + len + 0.8);
+    if (soft) this.env(g, t, 0.04, gain, 0.6, gain * 0.4, 0.5, t + len); else this.env(g, t, 0.005, gain, 0.12, gain * 0.25, 0.15, t + len);
+    o.start(t); o.stop(t + len + (soft ? 2.5 : 0.8));
   }
   kick(out, t, gain) {
     const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = "sine";
@@ -153,11 +156,8 @@ export class Audio {
       const wind = loop("bandpass", 600, 0.12, 1.2); lfo(wind.f.frequency, 0.05, 260); lfo(wind.v.gain, 0.11, 0.06);
       const drone = c.createOscillator(); drone.type = "sine"; drone.frequency.value = 55; const dg = c.createGain(); dg.gain.value = 0.05; drone.connect(dg).connect(g); drone.start(); nodes.push(drone);
     } else if (name === "room") {
-      const rain = loop("highpass", 1400, 0.11, 0.4); lfo(rain.v.gain, 0.3, 0.03);
-      const drops = loop("bandpass", 3200, 0.05, 3, 1.3); lfo(drops.v.gain, 1.7, 0.04);
-      const ac = loop("lowpass", 160, 0.22, 0.5, 0.4);
-      const hum = c.createOscillator(); hum.frequency.value = 60; const hg = c.createGain(); hg.gain.value = 0.012; hum.connect(hg).connect(g); hum.start(); nodes.push(hum);
-      void ac;
+      // no noise at all: just a very soft, slowly breathing low tone — the city far below, felt more than heard
+      for (const [f, v] of [[55, 0.035], [82.4, 0.018]]) { const o = c.createOscillator(); o.type = "sine"; o.frequency.value = f; const og = c.createGain(); og.gain.value = v; o.connect(og).connect(g); o.start(); nodes.push(o); lfo(og.gain, 0.05 + f / 4000, v * 0.5); }
     }
     this.cur.ambient = { name, gain: g, stop: () => nodes.forEach((n) => { try { n.stop(); } catch { /* stopped */ } }) };
   }
@@ -173,7 +173,7 @@ export class Audio {
       case "back": tone(900, 0, 0.07, "sine", 0.08, 500); break;
       case "confirm": [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.07, 0.35, "triangle", 0.11)); break;
       case "whoosh": { const s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain(); s.buffer = this.noiseBuf; f.type = "bandpass"; f.Q.value = 1.4; f.frequency.setValueAtTime(opt.down ? 3000 : 300, t); f.frequency.exponentialRampToValueAtTime(opt.down ? 300 : 3200, t + 0.6); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.22, t + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75); s.connect(f).connect(g).connect(out); s.start(t); s.stop(t + 0.8); break; }
-      case "step": this.burst(out, t, 0.07, "lowpass", 380 + Math.random() * 200, 0.12 * (opt.v ?? 1)); break;
+      case "step": this.burst(out, t, 0.06, "lowpass", 260 + Math.random() * 120, 0.07 * (opt.v ?? 1)); break;
       case "coin": tone(1318, 0, 0.5, "sine", 0.14); tone(1760, 0.08, 0.7, "sine", 0.12); tone(2637, 0.08, 0.4, "triangle", 0.04); break;
       case "locked": tone(140, 0, 0.12, "square", 0.08); tone(110, 0.15, 0.18, "square", 0.08); break;
       case "open": tone(400, 0, 0.4, "triangle", 0.1, 900); tone(1200, 0.2, 0.3, "sine", 0.06); break;
