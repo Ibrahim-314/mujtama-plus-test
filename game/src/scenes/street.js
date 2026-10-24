@@ -1,20 +1,35 @@
-/* Chapter 1 — «الشارع». v2.94 stage 4: the apartment door opens onto the Digital City's boulevard; the player walks
- * (tap the road, or the joystick / keys) to the MJT tower — the Core from world/skyline.js — and goes in: the tower's
- * doors light up, the camera pushes in through a gold flash and the tower's own screen (os/tower.js: balance, wallet,
- * records, mining in the MJT OS style) opens over the still street. Closing it leaves the player at the tower doors.
- * Built to be light on phones: the skyline is one instanced mesh with a shader, the street is a handful of planes and two
- * instanced meshes, the only real lights are a hemisphere + one directional (the character needs them), everything else
- * glows through emissive colour and bloom. Low tier: fewer buildings/particles (config.QUALITY via the renderer). */
-import {
-  Scene, PerspectiveCamera, Color, HemisphereLight, DirectionalLight, Mesh, PlaneGeometry, BoxGeometry, CylinderGeometry,
-  MeshBasicMaterial, MeshStandardMaterial, Vector3, Vector2, Raycaster, CanvasTexture, RepeatWrapping, SRGBColorSpace,
-  InstancedMesh, Object3D, AdditiveBlending, DoubleSide, OctahedronGeometry, RingGeometry, CircleGeometry
-} from "three";
-import { buildSkyline } from "../world/skyline.js";
-import { strip } from "../world/props.js";
-import { buildStreetLife } from "../world/streetlife.js";
-import { loadCharacter, Player } from "../world/player.js";
-import { PALETTE, ASSET, charById } from "../config.js";
+/* Chapter 1 — «الشارع», v2.97 on Babylon.js. The apartment door opens onto a boulevard at sunset: Kenney's city kits
+ * (CC0) for the buildings, road, lamps, parked cars and trees, PBR lit by an HDR environment and a low golden sun with
+ * real shadows, a glow layer for the lamps, shop signs and the MJT tower's gold, filmic tone mapping, fog into the
+ * skyline, and people walking the pavements (the same rigged characters as the player). Walk to the MJT tower at the end
+ * of the street and go in: its own screen (os/tower.js) opens over the still street; closing it leaves you at its doors.
+ * The game logic is the same as the three.js street (now scenes/street-classic.js, which still runs if Babylon can't
+ * start on a device): the same coordinates, HUD, goals, tap-to-walk and the game.street test hooks.
+ * Quality tiers (config.QUALITY via the renderer): low = no shadows/glow/post, fewer buildings and walkers. */
+import { makeEngine, Models, textTexture, glowMat, Scene, Color3, Color4, Vector3, PBRMaterial, StandardMaterial, Texture } from "../bjs/core.js";
+import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera.js";
+import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight.js";
+import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight.js";
+import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator.js";
+import { GlowLayer } from "@babylonjs/core/Layers/glowLayer.js";
+import { DefaultRenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline.js";
+import { ImageProcessingConfiguration } from "@babylonjs/core/Materials/imageProcessingConfiguration.js";
+import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture.js";
+import { CreateGround } from "@babylonjs/core/Meshes/Builders/groundBuilder.js";
+import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";
+import { CreatePlane } from "@babylonjs/core/Meshes/Builders/planeBuilder.js";
+import { CreateSphere } from "@babylonjs/core/Meshes/Builders/sphereBuilder.js";
+import { CreatePolyhedron } from "@babylonjs/core/Meshes/Builders/polyhedronBuilder.js";
+import { CreateDisc } from "@babylonjs/core/Meshes/Builders/discBuilder.js";
+import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.js";
+import { SSAO2RenderingPipeline } from "@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/ssao2RenderingPipeline.js";
+import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
+import { Constants } from "@babylonjs/core/Engines/constants.js";
+import { buildTower } from "../bjs/tower.js";
+import { Hero, spawnCharacter } from "../bjs/hero.js";
+import { charUrl } from "../world/player.js";
+import { ASSET, CHARS, charById } from "../config.js";
 import { t, tl, fill } from "../engine/i18n.js";
 import { esc, icon } from "../ui/ui.js";
 import { openPause } from "../ui/menus.js";
@@ -22,150 +37,298 @@ import { CHAPTER1 as C } from "../story/chapter1.js";
 import { openTower } from "../os/tower.js";
 
 const CORE_Z = -46;               // the tower's centre
-const GATE_Z = CORE_Z + 8.2;      // the face of the tower's doors (body radius ≈ 7.5 at the base)
+const GATE_Z = CORE_Z + 8.2;      // the face of the tower's doors
 const HOME_Z = 4.2;               // the face of the apartment block
-const ROAD = 4.6, WALK = 8.2;     // half widths: the road, the road + pavements
+const ROAD = 5, WALK = 9;         // half widths: the road, the road + pavements
 const STILL = { x: 0, y: 0, run: false };
-const hot = (hex, k) => new Color(hex).multiplyScalar(k);
+const K = (f) => ASSET("city/" + f + ".glb");
+const rnd = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
-/** asphalt with lane dashes, a gold guide line to the tower, chevrons and a crosswalk in front of it (one texture, tiled in z) */
-function roadTexture() {
-  const w = 256, h = 1024, cv = document.createElement("canvas"); cv.width = w; cv.height = h; const x = cv.getContext("2d");
-  x.fillStyle = "#15161f"; x.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2600; i++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},${0.03 + Math.random() * 0.05})`; x.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
-  x.fillStyle = "rgba(234,242,255,.55)"; for (let y = 0; y < h; y += 128) { x.fillRect(w * 0.25 - 3, y + 20, 6, 70); x.fillRect(w * 0.75 - 3, y + 20, 6, 70); }
-  x.fillStyle = "rgba(234,242,255,.7)"; x.fillRect(8, 0, 5, h); x.fillRect(w - 13, 0, 5, h);
-  x.fillStyle = "#ffc23d"; x.fillRect(w / 2 - 4, 0, 8, h);
-  x.strokeStyle = "rgba(255,194,61,.85)"; x.lineWidth = 7; x.lineJoin = "round";
-  for (let y = 70; y < h; y += 256) { x.beginPath(); x.moveTo(w / 2 - 30, y + 26); x.lineTo(w / 2, y); x.lineTo(w / 2 + 30, y + 26); x.stroke(); }
-  const tx = new CanvasTexture(cv); tx.wrapS = tx.wrapT = RepeatWrapping; tx.colorSpace = SRGBColorSpace; tx.anisotropy = 8; return tx;
-}
-function paveTexture() {
-  const n = 128, cv = document.createElement("canvas"); cv.width = cv.height = n; const x = cv.getContext("2d");
-  x.fillStyle = "#24253a"; x.fillRect(0, 0, n, n); x.strokeStyle = "rgba(0,0,0,.45)"; x.lineWidth = 2;
-  for (let i = 0; i <= n; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, n); x.moveTo(0, i); x.lineTo(n, i); x.stroke(); }
-  const tx = new CanvasTexture(cv); tx.wrapS = tx.wrapT = RepeatWrapping; tx.colorSpace = SRGBColorSpace; return tx;
-}
-/** the apartment block's facade: rows of warm and cold windows, a few dark */
-function facadeTexture() {
-  const w = 256, h = 512, cv = document.createElement("canvas"); cv.width = w; cv.height = h; const x = cv.getContext("2d");
-  x.fillStyle = "#0d0f1f"; x.fillRect(0, 0, w, h);
-  for (let r = 0; r < 16; r++) for (let c = 0; c < 8; c++) {
-    const k = Math.random(); x.fillStyle = k < 0.35 ? "#1a1d33" : k < 0.75 ? "#ffcf8a" : "#8fd8ff";
-    x.globalAlpha = k < 0.35 ? 1 : 0.55 + Math.random() * 0.45; x.fillRect(10 + c * 31, 12 + r * 31, 20, 18);
-  }
-  x.globalAlpha = 1; const tx = new CanvasTexture(cv); tx.colorSpace = SRGBColorSpace; return tx;
-}
-/** the sign over the tower's doors */
-function signTexture() {
-  const w = 512, h = 128, cv = document.createElement("canvas"); cv.width = w; cv.height = h; const x = cv.getContext("2d");
-  x.clearRect(0, 0, w, h); x.textAlign = "center"; x.textBaseline = "middle";
-  x.shadowColor = "#ffc23d"; x.shadowBlur = 18; x.fillStyle = "#ffd76a"; x.font = "bold 70px sans-serif"; x.fillText("MJT", w / 2, 52);
-  x.shadowBlur = 0; x.fillStyle = "#eaf2ff"; x.font = "26px sans-serif"; x.direction = "rtl"; x.fillText("برج مجتمع كوين · MUJTAMA COIN", w / 2, 106);
-  const tx = new CanvasTexture(cv); tx.colorSpace = SRGBColorSpace; return tx;
-}
-/** soft round light pool on the ground under a street lamp */
-function poolTexture() {
-  const n = 128, cv = document.createElement("canvas"); cv.width = cv.height = n; const x = cv.getContext("2d");
-  const g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); g.addColorStop(0, "rgba(255,220,170,.55)"); g.addColorStop(0.5, "rgba(255,200,140,.18)"); g.addColorStop(1, "rgba(255,200,140,0)");
-  x.fillStyle = g; x.fillRect(0, 0, n, n); return new CanvasTexture(cv);
+/** Babylon needs WebGL; when it can't start here the classic three.js street runs instead */
+function canBabylon() {
+  try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch { return false; }
 }
 
 export async function create(game, params = {}) {
+  if (!canBabylon() || game.forceClassicStreet) return (await import("./street-classic.js")).create(game, params);
+  try { return await createBabylon(game, params); } catch (e) {
+    console.error("[street] babylon failed, classic street", e);
+    document.querySelector(".gm-bjs")?.remove(); game.canvas.style.visibility = "";
+    return (await import("./street-classic.js")).create(game, params);
+  }
+}
+
+async function createBabylon(game, params) {
   const save = game.save.data || {}, name = save.name || "…";
-  const q = game.renderer.q, low = game.renderer.tier === "low";
-  const scene = new Scene(); scene.background = new Color(PALETTE.fog);
-  const camera = new PerspectiveCamera(55, 1, 0.1, 1400);
+  const q = game.renderer.q, tier = game.renderer.tier, low = tier === "low", high = tier === "high";
+  const { canvas, engine } = makeEngine(game.surface, q);
+  const scene = new Scene(engine);
+  scene.useRightHandedSystem = true;
+  scene.clearColor = new Color4(0.08, 0.06, 0.14, 1);
+  scene.skipPointerMovePicking = true; scene.skipPointerDownPicking = true; scene.skipPointerUpPicking = true;
+  scene.detachControl?.();
+  const models = new Models(scene);
 
-  // ---------- the city around the street ----------
-  // the skyline's centre is the Core; the lot in front of it (the street and the apartment block) is kept clear
-  const city = buildSkyline({ quality: q, radius: low ? 95 : 120, seed: 11, plaza: true, keep: (x, z) => !(Math.abs(x) < 26 && z > 16) });
-  city.group.position.z = CORE_Z; scene.add(city.group);
-  scene.add(new HemisphereLight(0x9fb4ff, 0x20122a, 1.25));
-  const key = new DirectionalLight(0xffd59a, 1.6); key.position.set(0, 30, CORE_Z + 10); key.target.position.set(0, 0, 0); scene.add(key, key.target);
-  const rim = new DirectionalLight(0x6fe9ff, 0.7); rim.position.set(-8, 6, 14); scene.add(rim);
+  // ---------- light: a low golden sun from the right, a cool sky fill, the HDR environment for reflections ----------
+  const env = CubeTexture.CreateFromPrefilteredData(ASSET("city/sky.env"), scene);
+  scene.environmentTexture = env; scene.environmentIntensity = 0.55;
+  const hemi = new HemisphericLight("sky", new Vector3(0, 1, 0), scene);
+  hemi.diffuse = Color3.FromHexString("#9db4ff"); hemi.groundColor = Color3.FromHexString("#4a2c3a"); hemi.intensity = 0.55;
+  // the sun sits low over the far right of the street; the light, the sun's disc and the sky's glow share one direction
+  const SUN_DIR = new Vector3(-0.78, -0.24, 0.58).normalize();
+  const sun = new DirectionalLight("sun", SUN_DIR, scene);
+  sun.position = SUN_DIR.scale(-80); sun.diffuse = Color3.FromHexString("#ffbf86"); sun.intensity = 2.6;
+  let shadows = null;
+  if (!low) {
+    shadows = new ShadowGenerator(high ? 2048 : 1024, sun);
+    shadows.usePercentageCloserFiltering = true; shadows.filteringQuality = high ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
+    shadows.bias = 0.0006; shadows.normalBias = 0.025; shadows.darkness = 0.38;
+    sun.shadowMinZ = 1; sun.shadowMaxZ = 200; sun.autoUpdateExtends = true; sun.autoCalcShadowZBounds = true;
+  }
+  const cast = (node) => { if (!shadows || !node) return; for (const m of node.getChildMeshes ? node.getChildMeshes(false) : []) shadows.addShadowCaster(m, false); if (node.getTotalVertices) shadows.addShadowCaster(node, false); };
+  // instances take shadows through their source mesh
+  const recv1 = (m) => { (m.sourceMesh || m).receiveShadows = true; };
+  const receive = (node) => { for (const m of node.getChildMeshes ? node.getChildMeshes(false) : []) recv1(m); if (node.getTotalVertices) recv1(node); };
 
-  // ---------- the street ----------
-  const len = HOME_Z - GATE_Z + 6, midZ = (HOME_Z + GATE_Z - 6) / 2;
-  const roadTex = roadTexture(); roadTex.repeat.set(1, len / 16);
-  const road = new Mesh(new PlaneGeometry(ROAD * 2, len), new MeshStandardMaterial({ map: roadTex, roughness: 0.55, metalness: 0.25, color: 0xc8c8d8 }));
-  road.rotation.x = -Math.PI / 2; road.position.set(0, 0.02, midZ); scene.add(road);
-  const paveTex = paveTexture(); paveTex.repeat.set(2, len / 2.5);
-  const paveM = new MeshStandardMaterial({ map: paveTex, roughness: 0.8, color: 0xb0b4d0 });
+  // ---------- sky: a sunset gradient on a dome, the sun's glow on the horizon, fog into the distance ----------
+  const skyTex = textTexture(scene, 8, 512, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#0e1438"); g.addColorStop(0.28, "#2a2a6a"); g.addColorStop(0.42, "#7a4a8e"); g.addColorStop(0.48, "#e0787a"); g.addColorStop(0.5, "#ffb36b"); g.addColorStop(0.53, "#5a3a5a"); g.addColorStop(1, "#1a1424");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  }, false);
+  const skyM = new StandardMaterial("skyM", scene); skyM.emissiveTexture = skyTex; skyM.disableLighting = true; skyM.backFaceCulling = false; skyM.fogEnabled = false; skyM.diffuseColor = Color3.Black(); skyM.specularColor = Color3.Black();
+  const sky = CreateSphere("sky", { diameter: 900, segments: 16, sideOrientation: Mesh.BACKSIDE }, scene); sky.material = skyM; sky.infiniteDistance = true; sky.isPickable = false; sky.applyFog = false;
+  const glowSun = CreateDisc("sunDisc", { radius: 26, tessellation: 48 }, scene);
+  const sunTex = textTexture(scene, 256, 256, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,240,200,1)"); g.addColorStop(0.18, "rgba(255,200,120,.9)"); g.addColorStop(0.5, "rgba(255,140,90,.25)"); g.addColorStop(1, "rgba(255,120,90,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const sunM = new StandardMaterial("sunM", scene); sunM.emissiveTexture = sunTex; sunM.opacityTexture = sunTex; sunM.disableLighting = true; sunM.fogEnabled = false; sunM.alphaMode = Constants.ALPHA_ADD; sunM.disableDepthWrite = true;
+  glowSun.material = sunM; glowSun.position.copyFrom(SUN_DIR.scale(-420)); glowSun.billboardMode = Mesh.BILLBOARDMODE_ALL; glowSun.isPickable = false; glowSun.infiniteDistance = true;
+  scene.fogMode = Scene.FOGMODE_EXP2; scene.fogDensity = low ? 0.0075 : 0.0062; scene.fogColor = Color3.FromHexString("#6a4466");
+
+  // ---------- ground: the road (Kenney tiles), pavements with kerbs, the plaza, the land around ----------
+  const land = CreateGround("land", { width: 420, height: 420 }, scene);
+  const landM = new PBRMaterial("landM", scene); landM.albedoColor = Color3.FromHexString("#3a3640"); landM.metallic = 0; landM.roughness = 0.95; land.material = landM; land.position.set(0, -0.02, -40); land.receiveShadows = true; land.isPickable = false;
+  for (let z = HOME_Z + 5; z > GATE_Z - 5; z -= 10) {
+    const crossing = z - 5 < GATE_Z + 4;
+    const r = await models.put(K(crossing ? "road/road-crossing" : "road/road-straight"), { x: 0, z: z - 5, s: 10, sy: 1 }); receive(r.root);
+  }
+  const paveTex = textTexture(scene, 256, 256, (x, w, h) => {
+    x.fillStyle = "#b9b2a6"; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 900; i++) { x.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "60,50,40"},${0.04 + Math.random() * 0.06})`; x.fillRect(Math.random() * w, Math.random() * h, 3, 3); }
+    x.strokeStyle = "rgba(70,62,55,.55)"; x.lineWidth = 3; for (let i = 0; i <= w; i += 64) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); }
+  }, false);
+  paveTex.wrapU = paveTex.wrapV = Texture.WRAP_ADDRESSMODE;
+  const len = HOME_Z - GATE_Z + 14, midZ = (HOME_Z + GATE_Z) / 2 - 2;
+  const paveM = new PBRMaterial("paveM", scene); paveM.albedoTexture = paveTex; paveM.metallic = 0; paveM.roughness = 0.85;
+  paveTex.uScale = (WALK - ROAD) / 2; paveTex.vScale = len / 2;
+  const gutterM = new PBRMaterial("gutterM", scene); gutterM.albedoColor = Color3.FromHexString("#2a2830"); gutterM.metallic = 0; gutterM.roughness = 0.5;
+  const kerbM = new PBRMaterial("kerbM", scene); kerbM.albedoColor = Color3.FromHexString("#d9d4cc"); kerbM.metallic = 0; kerbM.roughness = 0.7;
   for (const s of [-1, 1]) {
-    const pv = new Mesh(new PlaneGeometry(WALK - ROAD, len), paveM); pv.rotation.x = -Math.PI / 2; pv.position.set(s * (ROAD + WALK) / 2, 0.06, midZ); scene.add(pv);
-    const curb = new Mesh(new BoxGeometry(0.18, 0.12, len), new MeshStandardMaterial({ color: 0x3a3d5c, roughness: 0.6 })); curb.position.set(s * ROAD, 0.06, midZ); scene.add(curb);
-    scene.add(strip(new Vector3(s * (ROAD + 0.1), 0.13, HOME_Z), new Vector3(s * (ROAD + 0.1), 0.13, GATE_Z - 4), s > 0 ? PALETTE.cyan : PALETTE.magenta, 2.2, 0.03));
-    scene.add(strip(new Vector3(s * WALK, 0.07, HOME_Z), new Vector3(s * WALK, 0.07, GATE_Z - 4), PALETTE.violet, 1.6, 0.04));
+    const pv = CreateBox("pave", { width: WALK - ROAD + 6, height: 0.16, depth: len }, scene); pv.material = paveM; pv.position.set(s * ((ROAD + WALK + 6) / 2), 0.08, midZ); pv.receiveShadows = true; pv.isPickable = false;
+    const kb = CreateBox("kerb", { width: 0.25, height: 0.2, depth: len }, scene); kb.material = kerbM; kb.position.set(s * (ROAD + 0.12), 0.1, midZ); kb.receiveShadows = true; kb.isPickable = false;
+    pv.freezeWorldMatrix(); kb.freezeWorldMatrix();
+    // a dark gutter strip where the road meets the kerb
+    const gt = CreateGround("gutter", { width: 0.45, height: len }, scene); gt.material = gutterM; gt.position.set(s * (ROAD - 0.22), 0.012, midZ); gt.isPickable = false; gt.receiveShadows = true; gt.freezeWorldMatrix();
   }
-  // the plaza in front of the tower: a gold disc under the doors
-  const plaza = new Mesh(new CircleGeometry(12, 64), new MeshStandardMaterial({ color: 0x1b1a2c, roughness: 0.35, metalness: 0.6 }));
-  plaza.rotation.x = -Math.PI / 2; plaza.position.set(0, 0.03, CORE_Z + 6); scene.add(plaza);
+  // road markings: a dashed centre line, a zebra crossing before the tower plaza, a stop line
+  const paintM = new PBRMaterial("paint", scene); paintM.albedoColor = Color3.FromHexString("#e9e4da"); paintM.metallic = 0; paintM.roughness = 0.6;
+  const dash0 = CreateGround("dash", { width: 0.16, height: 2.4 }, scene); dash0.material = paintM; dash0.isPickable = false; dash0.receiveShadows = true; dash0.position.set(0, 0.014, HOME_Z - 3);
+  for (let z = HOME_Z - 7.5; z > GATE_Z + 9; z -= 4.5) { const d = dash0.createInstance("dash"); d.position.set(0, 0.014, z); }
+  const zebra0 = CreateGround("zebra", { width: 0.6, height: 3.4 }, scene); zebra0.material = paintM; zebra0.isPickable = false; zebra0.receiveShadows = true; zebra0.position.set(-ROAD + 0.7, 0.015, GATE_Z + 5.4);
+  for (let x = -ROAD + 1.9; x < ROAD - 0.4; x += 1.2) { const zb = zebra0.createInstance("zebra"); zb.position.set(x, 0.015, GATE_Z + 5.4); }
+  const stop = CreateGround("stopLine", { width: ROAD * 2 - 0.6, height: 0.3 }, scene); stop.material = paintM; stop.position.set(0, 0.015, GATE_Z + 7.6); stop.isPickable = false; stop.receiveShadows = true;
 
-  // street lamps: one instanced pole mesh + one instanced head mesh, a fake light pool under each (no real lights)
-  const lampZ = []; for (let z = HOME_Z - 4; z > GATE_Z + 2; z -= 7.5) lampZ.push(z);
-  const nl = lampZ.length * 2, dm = new Object3D();
-  const poles = new InstancedMesh(new CylinderGeometry(0.07, 0.1, 5, 6), new MeshStandardMaterial({ color: 0x2b2e48, roughness: 0.5, metalness: 0.7 }), nl);
-  const heads = new InstancedMesh(new BoxGeometry(1.1, 0.12, 0.34), new MeshBasicMaterial({ color: hot(0xffe2b0, 3.2) }), nl);
-  const poolM = new MeshBasicMaterial({ map: poolTexture(), transparent: true, depthWrite: false, blending: AdditiveBlending, opacity: 0.9 });
-  const poolG = new PlaneGeometry(5, 5);
-  let i = 0;
+  // ---------- the tower ----------
+  const tower = buildTower(scene, { z: CORE_Z, gateZ: GATE_Z, low });
+  if (shadows) for (const m of tower.casters) shadows.addShadowCaster(m, false);
+  const towerColliders = tower.colliders;
+
+  // ---------- both sides of the street: Kenney buildings facing the road, a sign over every shop ----------
+  const R = rnd(31), colliders = [...towerColliders];
+  const FRONT = ["a", "b", "c", "d", "e", "f", "g", "h", "k", "l", "m", "n"];
+  const SIGNS = [["مقهى الحي", "#ffb04a"], ["صيدلية", "#3dffb0"], ["مخبز", "#ffd27a"], ["بقالة", "#7fd6ff"], ["إلكترونيات", "#2fe6ff"], ["عطور", "#ff7ad9"], ["مطعم", "#ff8a5c"], ["مكتبة", "#b58cff"]];
+  const BW = { a: 8.8, b: 9.2, c: 10, d: 8, e: 16.4, f: 9, g: 9, h: 8.6, k: 20.8, l: 18, m: 9, n: 9.6 }; // footprint along the street (m), measured
+  const buildingDepth = 9.6;
+  let signN = 0;
+  const signMats = SIGNS.map(([txt, col]) => {
+    const tx = textTexture(scene, 512, 128, (x, w, h) => {
+      x.fillStyle = "rgba(10,10,20,.82)"; x.fillRect(0, 0, w, h); x.strokeStyle = col; x.lineWidth = 6; x.strokeRect(5, 5, w - 10, h - 10);
+      x.direction = "rtl"; x.textAlign = "center"; x.textBaseline = "middle"; x.shadowColor = col; x.shadowBlur = 16; x.fillStyle = col; x.font = "bold 64px sans-serif"; x.fillText(txt, w / 2, h / 2 + 4);
+    }, false, true);
+    const m = new StandardMaterial("shop", scene); m.emissiveTexture = tx; m.disableLighting = true; m.diffuseColor = Color3.Black(); m.specularColor = Color3.Black(); return m;
+  });
+  // striped canvas awnings in each shop's colour, over its sign
+  const awnMats = SIGNS.map(([, col], i) => {
+    const tx = textTexture(scene, 128, 64, (x, w, h) => { for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? "#f3eee4" : col; x.fillRect(k * w / 8, 0, w / 8, h); } x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(0, h - 8, w, 8); }, false);
+    const m = new PBRMaterial("awning" + i, scene); m.albedoTexture = tx; m.metallic = 0; m.roughness = 0.85; m.backFaceCulling = false; return m;
+  });
+  // every building type its own facade tone (each model file has its own materials, so a tint covers all its copies)
+  const TONES = { a: "#f1e3cf", b: "#e6d0c0", c: "#d9dde6", d: "#efd9b4", e: "#e2cbb6", f: "#cfd8d4", g: "#f0e6d8", h: "#dcc7c9", k: "#e9dcc6", l: "#d6d0e0", m: "#f2dcc4", n: "#dfe2d6" };
+  await Promise.all(Object.entries(TONES).map(([k, hex]) => models.tint(K("com/building-" + k), hex, 0.66)));
+  for (const side of [-1, 1]) {
+    let z = HOME_Z - 1.5; const end = GATE_Z + 6;
+    const pool = FRONT.slice().sort(() => R() - 0.5);
+    let i = 0;
+    while (z > end) {
+      const k = pool[i++ % pool.length], w = BW[k];
+      if (z - w < end - 4) break;
+      const zc = z - w / 2, x = side * (WALK + buildingDepth / 2 + 0.3);
+      // heights vary a little (a storey more or less) so the street line isn't a row of the same boxes
+      const bs = 10 + R() * 0.6, b = await models.put(K("com/building-" + k), { x, z: zc, ry: side < 0 ? Math.PI / 2 : -Math.PI / 2, s: bs, sy: bs * (0.94 + R() * 0.2) });
+      cast(b.root); receive(b.root);
+      colliders.push({ min: { x: Math.min(side * WALK, side * (WALK + buildingDepth)), z: zc - w / 2 }, max: { x: Math.max(side * WALK, side * (WALK + buildingDepth)), z: zc + w / 2 } });
+      // a lit shop sign over the ground floor
+      if (signN < SIGNS.length * 2 && R() < 0.85) {
+        const sg = CreatePlane("shopSign", { width: 3.2, height: 0.8 }, scene); sg.material = signMats[signN++ % signMats.length];
+        const sz = zc + (R() - 0.5) * (w - 4), si = (signN - 1) % SIGNS.length;
+        sg.position.set(side * (WALK + 0.12), 3.35, sz); sg.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2; sg.isPickable = false; sg.freezeWorldMatrix();
+        if (!low) {
+          const aw = CreatePlane("awning", { width: 3.6, height: 1.3 }, scene); aw.material = awnMats[si]; aw.isPickable = false;
+          aw.position.set(side * (WALK - 0.45), 2.75, sz); aw.rotation.set(0, side < 0 ? Math.PI / 2 : -Math.PI / 2, 0); aw.rotation.x = 0; aw.addRotation(side < 0 ? -0.75 : -0.75, 0, 0); cast(aw); aw.receiveShadows = true;
+        }
+      }
+      z -= w + 0.6;
+    }
+  }
+  // the second row and the skyline: Kenney skyscrapers behind the street and around the tower, low-detail blocks far out
+  const TALL = ["building-skyscraper-a", "building-skyscraper-b", "building-skyscraper-c", "building-skyscraper-e"];
+  const FAR = ["low-detail-building-a", "low-detail-building-c", "low-detail-building-e", "low-detail-building-g", "low-detail-building-wide-a"];
+  const tallSpots = [];
+  for (let z = 6; z > -96; z -= 15) for (const s of [-1, 1]) tallSpots.push([s * (34 + R() * 10), z + R() * 6]);
+  for (const s of [-1, 1]) for (const z of [-62, -80]) tallSpots.push([s * (16 + R() * 6), z]);
+  for (const [x, z] of tallSpots.slice(0, low ? 10 : tallSpots.length)) {
+    const b = await models.put(K("com/" + TALL[(R() * TALL.length) | 0]), { x, z, ry: Math.round(R() * 4) * Math.PI / 2, s: 10 + R() * 4 }); receive(b.root); if (high) cast(b.root);
+  }
+  if (!low) for (let i = 0; i < 46; i++) {
+    const a = (i / 46) * Math.PI * 2, r = 95 + R() * 70, x = Math.cos(a) * r, z = -40 + Math.sin(a) * r;
+    await models.put(K("com/" + FAR[(R() * FAR.length) | 0]), { x, z, ry: R() * 6.3, s: 14 + R() * 10 });
+  }
+
+  // ---------- the apartment block the player came out of, with its lit doorway ----------
+  const home = await models.put(K("com/building-k"), { x: 0, z: HOME_Z + 4.9, ry: Math.PI, s: 11 }); receive(home.root); cast(home.root);
+  const homeGlow = CreatePlane("homeDoor", { width: 1.7, height: 2.5 }, scene); homeGlow.material = glowMat(scene, "#ffd9a0", 1.3, "homeDoor"); homeGlow.position.set(0, 1.25 + 0.16, HOME_Z - 0.02); homeGlow.isPickable = false;
+  const frameM = glowMat(scene, "#ffc23d", 1.4, "homeFrame");
+  for (const [w, h, x, y] of [[0.12, 2.7, -0.92, 1.35], [0.12, 2.7, 0.92, 1.35], [1.96, 0.12, 0, 2.7]]) { const f = CreateBox("hf", { width: w, height: h, depth: 0.1 }, scene); f.material = frameM; f.position.set(x, y + 0.16, HOME_Z - 0.05); f.isPickable = false; }
+
+  // ---------- street furniture: lamps with light pools, trees in planters, parked cars, a few details ----------
+  const lampZ = []; for (let z = HOME_Z - 5; z > GATE_Z + 3; z -= 10) lampZ.push(z);
+  const headM = glowMat(scene, "#ffe2b0", 2.2, "lampHead");
+  const poolTex = textTexture(scene, 128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,214,160,.55)"); g.addColorStop(0.55, "rgba(255,190,130,.15)"); g.addColorStop(1, "rgba(255,190,130,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const poolM = new StandardMaterial("pool", scene); poolM.emissiveTexture = poolTex; poolM.opacityTexture = poolTex; poolM.disableLighting = true; poolM.alphaMode = Constants.ALPHA_ADD; poolM.disableDepthWrite = true;
+  const pool0 = CreateGround("pool", { width: 6, height: 6 }, scene); pool0.material = poolM; pool0.isPickable = false; pool0.position.y = -1000;
+  const bulb0 = CreateBox("bulb", { width: 0.5, height: 0.08, depth: 0.9 }, scene); bulb0.material = headM; bulb0.isPickable = false; bulb0.position.y = -1000;
   for (const z of lampZ) for (const s of [-1, 1]) {
-    const x = s * (ROAD + 1.4);
-    dm.position.set(x, 2.5, z); dm.rotation.set(0, 0, 0); dm.updateMatrix(); poles.setMatrixAt(i, dm.matrix);
-    dm.position.set(x - s * 0.45, 4.95, z); dm.updateMatrix(); heads.setMatrixAt(i, dm.matrix); i++;
-    const pool = new Mesh(poolG, poolM); pool.rotation.x = -Math.PI / 2; pool.position.set(x - s * 0.9, 0.08, z); scene.add(pool);
+    const x = s * (ROAD + 0.75);
+    const l = await models.put(K("road/light-curved"), { x, z, ry: s < 0 ? -Math.PI / 2 : Math.PI / 2, s: 10 }); cast(l.root);
+    const bl = bulb0.createInstance("b"); bl.position.set(x - s * 1.85, 6.42, z); bl.rotation.y = Math.PI / 2;
+    const p = pool0.createInstance("p"); p.position.set(x - s * 1.6, 0.03 + (s < 0 ? 0 : 0.001), z);
+    colliders.push({ min: { x: x - 0.25, z: z - 0.25 }, max: { x: x + 0.25, z: z + 0.25 } });
   }
-  scene.add(poles, heads);
+  // trees in planters between the lamps, on both pavements
+  for (const z of lampZ) for (const s of [-1, 1]) {
+    const tz = z - 5, x = s * (WALK - 1.6); if (tz < GATE_Z + 6) continue;
+    const pl = await models.put(K("sub/planter"), { x, z: tz, ry: Math.PI / 2, s: 6 }); receive(pl.root);
+    const tr = await models.put(K("sub/" + (R() < 0.6 ? "tree-large" : "tree-small")), { x, z: tz, y: 0.95, ry: R() * 6.3, s: 9 + R() * 2 }); cast(tr.root);
+    colliders.push({ min: { x: x - 1.2, z: tz - 0.9 }, max: { x: x + 1.2, z: tz + 0.9 } });
+  }
+  // parked cars along both kerbs (the middle of the road stays free to walk)
+  const CARS = ["sedan", "taxi", "suv-luxury", "hatchback-sports", "van", "sedan"];
+  const CAR_DIM = { sedan: [1.27, -1.27, 0.32], taxi: [1.37, -1.37, 0.32], "suv-luxury": [1.43, -1.43, 0.38], "hatchback-sports": [1.43, -1.43, 0.3], van: [1.25, -1.5, 0.36] };
+  // car paint: a little gloss and metal, not chrome (the kits share one palette per model, so tyres take it too, kept modest)
+  await Promise.all([...new Set(CARS)].map((k) => models.tint(K("car/" + k), "#ffffff", 0.42, 0.25)));
+  const headL0 = CreateBox("headL", { width: 0.28, height: 0.1, depth: 0.02 }, scene); headL0.material = glowMat(scene, "#fff1d0", 1.6, "headL"); headL0.isPickable = false; headL0.position.y = -1000;
+  const tailL0 = CreateBox("tailL", { width: 0.26, height: 0.09, depth: 0.02 }, scene); tailL0.material = glowMat(scene, "#ff2a2a", 1.3, "tailL"); tailL0.isPickable = false; tailL0.position.y = -1000;
+  // parked clear of the doors at both ends and of the crossing; the middle of the road stays free to walk
+  const carSpots = [[1, -9.5], [-1, -14], [1, -19.5], [-1, -22.5]];
+  for (const [s, z] of carSpots.slice(0, low ? 3 : carSpots.length)) {
+    // Kenney's cars are toy-stubby: scaled to real proportions (about 1.9 m wide, 1.6 m tall, 4.1-4.6 m long), wheels on the road
+    const kind = CARS[(R() * CARS.length) | 0], x = s * (ROAD - 1.25), CY = 1.1;
+    const car = await models.put(K("car/" + kind), { x, z, y: 0.3 * CY, ry: s < 0 ? 0 : Math.PI, sx: 1.25, sy: CY, sz: 1.62 });
+    cast(car.root); colliders.push({ min: { x: x - 1.05, z: z - 2.35 }, max: { x: x + 1.05, z: z + 2.35 } });
+    // head and tail lamps (in the model's own units, so they follow its scale): warm white at the front, red at the back
+    const [fz, bz, hy] = CAR_DIM[kind];
+    for (const sx of [-1, 1]) {
+      const hl = headL0.createInstance("headL"); hl.parent = car.root; hl.position.set(sx * 0.48, hy, fz + 0.01);
+      const tl = tailL0.createInstance("tailL"); tl.parent = car.root; tl.position.set(sx * 0.5, hy + 0.05, bz - 0.01);
+    }
+  }
+  if (!low) { await models.put(K("road/traffic-light"), { x: ROAD + 0.6, z: GATE_Z + 6.5, ry: Math.PI / 2, s: 9 }); await models.put(K("road/traffic-light"), { x: -ROAD - 0.6, z: GATE_Z + 6.5, ry: -Math.PI / 2, s: 9 }); }
+  // benches facing the road, litter bins by the lamps, bollards where the pavement meets the plaza
+  const woodM = new PBRMaterial("wood", scene); woodM.albedoColor = Color3.FromHexString("#8a5a36"); woodM.metallic = 0; woodM.roughness = 0.7;
+  const ironM = new PBRMaterial("iron", scene); ironM.albedoColor = Color3.FromHexString("#23252c"); ironM.metallic = 0.8; ironM.roughness = 0.45;
+  const binM = new PBRMaterial("bin", scene); binM.albedoColor = Color3.FromHexString("#2f4a3c"); binM.metallic = 0.5; binM.roughness = 0.5;
+  const bench = new TransformNode("benchT", scene);
+  for (const [w, h, d, x, y, zz, m] of [[1.9, 0.07, 0.5, 0, 0.46, 0, woodM], [1.9, 0.38, 0.06, 0, 0.72, 0.24, woodM], [0.07, 0.46, 0.5, -0.82, 0.23, 0, ironM], [0.07, 0.46, 0.5, 0.82, 0.23, 0, ironM]]) {
+    const b = CreateBox("benchPart", { width: w, height: h, depth: d }, scene); b.material = m; b.parent = bench; b.position.set(x, y, zz); b.isPickable = false; b.receiveShadows = true;
+  }
+  bench.position.y = -1000;
+  const bin0 = CreateCylinder("bin", { diameterTop: 0.5, diameterBottom: 0.42, height: 0.9, tessellation: 16 }, scene); bin0.material = binM; bin0.isPickable = false; bin0.position.y = -1000;
+  const boll0 = CreateCylinder("bollard", { diameter: 0.22, height: 0.85, tessellation: 12 }, scene); boll0.material = ironM; boll0.isPickable = false; boll0.position.y = -1000;
+  const placed = [];
+  for (const z of lampZ) for (const s of [-1, 1]) {
+    const bz = z - 2.4, bx = s * (WALK - 1.0); if (bz < GATE_Z + 7) continue;
+    if (!low) { const b = bench.instantiateHierarchy(null, undefined, (src, dst) => { dst.isPickable = false; }); b.setEnabled(true); b.position.set(bx, 0.16, bz); b.rotation.y = s < 0 ? -Math.PI / 2 : Math.PI / 2; placed.push(b); colliders.push({ min: { x: bx - 0.45, z: bz - 1 }, max: { x: bx + 0.45, z: bz + 1 } }); }
+    const bn = bin0.createInstance("bin"); bn.setEnabled(true); bn.position.set(s * (ROAD + 1.4), 0.61, z + 1.2); placed.push(bn); colliders.push({ min: { x: s * (ROAD + 1.4) - 0.3, z: z + 0.9 }, max: { x: s * (ROAD + 1.4) + 0.3, z: z + 1.5 } });
+  }
+  for (const s of [-1, 1]) for (let z = GATE_Z + 1.5; z < GATE_Z + 9; z += 1.6) { const b = boll0.createInstance("bollard"); b.setEnabled(true); b.position.set(s * (ROAD + 0.45), 0.58, z); placed.push(b); }
+  if (shadows) for (const p of placed) cast(p);
+  if (!low) { const p = await models.put(K("com/detail-parasol-a"), { x: -(WALK - 2.2), z: -11, s: 8 }); cast(p.root); const p2 = await models.put(K("com/detail-parasol-a"), { x: WALK - 2.2, z: -14, s: 8 }); cast(p2.root); colliders.push({ min: { x: -WALK + 1.4, z: -11.8 }, max: { x: -WALK + 3, z: -10.2 } }, { min: { x: WALK - 3, z: -14.8 }, max: { x: WALK - 1.4, z: -13.2 } }); }
 
-  // the life of the street: buildings with shops along both pavements, palms and trees in planters, people walking by
-  const life = buildStreetLife({ road: ROAD, walk: WALK, zHome: HOME_Z, zEnd: CORE_Z + 18, lampZ, low });
-  scene.add(life.group);
-
-  // the apartment block behind the player: a lit facade with the entrance the player just came out of
-  const facade = new Mesh(new BoxGeometry(18, 46, 10), [
-    new MeshBasicMaterial({ color: 0x0b0d1c }), new MeshBasicMaterial({ color: 0x0b0d1c }), new MeshBasicMaterial({ color: 0x0b0d1c }),
-    new MeshBasicMaterial({ color: 0x0b0d1c }), new MeshBasicMaterial({ color: 0x0b0d1c }), new MeshBasicMaterial({ map: facadeTexture(), color: new Color(1.3, 1.3, 1.3) })
-  ]);
-  facade.position.set(0, 23, HOME_Z + 5); scene.add(facade);
-  const homeGlow = new Mesh(new PlaneGeometry(1.6, 2.4), new MeshBasicMaterial({ color: hot(0xffd9a0, 1.8), transparent: true, opacity: 0.95 }));
-  homeGlow.position.set(0, 1.2, HOME_Z - 0.01); homeGlow.rotation.y = Math.PI; scene.add(homeGlow);
-  scene.add(strip(new Vector3(-0.85, 0.02, HOME_Z - 0.03), new Vector3(-0.85, 2.45, HOME_Z - 0.03), PALETTE.gold, 3, 0.04));
-  scene.add(strip(new Vector3(0.85, 0.02, HOME_Z - 0.03), new Vector3(0.85, 2.45, HOME_Z - 0.03), PALETTE.gold, 3, 0.04));
-  scene.add(strip(new Vector3(-0.85, 2.45, HOME_Z - 0.03), new Vector3(0.85, 2.45, HOME_Z - 0.03), PALETTE.gold, 3, 0.04));
-
-  // the tower's doors: two gold pillars, a lintel with the MJT sign, a glowing glass door that brightens as you arrive
-  const gate = new Object3D(); gate.position.set(0, 0, GATE_Z); scene.add(gate);
-  const pillarM = new MeshBasicMaterial({ color: hot(PALETTE.gold, 2.4) });
-  for (const s of [-1, 1]) { const p = new Mesh(new BoxGeometry(0.35, 4.6, 0.35), pillarM); p.position.set(s * 2.1, 2.3, 0.25); gate.add(p); }
-  const lintel = new Mesh(new BoxGeometry(4.6, 0.3, 0.4), pillarM); lintel.position.set(0, 4.6, 0.25); gate.add(lintel);
-  const doorM = new MeshBasicMaterial({ color: hot(PALETTE.cyan, 0.9), transparent: true, opacity: 0.75, side: DoubleSide });
-  const gdoor = new Mesh(new PlaneGeometry(3.85, 4.45), doorM); gdoor.position.set(0, 2.23, 0.1); gate.add(gdoor);
-  const sign = new Mesh(new PlaneGeometry(4.6, 1.15), new MeshBasicMaterial({ map: signTexture(), transparent: true, color: new Color(1.8, 1.8, 1.8), depthWrite: false }));
-  sign.position.set(0, 5.5, 0.3); gate.add(sign);
-  const backing = new Mesh(new BoxGeometry(5.4, 6.6, 1.2), new MeshStandardMaterial({ color: 0x0c0b16, roughness: 0.4, metalness: 0.7 })); backing.position.set(0, 3.3, -0.45); gate.add(backing);
-
-  // ---------- the two places you can use, with the same glowing markers as the room ----------
+  // ---------- the two places you can use: a turning marker over each, a halo on the ground when you're close ----------
   const things = [
-    { id: "tower", at: new Vector3(0, 0, GATE_Z + 1.4), mark: new Vector3(0, 7, GATE_Z + 0.4), face: new Vector3(0, 0, GATE_Z - 3), hitAt: new Vector3(0, 2.2, GATE_Z + 0.4), hitS: [5, 5, 2] },
-    { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.1, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
+    { id: "tower", at: new Vector3(0, 0, GATE_Z + 1.4), mark: new Vector3(0, 8.6, GATE_Z + 0.4), face: new Vector3(0, 0, GATE_Z - 3), hitAt: new Vector3(0, 2.6, GATE_Z + 0.4), hitS: [5.2, 5.6, 2] },
+    { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.4, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
   ];
-  const markGeo = new OctahedronGeometry(0.16, 0), haloGeo = new RingGeometry(0.5, 0.6, 40);
   for (const th of things) {
-    const col = th.id === "tower" ? PALETTE.gold : PALETTE.cyan;
-    th.m = new Mesh(markGeo, new MeshBasicMaterial({ color: hot(col, 3) })); th.m.position.copy(th.mark); if (th.id === "tower") th.m.scale.setScalar(2.2); scene.add(th.m);
-    th.h = new Mesh(haloGeo, new MeshBasicMaterial({ color: hot(col, 2.2), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false })); th.h.rotation.x = -Math.PI / 2; th.h.position.set(th.at.x, 0.1, th.at.z); scene.add(th.h);
-    th.hit = new Mesh(new BoxGeometry(...th.hitS), new MeshBasicMaterial({ visible: false })); th.hit.position.copy(th.hitAt); th.hit.userData.thing = th; scene.add(th.hit);
+    const col = th.id === "tower" ? "#ffc23d" : "#2fe6ff";
+    th.m = CreatePolyhedron("mark", { type: 1, size: th.id === "tower" ? 0.36 : 0.16 }, scene); th.m.material = glowMat(scene, col, 1.8, "mark"); th.m.position.copyFrom(th.mark); th.m.isPickable = false;
+    th.h = CreateDisc("halo", { radius: 0.6, tessellation: 40 }, scene); const hm = glowMat(scene, col, 1.4, "halo"); hm.alpha = 0; hm.alphaMode = Constants.ALPHA_ADD; hm.disableDepthWrite = true; th.h.material = hm; th.h.rotation.x = Math.PI / 2; th.h.position.set(th.at.x, 0.2, th.at.z); th.h.isPickable = false;
+    th.hit = CreateBox("hit", { width: th.hitS[0], height: th.hitS[1], depth: th.hitS[2] }, scene); th.hit.position.copyFrom(th.hitAt); th.hit.isVisible = false; th.hit.metadata = { thing: th };
   }
-  // an invisible ground plane for taps (the visible ground is split into many pieces)
-  const tapFloor = new Mesh(new PlaneGeometry(60, 120), new MeshBasicMaterial({ visible: false })); tapFloor.rotation.x = -Math.PI / 2; tapFloor.position.set(0, 0, midZ); scene.add(tapFloor);
+  const tapFloor = CreateGround("tapFloor", { width: 60, height: 120 }, scene); tapFloor.position.set(0, 0, midZ); tapFloor.isVisible = false; tapFloor.metadata = { floor: true };
+  const pickable = (m) => m === tapFloor || !!m.metadata?.thing;
 
-  // ---------- the player ----------
-  const ch = await loadCharacter(save.char || "hoodie", 1.72);
-  const player = new Player(ch, game.audio); player.addTo(scene);
+  // ---------- the player, and people on the pavements ----------
+  const ch = spawnCharacter(await models.get(charUrl(save.char || "hoodie")), 1.72, "hero");
+  const player = new Hero(scene, ch, game.audio); if (shadows) for (const m of ch.meshes) shadows.addShadowCaster(m, false);
   const back = params.from === "tower";
   player.pos.set(0, 0, back ? GATE_Z + 2.2 : HOME_Z - 1.4); player.heading = back ? 0 : Math.PI;
-  const world = { colliders: life.colliders, bounds: { minX: -WALK + 0.2, maxX: WALK - 0.2, minZ: GATE_Z + 0.55, maxZ: HOME_Z - 0.45 } };
+  // the guide ring and marker sit on the road, a hair above it
+  const world = { colliders, bounds: { minX: -WALK + 0.2, maxX: WALK - 0.2, minZ: GATE_Z + 0.55, maxZ: HOME_Z - 0.45 } };
+  const walkers = [];
+  const others = CHARS.map((c) => c.id).filter((id) => id !== (save.char || "hoodie"));
+  const nWalk = low ? 2 : high ? 5 : 3;
+  for (let i = 0; i < nWalk; i++) {
+    try {
+      const id = others[i % others.length];
+      const nc = spawnCharacter(await models.get(charUrl(id)), 1.62 + R() * 0.18, "npc" + i);
+      const h = new Hero(scene, nc, null, { npc: true }); h.pace = 0.95 + R() * 0.4;
+      const s = i % 2 ? 1 : -1, lane = s * (WALK - 3.4 + R() * 0.8);
+      h.pos.set(lane, 0.16, HOME_Z - 3 - R() * 30); h.dir = R() < 0.5 ? -1 : 1; h.lane = lane; h.heading = h.dir < 0 ? Math.PI : 0; h.pause = 0;
+      if (shadows) for (const m of nc.meshes) shadows.addShadowCaster(m, false);
+      walkers.push(h);
+    } catch (e) { console.warn("[street] walker", e); }
+  }
+
+  // ---------- post: glow on emissive things, filmic tone mapping, FXAA, a little bloom and vignette ----------
+  const ip = scene.imageProcessingConfiguration;
+  ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.06; ip.contrast = 1.22;
+  ip.vignetteEnabled = !low; ip.vignetteWeight = 1.6; ip.vignetteColor = new Color4(0.08, 0.02, 0.12, 0);
+  let glow = null, pipe = null;
+  const camera = new FreeCamera("cam", new Vector3(0, 1.7, HOME_Z - 0.4), scene); camera.minZ = 0.1; camera.maxZ = 1200; camera.inputs.clear();
+  if (!low) {
+    glow = new GlowLayer("glow", scene, { mainTextureRatio: high ? 0.5 : 0.35, blurKernelSize: high ? 32 : 24 }); glow.intensity = 0.42;
+    glow.addExcludedMesh(sky); glow.addExcludedMesh(glowSun);
+    pipe = new DefaultRenderingPipeline("post", true, scene, [camera]);
+    pipe.fxaaEnabled = true; pipe.samples = high ? 4 : 1;
+    pipe.bloomEnabled = high; pipe.bloomThreshold = 0.92; pipe.bloomWeight = 0.15; pipe.bloomKernel = 48; pipe.bloomScale = 0.5;
+    pipe.imageProcessingEnabled = true;
+    // contact shadows where walls meet pavements, under cars and benches: the strongest tier only (it costs a depth pass)
+    if (high && engine.webGLVersion >= 2) {
+      try { const ao = new SSAO2RenderingPipeline("ao", scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, [camera], false); ao.radius = 1.6; ao.totalStrength = 0.9; ao.samples = 12; ao.maxZ = 90; ao.expensiveBlur = false; } catch (e) { console.warn("[street] ssao", e); }
+    }
+  }
+  // static meshes: freeze their transforms
+  for (const m of scene.meshes) if (!m.skeleton && !m.metadata?.thing && m !== tapFloor && !/^(hero|npc)/.test(m.name) && !/mark|halo|ring|coin|door/.test(m.name)) m.freezeWorldMatrix?.();
 
   // ---------- HUD (the room's styles) ----------
   const c0 = charById(save.char);
@@ -191,7 +354,7 @@ export async function create(game, params = {}) {
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3200); }
 
   // ---------- interaction ----------
-  let near = null, busy = false, inHall = false, helpGone = false, push = null, glow = 0;
+  let near = null, busy = false, inHall = false, helpGone = false, push = null, doorGlow = 0;
   const showAct = (th) => { const a = $("#gm-act"); if (!th) { a.hidden = true; return; } $("#gm-act-k").textContent = tl(C.things[th.id].label); $("#gm-act-v").textContent = tl(C.things[th.id].verb); a.hidden = false; a.dataset.goal = th.id === "tower" ? "1" : ""; };
   const hideHelp = () => { if (helpGone) return; helpGone = true; $("#gm-help").classList.add("gone"); };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -201,14 +364,12 @@ export async function create(game, params = {}) {
     if (busy) return; busy = true; showAct(null); player.walkTo(null); player.face(th.face.x, th.face.z);
     try {
       if (th.id === "tower") {
-        // the doors brighten, the player steps in, the camera pushes through the doors into a gold flash
-        game.audio.sfx("open"); glow = 1;
+        game.audio.sfx("open"); doorGlow = 1;
         player.walkTo({ x: 0, z: GATE_Z + 0.6 });
-        push = { from: camera.position.clone(), to: new Vector3(0, 2.4, GATE_Z + 3.2), lf: look.clone(), look: new Vector3(0, 2.2, GATE_Z - 6), k: 0 };
+        push = { from: camera.position.clone(), to: new Vector3(0, 2.6, GATE_Z + 3.4), lf: look.clone(), look: new Vector3(0, 2.4, GATE_Z - 6), k: 0 };
         await wait(900); game.audio.sfx("whoosh"); flash(true); await wait(380);
         if (!game.save.flag("street.tower")) { game.save.set({ flags: { "street.tower": true } }); game.audio.sfx("ping"); paintObj(); }
         game.save.flush();
-        // inside the tower: its own game screen (MJT OS style) over the still street; closing it puts the player back outside
         inHall = true; game.loop.pause(true);
         game.street.tower = openTower(game, { onClose: () => { game.street.tower = null; game.loop.pause(false); onStationClose(); } });
         await wait(250); flash(false);
@@ -225,17 +386,15 @@ export async function create(game, params = {}) {
   }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
-    refreshBal(); push = null; glow = 0; busy = false; inHall = false; flash(false);
+    refreshBal(); push = null; doorGlow = 0; busy = false; inHall = false; flash(false);
     player.walkTo(null); player.pos.set(0, 0, GATE_Z + 2.2); player.heading = 0;
     card(tl(C.things.tower.label), t("عدت إلى الشارع", "Back on the street"));
   };
   game.bus.on("station-closed", onStationClose);
   $("#gm-act").addEventListener("click", () => { if (near) use(near); });
   game.input.on("action", () => { if (game.scenes.name === "street" && near && !busy && !game.ui.modalOpen) use(near); });
-  const ray = new Raycaster(), ndc = new Vector2(), hits = [tapFloor, ...things.map((x) => x.hit)];
   let pending = null;
   const canWalk = () => !busy && !game.ui.modalOpen && game.scenes.name === "street";
-  // walk to a point on the road (clamped to the street) — the tap handler and the game's own tests both come through here
   function walk(x, z) {
     if (!canWalk()) return false;
     const b = world.bounds; pending = null;
@@ -244,32 +403,40 @@ export async function create(game, params = {}) {
   }
   game.input.on("tap", (p) => {
     if (!canWalk()) return;
-    ndc.set(p.x, p.y); ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(hits, false)[0]; if (!hit) return;
-    const th = hit.object.userData.thing;
-    if (th) { pending = th; player.walkTo(th.at); hideHelp(); } else walk(hit.point.x, hit.point.z);
+    const r = canvas.getBoundingClientRect();
+    const hit = scene.pick(((p.x + 1) / 2) * r.width, ((1 - p.y) / 2) * r.height, pickable, false, camera);
+    if (!hit?.hit) return;
+    const th = hit.pickedMesh.metadata?.thing;
+    if (th) { pending = th; player.walkTo(th.at); hideHelp(); } else walk(hit.pickedPoint.x, hit.pickedPoint.z);
   });
   player.onArrive = () => { if (pending) { const th = pending; pending = null; use(th); } };
 
   // ---------- camera: behind and above the player, looking up the street at the tower ----------
   const camT = new Vector3(), camP = new Vector3(), look = new Vector3();
-  const frame = () => { camera.fov = camera.aspect < 0.8 ? 62 : 52; camera.updateProjectionMatrix(); };
-  game.renderer.onResize = frame;
+  const frame = () => { const r = canvas.getBoundingClientRect(); const asp = r.width / Math.max(1, r.height); camera.fov = (asp < 0.8 ? 64 : 50) * Math.PI / 180; engine.resize(); };
+  const onResize = () => frame(); addEventListener("resize", onResize);
   const goalCam = () => {
-    const portrait = camera.aspect < 0.8, back = portrait ? 8.6 : 7.2, up = portrait ? 4.6 : 3.8;
-    camP.set(player.pos.x * 0.6, up, player.pos.z + back);
-    camT.set(player.pos.x * 0.4, 2.4, player.pos.z - 9);
+    const r = canvas.getBoundingClientRect(), portrait = r.width / Math.max(1, r.height) < 0.8, bk = portrait ? 8.4 : 7.2;
+    let up = portrait ? 4.2 : 3.6, cz = player.pos.z + bk;
+    // never inside the apartment block behind you: stop at its face and rise instead, looking down over your shoulder
+    const lim = HOME_Z - 0.6; if (cz > lim) { up += (cz - lim) * 0.3; cz = lim; }
+    camP.set(player.pos.x * 0.55, up, cz);
+    // aim a few metres ahead of the player, near the ground: the player sits in the lower middle of the frame, clear of
+    // the dialogue box, with the street and the tower's entrance opening up ahead
+    camT.set(player.pos.x * 0.35, 0.9, player.pos.z - 7);
   };
   goalCam();
-  // arrival from the door: the camera starts in the doorway at eye height looking up at the tower, then settles behind
   let intro = !back ? { k: 0 } : null;
-  if (intro) { camera.position.set(0, 1.7, HOME_Z - 0.4); look.set(0, 22, CORE_Z); } else { camera.position.copy(camP); look.copy(camT); }
-  camera.lookAt(look);
+  if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
+  camera.setTarget(look);
 
-  game.street = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id }) }; // the game's own tests
+  game.street = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id }) }; // the game's own tests
+
+  await scene.whenReadyAsync();
+  game.canvas.style.visibility = "hidden";
 
   return {
-    scene, camera, bloom: { strength: low ? 0.6 : 0.75, radius: 0.5, threshold: 0.82 },
+    scene: null, camera: null, engine: "babylon",
     enter() {
       frame(); game.audio.music("room"); game.audio.ambient("city");
       requestAnimationFrame(() => flash(false));
@@ -286,31 +453,46 @@ export async function create(game, params = {}) {
     update(dt, time) {
       const mv = game.input.update();
       if (Math.abs(mv.x) + Math.abs(mv.y) > 0.1) hideHelp();
+      // feet on the ground: the road, the pavement a kerb higher, the tower's podium
+      const px = player.pos.x, pz = player.pos.z;
+      const gy = Math.hypot(px, pz - CORE_Z) < 15 ? 0.14 : Math.abs(px) > ROAD + 0.12 ? 0.16 : 0;
+      player.pos.y = (player.pos.y || 0) + (gy - (player.pos.y || 0)) * Math.min(1, dt * 14);
       player.update(dt, busy ? STILL : mv, 0, world);
       let best = null, bd = 1.6;
       for (const th of things) {
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
-        th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.1; th.m.rotation.y += dt * 1.6;
-        th.h.material.opacity += (((th === best) ? 0.9 : 0) - th.h.material.opacity) * Math.min(1, dt * 8);
+        th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
+        th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
       }
       if (best !== near) { near = best; if (!busy) { showAct(near); if (near) game.audio.sfx("hover"); } }
       if (busy && !$("#gm-act").hidden) showAct(null);
-      // the tower doors breathe, and burn bright when you go in
-      const g = 0.75 + Math.sin(time * 2) * 0.15 + glow * 2.2; doorM.color.copy(new Color(PALETTE.cyan)).multiplyScalar(g);
+      // people on the pavements: up and down their lane, stopping to let you pass
+      for (const h of walkers) {
+        const dp = Math.hypot(h.pos.x - player.pos.x, h.pos.z - player.pos.z);
+        if (h.pause > 0) h.pause -= dt;
+        if (dp < 1.5) { h.walkTo(null); h.face(player.pos.x, player.pos.z); h.pause = 0.8; }
+        else if (h.pause <= 0 && !h.target) { const zz = h.dir < 0 ? GATE_Z + 7 : HOME_Z - 2; h.walkTo({ x: h.lane, z: zz }); h.onArrive = () => { h.dir = -h.dir; h.pause = 1 + Math.random() * 2; }; }
+        h.update(dt, STILL, 0, null); h.body.position.y = 0.16;
+      }
+      tower.update(dt, doorGlow);
       // camera
       goalCam();
       if (push) {
         push.k = Math.min(1, push.k + dt * 0.95); const e = push.k * push.k * (3 - 2 * push.k);
-        camera.position.lerpVectors(push.from, push.to, e); look.lerpVectors(push.lf, push.look, e);
+        Vector3.LerpToRef(push.from, push.to, e, camera.position); Vector3.LerpToRef(push.lf, push.look, e, look);
       } else if (intro && intro.k > 0) {
-        intro.k = Math.min(1, intro.k + dt * 0.5); const e = intro.k * intro.k * (3 - 2 * intro.k);
-        camera.position.lerp(camP, Math.min(1, dt * (0.5 + e * 3))); look.lerp(camT, Math.min(1, dt * (0.5 + e * 3)));
-      } else if (!intro) { camera.position.lerp(camP, Math.min(1, dt * 3)); look.lerp(camT, Math.min(1, dt * 3.5)); }
-      camera.lookAt(look);
-      city.update(dt, time);
-      life.update(dt, time, player.pos);
+        intro.k = Math.min(1, intro.k + dt * 0.5); const e = intro.k * intro.k * (3 - 2 * intro.k), a = Math.min(1, dt * (0.5 + e * 3));
+        Vector3.LerpToRef(camera.position, camP, a, camera.position); Vector3.LerpToRef(look, camT, a, look);
+      } else if (!intro) { Vector3.LerpToRef(camera.position, camP, Math.min(1, dt * 3), camera.position); Vector3.LerpToRef(look, camT, Math.min(1, dt * 3.5), look); }
+      camera.setTarget(look);
+      scene.render();
     },
     exit() { flash(false); game.save.flush(); },
-    dispose() { game.street?.tower?.close(); game.street = null; game.renderer.onResize = null; game.bus.off("station-closed", onStationClose); game.input.clear(); }
+    dispose() {
+      game.street?.tower?.close(); game.street = null; game.bus.off("station-closed", onStationClose); game.input.clear();
+      removeEventListener("resize", onResize);
+      try { scene.dispose(); engine.dispose(); } catch (e) { console.warn(e); }
+      canvas.remove(); game.canvas.style.visibility = "";
+    }
   };
 }
