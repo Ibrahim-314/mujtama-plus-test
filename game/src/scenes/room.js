@@ -107,7 +107,7 @@ export async function create(game, params = {}) {
   // the diorama base: a thick slab under the floor with a thin gold edge, so the room reads as a crafted model
   const slab = new Mesh(new BoxGeometry(W * 2 + TH * 2 + 0.2, 0.5, D * 2 + TH + 0.2), new MeshStandardMaterial({ color: 0x14121f, roughness: 0.6, metalness: 0.3 }));
   slab.position.set(0, -0.251, -TH / 2); room.add(slab);
-  room.add(strip(new Vector3(-W - TH - 0.1, -0.02, D + 0.1), new Vector3(W + TH + 0.1, -0.02, D + 0.1), PALETTE.gold, 1.4, 0.02));
+  room.add(strip(new Vector3(-W - TH - 0.1, -0.02, D + 0.1), new Vector3(W + TH + 0.1, -0.02, D + 0.1), PALETTE.gold, 0.77, 0.02));
   const wall = (w, h, d, x, y, z, rep = [1, 1]) => { const m = wallMat.clone(); m.map = wallMat.map.clone(); m.map.needsUpdate = true; m.map.repeat.set(rep[0], rep[1]); const o = new Mesh(new BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.receiveShadow = true; o.castShadow = true; room.add(o); return o; };
   // back wall around the window
   const bz = -D - TH / 2;
@@ -125,7 +125,7 @@ export async function create(game, params = {}) {
   // the door itself + its status light
   const door = new Mesh(new BoxGeometry(0.06, DOOR.h, DOOR.z1 - DOOR.z0), new MeshStandardMaterial({ color: 0x2a2f4d, roughness: 0.4, metalness: 0.6 }));
   door.position.set(W - 0.02, DOOR.h / 2, (DOOR.z0 + DOOR.z1) / 2); room.add(door);
-  const doorLed = strip(new Vector3(W - 0.07, 0.25, DOOR.z0 + 0.12), new Vector3(W - 0.07, DOOR.h - 0.25, DOOR.z0 + 0.12), PALETTE.red, 3.5, 0.03); room.add(doorLed);
+  const doorLed = strip(new Vector3(W - 0.07, 0.25, DOOR.z0 + 0.12), new Vector3(W - 0.07, DOOR.h - 0.25, DOOR.z0 + 0.12), PALETTE.red, 1.93, 0.03); room.add(doorLed);
   const doorPad = new Mesh(new PlaneGeometry(0.16, 0.24), new MeshBasicMaterial({ color: new Color(PALETTE.red).multiplyScalar(2) })); doorPad.position.set(W - 0.09, 1.25, DOOR.z0 - 0.22); doorPad.rotation.y = -Math.PI / 2; room.add(doorPad);
   // window: frame, mullions, rain on the glass
   const frameM = new MeshStandardMaterial({ color: 0x0c0e1a, roughness: 0.4, metalness: 0.7 });
@@ -137,12 +137,12 @@ export async function create(game, params = {}) {
   const sill = new Mesh(new BoxGeometry(WIN.x1 - WIN.x0 + 0.3, 0.05, 0.3), frameM); sill.position.set(0, WIN.y0 - 0.01, -D + 0.12); room.add(sill);
 
   // neon: ceiling-edge strips (cyan), baseboard (gold), window outline (magenta)
-  room.add(strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, -D + 0.05), PALETTE.cyan, 2.6));
-  room.add(strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(-W + 0.05, H - 0.06, D), PALETTE.cyan, 2.6));
-  room.add(strip(new Vector3(W - 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, D), PALETTE.cyan, 2.6));
-  room.add(strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(W - 0.03, 0.04, -D + 0.03), PALETTE.gold, 1.6, 0.025));
-  room.add(strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(-W + 0.03, 0.04, D), PALETTE.gold, 1.6, 0.025));
-  room.add(strip(new Vector3(WIN.x0, WIN.y1 + 0.06, -D + 0.06), new Vector3(WIN.x1, WIN.y1 + 0.06, -D + 0.06), PALETTE.magenta, 2.4, 0.03));
+  room.add(strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, -D + 0.05), PALETTE.cyan, 1.43));
+  room.add(strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(-W + 0.05, H - 0.06, D), PALETTE.cyan, 1.43));
+  room.add(strip(new Vector3(W - 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, D), PALETTE.cyan, 1.43));
+  room.add(strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(W - 0.03, 0.04, -D + 0.03), PALETTE.gold, 0.88, 0.025));
+  room.add(strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(-W + 0.03, 0.04, D), PALETTE.gold, 0.88, 0.025));
+  room.add(strip(new Vector3(WIN.x0, WIN.y1 + 0.06, -D + 0.06), new Vector3(WIN.x1, WIN.y1 + 0.06, -D + 0.06), PALETTE.magenta, 1.32, 0.03));
 
   // ---------- finishing: wainscot, chair rail, wall caps, curtains, art ----------
   const wainM = new MeshStandardMaterial({ color: 0x1d1a2c, roughness: 0.55, metalness: 0.1 });
@@ -204,10 +204,10 @@ export async function create(game, params = {}) {
   const blobT = blobTexture(), blobM = new MeshBasicMaterial({ map: blobT, transparent: true, depthWrite: false, opacity: 0.85 });
   for (const it of items) { if (!it.solid) continue; const b = it.box, w = b.max.x - b.min.x, d = b.max.z - b.min.z; const s = new Mesh(new PlaneGeometry(w * 1.35, d * 1.35), blobM); s.rotation.x = -Math.PI / 2; s.position.set((b.min.x + b.max.x) / 2, 0.004, (b.min.z + b.max.z) / 2); room.add(s); }
   // a soft cyan LED under the desk
-  room.add(strip(new Vector3(3.0, 0.7, -2.2), new Vector3(3.0, 0.7, -0.9), PALETTE.cyan, 2, 0.02));
+  room.add(strip(new Vector3(3.0, 0.7, -2.2), new Vector3(3.0, 0.7, -0.9), PALETTE.cyan, 1.1, 0.02));
   // the bed gets a magenta glow underneath; the lamps their warm light
-  room.add(strip(new Vector3(-4, 0.06, -0.92), new Vector3(-2.1, 0.06, -0.92), PALETTE.magenta, 2.2, 0.03));
-  const lampL = new PointLight(0xffa860, 4.5, 5, 1.8); lampL.position.set(-1.85, 1.0, -2.6); scene.add(lampL);
+  room.add(strip(new Vector3(-4, 0.06, -0.92), new Vector3(-2.1, 0.06, -0.92), PALETTE.magenta, 1.21, 0.03));
+  const lampL = new PointLight(0xffa860, 3, 4.5, 2); lampL.position.set(-1.85, 1.0, -2.6); scene.add(lampL);
   const lampF = new PointLight(0xffc285, 3.2, 5, 2); lampF.position.set(-3.6, 1.6, 2.45); scene.add(lampF);
 
   // the monitor: a live MJT miner screen (real mining state)
@@ -228,7 +228,7 @@ export async function create(game, params = {}) {
   });
   const screen = new Mesh(new PlaneGeometry(0.62, 0.38), new MeshBasicMaterial({ map: scr.tex, color: new Color(1.6, 1.6, 1.6), toneMapped: true }));
   screen.position.set(3.575, 1.04, -1.55); screen.rotation.y = -Math.PI / 2; room.add(screen);
-  const monGlow = new PointLight(PALETTE.cyan, 4, 3.5, 1.6); monGlow.position.set(3.1, 1.15, -1.55); scene.add(monGlow);
+  const monGlow = new PointLight(PALETTE.cyan, 2.2, 3.5, 1.6); monGlow.position.set(3.1, 1.15, -1.55); scene.add(monGlow);
 
   // the city board: a holographic news panel on the left wall
   const news = liveScreen(512, 256, (x, w, h, time) => {
@@ -379,10 +379,10 @@ export async function create(game, params = {}) {
     // narrow screens: back off until ~2.9 m either side of the target fits the horizontal field of view, and follow the
     // player sideways more closely so the part of the room that matters is always in frame
     const portrait = camera.aspect < 0.8, halfH = Math.atan(Math.tan((camera.fov * Math.PI) / 360) * camera.aspect);
-    const dist = portrait ? Math.min(12, Math.max(8.6, 2.9 / Math.tan(halfH))) : 7.4, hgt = portrait ? dist * 0.78 : 6.0;
+    const dist = portrait ? Math.min(11, Math.max(7.6, 2.6 / Math.tan(halfH))) : 7.4, hgt = portrait ? dist * 1.05 : 6.0;
     const tx = Math.max(-1.6, Math.min(1.6, player.pos.x * (portrait ? 0.8 : 0.55))), tz = Math.max(-1.4, Math.min(1.2, player.pos.z * 0.45));
     // portrait: aim further back so the room sits in the middle of the screen below the HUD, not in its top half
-    camT.set(tx, 0.7, tz - (portrait ? 1.6 : 0.4)); camP.set(tx * 0.9, hgt, tz + dist);
+    camT.set(tx, 0.7, tz - (portrait ? 1.1 : 0.4)); camP.set(tx * 0.9, hgt, tz + dist);
   };
   goalCam(); camera.position.copy(camP); camera.lookAt(camT);
   const look = camT.clone();
@@ -400,7 +400,7 @@ export async function create(game, params = {}) {
   game.bus.on("station-closed", onStationClose);
 
   return {
-    scene, camera, bloom: { strength: 0.75, radius: 0.5, threshold: 0.82 },
+    scene, camera, bloom: { strength: 0.32, radius: 0.35, threshold: 0.94 },
     async enter() {
       frame(); game.audio.music("room"); game.audio.ambient("room");
       if (first) {
