@@ -4,7 +4,8 @@
  * v2.89: the city is no longer a 3D skyline around the room — it is painted into the window glass with parallax
  * (world/windowview.js), so the whole GPU budget goes to the room: wood floor, wainscot, curtains, art, contact shadows.
  * The player walks with the joystick / keys or by tapping the floor; glowing markers show what can be used.
- * The computer runs MJT OS (a Windows-11-style desktop: mining program + wallet/records launchers); the door stays locked until chapter 1. */
+ * The computer runs MJT OS (a Windows-11-style desktop: mining program + wallet/records launchers).
+ * v2.94: once chapter 0 is complete the door slides open and leads out to the street (scenes/street.js). */
 import {
   Scene, PerspectiveCamera, Color, HemisphereLight, DirectionalLight, PointLight, Mesh, BoxGeometry, PlaneGeometry,
   MeshStandardMaterial, MeshBasicMaterial, Group, Vector3, Raycaster, Vector2, CanvasTexture, RepeatWrapping,
@@ -129,6 +130,12 @@ export async function create(game, params = {}) {
   door.position.set(W - 0.02, DOOR.h / 2, (DOOR.z0 + DOOR.z1) / 2); room.add(door);
   const doorLed = strip(new Vector3(W - 0.07, 0.25, DOOR.z0 + 0.12), new Vector3(W - 0.07, DOOR.h - 0.25, DOOR.z0 + 0.12), PALETTE.red, 1.93, 0.03); room.add(doorLed);
   const doorPad = new Mesh(new PlaneGeometry(0.16, 0.24), new MeshBasicMaterial({ color: new Color(PALETTE.red).multiplyScalar(2) })); doorPad.position.set(W - 0.09, 1.25, DOOR.z0 - 0.22); doorPad.rotation.y = -Math.PI / 2; room.add(doorPad);
+  if (game.save.flag("room.done")) { doorLed.material.color.copy(new Color(PALETTE.gold).multiplyScalar(3)); doorPad.material.color.setRGB(0.5, 2.6, 1.2); }
+  // v2.94 stage 4: the door slides open along the wall (1.2 s) and the street's light spills in through the doorway
+  const doorZ = door.position.z; let doorK = 0, doorGoal = 0;
+  const spill = new Mesh(new PlaneGeometry(DOOR.z1 - DOOR.z0, DOOR.h), new MeshBasicMaterial({ color: new Color(0xffe0a8).multiplyScalar(2.4), transparent: true, opacity: 0, depthWrite: false }));
+  spill.position.set(W + TH - 0.02, DOOR.h / 2, (DOOR.z0 + DOOR.z1) / 2); spill.rotation.y = -Math.PI / 2; room.add(spill);
+  const spillLight = new PointLight(0xffd59a, 0, 6, 1.6); spillLight.position.set(W - 0.5, 1.5, (DOOR.z0 + DOOR.z1) / 2); room.add(spillLight);
   // window: frame, mullions, rain on the glass
   const frameM = new MeshStandardMaterial({ color: 0x0c0e1a, roughness: 0.4, metalness: 0.7 });
   const bar = (w, h, x, y) => { const m = new Mesh(new BoxGeometry(w, h, 0.08), frameM); m.position.set(x, y, -D - 0.02); room.add(m); };
@@ -302,7 +309,9 @@ export async function create(game, params = {}) {
   // ---------- the player ----------
   const ch = await loadCharacter(save.char || "hoodie", 1.72);
   const player = new Player(ch, game.audio); player.addTo(scene);
-  const pos = save.pos && !params.arrival ? save.pos : { x: -0.4, z: 0.9, r: Math.PI };
+  const fromDoor = params.from === "door"; // back from the street: standing inside the open door, which then closes
+  const pos = fromDoor ? { x: W - 0.7, z: (DOOR.z0 + DOOR.z1) / 2, r: -Math.PI / 2 } : save.pos && !params.arrival ? save.pos : { x: -0.4, z: 0.9, r: Math.PI };
+  if (fromDoor) { doorK = 1; spill.material.opacity = 0.95; spillLight.intensity = 5; setTimeout(() => { doorGoal = 0; game.audio.sfx("open"); }, 900); }
   player.pos.set(pos.x, 0, pos.z); player.heading = pos.r ?? Math.PI;
   const world = { colliders, bounds: { minX: -W + 0.05, maxX: W - 0.05, minZ: -D + 0.05, maxZ: D - 0.1 } };
 
@@ -344,6 +353,7 @@ export async function create(game, params = {}) {
         if (!done("computer")) await game.ui.dialog(lines(C.things.computer.first), tl(C.narrator));
         mark("computer"); busy = false; computer(); return;
       } else if (th.id === "door") {
+        if (done("done")) { await openDoor(); return; }
         game.audio.sfx("locked"); doorPad.material.color.setRGB(4, 0.4, 0.6); await player.gesture("Interact");
         await game.ui.dialog(lines(C.things.door.lines), tl(C.narrator)); doorPad.material.color.copy(new Color(PALETTE.red).multiplyScalar(2));
       } else {
@@ -364,6 +374,22 @@ export async function create(game, params = {}) {
     card(tl(C.title) + " · " + tl(C.name), t("اكتمل", "Complete"));
     await player.gesture("Cheer"); await game.ui.dialog(lines(C.done), tl(C.narrator));
     doorLed.material.color.copy(new Color(PALETTE.gold).multiplyScalar(3)); busy = false;
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function openDoor() {
+    showAct(null); doorPad.material.color.setRGB(0.5, 2.6, 1.2); doorLed.material.color.copy(new Color(PALETTE.gold).multiplyScalar(3));
+    game.scenes.reg.street?.().catch(() => { }); // fetch the street's code while the door opens, so the swap never stalls
+    game.audio.sfx("open"); await player.gesture("Interact");
+    card(tl(C.things.door.label), tl(C.things.door.open));
+    doorGoal = 1; // the slide (update) — 1.2 s
+    // the camera swings round behind the player's shoulder and looks out through the doorway
+    cine = { from: camera.position.clone(), to: new Vector3(W - 2.4, 1.8, (DOOR.z0 + DOOR.z1) / 2 + 0.55), look: new Vector3(W + 6, 1.25, (DOOR.z0 + DOOR.z1) / 2), k: 0, sp: 0.8 };
+    await wait(1150);
+    player.walkTo({ x: W - 0.25, z: (DOOR.z0 + DOOR.z1) / 2 });
+    await wait(900);
+    game.audio.sfx("whoosh"); game.root.classList.add("gm-flash-on"); await wait(380);
+    game.save.set({ pos: { x: +(W - 0.7).toFixed(2), z: 1.55, r: -1.57 }, scene: "room", flags: { "room.out": true } }); lastSaved = "";
+    await game.scenes.go("street", { fade: 250, fadeIn: 700 });
   }
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3600); }
   // the computer: two views. OUTSIDE (default) — the camera stands back and the MJT OS desktop is drawn on the
@@ -483,7 +509,7 @@ export async function create(game, params = {}) {
   let saveT = 0, lastSaved = "";
   const savePos = () => { const p = { x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), r: +player.heading.toFixed(2) }; const k = JSON.stringify(p); if (k !== lastSaved) { lastSaved = k; game.save.set({ pos: p, scene: "room" }); } };
 
-  game.room = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, player }; // used by the game's own tests
+  game.room = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, player, door: () => doorK }; // used by the game's own tests
   const onStationClose = () => { refreshBal(); game.host.api("GET", "/api/mjt/mining").then((m) => { mining = m; }).catch(() => { }); };
   game.bus.on("station-closed", onStationClose);
 
@@ -529,6 +555,11 @@ export async function create(game, params = {}) {
       if (Math.floor(time * 4) !== Math.floor((time - dt) * 4)) scr.tick(time);
       if (Math.floor(time * 6) !== Math.floor((time - dt) * 6)) news.tick(time);
       glass.material.uniforms.uTime.value = time;
+      if (doorK !== doorGoal) {
+        doorK = doorGoal > doorK ? Math.min(doorGoal, doorK + dt / 1.2) : Math.max(doorGoal, doorK - dt / 1.2);
+        const e = doorK * doorK * (3 - 2 * doorK);
+        door.position.z = doorZ - e * (DOOR.z1 - DOOR.z0 + 0.04); spill.material.opacity = e * 0.95; spillLight.intensity = e * 5;
+      }
       monGlow.intensity = 3.6 + Math.sin(time * 9) * 0.25 + (Math.random() < 0.02 ? -1.5 : 0);
       saveT += dt; if (saveT > 8) { saveT = 0; savePos(); }
     },
