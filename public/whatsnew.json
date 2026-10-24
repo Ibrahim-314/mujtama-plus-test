@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.96.0",
+    "date": "2026-10-24",
+    "ar": {
+      "title": "برج مجتمع كوين بشاشة جديدة",
+      "items": [
+        "داخل البرج شاشة لعبة بنمط الحاسوب التقني بدل الصفحة القديمة",
+        "رصيدك يظهر أول ما تدخل مع عملة ذهبية وعدّاد وحد مكافآت اليوم",
+        "الرصيد والمحفظة والسجلات والتعدين في مكان واحد داخل البرج"
+      ]
+    },
+    "en": {
+      "title": "A new screen inside the MJT tower",
+      "items": [
+        "The tower opens a game screen in the MJT OS style instead of the old page",
+        "Your balance shows the moment you walk in, with a gold coin, a count-up and today's reward cap",
+        "Balance, wallet, records and mining in one place inside the tower"
+      ]
+    }
+  },
+  {
     "v": "2.95.0",
     "date": "2026-10-24",
     "ar": {
