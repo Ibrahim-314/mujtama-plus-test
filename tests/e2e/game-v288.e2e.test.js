@@ -176,6 +176,8 @@ async function run(label, ctxOpts) {
   const z0 = await p.evaluate(() => window.MPGame.street.player.pos.z);
   assert.ok(await p.evaluate(() => { const s = window.MPGame.street; return s.walk(0, s.player.pos.z - 6); }), "street accepts a walk");
   await until(p, (a) => window.MPGame.street.player.pos.z < a - 0.5, z0, 20000).catch(async (e) => { console.log("STREETSTATE", JSON.stringify(await p.evaluate(() => ({ st: window.MPGame.street.state(), pos: window.MPGame.street.player.pos, modal: window.MPGame.ui.modalOpen })))); throw e; });
+  await p.waitForTimeout(1200);
+  await shot(p, label + "-8b2-walk");
   // up to the tower and in: the MJT hall opens over the paused street
   await p.evaluate(() => { const s = window.MPGame.street; s.player.pos.set(0, 0, s.gate + 2); });
   p.evaluate(() => { window.MPGame.street.use("tower"); }).catch(() => {});
