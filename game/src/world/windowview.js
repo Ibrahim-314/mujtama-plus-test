@@ -73,7 +73,7 @@ function midLayer(W, H, seed) {
   const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d"), r = rand(seed), beacons = [];
   const base = H;
   // the MJT Core: a tall gold-banded tower slightly left of centre with a light beam into the sky
-  const cx = W * 0.42, cw = W * 0.05, ctop = H * 0.12;
+  const cx = W * 0.12, cw = W * 0.03, ctop = H * 0.35;
   const beam = x.createLinearGradient(cx, 0, cx, ctop); beam.addColorStop(0, "rgba(255,194,61,0)"); beam.addColorStop(1, "rgba(255,194,61,.55)");
   x.fillStyle = beam; x.fillRect(cx + cw * 0.38, 0, cw * 0.24, ctop);
   const cg = x.createLinearGradient(cx, 0, cx + cw, 0); cg.addColorStop(0, "#1b1424"); cg.addColorStop(0.5, "#2c2033"); cg.addColorStop(1, "#140f1c");
@@ -105,20 +105,43 @@ function nearLayer(W, H, seed) {
   return { cv, beacons };
 }
 
+
+/** the MJT Core — the golden tower of the story, standing alone in the middle of the view on its own layer */
+function coreLayer(W, H) {
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d");
+  const cx = W / 2, bw = W * 0.34, top = H * 0.16;
+  // soft beam into the sky
+  const beam = x.createLinearGradient(0, 0, 0, top); beam.addColorStop(0, "rgba(255,200,90,0)"); beam.addColorStop(1, "rgba(255,200,90,.45)");
+  x.fillStyle = beam; x.fillRect(cx - W * 0.03, 0, W * 0.06, top);
+  // halo ring around the crown
+  x.strokeStyle = "rgba(255,200,90,.55)"; x.lineWidth = H * 0.004; x.beginPath(); x.ellipse(cx, top + H * 0.05, bw * 0.95, H * 0.018, 0, 0, Math.PI * 2); x.stroke();
+  // body: tapering, warm metal with a lit edge
+  const g = x.createLinearGradient(cx - bw / 2, 0, cx + bw / 2, 0); g.addColorStop(0, "#1c1408"); g.addColorStop(0.35, "#4a3412"); g.addColorStop(0.55, "#2a1d0b"); g.addColorStop(1, "#120c05");
+  x.fillStyle = g; x.beginPath(); x.moveTo(cx, top - H * 0.08); x.lineTo(cx + bw * 0.32, top + H * 0.03); x.lineTo(cx + bw * 0.5, H); x.lineTo(cx - bw * 0.5, H); x.lineTo(cx - bw * 0.32, top + H * 0.03); x.closePath(); x.fill();
+  // spire
+  x.fillStyle = "#ffcf5c"; x.fillRect(cx - W * 0.006, top - H * 0.15, W * 0.012, H * 0.08);
+  // gold rings (bands) up the tower and a column of warm windows
+  for (let i = 0; i < 14; i++) { const y = top + H * 0.06 + i * H * 0.058, k = (y - top) / (H - top), half = bw * (0.32 + 0.18 * k); x.fillStyle = `rgba(255,194,61,${0.85 - i * 0.03})`; x.fillRect(cx - half, y, half * 2, Math.max(2, H * 0.005)); }
+  for (let y = top + H * 0.09; y < H; y += H * 0.022) for (let k = -2; k <= 2; k++) { if (Math.random() < 0.35) continue; x.fillStyle = `rgba(255,214,140,${0.35 + Math.random() * 0.4})`; x.fillRect(cx + k * bw * 0.11 - 2, y, 4, H * 0.008); }
+  // the MJT mark near the crown
+  x.fillStyle = "#ffd36b"; x.font = `800 ${Math.round(W * 0.07)}px sans-serif`; x.textAlign = "center"; x.fillText("MJT", cx, top + H * 0.115);
+  return { cv };
+}
+
 /* Everything is drawn by the window glass itself: for each pixel a ray from the camera through the glass is intersected
  * with three virtual planes behind the wall (far / mid / near) and the painted layers are composited — true parallax as
  * the player walks, zero cost outside the window, and the city is never visible anywhere but through the glass.
  * Flying cars and rain on the glass are added in the same pass. */
-const L = { far: { z: -40, w: 120, h: 60, y: 4 }, mid: { z: -22, w: 70, h: 26.25, y: -9 }, near: { z: -8, w: 24, h: 24, y: -6 }, cars: -15 };
+const L = { far: { z: -40, w: 120, h: 60, y: 4 }, mid: { z: -22, w: 70, h: 26.25, y: -9 }, near: { z: -8, w: 24, h: 24, y: -6 }, core: { z: -16, w: 9, h: 30, y: -9 }, cars: -15 };
 
 export function windowMaterial({ hi = true } = {}) {
   const k = hi ? 1 : 0.5;
-  const far = farLayer(2048 * k, 1024 * k, 11), mid = midLayer(2048 * k, 768 * k, 29), near = nearLayer(1024 * k, 1024 * k, 47);
+  const far = farLayer(2048 * k, 1024 * k, 11), mid = midLayer(2048 * k, 768 * k, 29), near = nearLayer(1024 * k, 1024 * k, 47), core = coreLayer(256 * (hi ? 2 : 1), 1024 * k);
   const plane = (o) => `vec4(${o.z.toFixed(2)}, ${o.w.toFixed(2)}, ${o.h.toFixed(2)}, ${o.y.toFixed(2)})`;
   return new ShaderMaterial({
-    uniforms: { tFar: { value: tex(far.cv) }, tMid: { value: tex(mid.cv) }, tNear: { value: tex(near.cv) }, uTime: { value: 0 } },
+    uniforms: { tFar: { value: tex(far.cv) }, tMid: { value: tex(mid.cv) }, tNear: { value: tex(near.cv) }, tCore: { value: tex(core.cv) }, uTime: { value: 0 } },
     vertexShader: "varying vec3 vW; varying vec2 vU; void main(){ vU = uv; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
-    fragmentShader: `uniform sampler2D tFar, tMid, tNear; uniform float uTime; varying vec3 vW; varying vec2 vU;
+    fragmentShader: `uniform sampler2D tFar, tMid, tNear, tCore; uniform float uTime; varying vec3 vW; varying vec2 vU;
       float h(float x){ return fract(sin(x * 91.7) * 43758.5); }
       vec2 hit(vec3 rd, vec4 P){ float t = (P.x - cameraPosition.z) / rd.z; vec3 p = cameraPosition + rd * t; return vec2(p.x / P.y + 0.5, (p.y - P.w) / P.z + 0.5); }
       vec4 layer(sampler2D tx, vec2 uv){ if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0); return texture2D(tx, uv); }
@@ -132,8 +155,9 @@ export function windowMaterial({ hi = true } = {}) {
           vec2 d = vec2((pc.x - cx) * 0.6, pc.y - cy); float g = exp(-dot(d, d) * 40.0);
           col += (dir > 0.0 ? vec3(1.0, 0.55, 0.2) : vec3(0.25, 0.8, 1.0)) * g * 2.5; }
         vec4 m = layer(tMid, hit(rd, ${plane(L.mid)})); col = mix(col, m.rgb, m.a);
+        vec4 cr = layer(tCore, hit(rd, ${plane(L.core)})); col = mix(col, cr.rgb * 1.15, cr.a);
         vec4 n = layer(tNear, hit(rd, ${plane(L.near)})); col = mix(col, n.rgb, n.a);
-        col *= 1.3;
+        col *= 1.15;
         // rain on the glass
         float c = floor(vU.x * 90.0); float sp = 0.15 + h(c) * 0.35; float y = fract(vU.y + uTime * sp + h(c * 3.1));
         float drop = smoothstep(0.0, 0.02, y) * smoothstep(0.08, 0.02, y) * step(0.55, h(c * 7.3)) * smoothstep(0.5, 0.0, abs(fract(vU.x * 90.0) - 0.5));
