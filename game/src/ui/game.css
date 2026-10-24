@@ -411,3 +411,8 @@
 .ph-ctl { display: grid; gap: 10px; }
 .ph-ctl label { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 10px; font-size: 12.5px; }
 .ph-ctl input[type=range] { accent-color: #4cc2ff; }
+
+/* v2.94 stage 4: the light transition between the room, the street and the tower (a warm flash over the canvas) */
+#gm-root::after { content: ""; position: absolute; inset: 0; z-index: 29; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 55%, rgba(255, 248, 228, 0.98), rgba(255, 196, 80, 0.88) 42%, rgba(46, 22, 0, 0.92)); transition: opacity 0.35s ease; }
+#gm-root.gm-flash-on::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { #gm-root::after { transition: none; } }
