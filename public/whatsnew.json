@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.97.0",
+    "date": "2026-10-25",
+    "ar": {
+      "title": "شارع أجمل وبرج أوضح",
+      "items": [
+        "الشارع والبرج بمحرك ثلاثي الأبعاد جديد بإضاءة غروب وظلال وانعكاسات",
+        "سيارات بمقاس حقيقي بمصابيح أمامية وخلفية، ومبانٍ متنوعة ومحلات ومظلات",
+        "لافتة MJT واضحة بالعربي والإنجليزي، ومدخل برج بأبواب زجاجية وأعمدة ذهبية"
+      ]
+    },
+    "en": {
+      "title": "A better street and a clearer tower",
+      "items": [
+        "The street and tower run on a new 3D engine with sunset light, shadows and reflections",
+        "Real-size cars with head and tail lamps, varied buildings, shops and awnings",
+        "A clear MJT sign in Arabic and English, and a tower entrance with glass doors and gold columns"
+      ]
+    }
+  },
+  {
     "v": "2.96.0",
     "date": "2026-10-24",
     "ar": {
