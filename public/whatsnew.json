@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.94.0",
+    "date": "2026-10-24",
+    "ar": {
+      "title": "اخرج من غرفتك إلى المدينة",
+      "items": [
+        "بعد إكمال أهداف الغرفة يفتح الباب وينتقل بك إلى شارع المدينة",
+        "امشِ في الشارع حتى برج MJT وادخله، ثم ارجع لغرفتك",
+        "الغرفة والشارع صارا مشهدين منفصلين: انتقال أخف وبدون تعليق"
+      ]
+    },
+    "en": {
+      "title": "Step out of your room into the city",
+      "items": [
+        "Finish the room goals and the door opens onto the city street",
+        "Walk up the street to the MJT tower, go in, then head back home",
+        "Room and street are now separate scenes: lighter transitions, no stalls"
+      ]
+    }
+  },
+  {
     "v": "2.89.0",
     "date": "2026-10-24",
     "ar": {
