@@ -82,12 +82,12 @@ async function run(label, ctxOpts) {
   await shot(p, label + "-4-room");
 
   // movement (keyboard): the player actually moves
-  const pos0 = await p.evaluate(() => ({ ...window.MPGame.room.player.pos }));
+  const pos0 = await p.evaluate(() => ({ ...window.MPGame.room.player.pos, x: window.MPGame.room.player.pos.x, z: window.MPGame.room.player.pos.z }));
   // software WebGL renders few frames a second here, so hold the key until the player has covered some ground (≤ 6 s)
   await p.keyboard.down("KeyD");
   await until(p, (a) => { const q = window.MPGame.room.player.pos; return Math.hypot(q.x - a.x, q.z - a.z) > 0.3; }, pos0, 6000).catch(() => {});
   await p.keyboard.up("KeyD");
-  const pos1 = await p.evaluate(() => ({ ...window.MPGame.room.player.pos }));
+  const pos1 = await p.evaluate(() => ({ ...window.MPGame.room.player.pos, x: window.MPGame.room.player.pos.x, z: window.MPGame.room.player.pos.z }));
   assert.ok(Math.hypot(pos1.x - pos0.x, pos1.z - pos0.z) > 0.2, `player moved ${JSON.stringify(pos0)} → ${JSON.stringify(pos1)}`);
 
   // the window (a story goal)
