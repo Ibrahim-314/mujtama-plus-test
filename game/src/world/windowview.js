@@ -179,22 +179,23 @@ function coreLayer(W, H) {
  * Flying cars and rain on the glass are added in the same pass. */
 const L = { far: { z: -40, w: 120, h: 60, y: 4 }, mid: { z: -22, w: 70, h: 26.25, y: -9 }, near: { z: -8, w: 24, h: 24, y: -6 }, core: { z: -16, w: 10, h: 34, y: -10 }, cars: -15 };
 
-export function windowMaterial({ hi = true } = {}) {
+/** the window's city layers, painted once (shared by the three.js room and the Babylon room) */
+export function windowLayers({ hi = true } = {}) {
   const k = hi ? 1 : 0.5;
-  const far = farLayer(2048 * k, 1024 * k, 11), mid = midLayer(2048 * k, 768 * k, 29), near = nearLayer(1024 * k, 1024 * k, 47), core = coreLayer(hi ? 768 : 384, hi ? 2600 : 1300);
-  const plane = (o) => `vec4(${o.z.toFixed(2)}, ${o.w.toFixed(2)}, ${o.h.toFixed(2)}, ${o.y.toFixed(2)})`;
-  return new ShaderMaterial({
-    uniforms: { tFar: { value: tex(far.cv) }, tMid: { value: tex(mid.cv) }, tNear: { value: tex(near.cv) }, tCore: { value: tex(core.cv) }, uTime: { value: 0 } },
-    vertexShader: "varying vec3 vW; varying vec2 vU; void main(){ vU = uv; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
-    fragmentShader: `uniform sampler2D tFar, tMid, tNear, tCore; uniform float uTime; varying vec3 vW; varying vec2 vU;
+  return { far: farLayer(2048 * k, 1024 * k, 11).cv, mid: midLayer(2048 * k, 768 * k, 29).cv, near: nearLayer(1024 * k, 1024 * k, 47).cv, core: coreLayer(hi ? 768 : 384, hi ? 2600 : 1300).cv };
+}
+const plane = (o) => `vec4(${o.z.toFixed(2)}, ${o.w.toFixed(2)}, ${o.h.toFixed(2)}, ${o.y.toFixed(2)})`;
+/** the glass's fragment shader; `cam` names the camera-position uniform (three's built-in cameraPosition, or uCam) */
+export function windowFragment(cam, extra = "") {
+  return `uniform sampler2D tFar, tMid, tNear, tCore; uniform float uTime; varying vec3 vW; varying vec2 vU;
       float h(float x){ return fract(sin(x * 91.7) * 43758.5); }
-      vec2 hit(vec3 rd, vec4 P){ float t = (P.x - cameraPosition.z) / rd.z; vec3 p = cameraPosition + rd * t; return vec2(p.x / P.y + 0.5, (p.y - P.w) / P.z + 0.5); }
+      vec2 hit(vec3 rd, vec4 P){ float t = (P.x - ${cam}.z) / rd.z; vec3 p = ${cam} + rd * t; return vec2(p.x / P.y + 0.5, (p.y - P.w) / P.z + 0.5); }
       vec4 layer(sampler2D tx, vec2 uv){ if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0); return texture2D(tx, uv); }
       void main(){
-        vec3 rd = normalize(vW - cameraPosition);
+        vec3 rd = normalize(vW - ${cam});
         vec3 col = texture2D(tFar, clamp(hit(rd, ${plane(L.far)}), 0.001, 0.999)).rgb;
         // flying cars on a plane between far and mid
-        float tc = (${L.cars.toFixed(1)} - cameraPosition.z) / rd.z; vec3 pc = cameraPosition + rd * tc;
+        float tc = (${L.cars.toFixed(1)} - ${cam}.z) / rd.z; vec3 pc = ${cam} + rd * tc;
         for (int i = 0; i < 10; i++) { float fi = float(i); float dir = h(fi * 3.7) < 0.5 ? 1.0 : -1.0; float v = 1.5 + h(fi * 5.3) * 2.5;
           float cx = mod(h(fi) * 56.0 + uTime * v * dir, 56.0) - 28.0; float cy = -3.0 + h(fi * 9.1) * 8.0 + sin(uTime * 0.7 + fi) * 0.15;
           vec2 d = vec2((pc.x - cx) * 0.6, pc.y - cy); float g = exp(-dot(d, d) * 40.0);
@@ -210,8 +211,15 @@ export function windowMaterial({ hi = true } = {}) {
         // faint glass sheen towards the top
         col += vec3(0.05, 0.07, 0.12) * smoothstep(0.6, 1.0, vU.y);
         gl_FragColor = vec4(col, 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`
+        ${extra}
+      }`;
+}
+
+export function windowMaterial({ hi = true } = {}) {
+  const ly = windowLayers({ hi });
+  return new ShaderMaterial({
+    uniforms: { tFar: { value: tex(ly.far) }, tMid: { value: tex(ly.mid) }, tNear: { value: tex(ly.near) }, tCore: { value: tex(ly.core) }, uTime: { value: 0 } },
+    vertexShader: "varying vec3 vW; varying vec2 vU; void main(){ vU = uv; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }",
+    fragmentShader: windowFragment("cameraPosition", "#include <tonemapping_fragment>\n        #include <colorspace_fragment>")
   });
 }
