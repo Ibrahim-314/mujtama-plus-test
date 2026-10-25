@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.98.0",
+    "date": "2026-10-25",
+    "ar": {
+      "title": "غرفة أجمل",
+      "items": [
+        "الغرفة بمحرك ثلاثي الأبعاد جديد بخامات واقعية وضوء القمر وظلال حقيقية",
+        "أرضية خشب لامعة، ستائر ومعادن أوضح، ومكتب حاسوب أجمل",
+        "كل شيء كما هو: النافذة، الحاسوب MJT OS، الباب والمهام"
+      ]
+    },
+    "en": {
+      "title": "A nicer room",
+      "items": [
+        "The room runs on a new 3D engine with realistic materials, moonlight and real shadows",
+        "Glossy oak floor, clearer curtains and metal, and a better computer desk",
+        "Everything else stays: the window, MJT OS computer, the door and quests"
+      ]
+    }
+  },
+  {
     "v": "2.97.0",
     "date": "2026-10-25",
     "ar": {
