@@ -128,11 +128,99 @@ export const CHAPTER1 = {
   /** the objective once the record is yours: end of «السوق السفلي» */
   serviceNext: {
     objective: { ar: "اذهب إلى مدخل الخدمة المقيّد في برج MJT", en: "Reach the MJT Tower's restricted service entrance" },
-    goal: { ar: "ابحث عن مدخل الخدمة المقيّد ومعك سجل يوسف", en: "Find the restricted service entrance with Yousuf's record" },
+    goal: { ar: "اذهب إلى مدخل الخدمة يمين البرج ومعك سجل يوسف", en: "Go to the service entrance right of the tower with Yousuf's record" },
     done: { ar: "اكتمل: السوق السفلي", en: "Complete: The Underground Market" },
     card: { ar: "هدف جديد", en: "New objective" }
   },
+  /** Season 1 Phase 4, «المدخل المحظور»: Yousuf's record at the tower's restricted service entrance (story flag
+   * "story.service"). Played once, only after Abu Nasser gave the record ("story.record"). Each beat is one speaker. */
+  service: {
+    /** at the reader: the record is refused, but something answers */
+    reader: [
+      { who: "narrator", lines: [{ ar: "باب خدمة رمادي في ظل البرج. فوقه لافتة باهتة: «للموظفين فقط».", en: "A grey service door in the tower's shadow. A faded sign above it: “Staff only”." }] },
+      { who: "narrator", lines: [{ ar: "تمرّر سجل يوسف المحترق على القارئ…", en: "You pass Yousuf's burnt record over the reader…" }] },
+      { who: "reader", lines: [{ ar: "صلاحية ملغاة. المالك: ي. — الطابق: ‹غير معروف›.", en: "Access revoked. Holder: Y. — Floor: ‹unknown›." }] },
+      { who: "sada", lines: [
+        { ar: "رفضه… لكنه لم يُطلق الإنذار. أرسل تنبيهاً صامتاً إلى الداخل.", en: "It refused it… but raised no alarm. It sent a silent alert inside." },
+        { ar: "أحدهم استلمه الآن. لا تتحرك.", en: "Someone just received it. Don't move." }
+      ] }
+    ],
+    /** the door opens from the inside: Salma, hiding what she saw */
+    salma: [
+      { who: "narrator", lines: [{ ar: "يُفتح الباب من الداخل. إنها سلمى… موظفة الاستقبال.", en: "The door opens from inside. It's Salma… the receptionist." }] },
+      { who: "salma", lines: [{ ar: "أنت مرة ثانية؟ هذا الباب ما يُفتح لأحد.", en: "You again? This door doesn't open for anyone." }] },
+      { who: "narrator", lines: [{ ar: "عيناها تقعان على السجل في يدك. ترتجف للحظة… ثم تبتسم ابتسامة رسمية.", en: "Her eyes fall on the record in your hand. A flicker… then a polite, practised smile." }] },
+      { who: "salma", lines: [{ ar: "ادخل بسرعة. ممر الخدمة ما فيه كاميرات… عندك دقيقة واحدة.", en: "Come in, quickly. The service corridor has no cameras… you have one minute." }] }
+    ],
+    inside: { ar: "ممر الخدمة — برج MJT", en: "Service corridor — MJT Tower" },
+    choice: {
+      prompt: { ar: "ماذا تسأل سلمى؟", en: "What do you ask Salma?" },
+      knew: { ar: "هل كنتِ تعرفين يوسف؟", en: "Did you know Yousuf?" },
+      knewHint: { ar: "مباشر… وقد تتهرّب", en: "Direct… she may dodge it" },
+      floor: { ar: "لماذا يرتبط مدخل الخدمة بالطابق 40؟", en: "Why is the service entrance tied to floor 40?" },
+      floorHint: { ar: "عن المكان لا عن الناس", en: "About the place, not the people" }
+    },
+    /** choice A: about Yousuf himself */
+    byKnew: [
+      { who: "salma", lines: [
+        { ar: "…كنت متدرّبة لما كان هو كبير المهندسين. كان يمرّ من هذا الباب كل ليلة بعد منتصف الليل.", en: "…I was an intern when he was chief engineer. He used this door every night, after midnight." },
+        { ar: "كان يقول إن الأبواب الأمامية تعدّ الداخلين… وهذا الباب يتذكرهم.", en: "He used to say the front doors count who comes in… and this door remembers them." }
+      ] },
+      { who: "narrator", lines: [{ ar: "تتوقف فجأة، كأنها قالت أكثر مما تريد.", en: "She stops short, as if she'd said more than she meant to." }] }
+    ],
+    /** choice B: about the entrance and the floor */
+    byFloor: [
+      { who: "salma", lines: [
+        { ar: "رسمياً؟ ما فيه طابق أربعين. المصاعد تتوقف عند الثامن والثلاثين.", en: "Officially? There is no fortieth floor. The lifts stop at thirty-eight." },
+        { ar: "لكن مصعد الخدمة خلف هذا الممر له زر بلا رقم. ما أحد يلمسه… وما أحد يسأل عنه.", en: "But the service lift behind this corridor has a button with no number. Nobody touches it… nobody asks." }
+      ] },
+      { who: "narrator", lines: [{ ar: "تنظر إلى السجل، ثم تبعد عينيها بسرعة.", en: "She glances at the record, then quickly looks away." }] }
+    ],
+    /** both choices lead here: the revocation */
+    revoked: [
+      { who: "salma", lines: [
+        { ar: "صلاحية يوسف أُلغيت في نفس الليلة التي اختفى فيها. أنا كنت على المكتب.", en: "Yousuf's access was revoked the very night he disappeared. I was on the desk." },
+        { ar: "الغريب ليس الإلغاء… الغريب التوقيع. وُقّع بصلاحيات كان يفترض أنها معطّلة من قبلها بسنين.", en: "The revocation isn't the strange part… the signature is. It was signed with credentials that should have been dead for years." },
+        { ar: "لا تسألني لمن. لو كنت أعرف… ما كنت هنا.", en: "Don't ask me whose. If I knew… I wouldn't still be here." }
+      ] }
+    ],
+    examine: {
+      prompt: { ar: "السجل بين يديك", en: "The record in your hands" },
+      go: { ar: "افحص سجل الإلغاء مع صدى", en: "Examine the revocation record with Sada" },
+      goHint: { ar: "دع صدى تقرأ ما لا يظهر", en: "Let Sada read what doesn't show" }
+    },
+    /** after examining: Sada's contradiction and the hidden floor-40 reference */
+    found: [
+      { who: "sada", lines: [
+        { ar: "هنا تناقض. ختم الإلغاء قبل آخر خروج مسجّل ليوسف بأربع دقائق.", en: "There's a contradiction. The revocation is stamped four minutes before Yousuf's last recorded exit." },
+        { ar: "يعني أُلغيت صلاحيته وهو ما زال في الداخل… ومع ذلك خرج.", en: "So his access was cancelled while he was still inside… and yet he walked out." },
+        { ar: "وفي الحقل الأخير، تحت التشويش، مرجع مخفي: «ط-٤٠».", en: "And in the last field, under the noise, a hidden reference: “F-40”." }
+      ] }
+    ],
+    /** the hook: a message to Yousuf on the corridor's terminal, gone before Salma can read it */
+    hook: [
+      { who: "narrator", lines: [{ ar: "شاشة الخدمة في آخر الممر تومض وحدها.", en: "The service screen at the end of the corridor flickers on by itself." }] },
+      { who: "screen", lines: [{ ar: "«يوسف… إذا وصلت هنا، لا تعد من الطريق نفسه.»", en: "“Yousuf… if you made it here, don't go back the same way.”" }] },
+      { who: "narrator", lines: [{ ar: "تنطفئ الكتابة قبل أن تلتفت سلمى.", en: "The words are gone before Salma turns around." }] },
+      { who: "salma", lines: [{ ar: "شفت شي؟", en: "Did you see something?" }] },
+      { who: "sada", lines: [
+        { ar: "(همساً) هذا نمط الإشارة نفسه. المصدر ليس هنا…", en: "(whispering) That's the same signal pattern. The source isn't here…" },
+        { ar: "إنه في مكان ما فوق الطوابق العامة.", en: "It's somewhere above the public floors." }
+      ] },
+      { who: "salma", lines: [{ ar: "اطلع الحين قبل تبديل الحراس. ولو تبي الطوابق العليا… لازم تدخل بطريقة رسمية، مو من هنا.", en: "Go now, before the guards change. And if you want the upper floors… you'll need a legitimate way in, not this door." }] }
+    ],
+    readerName: { ar: "قارئ الدخول", en: "Access reader" },
+    screenName: { ar: "شاشة الخدمة", en: "Service screen" },
+    /** the objective once the corridor is behind you: end of «المدخل المحظور» */
+    next: {
+      objective: { ar: "ابحث عن طريقة مشروعة للوصول إلى طوابق البرج العليا", en: "Find a legitimate way into the tower's upper floors" },
+      goal: { ar: "تحقّق من المرجع المخفي إلى الطابق 40", en: "Investigate the hidden reference to floor 40" },
+      done: { ar: "اكتمل: المدخل المحظور", en: "Complete: The Forbidden Entrance" },
+      card: { ar: "هدف جديد", en: "New objective" }
+    }
+  },
   things: {
+    service: { label: { ar: "مدخل الخدمة المقيّد", en: "Restricted service entrance" }, verb: { ar: "استخدم سجل يوسف", en: "Use Yousuf's record" } },
     market: { label: { ar: "درج السوق السفلي", en: "Underground market stairs" }, verb: { ar: "تحدّث مع أبو ناصر", en: "Talk to Abu Nasser" } },
     signal: { label: { ar: "محطة قديمة", en: "Old terminal" }, verb: { ar: "قرّب المفتاح", en: "Hold up the key" } },
     tower: { label: { ar: "برج MJT", en: "MJT Tower" }, verb: { ar: "ادخل", en: "Enter" } },
