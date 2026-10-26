@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.101.1",
+    "date": "2026-10-26",
+    "ar": {
+      "title": "طريق واضح للإشارة",
+      "items": [
+        "سهم اتجاه أسفل الشاشة يبيّن مكان المحطة القديمة ومسافتها",
+        "المس السهم أو الهدف ليمشي بك اللاعب إلى المحطة تلقائياً",
+        "عمود ضوء فوق المحطة وخط مضيء على الأرض يدلّانك عليها"
+      ]
+    },
+    "en": {
+      "title": "A clear way to the signal",
+      "items": [
+        "A direction arrow at the bottom shows where the old terminal is and how far",
+        "Tap the arrow or the goal to walk there automatically",
+        "A light beam over the terminal and a glowing trail lead you to it"
+      ]
+    }
+  },
+  {
     "v": "2.101.0",
     "date": "2026-10-26",
     "ar": {
