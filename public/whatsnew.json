@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.101.0",
+    "date": "2026-10-26",
+    "ar": {
+      "title": "السوق السفلي",
+      "items": [
+        "صدى تكشف مصدراً قديماً غير مسجّل تحت الشارع",
+        "قابل أبو ناصر، تاجر القطع القديمة عند درج السوق السفلي",
+        "اختر: تُريه المفتاح أم تسأله عن الإشارة؟ لكل طريق حوار مختلف",
+        "سجل يوسف يقودك إلى مدخل الخدمة المقيّد في برج MJT"
+      ]
+    },
+    "en": {
+      "title": "The Underground Market",
+      "items": [
+        "Sada finds an old unregistered source beneath the street",
+        "Meet Abu Nasser, the old-parts dealer at the market stairs",
+        "Choose: show him the key or ask about the signal — each way plays differently",
+        "Yousuf's record points to the MJT Tower's restricted service entrance"
+      ]
+    }
+  },
+  {
     "v": "2.100.0",
     "date": "2026-10-26",
     "ar": {
