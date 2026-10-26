@@ -31,7 +31,7 @@ export const CHAPTER1 = {
     objective: { ar: "ابحث عن طريق إلى الطابق 40", en: "Find a way to the fortieth floor" },
     goal: { ar: "تتبّع الإشارة إلى المحطة القديمة على الرصيف", en: "Trace the signal to the old terminal on the pavement" },
     /** said once Salma has finished: where to look next */
-    hint: { ar: "المفتاح يسخن من جديد… والإشارة تنبض من محطة قديمة على الرصيف الأيسر.", en: "The key warms again… the signal pulses from an old terminal on the left pavement." },
+    hint: { ar: "المفتاح يسخن من جديد… والإشارة تنبض من محطة قديمة على الرصيف في منتصف الشارع. اتبع الخط المضيء وعمود الضوء.", en: "The key warms again… the signal pulses from an old terminal on the pavement, halfway down the street. Follow the glowing trail and the light beam." },
     card: { ar: "هدف جديد", en: "New objective" }
   },
   /** Season 1, «الإشارة الأولى»: the dead public terminal, a fragment of Yousuf's recording, first contact with Sada.
