@@ -16,6 +16,10 @@ const FROM = "010";
 /* statements that are not "purely additive" by the pattern rules but were reviewed as data-safe */
 const REVIEWED = new Set([
   "054_fund_bigint.js: ALTER TABLE fund_rounds ALTER COLUMN budget TYPE BIGINT", // INTEGER → BIGINT widening (v2.5x), lossless
+  // 2026-10-27: the game was removed on the owner's explicit order («امسح كل شيء بخصوص اللعبه»); only its own two tables go
+  "082_drop_game.js: DROP INDEX IF EXISTS game_missions_user",
+  "082_drop_game.js: DROP TABLE IF EXISTS game_missions",
+  "082_drop_game.js: DROP TABLE IF EXISTS game_players",
 ]);
 function staticCheck(from = FROM) {
   const dir = path.join(__dirname, "..", "migrations"), problems = [], seen = [];
