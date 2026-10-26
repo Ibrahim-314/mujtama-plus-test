@@ -179,3 +179,9 @@ test("2D-A: c1.signal (Sada) is a story mission after the tower, fixed XP, no mo
   assert.ok(m && m.verify === "story" && m.requires.includes("c1.tower") && m.xp === 100 && m.chapter === 1);
   assert.ok(!("opens" in m) && !("mjt" in m) && !("reward" in m));
 });
+
+test("Phase 3: c1.market (Abu Nasser) is a story mission after the signal, fixed XP, no money", () => {
+  const m = GM.BY_ID.get("c1.market");
+  assert.ok(m && m.verify === "story" && m.requires.includes("c1.signal") && m.xp === 150 && m.chapter === 1);
+  assert.ok(!("opens" in m) && !("mjt" in m) && !("reward" in m));
+});
