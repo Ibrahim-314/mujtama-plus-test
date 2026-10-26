@@ -90,6 +90,18 @@ export class UI {
       box.addEventListener("click", next); addEventListener("keydown", next, true); show();
     });
   }
+  /** A small explicit choice (story): a modal of option buttons; resolves with the chosen index. No outside close. */
+  choose(title, opts) {
+    const p = this.modal(`<div class="gm-ph term"><h2>${esc(title)}</h2></div><div class="gm-term">${opts.map((o, i) =>
+      `<button type="button" class="gm-term-o" data-ch="${i}"><span><b>${esc(o.label)}</b>${o.hint ? `<small>${esc(o.hint)}</small>` : ""}</span></button>`).join("")}</div>`, "gm-termm gm-choice");
+    this.game.input?.setEnabled(false);
+    return new Promise((res) => {
+      const pick = (i) => { removeEventListener("keydown", key, true); this.closeModal(); this.game.input?.setEnabled(true); this.game.audio?.sfx?.("click"); res(i); };
+      const key = (e) => { const n = Number(e.key) - 1; if (n >= 0 && n < opts.length) { e.preventDefault(); pick(n); } };
+      p.querySelectorAll("[data-ch]").forEach((b) => b.addEventListener("click", () => pick(Number(b.dataset.ch)), { once: true }));
+      addEventListener("keydown", key, true); requestAnimationFrame(() => p.querySelector("[data-ch]")?.focus());
+    });
+  }
   /** A centred modal (pause menu, settings, terminal menu). Returns the panel element; close() removes it. */
   modal(html, cls = "") {
     const m = this.$("#gm-modal"); m.className = "gm-modal " + cls; m.innerHTML = `<div class="gm-panel" role="dialog" aria-modal="true">${html}</div>`; m.hidden = false;
