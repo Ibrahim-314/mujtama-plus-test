@@ -173,3 +173,9 @@ test("migration 081: additive, re-run is a no-op, down/up on disposable data kee
   assert.equal(await count("SELECT COUNT(*) n FROM game_missions"), 0);
   const b = await mk("gm2_mig2"); assert.equal((await done(b, "c0.explore")).completed, true, "API works after up/down/up");
 });
+
+test("2D-A: c1.signal (Sada) is a story mission after the tower, fixed XP, no money", () => {
+  const m = GM.BY_ID.get("c1.signal");
+  assert.ok(m && m.verify === "story" && m.requires.includes("c1.tower") && m.xp === 100 && m.chapter === 1);
+  assert.ok(!("opens" in m) && !("mjt" in m) && !("reward" in m));
+});
