@@ -10,7 +10,7 @@ export class Scenes {
     const g = this.game, ui = g.ui;
     try {
       const make = this.reg[name]; if (!make) throw new Error("scene " + name);
-      const mod = make(); // the next scene's code downloads during the fade (no GPU work until the old scene is gone)
+      const mod = make(g); // the next scene's code downloads during the fade (no GPU work until the old scene is gone)
       if (this.cur) { await ui.fade(true, params.fade ?? 450); this.cur.exit?.(); this.free(this.cur); this.cur = null; this.name = null; }
       ui.clearScene();
       // let the black frame paint and the freed scene be collected before building the next one
