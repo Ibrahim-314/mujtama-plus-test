@@ -1,6 +1,7 @@
 /* The pause menu and the settings panel (sound buses, graphics quality, full screen). Shared by every scene. */
 import { t } from "../engine/i18n.js";
 import { esc, icon } from "./ui.js";
+import { worldMode } from "../px/mode.js";
 
 const QL = () => [["auto", t("تلقائي", "Auto")], ["low", t("منخفض", "Low")], ["medium", t("متوسط", "Medium")], ["high", t("عالٍ", "High")]];
 
@@ -13,13 +14,26 @@ export function openSettings(game, back) {
       ${slider("music", t("الموسيقى", "Music"))}${slider("ambient", t("أجواء المكان", "Ambience"))}${slider("sfx", t("المؤثرات", "Effects"))}</section>
     <section class="gm-sec"><h3>${esc(t("الرسوميات", "Graphics"))}</h3>
       <div class="gm-seg" role="radiogroup" aria-label="${esc(t("الجودة", "Quality"))}">${QL().map(([k, l]) => `<button type="button" class="gm-opt" role="radio" aria-checked="${s.quality === k}" data-q="${k}">${esc(l)}</button>`).join("")}</div>
-      <p class="gm-note">${esc(t("التلقائي يخفّض الجودة بنفسه إذا ثقل الجهاز.", "Auto lowers the quality by itself if the device struggles."))}</p></section>
+      <p class="gm-note">${esc(t("التلقائي يخفّض الجودة بنفسه إذا ثقل الجهاز.", "Auto lowers the quality by itself if the device struggles."))}</p>
+      <h3>${esc(t("شكل العالم", "World style"))}</h3>
+      <div class="gm-seg" role="radiogroup" aria-label="${esc(t("شكل العالم", "World style"))}">${[["pixel", t("بكسل 2D", "Pixel 2D")], ["3d", t("ثلاثي الأبعاد", "3D")]].map(([k, l]) => `<button type="button" class="gm-opt" role="radio" aria-checked="${worldMode(game) === k}" data-w="${k}">${esc(l)}</button>`).join("")}</div>
+      <p class="gm-note">${esc(t("القصة وتقدّمك نفسها في الشكلين.", "The story and your progress are the same in both."))}</p></section>
     <section class="gm-sec"><button type="button" class="gm-btn ghost wide" data-a="fs">${icon("full")}<span>${esc(document.fullscreenElement ? t("الخروج من ملء الشاشة", "Exit full screen") : t("ملء الشاشة", "Full screen"))}</span></button></section>
     <footer class="gm-pf"><button type="button" class="gm-btn wide" data-a="done" data-sfx="back">${icon("back")}<span>${esc(t("رجوع", "Back"))}</span></button></footer>`, "gm-set");
   p.addEventListener("input", (e) => { const k = e.target.dataset.k; if (!k) return; const v = Number(e.target.value) / 100; game.audio.setVolume(k, v); p.querySelector(`[data-v="${k}"]`).textContent = e.target.value; s[k] = v; });
   p.addEventListener("change", (e) => { if (e.target.dataset.k) { game.save.set({ settings: { [e.target.dataset.k]: s[e.target.dataset.k] } }); if (e.target.dataset.k === "sfx") game.audio.sfx("click"); } });
   p.addEventListener("click", (e) => {
     const q = e.target.closest("[data-q]"); if (q) { p.querySelectorAll("[data-q]").forEach((b) => b.setAttribute("aria-checked", String(b === q))); game.renderer.setQuality(q.dataset.q); game.save.set({ settings: { quality: q.dataset.q } }); return; }
+    const w = e.target.closest("[data-w]");
+    if (w) {
+      p.querySelectorAll("[data-w]").forEach((b) => b.setAttribute("aria-checked", String(b === w)));
+      if (worldMode(game) !== w.dataset.w) {
+        game.save.set({ settings: { world: w.dataset.w } });
+        const here = game.scenes.name; // the room and the street redraw in the chosen style straight away
+        if (here === "room" || here === "street") { game.ui.closeModal(); game.setPaused(false); game.save.flush(); game.scenes.go(here, here === "street" ? { from: "tower" } : {}); }
+      }
+      return;
+    }
     const a = e.target.closest("[data-a]")?.dataset.a;
     if (a === "fs") { game.toggleFullscreen(); setTimeout(() => openSettings(game, back), 250); }
     if (a === "done") { if (back) back(); else game.ui.closeModal(); }
