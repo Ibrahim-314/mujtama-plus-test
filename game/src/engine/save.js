@@ -28,8 +28,22 @@ export class Save {
   async flush() {
     clearTimeout(this.timer); const q = this.queue; this.queue = null;
     if (!q || !this.member) return;
-    try { const r = await this.api("PUT", "/api/game/profile", { char: this.data.char, name: this.data.name, ...q }); if (r?.player) { this.data = { ...this.data, ...r.player }; this.keepLocal(); } }
-    catch (e) { console.warn("[game] save failed", e?.message); }
+    try {
+      const r = await this.api("PUT", "/api/game/profile", { char: this.data.char, name: this.data.name, ...q });
+      this.fails = 0;
+      if (r?.player) { this.data = { ...this.data, ...r.player }; this.keepLocal(); } // the server's copy (incl. xp/level) wins
+    } catch (e) {
+      console.warn("[game] save failed", e?.message);
+      // Phase 2D-A: a TRANSIENT failure (offline, 5xx, 429) puts the change back UNDER anything newer and retries twice;
+      // a refusal (4xx: invalid value) is dropped as before, so a bad patch can never loop or block later saves.
+      const s = Number(e?.status ?? e?.res?.status ?? 0);
+      if ((!s || s >= 500 || s === 429) && (this.fails = (this.fails || 0) + 1) <= 2) {
+        const n = this.queue || {};
+        this.queue = { ...q, ...n, flags: q.flags || n.flags ? { ...(q.flags || {}), ...(n.flags || {}) } : undefined, settings: q.settings || n.settings ? { ...(q.settings || {}), ...(n.settings || {}) } : undefined };
+        if (!this.queue.flags) delete this.queue.flags; if (!this.queue.settings) delete this.queue.settings;
+        clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), this.fails * 5000);
+      } else this.fails = 0;
+    }
   }
   flag(k) { return this.data?.flags?.[k]; }
 }
