@@ -280,6 +280,8 @@ async function createBabylon(game, params) {
     { id: "tower", at: new Vector3(0, 0, GATE_Z + 1.4), mark: new Vector3(0, 8.6, GATE_Z + 0.4), face: new Vector3(0, 0, GATE_Z - 3), hitAt: new Vector3(0, 2.6, GATE_Z + 0.4), hitS: [5.2, 5.6, 2] },
     // Season 1: the dead public terminal on the left pavement where Yousuf's signal surfaces (live only between Salma and Sada)
     { id: "signal", at: new Vector3(-(ROAD + 1.5), 0, midZ + 1.2), mark: new Vector3(-(ROAD + 2.4), 3.1, midZ), face: new Vector3(-(ROAD + 2.4), 0, midZ), hitAt: new Vector3(-(ROAD + 2.4), 1.2, midZ), hitS: [1.4, 2.4, 1.2] },
+    // Season 1 Phase 3: the stairs down to the underground market on the right pavement, Abu Nasser's stall at their mouth
+    { id: "market", at: new Vector3(ROAD + 1.5, 0, midZ - 6 + 1.2), mark: new Vector3(ROAD + 2.6, 3.3, midZ - 6), face: new Vector3(ROAD + 2.6, 0, midZ - 6 + 1.8), hitAt: new Vector3(ROAD + 2.6, 1.2, midZ - 6), hitS: [1.8, 2.4, 2.6] },
     { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.4, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
   ];
   for (const th of things) {
@@ -298,6 +300,22 @@ async function createBabylon(game, params) {
     sig.screenM = glowMat(scene, "#2fe6ff", 0.05, "sigScreen"); sig.screen.material = sig.screenM; sig.screen.isPickable = false; body.isPickable = false;
     sig.body = body; if (shadows) shadows.addShadowCaster(body, false);
     colliders.push({ min: { x: sig.hitAt.x - 0.35, z: sig.hitAt.z - 0.55 }, max: { x: sig.hitAt.x + 0.35, z: sig.hitAt.z + 0.55 } });
+  }
+  // the market stairs: a dark mouth in the pavement, two rails and a magenta sign on a post (procedural, no new asset)
+  const mk = things.find((x) => x.id === "market");
+  const mkLive = () => !!game.save.flag("story.route") && !game.save.flag("story.record");
+  {
+    const X = mk.hitAt.x, Z = mk.hitAt.z, dark = new PBRMaterial("mkDark", scene); dark.albedoColor = new Color3(0.01, 0.01, 0.02); dark.roughness = 1;
+    const mouth = CreateBox("mkMouth", { width: 1.3, height: 0.03, depth: 2.2 }, scene); mouth.position.set(X, 0.175, Z); mouth.material = dark;
+    const rm = new PBRMaterial("mkRail", scene); rm.albedoColor = new Color3(0.32, 0.26, 0.16); rm.metallic = 0.9; rm.roughness = 0.35;
+    const parts = [mouth];
+    for (const dx of [-0.68, 0.68]) { const r = CreateBox("mkRail", { width: 0.06, height: 0.9, depth: 2.2 }, scene); r.position.set(X + dx, 0.61, Z); r.material = rm; parts.push(r); }
+    const back = CreateBox("mkRailB", { width: 1.4, height: 0.9, depth: 0.06 }, scene); back.position.set(X, 0.61, Z - 1.1); back.material = rm; parts.push(back);
+    const post = CreateBox("mkPost", { width: 0.1, height: 2.6, depth: 0.1 }, scene); post.position.set(X + 0.8, 1.46, Z + 1.0); post.material = rm; parts.push(post);
+    mk.sign = CreateBox("mkSign", { width: 0.06, height: 0.45, depth: 1.2 }, scene); mk.sign.position.set(X + 0.8, 2.6, Z + 0.5); mk.signM = glowMat(scene, "#ff3fb4", 0.9, "mkSign"); mk.sign.material = mk.signM; parts.push(mk.sign);
+    const crate = CreateBox("mkCrate", { width: 0.7, height: 0.6, depth: 0.7 }, scene); crate.position.set(X + 0.2, 0.46, Z + 2.2); const cm = new PBRMaterial("mkCrateM", scene); cm.albedoColor = new Color3(0.28, 0.17, 0.08); cm.roughness = 0.9; crate.material = cm; parts.push(crate);
+    for (const m of parts) { m.isPickable = false; if (shadows && m !== mouth) shadows.addShadowCaster(m, false); }
+    colliders.push({ min: { x: X - 0.75, z: Z - 1.15 }, max: { x: X + 0.75, z: Z + 1.15 } }, { min: { x: X - 0.2, z: Z + 1.8 }, max: { x: X + 0.6, z: Z + 2.6 } });
   }
   const tapFloor = CreateGround("tapFloor", { width: 60, height: 120 }, scene); tapFloor.position.set(0, 0, midZ); tapFloor.isVisible = false; tapFloor.metadata = { floor: true };
   const pickable = (m) => m === tapFloor || !!m.metadata?.thing;
@@ -338,6 +356,15 @@ async function createBabylon(game, params) {
     if (shadows) for (const m of sc.meshes) shadows.addShadowCaster(m, false);
   } catch (e) { console.warn("[street] salma", e); }
 
+  // Abu Nasser, the old-parts dealer at the market stairs (an existing character model; skipped if it fails to load)
+  let nasser = null;
+  try {
+    const nid = CHARS.map((c) => c.id).find((id) => id !== (save.char || "hoodie") && !["suit-f", "casual-f"].includes(id)) || "casual";
+    const nc = spawnCharacter(await models.get(charUrl(nid)), 1.64, "npcNasser");
+    nasser = new Hero(scene, nc, null, { npc: true }); nasser.pos.set(mk.hitAt.x - 0.1, 0.16, mk.hitAt.z + 1.6); nasser.heading = -Math.PI / 2; // facing the road
+    if (shadows) for (const m of nc.meshes) shadows.addShadowCaster(m, false);
+  } catch (e) { console.warn("[street] nasser", e); }
+
   // ---------- post: glow on emissive things, filmic tone mapping, FXAA, a little bloom and vignette ----------
   const ip = scene.imageProcessingConfiguration;
   ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.12; ip.contrast = 1.14;
@@ -370,7 +397,7 @@ async function createBabylon(game, params) {
       </div>
     </header>
     <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
-      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li></ul></section>
+      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li></ul></section>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
     <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>`, "gm-room gm-street");
@@ -380,8 +407,10 @@ async function createBabylon(game, params) {
     // Season 1: once Salma has spoken, the objective moves on to the fortieth floor
     const met = !!game.save.flag("story.salma"), li = $("[data-g=salma]");
     const heard = met && !!game.save.flag("story.sada"), l2 = $("[data-g=sada]");
-    li.hidden = !met; li.classList.toggle("ok", heard); l2.hidden = !heard;
-    $("#gm-obj-t").textContent = tl(heard ? C.after.objective : met ? C.next.objective : C.objective);
+    const route = heard && !!game.save.flag("story.route"), rec = route && !!game.save.flag("story.record");
+    li.hidden = !met; li.classList.toggle("ok", heard); l2.hidden = !heard; l2.classList.toggle("ok", route);
+    const l3 = $("[data-g=route]"), l4 = $("[data-g=record]"); l3.hidden = !route; l3.classList.toggle("ok", rec); l4.hidden = !rec;
+    $("#gm-obj-t").textContent = tl(rec ? C.serviceNext.objective : route ? C.routeNext.objective : heard ? C.after.objective : met ? C.next.objective : C.objective);
   };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
   refreshBal(); paintObj(); game.missions?.paint();
@@ -401,6 +430,8 @@ async function createBabylon(game, params) {
     try {
       if (th.id === "tower") {
         if (!game.save.flag("story.salma")) await meetSalma();
+        // Phase 3: after Sada, the first return to the tower is stopped at the door: the route to the underground market
+        else if (game.save.flag("story.sada") && !game.save.flag("story.route")) { await sadaRoute(); return; }
         game.audio.sfx("open"); doorGlow = 1;
         player.walkTo({ x: 0, z: GATE_Z + 0.6 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.6, GATE_Z + 3.4), lf: look.clone(), look: new Vector3(0, 2.4, GATE_Z - 6), k: 0 };
@@ -414,6 +445,7 @@ async function createBabylon(game, params) {
         return;
       }
       if (th.id === "signal") { if (sigLive()) await meetSada(); return; }
+      if (th.id === "market") { if (mkLive()) await meetNasser(); return; }
       if (th.id === "home") {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.0, HOME_Z - 3.6), lf: look.clone(), look: new Vector3(0, 1.3, HOME_Z + 4), k: 0 };
@@ -446,6 +478,28 @@ async function createBabylon(game, params) {
     game.save.set({ flags: { "story.sada": true } }); game.audio.sfx("ping"); paintObj();
     game.missions?.complete("c1.signal");
     card(tl(C.after.card), tl(C.after.objective)); game.save.flush();
+  }
+  // ---------- Season 1 Phase 3, «السوق السفلي»: Sada finds the route, Abu Nasser, the player's choice, Yousuf's record ----------
+  const names3 = () => ({ narrator: tl(C.narrator), sada: tl(C.sadaName), nasser: tl(C.nasserName), fragment: tl(C.fragmentName) });
+  const play = async (beats) => { const n = names3(); for (const b of beats) await game.ui.dialog(b.lines.map((l) => fill(tl(l), { name })), n[b.who] || ""); };
+  async function sadaRoute() {
+    game.audio.sfx("reveal"); await play(C.route);
+    game.save.set({ flags: { "story.route": true } }); game.audio.sfx("ping"); paintObj();
+    card(tl(C.routeNext.card), tl(C.routeNext.objective)); game.save.flush();
+  }
+  async function meetNasser() {
+    if (nasser) nasser.heading = Math.atan2(player.pos.x - nasser.pos.x, player.pos.z - nasser.pos.z);
+    player.face(nasser ? nasser.pos.x : mk.hitAt.x, nasser ? nasser.pos.z : mk.hitAt.z);
+    await play(C.nasser);
+    const ch = C.choice, i = await game.ui.choose(tl(ch.prompt), [{ label: tl(ch.key), hint: tl(ch.keyHint) }, { label: tl(ch.signal), hint: tl(ch.signalHint) }]);
+    const way = i === 0 ? "key" : "signal";
+    await play(way === "key" ? C.byKey : C.bySignal);
+    await play(C.record);
+    // progress is the save's (presentation, once); the XP is the server's alone (fixed in its catalogue, once per member)
+    game.save.set({ flags: { "story.record": true, ["story.nasser." + way]: true } }); game.audio.sfx("ping"); paintObj();
+    game.missions?.complete("c1.market");
+    card(tl(C.title), tl(C.serviceNext.done)); game.save.flush();
+    await wait(3400); card(tl(C.serviceNext.card), tl(C.serviceNext.objective));
   }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
@@ -530,7 +584,7 @@ async function createBabylon(game, params) {
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z } }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), mkAt: { x: mk.at.x, z: mk.at.z } }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -559,11 +613,14 @@ async function createBabylon(game, params) {
       player.pos.y = (player.pos.y || 0) + (gy - (player.pos.y || 0)) * Math.min(1, dt * 14);
       player.update(dt, busy ? STILL : mv, 0, world);
       if (salma) { salma.update(dt, STILL, 0, null); salma.body.position.y = 0.14; }
+      if (nasser) { nasser.update(dt, STILL, 0, null); nasser.body.position.y = 0.16; }
+      const mLive = mkLive(); mk.m.isVisible = mk.h.isVisible = mLive;
+      mk.signM.emissiveIntensity = mLive ? 1.1 + Math.sin(time * 3.1) * 0.35 : 0.5;
       let best = null, bd = 1.6;
       const live = sigLive(); sig.m.isVisible = sig.h.isVisible = live;
       sig.screenM.emissiveIntensity = live ? 0.55 + Math.max(0, Math.sin(time * 9.0) * Math.sin(time * 2.3)) * 1.4 : 0.05;
       for (const th of things) {
-        if (th === sig && !live) continue;
+        if ((th === sig && !live) || (th === mk && !mLive)) continue;
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
         th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
         th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
