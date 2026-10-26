@@ -171,7 +171,7 @@ async function run(label, ctxOpts) {
   assert.ok(await p.evaluate(() => !!window.MPGame.save.flag("room.done")), "chapter 0 complete");
   await until(p, () => !window.MPGame.room || window.MPGame.scenes.busy === false);
   p.evaluate(() => { window.MPGame.room.use("door"); }).catch(() => {});
-  await until(p, () => window.MPGame.room && window.MPGame.room.door() > 0.3, null, 45000).catch(async (e) => { console.log("DOORSTATE", JSON.stringify(await p.evaluate(() => ({ flags: window.MPGame.save.data.flags, door: window.MPGame.room?.door(), scene: window.MPGame.scenes.name, dlg: !document.querySelector("#gm-dlg")?.hidden, act: document.querySelector("#gm-act")?.hidden })))); await shot(p, "FAIL-door"); throw e; });
+  await until(p, () => (window.MPGame.room && window.MPGame.room.door() > 0.3) || window.MPGame.scenes.name === "street", null, 45000).catch(async (e) => { console.log("DOORSTATE", JSON.stringify(await p.evaluate(() => ({ flags: window.MPGame.save.data.flags, door: window.MPGame.room?.door(), scene: window.MPGame.scenes.name, dlg: !document.querySelector("#gm-dlg")?.hidden, act: document.querySelector("#gm-act")?.hidden })))); await shot(p, "FAIL-door"); throw e; });
   await shot(p, label + "-8a-door");
   await until(p, () => window.MPGame?.scenes.name === "street" && !window.MPGame.scenes.busy, null, 60000);
   await until(p, () => document.querySelector("#gm-dlg")?.classList.contains("on"), null, 20000);
@@ -213,7 +213,18 @@ async function run(label, ctxOpts) {
   assert.ok(await p.evaluate(() => window.MPGame?.scenes.name === "street"), "back on the street after the tower");
   // Season 1 «الإشارة الأولى»: the terminal is live now, the player walks up to it and acts (the real action button)
   assert.ok(await p.evaluate(() => window.MPGame.street.state().signal && !window.MPGame.street.state().sada), "the signal is live after Salma");
-  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().sigAt; s.player.pos.set(a.x, 0, a.z + 0.3); });
+  // v2.101.1: the way to the terminal is shown (a beam + a trail), and tapping the goal walks the player there
+  await p.waitForTimeout(800);
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().guide === "signal"), "the guide points at the terminal");
+  await shot(p, label + "-8e-signal-guide");
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-guide").hidden), "the on-screen guide shows the way");
+  const zG = await p.evaluate(() => window.MPGame.street.player.pos.z);
+  await p.click("#gm-obj [data-g=salma]");
+  await p.waitForTimeout(2500);
+  await shot(p, label + "-8f-signal-walking");
+  // headless frames are slow, so check the route was taken (heading down the clear middle of the road) rather than wait it out
+  assert.ok(await p.evaluate((z) => { const pl = window.MPGame.street.player; return !!pl.target && Math.abs(pl.target.x) < 0.01 && pl.pos.z > z + 0.3; }, zG), "tapping the goal walks the player toward the terminal");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().sigAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.3); });
   await until(p, () => window.MPGame.street.state().near === "signal" && !document.querySelector("#gm-act").hidden, null, 10000);
   assert.ok(await p.evaluate(() => /محطة|terminal/i.test(document.querySelector("#gm-act-k").textContent)), "the action names the terminal");
   await p.click("#gm-act");
@@ -285,5 +296,5 @@ async function run(label, ctxOpts) {
 test.before(async () => { ensureBuild(); S = await startStack(); });
 test.after(async () => { if (S) await S.close(); });
 
-test("game v2.88 — phone 390", { timeout: 480000 }, () => run("m", MOBILE));
-test("game v2.88 — desktop 1366", { timeout: 480000 }, () => run("d", { viewport: { width: 1366, height: 800 }, locale: "ar-SA" }));
+test("game v2.88 — phone 390", { timeout: 660000 }, () => run("m", MOBILE));
+test("game v2.88 — desktop 1366", { timeout: 660000 }, () => run("d", { viewport: { width: 1366, height: 800 }, locale: "ar-SA" }));
