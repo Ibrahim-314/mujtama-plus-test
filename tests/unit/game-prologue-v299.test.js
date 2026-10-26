@@ -64,6 +64,6 @@ test("integration guards: one WebGL context, nothing saved, room/street/tower/re
   assert.ok(!/save\.set|save\.flush|\/api\//.test(src), "the prologue writes no save and calls no API");
   const sets = fs.readFileSync(path.join(G, "bjs", "prologue-sets.js"), "utf8");
   assert.ok(!/save\.|\/api\/|from "three"/.test(sets));
-  const idx = fs.readFileSync(path.join(G, "scenes", "index.js"), "utf8"); assert.match(idx, /prologue: \(\) => import\("\.\/prologue\.js"\)/);
+  const idx = fs.readFileSync(path.join(G, "scenes", "index.js"), "utf8"); assert.match(idx, /prologue: .*import\("\.\/prologue\.js"\)/); assert.match(idx, /prologue: .*import\("\.\/prologue-px\.js"\)/); // pixel by default, 3D kept
   const cr = fs.readFileSync(path.join(G, "scenes", "creator.js"), "utf8"); assert.match(cr, /go\("prologue", \{[^}]*next: "room", nextParams: \{ arrival: true/);
 });
