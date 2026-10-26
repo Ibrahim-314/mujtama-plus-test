@@ -335,7 +335,7 @@
   }
 
   MPRoutes.extend((a, b, prev) => {
-    return { nearby: () => nearbyView(), place: () => placeView(a), places: () => (a === "new" ? placeForm() : a === "edit" ? placeForm(b) : a === "saved" ? savedView() : mineView()), cities: () => citiesView(), city: () => cityView(a) };
+    return { nearby: () => nearbyView(), place: () => placeView(a), places: () => (a === "new" ? placeForm() : a === "edit" ? placeForm(b) : a === "saved" ? savedView() : mineView()), cities: () => citiesView(), city: () => (a ? cityView(a) : citiesView()) };
   });
   MPRoutes.add("admin", (a, b, next) => (a === "places" ? adminView() : next()));
   window.MPNearby = { nearbyView, placeView, placeForm, mineView, citiesView, cityView, adminView, mountMap, geohash, version: "__APP_VERSION__" };
