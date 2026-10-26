@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.104.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "إزالة اللعبة مؤقتاً",
+      "items": [
+        "أزيلت لعبة المدينة الرقمية بالكامل تمهيداً لبناء لعبة جديدة احترافية بقصة جديدة",
+        "رصيد مجتمع كوين والتعدين والمحفظة تبقى كما هي في التطبيق"
+      ]
+    },
+    "en": {
+      "title": "Game removed for now",
+      "items": [
+        "The Digital City game was removed entirely, ahead of a brand-new professional game with a new story",
+        "Your Mujtama Coin balance, mining and wallet stay as they are in the app"
+      ]
+    }
+  },
+  {
     "v": "2.103.0",
     "date": "2026-10-27",
     "ar": {
