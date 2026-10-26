@@ -185,3 +185,9 @@ test("Phase 3: c1.market (Abu Nasser) is a story mission after the signal, fixed
   assert.ok(m && m.verify === "story" && m.requires.includes("c1.signal") && m.xp === 150 && m.chapter === 1);
   assert.ok(!("opens" in m) && !("mjt" in m) && !("reward" in m));
 });
+
+test("Phase 4: c1.service (the forbidden entrance) is a story mission after the market, fixed XP, no money", () => {
+  const m = GM.BY_ID.get("c1.service");
+  assert.ok(m && m.verify === "story" && m.requires.includes("c1.market") && m.xp === 150 && m.chapter === 1);
+  assert.ok(!("opens" in m) && !("mjt" in m) && !("reward" in m));
+});
