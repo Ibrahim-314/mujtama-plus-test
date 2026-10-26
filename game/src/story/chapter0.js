@@ -7,9 +7,9 @@ export const CHAPTER0 = {
   name: { ar: "الوصول", en: "Arrival" },
   narrator: { ar: "الراوي", en: "Narrator" },
   intro: [
-    { ar: "مرحباً {name}. هذه شقتك الجديدة، في الطابق الأربعين من المدينة الرقمية.", en: "Welcome, {name}. This is your new apartment, forty floors above the Digital City." },
-    { ar: "هنا لا يتحرك شيء إلا بعملة واحدة: مجتمع كوين — MJT.", en: "Here nothing moves without one currency: Mujtama Coin — MJT." },
-    { ar: "خذ وقتك. استكشف المكان… قد تجد ما يساعدك على البدء.", en: "Take your time. Look around… you may find what you need to begin." }
+    { ar: "وصلتَ الليلة بالقطار المغناطيسي، {name}. هذه شقتك الجديدة في المدينة الرقمية.", en: "You came in on the magnetic train tonight, {name}. This is your new apartment in the Digital City." },
+    { ar: "في جيبك مفتاح أبيك النحاسي، رقم 40… وفي رأسك صوته: «لا تثق بالشاشات».", en: "Your father's brass key, number 40, is in your pocket… and his voice is in your head: “Don't trust the screens.”" },
+    { ar: "هنا لا يتحرك شيء إلا بعملة واحدة: مجتمع كوين — MJT. استكشف المكان أولاً.", en: "Here nothing moves without one currency: Mujtama Coin — MJT. Look around first." }
   ],
   objective: { ar: "استكشف شقتك الجديدة", en: "Explore your new apartment" },
   goals: ["window", "computer", "door"],
@@ -23,12 +23,14 @@ export const CHAPTER0 = {
       label: { ar: "النافذة", en: "Window" }, verb: { ar: "انظر", en: "Look" },
       lines: [
         { ar: "المدينة الرقمية… كل نافذة مضيئة فيها شخص يبني ثروته.", en: "The Digital City… behind every lit window, someone is building a fortune." },
-        { ar: "وذاك البرج الذهبي في القلب: النواة. منه يولد كل مجتمع كوين.", en: "And that golden tower at its heart: the Core. Every Mujtama Coin is born there." }
+        { ar: "وذاك البرج الذهبي في القلب: برج MJT. منه يولد كل مجتمع كوين…", en: "And that golden tower at its heart: the MJT Tower. Every Mujtama Coin is born there…" },
+        { ar: "…ومنه جاءت الإشارة التي رأيتها في القطار.", en: "…and that is where the signal on the train came from." }
       ]
     },
     computer: {
       label: { ar: "الحاسوب", en: "Computer" }, verb: { ar: "شغّل", en: "Turn on" },
       first: [
+        { ar: "الشاشة ترمش لحظة… نفس الإشارة: «40». ثم تختفي كأنها لم تكن.", en: "The screen flickers for a moment… the same signal: “40”. Then it is gone, as if it never was." },
         { ar: "حاسوب قديم… لكن عليه برنامج تعدين مجتمع كوين.", en: "An old computer… but it runs the Mujtama Coin miner." },
         { ar: "دورة واحدة كل 24 ساعة تعطيك 5 MJT. ابدأها ودعها تعمل.", en: "One cycle every 24 hours gives you 5 MJT. Start it and let it run." }
       ]
@@ -59,6 +61,6 @@ export const CHAPTER0 = {
   },
   done: [
     { ar: "عرفت مكانك الآن، {name}. الحاسوب يعدّن، والمدينة تنتظر.", en: "Now you know your place, {name}. The computer is mining, and the city is waiting." },
-    { ar: "سمعت؟ ضوء الباب صار ذهبياً… لقد فُتح لك. اخرج إلى الشارع وامشِ إلى برج MJT.", en: "Hear that? The door light turned gold… it is open for you. Step out and walk to the MJT tower." }
+    { ar: "سمعت؟ ضوء الباب صار ذهبياً… لقد فُتح لك. اخرج إلى الشارع واتبع الإشارة إلى برج MJT.", en: "Hear that? The door light turned gold… it is open for you. Step out and follow the signal to the MJT tower." }
   ]
 };
