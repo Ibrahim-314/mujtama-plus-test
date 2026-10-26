@@ -83,7 +83,7 @@ export class UI {
         if (e?.type === "keydown" && !["Enter", " ", "e", "E", "Escape"].includes(e.key)) return; e?.preventDefault?.();
         if (typing) { clearInterval(typing); typing = 0; tx.textContent = full; return; }
         i++; if (i < lines.length) return show();
-        box.classList.remove("on"); setTimeout(() => { box.hidden = true; }, 250);
+        box.classList.remove("on"); setTimeout(() => { if (!box.classList.contains("on")) box.hidden = true; }, 250); // a dialogue straight after this one keeps the box
         box.removeEventListener("click", next); removeEventListener("keydown", next, true);
         this.game.input?.setEnabled(true); this.game.audio.setDuck(false); res();
       };
