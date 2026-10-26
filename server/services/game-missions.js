@@ -25,6 +25,8 @@ const MISSIONS = [
     title: { ar: "ادخل برج MJT", en: "Enter the MJT tower" } },
   { id: "c1.signal", chapter: 1, requires: ["c1.tower"], xp: 100, verify: "story",
     title: { ar: "تتبّع إشارة يوسف", en: "Trace Yousuf's signal" } },
+  { id: "c1.market", chapter: 1, requires: ["c1.signal"], xp: 150, verify: "story",
+    title: { ar: "السوق السفلي: سجل يوسف", en: "The Underground Market: Yousuf's record" } },
   { id: "c0.mining", chapter: 0, requires: [], xp: 50, verify: "server", check: "mining_session",
     title: { ar: "شغّل جهاز التعدين", en: "Start your mining rig" } }
 ];
