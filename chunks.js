@@ -48,7 +48,6 @@
   ROUTES.cadmin = ["cadmin", "cappeal"]; // v2.57: community admin panel (cadmin-ui.js + cadmin.css), after the communities chunk (hosts its screens)
   ROUTES.menu = ["menu"]; // v2.52: «المزيد» hub (menu-ui.js + menu.css), after the feat chunk for its icons
   ROUTES.aihub = ["aihub", "admin/aihub"]; // v2.77: «مركز الذكاء» — link your own AI account (aihub-ui.js + aihub.css), after the feat chunk for its icons
-  ROUTES.town = ["city", "town"]; // v2.83 «مدينة المجتمع»: the city (city/*.js + city/city.css), its own page from «المزيد»
   ROUTES.clips = ["shorts", "clips"]; // v2.71: «لقطات» full-screen view (clips-ui.js + clips.css); core keeps the route + MPPlayer
   ROUTES.v12x = ["series", "events", "event", "lists", "list", "interests", "trends", "admin", "decisions"]; // v2.81: the v1.2 screens (v12-screens.js) left the core bundle
   ROUTES.setx = ["settings"]; // v2.81: the settings hub (settings-hub.js) left the core bundle
