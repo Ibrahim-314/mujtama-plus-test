@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.100.0",
+    "date": "2026-10-26",
+    "ar": {
+      "title": "الإشارة الأولى",
+      "items": [
+        "بعد سلمى، تنبض الإشارة من محطة قديمة على رصيف الشارع",
+        "قرّب مفتاح 40 من الشاشة لتسمع جزءاً من تسجيل يوسف",
+        "تعرّف على صدى: ذكاء اصطناعي بذاكرة مقطّعة يسأل عن الطابق الأربعين",
+        "هدف جديد يعيدك إلى برج MJT، ومهمة جديدة بخبرة محفوظة على الخادم"
+      ]
+    },
+    "en": {
+      "title": "The First Signal",
+      "items": [
+        "After Salma, the signal pulses from an old terminal on the street",
+        "Hold key 40 to the screen to hear a fragment of Yousuf's recording",
+        "Meet Sada: an AI with fragmented memories asking about the fortieth floor",
+        "A new objective leads back to the MJT Tower, plus a new server-saved XP mission"
+      ]
+    }
+  },
+  {
     "v": "2.99.0",
     "date": "2026-10-26",
     "ar": {
