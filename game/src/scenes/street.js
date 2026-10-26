@@ -71,19 +71,20 @@ async function createBabylon(game, params) {
 
   // ---------- light: a low golden sun from the right, a cool sky fill, the HDR environment for reflections ----------
   const env = CubeTexture.CreateFromPrefilteredData(ASSET("city/sky.env"), scene);
-  scene.environmentTexture = env; scene.environmentIntensity = 0.55;
+  scene.environmentTexture = env; scene.environmentIntensity = 0.42; // v2C: blue hour, the same evening as the room's window
   const hemi = new HemisphericLight("sky", new Vector3(0, 1, 0), scene);
-  hemi.diffuse = Color3.FromHexString("#9db4ff"); hemi.groundColor = Color3.FromHexString("#4a2c3a"); hemi.intensity = 0.55;
+  hemi.diffuse = Color3.FromHexString("#8fa4ff"); hemi.groundColor = Color3.FromHexString("#3a2634"); hemi.intensity = 0.5;
   // the sun sits low over the far right of the street; the light, the sun's disc and the sky's glow share one direction
-  const SUN_DIR = new Vector3(-0.78, -0.24, 0.58).normalize();
+  const SUN_DIR = new Vector3(-0.74, -0.3, 0.6).normalize(); // a touch higher: shorter, crisper shadows
   const sun = new DirectionalLight("sun", SUN_DIR, scene);
-  sun.position = SUN_DIR.scale(-80); sun.diffuse = Color3.FromHexString("#ffbf86"); sun.intensity = 2.6;
+  sun.position = SUN_DIR.scale(-80); sun.diffuse = Color3.FromHexString("#ffb27a"); sun.intensity = 2.0;
   let shadows = null;
   if (!low) {
     shadows = new ShadowGenerator(high ? 2048 : 1024, sun);
     shadows.usePercentageCloserFiltering = true; shadows.filteringQuality = high ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
-    shadows.bias = 0.0006; shadows.normalBias = 0.025; shadows.darkness = 0.38;
-    sun.shadowMinZ = 1; sun.shadowMaxZ = 200; sun.autoUpdateExtends = true; sun.autoCalcShadowZBounds = true;
+    shadows.bias = 0.0006; shadows.normalBias = 0.025; shadows.darkness = 0.42;
+    // a tighter shadow frustum (the street, not the whole skyline): the same map covers less ground, so edges stay sharp
+    sun.shadowMinZ = 1; sun.shadowMaxZ = 140; sun.autoUpdateExtends = true; sun.autoCalcShadowZBounds = true;
   }
   const cast = (node) => { if (!shadows || !node) return; for (const m of node.getChildMeshes ? node.getChildMeshes(false) : []) shadows.addShadowCaster(m, false); if (node.getTotalVertices) shadows.addShadowCaster(node, false); };
   // instances take shadows through their source mesh
@@ -93,7 +94,7 @@ async function createBabylon(game, params) {
   // ---------- sky: a sunset gradient on a dome, the sun's glow on the horizon, fog into the distance ----------
   const skyTex = textTexture(scene, 8, 512, (x, w, h) => {
     const g = x.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#0e1438"); g.addColorStop(0.28, "#2a2a6a"); g.addColorStop(0.42, "#7a4a8e"); g.addColorStop(0.48, "#e0787a"); g.addColorStop(0.5, "#ffb36b"); g.addColorStop(0.53, "#5a3a5a"); g.addColorStop(1, "#1a1424");
+    g.addColorStop(0, "#070b26"); g.addColorStop(0.26, "#18215a"); g.addColorStop(0.4, "#3c3f8a"); g.addColorStop(0.46, "#a8607e"); g.addColorStop(0.495, "#ffae66"); g.addColorStop(0.53, "#3a2c4e"); g.addColorStop(1, "#120e1e");
     x.fillStyle = g; x.fillRect(0, 0, w, h);
   }, false);
   const skyM = new StandardMaterial("skyM", scene); skyM.emissiveTexture = skyTex; skyM.disableLighting = true; skyM.backFaceCulling = false; skyM.fogEnabled = false; skyM.diffuseColor = Color3.Black(); skyM.specularColor = Color3.Black();
@@ -102,11 +103,12 @@ async function createBabylon(game, params) {
   const sunTex = textTexture(scene, 256, 256, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,240,200,1)"); g.addColorStop(0.18, "rgba(255,200,120,.9)"); g.addColorStop(0.5, "rgba(255,140,90,.25)"); g.addColorStop(1, "rgba(255,120,90,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const sunM = new StandardMaterial("sunM", scene); sunM.emissiveTexture = sunTex; sunM.opacityTexture = sunTex; sunM.disableLighting = true; sunM.fogEnabled = false; sunM.alphaMode = Constants.ALPHA_ADD; sunM.disableDepthWrite = true;
   glowSun.material = sunM; glowSun.position.copyFrom(SUN_DIR.scale(-420)); glowSun.billboardMode = Mesh.BILLBOARDMODE_ALL; glowSun.isPickable = false; glowSun.infiniteDistance = true;
-  scene.fogMode = Scene.FOGMODE_EXP2; scene.fogDensity = low ? 0.0075 : 0.0062; scene.fogColor = Color3.FromHexString("#6a4466");
+  scene.fogMode = Scene.FOGMODE_EXP2; scene.fogDensity = low ? 0.0085 : 0.0074; scene.fogColor = Color3.FromHexString("#40365e"); // atmospheric depth: far blocks fade into the dusk
 
   // ---------- ground: the road (Kenney tiles), pavements with kerbs, the plaza, the land around ----------
   const land = CreateGround("land", { width: 420, height: 420 }, scene);
   const landM = new PBRMaterial("landM", scene); landM.albedoColor = Color3.FromHexString("#3a3640"); landM.metallic = 0; landM.roughness = 0.95; land.material = landM; land.position.set(0, -0.02, -40); land.receiveShadows = true; land.isPickable = false;
+  await Promise.all(["road/road-straight", "road/road-crossing"].map((k) => models.tint(K(k), "#8a8794", 0.82, 0)));
   for (let z = HOME_Z + 5; z > GATE_Z - 5; z -= 10) {
     const crossing = z - 5 < GATE_Z + 4;
     const r = await models.put(K(crossing ? "road/road-crossing" : "road/road-straight"), { x: 0, z: z - 5, s: 10, sy: 1 }); receive(r.root);
@@ -162,7 +164,7 @@ async function createBabylon(game, params) {
     const m = new PBRMaterial("awning" + i, scene); m.albedoTexture = tx; m.metallic = 0; m.roughness = 0.85; m.backFaceCulling = false; return m;
   });
   // every building type its own facade tone (each model file has its own materials, so a tint covers all its copies)
-  const TONES = { a: "#f1e3cf", b: "#e6d0c0", c: "#d9dde6", d: "#efd9b4", e: "#e2cbb6", f: "#cfd8d4", g: "#f0e6d8", h: "#dcc7c9", k: "#e9dcc6", l: "#d6d0e0", m: "#f2dcc4", n: "#dfe2d6" };
+  const TONES = { a: "#efdcc2", b: "#c98f78", c: "#9fb0c8", d: "#e6c38e", e: "#b9a08c", f: "#a9bdb2", g: "#f0e6d8", h: "#b88a8c", k: "#e2d2b8", l: "#8f98b8", m: "#d9a77e", n: "#c7cbbd" };
   await Promise.all(Object.entries(TONES).map(([k, hex]) => models.tint(K("com/building-" + k), hex, 0.66)));
   for (const side of [-1, 1]) {
     let z = HOME_Z - 1.5; const end = GATE_Z + 6;
@@ -212,15 +214,15 @@ async function createBabylon(game, params) {
   // ---------- street furniture: lamps with light pools, trees in planters, parked cars, a few details ----------
   const lampZ = []; for (let z = HOME_Z - 5; z > GATE_Z + 3; z -= 10) lampZ.push(z);
   const headM = glowMat(scene, "#ffe2b0", 2.2, "lampHead");
-  const poolTex = textTexture(scene, 128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,214,160,.55)"); g.addColorStop(0.55, "rgba(255,190,130,.15)"); g.addColorStop(1, "rgba(255,190,130,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const poolTex = textTexture(scene, 128, 128, (x, w, h) => { const g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); g.addColorStop(0, "rgba(255,206,150,.34)"); g.addColorStop(0.5, "rgba(255,186,120,.1)"); g.addColorStop(1, "rgba(255,190,130,0)"); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const poolM = new StandardMaterial("pool", scene); poolM.emissiveTexture = poolTex; poolM.opacityTexture = poolTex; poolM.disableLighting = true; poolM.alphaMode = Constants.ALPHA_ADD; poolM.disableDepthWrite = true;
-  const pool0 = CreateGround("pool", { width: 6, height: 6 }, scene); pool0.material = poolM; pool0.isPickable = false; pool0.position.y = -1000;
+  const pool0 = CreateGround("pool", { width: 4.2, height: 5.4 }, scene); pool0.material = poolM; pool0.isPickable = false; pool0.position.y = -1000;
   const bulb0 = CreateBox("bulb", { width: 0.5, height: 0.08, depth: 0.9 }, scene); bulb0.material = headM; bulb0.isPickable = false; bulb0.position.y = -1000;
   for (const z of lampZ) for (const s of [-1, 1]) {
     const x = s * (ROAD + 0.75);
     const l = await models.put(K("road/light-curved"), { x, z, ry: s < 0 ? -Math.PI / 2 : Math.PI / 2, s: 10 }); cast(l.root);
     const bl = bulb0.createInstance("b"); bl.position.set(x - s * 1.85, 6.42, z); bl.rotation.y = Math.PI / 2;
-    const p = pool0.createInstance("p"); p.position.set(x - s * 1.6, 0.03 + (s < 0 ? 0 : 0.001), z);
+    const p = pool0.createInstance("p"); p.position.set(x - s * 1.3, 0.03 + (s < 0 ? 0 : 0.001), z);
     colliders.push({ min: { x: x - 0.25, z: z - 0.25 }, max: { x: x + 0.25, z: z + 0.25 } });
   }
   // trees in planters between the lamps, on both pavements
@@ -291,7 +293,13 @@ async function createBabylon(game, params) {
   const ch = spawnCharacter(await models.get(charUrl(save.char || "hoodie")), 1.72, "hero");
   const player = new Hero(scene, ch, game.audio); if (shadows) for (const m of ch.meshes) shadows.addShadowCaster(m, false);
   const back = params.from === "tower";
-  player.pos.set(0, 0, back ? GATE_Z + 2.2 : HOME_Z - 1.4); player.heading = back ? 0 : Math.PI;
+  // Phase 2D-A: «Continue» resumes in the street at the saved spot (clamped to the boulevard); the door / tower keep their spots
+  const sp = !back && !params.from && save.scene === "street" && save.pos ? save.pos : null;
+  const clampS = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v) || 0));
+  if (sp) { player.pos.set(clampS(sp.x, -WALK + 0.6, WALK - 0.6), 0, clampS(sp.z, GATE_Z + 1.2, HOME_Z - 1.0)); player.heading = Number(sp.r) || Math.PI; }
+  else { player.pos.set(0, 0, back ? GATE_Z + 2.2 : HOME_Z - 1.4); player.heading = back ? 0 : Math.PI; }
+  let leaving = false, spotT = 0, lastSpot = "";
+  const saveSpot = () => { const p = { x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), r: +player.heading.toFixed(2) }; const k = JSON.stringify(p); if (k !== lastSpot) { lastSpot = k; game.save.set({ scene: "street", pos: p }); } };
   // the guide ring and marker sit on the road, a hair above it
   const world = { colliders, bounds: { minX: -WALK + 0.2, maxX: WALK - 0.2, minZ: GATE_Z + 0.55, maxZ: HOME_Z - 0.45 } };
   const walkers = [];
@@ -309,14 +317,22 @@ async function createBabylon(game, params) {
     } catch (e) { console.warn("[street] walker", e); }
   }
 
+  // Salma, the receptionist, waiting by the tower's door (one of the existing characters; skipped if it fails to load)
+  let salma = null;
+  try {
+    const sc = spawnCharacter(await models.get(charUrl((save.char || "hoodie") === "suit-f" ? "casual-f" : "suit-f")), 1.66, "npcSalma");
+    salma = new Hero(scene, sc, null, { npc: true }); salma.pos.set(1.9, 0.14, GATE_Z + 1.1); salma.heading = 0;
+    if (shadows) for (const m of sc.meshes) shadows.addShadowCaster(m, false);
+  } catch (e) { console.warn("[street] salma", e); }
+
   // ---------- post: glow on emissive things, filmic tone mapping, FXAA, a little bloom and vignette ----------
   const ip = scene.imageProcessingConfiguration;
-  ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.06; ip.contrast = 1.22;
+  ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.12; ip.contrast = 1.14;
   ip.vignetteEnabled = !low; ip.vignetteWeight = 1.6; ip.vignetteColor = new Color4(0.08, 0.02, 0.12, 0);
   let glow = null, pipe = null;
   const camera = new FreeCamera("cam", new Vector3(0, 1.7, HOME_Z - 0.4), scene); camera.minZ = 0.1; camera.maxZ = 1200; camera.inputs.clear();
   if (!low) {
-    glow = new GlowLayer("glow", scene, { mainTextureRatio: high ? 0.5 : 0.35, blurKernelSize: high ? 32 : 24 }); glow.intensity = 0.42;
+    glow = new GlowLayer("glow", scene, { mainTextureRatio: high ? 0.5 : 0.35, blurKernelSize: high ? 32 : 24 }); glow.intensity = 0.5;
     glow.addExcludedMesh(sky); glow.addExcludedMesh(glowSun);
     pipe = new DefaultRenderingPipeline("post", true, scene, [camera]);
     pipe.fxaaEnabled = true; pipe.samples = high ? 4 : 1;
@@ -340,15 +356,20 @@ async function createBabylon(game, params) {
         <button type="button" class="gm-ico" id="gm-menu" aria-label="${esc(t("القائمة", "Menu"))}">${icon("menu")}</button>
       </div>
     </header>
-    <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b>${esc(tl(C.objective))}</b>
-      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li></ul></section>
+    <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
+      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li></ul></section>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
     <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>`, "gm-room gm-street");
   const $ = (s) => L.querySelector(s);
-  const paintObj = () => { $("[data-g=tower]").classList.toggle("ok", !!game.save.flag("street.tower")); };
+  const paintObj = () => {
+    $("[data-g=tower]").classList.toggle("ok", !!game.save.flag("street.tower"));
+    // Season 1: once Salma has spoken, the objective moves on to the fortieth floor
+    const met = !!game.save.flag("story.salma"), li = $("[data-g=salma]");
+    li.hidden = !met; li.classList.toggle("ok", met); $("#gm-obj-t").textContent = tl(met ? C.next.objective : C.objective);
+  };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
-  refreshBal(); paintObj();
+  refreshBal(); paintObj(); game.missions?.paint();
   $("#gm-menu").addEventListener("click", () => openPause(game));
   game.input.on("pause", () => { if (game.scenes.name === "street" && !game.ui.modalOpen && !busy) openPause(game); });
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3200); }
@@ -364,11 +385,13 @@ async function createBabylon(game, params) {
     if (busy) return; busy = true; showAct(null); player.walkTo(null); player.face(th.face.x, th.face.z);
     try {
       if (th.id === "tower") {
+        if (!game.save.flag("story.salma")) await meetSalma();
         game.audio.sfx("open"); doorGlow = 1;
         player.walkTo({ x: 0, z: GATE_Z + 0.6 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.6, GATE_Z + 3.4), lf: look.clone(), look: new Vector3(0, 2.4, GATE_Z - 6), k: 0 };
         await wait(900); game.audio.sfx("whoosh"); flash(true); await wait(380);
         if (!game.save.flag("street.tower")) { game.save.set({ flags: { "street.tower": true } }); game.audio.sfx("ping"); paintObj(); }
+        game.missions?.complete("c1.tower"); // Phase 2D-A: XP from the server only (story-flow check; a repeat grants nothing)
         game.save.flush();
         inHall = true; game.loop.pause(true);
         game.street.tower = openTower(game, { onClose: () => { game.street.tower = null; game.loop.pause(false); onStationClose(); } });
@@ -379,10 +402,22 @@ async function createBabylon(game, params) {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.0, HOME_Z - 3.6), lf: look.clone(), look: new Vector3(0, 1.3, HOME_Z + 4), k: 0 };
         await wait(700); game.audio.sfx("whoosh"); flash(true); await wait(320);
+        leaving = true; game.save.set({ scene: "room", pos: null }); // the room places you at its door and saves its own spot
         await game.scenes.go("room", { from: "door", fade: 250, fadeIn: 600 }); flash(false);
         return;
       }
     } finally { if (!inHall) busy = false; }
+  }
+  // ---------- Season 1, «الإشارة»: Salma at the front desk, the key «40», what she knows of Yousuf ----------
+  // Played once, the first time the player goes in; then the objective becomes the fortieth floor. The tower's inside is
+  // still the MJT OS screen (os/tower.js): this beat happens at its door, in the street, before that screen opens.
+  async function meetSalma() {
+    if (salma) { const f = Math.atan2(player.pos.x - salma.pos.x, player.pos.z - salma.pos.z); salma.heading = f; }
+    player.face(salma ? salma.pos.x : 0, salma ? salma.pos.z : GATE_Z);
+    const names = { salma: tl(C.salmaName), narrator: tl(C.narrator) };
+    for (const beat of C.salma) await game.ui.dialog(beat.lines.map((l) => fill(tl(l), { name })), names[beat.who] || "");
+    game.save.set({ flags: { "story.salma": true } }); game.audio.sfx("ping"); paintObj();
+    card(tl(C.next.card), tl(C.next.objective)); game.save.flush();
   }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
@@ -417,20 +452,57 @@ async function createBabylon(game, params) {
   const onResize = () => frame(); addEventListener("resize", onResize);
   const goalCam = () => {
     const r = canvas.getBoundingClientRect(), portrait = r.width / Math.max(1, r.height) < 0.8, bk = portrait ? 8.4 : 7.2;
-    let up = portrait ? 4.2 : 3.6, cz = player.pos.z + bk;
+    let up = portrait ? 3.7 : 3.2, cz = player.pos.z + bk;
     // never inside the apartment block behind you: stop at its face and rise instead, looking down over your shoulder
     const lim = HOME_Z - 0.6; if (cz > lim) { up += (cz - lim) * 0.3; cz = lim; }
     camP.set(player.pos.x * 0.55, up, cz);
     // aim a few metres ahead of the player, near the ground: the player sits in the lower middle of the frame, clear of
     // the dialogue box, with the street and the tower's entrance opening up ahead
-    camT.set(player.pos.x * 0.35, 0.9, player.pos.z - 7);
+    // v2C: aim higher and further, the tower stays in frame. Phase 2C.2: a little higher again in portrait (about 3°,
+    // where the player has ~15° of room under them); barely in landscape, where the help line sits close under the feet
+    camT.set(player.pos.x * 0.35, portrait ? 2.4 : 1.8, player.pos.z - 9);
+  };
+  // ---------- Phase 2C.2: a short glance up at the tower ----------
+  // The crown (68-88 m up, 13-50 m away) can't share a street-level frame with the player, so the camera looks up at it
+  // now and then instead: tilt up, hold, settle back, on the same camera and the same smoothing as the follow view.
+  // At most twice per visit (once when the player first stops after walking a few metres, once after a long idle), never
+  // during the intro, a door push, a dialogue or a modal; moving cancels it and the camera eases back from wherever it is.
+  const GZ = { up: 1.7, hold: 1.5, down: 1.6, max: 2, gap: 30 };
+  const gaze = { t: -1, g: 0, raw: 0, n: 0, last: -99, still: 0, from: null, walked: false, clock: 0 };
+  const gazeT = new Vector3(), gazeDir = new Vector3(), followT = new Vector3();
+  const crownY = (tower.topY || 80) + 6; // between the gold ring and the coin
+  const startGaze = () => { if (gaze.t >= 0) return false; gaze.t = 0; gaze.n++; gaze.last = gaze.clock; return true; };
+  const cancelGaze = () => { if (gaze.t >= 0 && gaze.t < GZ.up + GZ.hold) gaze.t = GZ.up + GZ.hold + (1 - gaze.raw) * GZ.down; };
+  const gazeAim = () => {
+    // a direction from the camera that puts the crown a little above the middle of the frame, clear of the objective card
+    const cx = -camP.x, cy = crownY - camP.y, cz = CORE_Z - camP.z, flat = Math.hypot(cx, cz);
+    const half = camera.fov / 2, pitch = Math.min(1.25, Math.atan2(cy, flat) - half * 0.25), yaw = Math.atan2(cx, cz);
+    gazeDir.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+    const d = Vector3.Distance(camP, camT); camP.addToRef(gazeDir.scaleInPlace(d), gazeT);
+  };
+  const stepGaze = (dt, moving) => {
+    gaze.clock += dt;
+    if (!gaze.from) gaze.from = { x: player.pos.x, z: player.pos.z };
+    if (!gaze.walked && Math.hypot(player.pos.x - gaze.from.x, player.pos.z - gaze.from.z) > 3) gaze.walked = true;
+    const blocked = busy || !!push || !!intro || game.ui.modalOpen;
+    gaze.still = moving || blocked ? 0 : gaze.still + dt;
+    if (blocked) { gaze.t = -1; gaze.g = gaze.raw = 0; return; }
+    if (moving) cancelGaze();
+    else if (gaze.t < 0 && gaze.n < GZ.max && gaze.clock - gaze.last > GZ.gap && player.pos.z > GATE_Z + 8 &&
+      ((gaze.n === 0 && gaze.walked && gaze.still > 1.0) || gaze.still > 8)) startGaze();
+    if (gaze.t < 0) { gaze.g = gaze.raw = 0; return; }
+    gaze.t += dt;
+    const T = GZ.up + GZ.hold + GZ.down, t = gaze.t;
+    const raw = t < GZ.up ? t / GZ.up : t < GZ.up + GZ.hold ? 1 : Math.max(0, 1 - (t - GZ.up - GZ.hold) / GZ.down);
+    gaze.raw = raw; gaze.g = raw * raw * (3 - 2 * raw);
+    if (t >= T) { gaze.t = -1; gaze.g = gaze.raw = 0; gaze.still = 0; }
   };
   goalCam();
   let intro = !back ? { k: 0 } : null;
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma") }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -438,7 +510,7 @@ async function createBabylon(game, params) {
   return {
     scene: null, camera: null, engine: "babylon",
     enter() {
-      frame(); game.audio.music("room"); game.audio.ambient("city");
+      frame(); game.audio.music("room"); game.audio.ambient("city"); saveSpot();
       requestAnimationFrame(() => flash(false));
       if (intro) {
         busy = true; card(tl(C.title), tl(C.name));
@@ -458,6 +530,7 @@ async function createBabylon(game, params) {
       const gy = Math.hypot(px, pz - CORE_Z) < 15 ? 0.14 : Math.abs(px) > ROAD + 0.12 ? 0.16 : 0;
       player.pos.y = (player.pos.y || 0) + (gy - (player.pos.y || 0)) * Math.min(1, dt * 14);
       player.update(dt, busy ? STILL : mv, 0, world);
+      if (salma) { salma.update(dt, STILL, 0, null); salma.body.position.y = 0.14; }
       let best = null, bd = 1.6;
       for (const th of things) {
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
@@ -475,8 +548,11 @@ async function createBabylon(game, params) {
         h.update(dt, STILL, 0, null); h.body.position.y = 0.16;
       }
       tower.update(dt, doorGlow);
+      if (!busy && !leaving) { spotT += dt; if (spotT > 8) { spotT = 0; saveSpot(); } }
       // camera
       goalCam();
+      stepGaze(dt, Math.abs(mv.x) + Math.abs(mv.y) > 0.1 || !!player.target);
+      if (gaze.g > 0) { gazeAim(); followT.copyFrom(camT); Vector3.LerpToRef(followT, gazeT, gaze.g, camT); }
       if (push) {
         push.k = Math.min(1, push.k + dt * 0.95); const e = push.k * push.k * (3 - 2 * push.k);
         Vector3.LerpToRef(push.from, push.to, e, camera.position); Vector3.LerpToRef(push.lf, push.look, e, look);
@@ -487,7 +563,7 @@ async function createBabylon(game, params) {
       camera.setTarget(look);
       scene.render();
     },
-    exit() { flash(false); game.save.flush(); },
+    exit() { flash(false); if (!leaving) saveSpot(); game.save.flush(); },
     dispose() {
       game.street?.tower?.close(); game.street = null; game.bus.off("station-closed", onStationClose); game.input.clear();
       removeEventListener("resize", onResize);
