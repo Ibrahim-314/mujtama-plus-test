@@ -3,6 +3,7 @@
 export const SCENES = {
   title: () => import("./title.js"),
   creator: () => import("./creator.js"),
+  prologue: () => import("./prologue.js"),
   room: () => import("./room.js"),
   street: () => import("./street.js")
 };
