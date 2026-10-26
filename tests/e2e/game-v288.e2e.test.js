@@ -211,6 +211,18 @@ async function run(label, ctxOpts) {
   await p.click("#gm-tw [data-tw=exit]");
   await until(p, () => !document.querySelector("#gm-tw") && !window.MPGame.ui.modalOpen && window.MPGame.street.state().busy === false, null, 10000);
   assert.ok(await p.evaluate(() => window.MPGame?.scenes.name === "street"), "back on the street after the tower");
+  // Season 1 «الإشارة الأولى»: the terminal is live now, the player walks up to it and acts (the real action button)
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().signal && !window.MPGame.street.state().sada), "the signal is live after Salma");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().sigAt; s.player.pos.set(a.x, 0, a.z + 0.3); });
+  await until(p, () => window.MPGame.street.state().near === "signal" && !document.querySelector("#gm-act").hidden, null, 10000);
+  assert.ok(await p.evaluate(() => /محطة|terminal/i.test(document.querySelector("#gm-act-k").textContent)), "the action names the terminal");
+  await p.click("#gm-act");
+  { const end = Date.now() + 40000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().sada))) { await p.evaluate(() => { const d = document.querySelector("#gm-dlg"); if (d && !d.hidden && d.classList.contains("on")) d.click(); }); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().sada && window.MPGame.save.flag("story.sada")), "Sada's beat played and was saved");
+  await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.ui.modalOpen, null, 10000);
+  assert.ok(await p.evaluate(() => /الطابق|floor/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().signal), "the next objective is up and the terminal went quiet");
+  await shot(p, label + "-8e-sada");
   // and home again: the room, the door closes behind the player
   p.evaluate(() => { window.MPGame.street.use("home"); }).catch(() => {});
   await until(p, () => window.MPGame?.scenes.name === "room" && !window.MPGame.scenes.busy, null, 60000);
