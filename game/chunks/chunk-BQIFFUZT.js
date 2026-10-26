@@ -1,1 +1,0 @@
-import{a as r}from"./chunk-4MOED6VN.js";var e="kernelBlurVaryingDeclaration",a="varying vec2 sampleCoord{X};";r.IncludesShadersStore[e]||(r.IncludesShadersStore[e]=a);var o={name:e,shader:a};export{o as a};
