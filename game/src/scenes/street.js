@@ -278,7 +278,7 @@ async function createBabylon(game, params) {
   // ---------- the two places you can use: a turning marker over each, a halo on the ground when you're close ----------
   const things = [
     { id: "tower", at: new Vector3(0, 0, GATE_Z + 1.4), mark: new Vector3(0, 8.6, GATE_Z + 0.4), face: new Vector3(0, 0, GATE_Z - 3), hitAt: new Vector3(0, 2.6, GATE_Z + 0.4), hitS: [5.2, 5.6, 2] },
-    // Season 1: the dead public terminal on the left pavement where Yousuf's signal surfaces (live only between Salma and Sada)
+    // Season 1: the dead public terminal on the pavement (x<0) where Yousuf's signal surfaces (live only between Salma and Sada)
     { id: "signal", at: new Vector3(-(ROAD + 1.5), 0, midZ + 1.2), mark: new Vector3(-(ROAD + 2.4), 3.1, midZ), face: new Vector3(-(ROAD + 2.4), 0, midZ), hitAt: new Vector3(-(ROAD + 2.4), 1.2, midZ), hitS: [1.4, 2.4, 1.2] },
     // Season 1 Phase 3: the stairs down to the underground market on the right pavement, Abu Nasser's stall at their mouth
     { id: "market", at: new Vector3(ROAD + 1.5, 0, midZ - 6 + 1.2), mark: new Vector3(ROAD + 2.6, 3.3, midZ - 6), face: new Vector3(ROAD + 2.6, 0, midZ - 6 + 1.8), hitAt: new Vector3(ROAD + 2.6, 1.2, midZ - 6), hitS: [1.8, 2.4, 2.6] },
@@ -317,6 +317,47 @@ async function createBabylon(game, params) {
     for (const m of parts) { m.isPickable = false; if (shadows && m !== mouth) shadows.addShadowCaster(m, false); }
     colliders.push({ min: { x: X - 0.75, z: Z - 1.15 }, max: { x: X + 0.75, z: Z + 1.15 } }, { min: { x: X - 0.2, z: Z + 1.8 }, max: { x: X + 0.6, z: Z + 2.6 } });
   }
+  // ---------- v2.101.1: a guide to the live story spot — a light beam over it, a pulsing trail on the ground, tap the goal to walk ----------
+  const storyGoal = () => (sigLive() ? sig : mkLive() ? mk : null);
+  const beams = {};
+  for (const th of [sig, mk]) {
+    const col = th === mk ? "#ff3fb4" : "#2fe6ff";
+    const bm = CreateCylinder("markBeam", { diameterTop: 0.25, diameterBottom: 0.7, height: 16, tessellation: 18 }, scene);
+    const m = glowMat(scene, col, 1.2, "markBeam"); m.alpha = 0.32; m.alphaMode = Constants.ALPHA_ADD; m.disableDepthWrite = true; m.backFaceCulling = false;
+    bm.material = m; bm.position.set(th.hitAt.x, 8, th.hitAt.z); bm.isPickable = false; bm.isVisible = false; beams[th.id] = bm;
+  }
+  const trail = [];
+  for (let i = 0; i < 14; i++) {
+    const d = CreateDisc("ringTrail", { radius: 0.2, tessellation: 20 }, scene); const m = glowMat(scene, "#2fe6ff", 1.6, "ringTrail");
+    m.alpha = 0; m.alphaMode = Constants.ALPHA_ADD; m.disableDepthWrite = true; d.material = m; d.rotation.x = Math.PI / 2; d.isPickable = false; d.isVisible = false; trail.push(d);
+  }
+  let guideEl = null, guideK = "";
+  const camR = new Vector3(), camF = new Vector3();
+  const stepGuide = (time, hide) => {
+    const g = hide ? null : storyGoal();
+    guideEl = guideEl || L.querySelector("#gm-guide");
+    if (guideEl) {
+      const gx = g ? g.at.x - player.pos.x : 0, gz = g ? g.at.z - player.pos.z : 0, gd = Math.hypot(gx, gz);
+      const on = !!g && gd > 2.2; if (guideEl.hidden === on) guideEl.hidden = !on;
+      if (on) {
+        camera.getDirectionToRef(Vector3.Right(), camR); camera.getDirectionToRef(Vector3.Forward(scene.useRightHandedSystem), camF);
+        const sr = gx * camR.x + gz * camR.z, su = gx * camF.x + gz * camF.z;
+        guideEl.firstElementChild.style.transform = `rotate(${Math.atan2(sr, su).toFixed(3)}rad)`;
+        const k = tl(C.things[g.id].label) + " · " + Math.round(gd) + t(" م", " m");
+        if (k !== guideK) { guideK = k; guideEl.lastElementChild.textContent = k; }
+      }
+    }
+    for (const [id, b] of Object.entries(beams)) { b.isVisible = !!g && g.id === id; if (b.isVisible) b.material.alpha = 0.24 + Math.sin(time * 2.4) * 0.08; }
+    const dx = g ? g.at.x - player.pos.x : 0, dz = g ? g.at.z - player.pos.z : 0, dist = Math.hypot(dx, dz);
+    const show = !!g && dist > 2.4, col = g === mk ? [1, 0.25, 0.7] : [0.18, 0.9, 1];
+    for (let i = 0; i < trail.length; i++) {
+      const t = trail[i], at = 1.1 + i * 1.15, on = show && at < dist - 0.9; t.isVisible = on; if (!on) continue;
+      const x = player.pos.x + (dx / dist) * at, z = player.pos.z + (dz / dist) * at;
+      t.position.set(x, Math.abs(x) > ROAD + 0.12 ? 0.19 : 0.03, z);
+      t.material.emissiveColor.set(col[0] * 1.6, col[1] * 1.6, col[2] * 1.6);
+      t.material.alpha = 0.18 + 0.7 * Math.max(0, Math.sin(time * 4 - i * 0.55));
+    }
+  };
   const tapFloor = CreateGround("tapFloor", { width: 60, height: 120 }, scene); tapFloor.position.set(0, 0, midZ); tapFloor.isVisible = false; tapFloor.metadata = { floor: true };
   const pickable = (m) => m === tapFloor || !!m.metadata?.thing;
 
@@ -398,6 +439,7 @@ async function createBabylon(game, params) {
     </header>
     <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
       <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li></ul></section>
+    <button class="gm-guide" id="gm-guide" type="button" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3l7 9h-4.5v9h-5v-9H5z" fill="currentColor"/></svg><span></span></button>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
     <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>`, "gm-room gm-street");
@@ -414,6 +456,9 @@ async function createBabylon(game, params) {
   };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
   refreshBal(); paintObj(); game.missions?.paint();
+  const goGuide = () => { const th = storyGoal(); if (th && canWalk()) { pending = null; guideTo(th); hideHelp(); game.audio.sfx("hover"); } };
+  for (const g of ["salma", "route"]) $(`[data-g=${g}]`).addEventListener("click", goGuide);
+  $("#gm-guide").addEventListener("click", goGuide);
   $("#gm-menu").addEventListener("click", () => openPause(game));
   game.input.on("pause", () => { if (game.scenes.name === "street" && !game.ui.modalOpen && !busy) openPause(game); });
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3200); }
@@ -514,7 +559,7 @@ async function createBabylon(game, params) {
   const canWalk = () => !busy && !game.ui.modalOpen && game.scenes.name === "street";
   function walk(x, z) {
     if (!canWalk()) return false;
-    const b = world.bounds; pending = null;
+    const b = world.bounds; pending = null; via = null;
     player.walkTo({ x: Math.max(b.minX + 0.4, Math.min(b.maxX - 0.4, x)), z: Math.max(b.minZ + 0.4, Math.min(b.maxZ - 0.4, z)) });
     hideHelp(); return true;
   }
@@ -524,9 +569,12 @@ async function createBabylon(game, params) {
     const hit = scene.pick(((p.x + 1) / 2) * r.width, ((1 - p.y) / 2) * r.height, pickable, false, camera);
     if (!hit?.hit) return;
     const th = hit.pickedMesh.metadata?.thing;
-    if (th) { pending = th; player.walkTo(th.at); hideHelp(); } else walk(hit.pickedPoint.x, hit.pickedPoint.z);
+    if (th) { via = null; pending = th; player.walkTo(th.at); hideHelp(); } else walk(hit.pickedPoint.x, hit.pickedPoint.z);
   });
-  player.onArrive = () => { if (pending) { const th = pending; pending = null; use(th); } };
+  // tapping the goal: down the clear middle of the road first, then across to the spot (straight lines snag on benches and bins)
+  let via = null;
+  function guideTo(th) { via = th.at; player.walkTo({ x: 0, z: th.at.z }); }
+  player.onArrive = () => { if (via) { const v = via; via = null; player.walkTo(v); return; } if (pending) { const th = pending; pending = null; use(th); } };
 
   // ---------- camera: behind and above the player, looking up the street at the tower ----------
   const camT = new Vector3(), camP = new Vector3(), look = new Vector3();
@@ -584,7 +632,7 @@ async function createBabylon(game, params) {
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), mkAt: { x: mk.at.x, z: mk.at.z } }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), guide: storyGoal()?.id || null, mkAt: { x: mk.at.x, z: mk.at.z } }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -625,6 +673,7 @@ async function createBabylon(game, params) {
         th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
         th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
       }
+      stepGuide(time, busy || !!intro);
       if (best !== near) { near = best; if (!busy) { showAct(near); if (near) game.audio.sfx("hover"); } }
       if (busy && !$("#gm-act").hidden) showAct(null);
       // people on the pavements: up and down their lane, stopping to let you pass
