@@ -12,6 +12,7 @@ import { Scenes } from "./engine/scenes.js";
 import { Input } from "./engine/input.js";
 import { Audio } from "./engine/audio.js";
 import { Save } from "./engine/save.js";
+import { Missions } from "./engine/missions.js";
 import { Bus } from "./engine/bus.js";
 import { setLang, t } from "./engine/i18n.js";
 import { UI } from "./ui/ui.js";
@@ -30,6 +31,7 @@ class Game {
     this.ui = new UI(root, this);
     this.input = new Input(this.surface, root.querySelector("#gm-ui"));
     this.save = new Save(host.api, this.member);
+    this.missions = new Missions(host.api, this.member, this); // Phase 2D-A: server-authoritative missions + XP
     this.loop = new Loop();
     this.scenes = new Scenes(this, SCENES);
     this.pendingStation = null;
@@ -39,6 +41,9 @@ class Game {
     this._loading = true; this.ui.loading(true, 0.05);
     try {
       await this.save.load();
+      this.missions.load(); // not awaited: the HUD shows the saved level until the server answers
+      this.onHide = () => { if (document.visibilityState === "hidden") this.save.flush(); };
+      document.addEventListener("visibilitychange", this.onHide);
       const s = this.save.data?.settings || {};
       for (const k of ["music", "ambient", "sfx"]) if (typeof s[k] === "number") this.audio.vol[k] = s[k];
       this.renderer = new Renderer(this.canvas, s.quality || "auto");
@@ -63,7 +68,7 @@ class Game {
   exit() { this.save.flush(); this.host.exit(); }
   unmount() {
     try { this.scenes.cur?.exit?.(); } catch { /* */ }
-    this.save.flush(); this.loop.stop(); this.scenes.dispose(); this.input.dispose(); this.audio.dispose(); this.renderer?.dispose(); this.offProg();
+    this.save.flush(); this.missions?.dispose(); if (this.onHide) document.removeEventListener("visibilitychange", this.onHide); this.loop.stop(); this.scenes.dispose(); this.input.dispose(); this.audio.dispose(); this.renderer?.dispose(); this.offProg();
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => { });
     this.root.innerHTML = ""; this.root.classList.remove("gm", "gm-behind");
   }
