@@ -219,8 +219,98 @@ export const CHAPTER1 = {
       card: { ar: "هدف جديد", en: "New objective" }
     }
   },
+  /** Season 1 Phase 5, «وصول الطابق الأربعين»: the maintenance panel left of the tower (story flag "story.maint").
+   * Live only after «المدخل المحظور» ("story.service"). Evidence → a route code → the key → a timed maintenance window
+   * at the service door → the old maintenance record, Sada's fragment, a message to the player. */
+  maint: {
+    open: [
+      { who: "narrator", lines: [
+        { ar: "لوحة صيانة قديمة في جدار البرج، مغطاة بالغبار. شاشتها تعمل على بطارية احتياطية.", en: "An old maintenance panel set in the tower wall, under dust. Its screen runs on a backup cell." },
+        { ar: "تطلب شيئين: «مرجع المسار» و«تأكيد مهندس».", en: "It asks for two things: a “route reference” and an “engineer's confirmation”." }
+      ] },
+      { who: "sada", lines: [{ ar: "هذه لوحات الصيانة قبل الانقطاع. لا تمر عبر الشبكة العامة… لذلك لم يمسحوها.", en: "These are pre-Blackout maintenance panels. They don't go through the public network… so nobody wiped them." }] }
+    ],
+    evidence: {
+      prompt: { ar: "الأدلة التي معك — افحص اثنين على الأقل", en: "The evidence you carry — examine at least two" },
+      done: { ar: "ارجع إلى اللوحة", en: "Back to the panel" },
+      doneHint: { ar: "عندك ما يكفي", en: "You have enough" },
+      items: [
+        { id: "key", label: { ar: "المفتاح النحاسي «40»", en: "The brass key “40”" }, hint: { ar: "من أبيك يوسف", en: "Your father Yousuf's" },
+          lines: [{ ar: "تقلّب المفتاح. خلف الرقم 40 حزّ صغير لم تلاحظه من قبل: سنّ مفتاح صيانة، لا مفتاح باب.", en: "You turn the key over. Behind the 40 is a small notch you never noticed: the bit of a maintenance key, not a door key." }] },
+        { id: "record", label: { ar: "سجل الدخول المحترق", en: "The burnt access record" }, hint: { ar: "من أبو ناصر", en: "From Abu Nasser" },
+          lines: [{ ar: "تحت الحرق سطر بالكاد يُقرأ: «مسار صيانة — يُفعَّل بمرجع الطابق».", en: "Under the burn, a barely legible line: “Maintenance route — enabled by floor reference”." }] },
+        { id: "revoked", label: { ar: "سجل الإلغاء", en: "The revocation record" }, hint: { ar: "من ممر الخدمة", en: "From the service corridor" },
+          lines: [{ ar: "الحقل الأخير ما زال يحمل المرجع المخفي: «F-40». ليس رقم طابق رسمي… بل رمز مسار.", en: "The last field still carries the hidden reference: “F-40”. Not an official floor number… a route code." }] }
+      ]
+    },
+    code: {
+      prompt: { ar: "مرجع المسار", en: "Route reference" },
+      opts: [
+        { id: "38", label: { ar: "الطابق 38", en: "Floor 38" }, hint: { ar: "آخر طابق في المخططات الرسمية", en: "The top floor on the official plans" } },
+        { id: "f40", label: { ar: "F-40", en: "F-40" }, hint: { ar: "المرجع المخفي في سجل الإلغاء", en: "The hidden reference in the revocation" } },
+        { id: "40", label: { ar: "40", en: "40" }, hint: { ar: "الرقم المحفور على المفتاح", en: "The number engraved on the key" } }
+      ],
+      wrong: { ar: "مرجع غير معروف. المسار مقفل.", en: "Unknown reference. Route locked." }
+    },
+    confirm: {
+      prompt: { ar: "تأكيد مهندس", en: "Engineer's confirmation" },
+      opts: [
+        { id: "key", label: { ar: "أدخل سنّ المفتاح النحاسي في اللوحة", en: "Fit the brass key's bit into the panel" }, hint: { ar: "الحزّ خلف الرقم 40", en: "The notch behind the 40" } },
+        { id: "record", label: { ar: "مرّر سجل يوسف", en: "Pass Yousuf's record" }, hint: { ar: "صلاحيته ملغاة", en: "Its access is revoked" } }
+      ],
+      wrong: { ar: "صلاحية ملغاة. لا يمكن التأكيد.", en: "Access revoked. Cannot confirm." }
+    },
+    granted: [
+      { who: "panel", lines: [{ ar: "تم التأكيد. نافذة صيانة مفتوحة: 60 ثانية — مدخل الخدمة.", en: "Confirmed. Maintenance window open: 60 seconds — service entrance." }] },
+      { who: "sada", lines: [{ ar: "دقيقة واحدة! مدخل الخدمة في الجهة الأخرى من البرج. أسرع.", en: "One minute! The service entrance is on the other side of the tower. Hurry." }] }
+    ],
+    panelName: { ar: "لوحة الصيانة", en: "Maintenance panel" },
+    timer: { ar: "نافذة الصيانة", en: "Maintenance window" },
+    expired: { ar: "أُغلقت نافذة الصيانة. ارجع إلى اللوحة وأكّد من جديد.", en: "The maintenance window closed. Go back to the panel and confirm again." },
+    /** inside, during the window: the maintenance terminal behind the service door */
+    inside: { ar: "ممر الخدمة — طرفية الصيانة", en: "Service corridor — maintenance terminal" },
+    terminal: [
+      { who: "narrator", lines: [{ ar: "الباب يُفتح هذه المرة بلا تنبيه. في آخر الممر، طرفية صيانة تضيء باللون الكهرماني.", en: "This time the door opens without an alert. At the end of the corridor, a maintenance terminal glows amber." }] },
+      { who: "sada", lines: [{ ar: "أنا أقرأ الأرشيف المحلي… انتظر.", en: "I'm reading the local archive… wait." }] },
+      { who: "fragment", lines: [{ ar: "«…لا تطفئي الأرشيف المحلي يا صدى. هو الوحيد الذي لا يرونه…»", en: "“…don't shut the local archive down, Sada. It's the only one they can't see…”" }] },
+      { who: "sada", lines: [
+        { ar: "…هذا الصوت. خرج مني أنا.", en: "…That voice. It came out of me." },
+        { ar: "يشبه يوسف. أو يشبه ما أظن أنه يوسف. لا أعرف إن كانت ذاكرة… أم شيئاً وُضع فيّ.", en: "It sounds like Yousuf. Or like what I think Yousuf was. I don't know if it's a memory… or something put inside me." }
+      ] }
+    ],
+    look: {
+      prompt: { ar: "طرفية الصيانة", en: "Maintenance terminal" },
+      go: { ar: "افتح سجلات ليلة الاختفاء", en: "Open the logs from the night he vanished" },
+      goHint: { ar: "الأرشيف المحلي، لا الشبكة", en: "The local archive, not the network" }
+    },
+    /** the hidden record and its contradiction */
+    found: [
+      { who: "narrator", lines: [{ ar: "سجلّان لنفس الليلة، جنباً إلى جنب.", en: "Two logs of the same night, side by side." }] },
+      { who: "official", lines: [{ ar: "النظام الرسمي: المنطقة المقيّدة — فارغة. لا حركة. لا دخول.", en: "Official system: restricted area — empty. No movement. No entry." }] },
+      { who: "old", lines: [{ ar: "سجل الصيانة القديم: مسار F-40 — فُعّل بمفتاح المهندس ي. — باب مفتوح — نشاط مستمر حتى الفجر.", en: "Old maintenance log: route F-40 — enabled with engineer Y.'s key — door open — activity until dawn." }] }
+      ,
+      { who: "sada", lines: [
+        { ar: "يوسف وصل إلى هناك تلك الليلة. والنظام الرسمي يقول إن أحداً لم يكن هناك.", en: "Yousuf got there that night. And the official system says nobody was there." },
+        { ar: "أحد السجلين كاذب… والرسمي هو الذي عُدّل. كأن شيئاً يعكس السجلات ليرى فيها ما يريد.", en: "One of them is lying… and it's the official one that was edited. As if something mirrors the records to see in them what it wants." }
+      ] }
+    ],
+    /** the end: a message addressed to the player */
+    hook: [
+      { who: "screen", lines: [{ ar: "«{name}… إذا قرأت هذا، فقد وصلت. كنت أعرف أنك قد تأتي يوماً. المفتاح كان معك من البداية.»", en: "“{name}… if you're reading this, you made it. I knew you might come one day. You've had the key all along.”" }] },
+      { who: "narrator", lines: [{ ar: "تنطفئ الطرفية. وتُغلق نافذة الصيانة خلفك.", en: "The terminal goes dark. The maintenance window closes behind you." }] }
+    ],
+    officialName: { ar: "النظام الرسمي", en: "Official system" },
+    oldName: { ar: "سجل الصيانة القديم", en: "Old maintenance log" },
+    next: {
+      objective: { ar: "تحقّق من التناقض واكتشف من عدّل السجل الرسمي", en: "Investigate the contradiction and find who altered the official record" },
+      goal: { ar: "قارن السجلين: من مسح ليلة يوسف؟", en: "Compare the two logs: who erased Yousuf's night?" },
+      done: { ar: "اكتمل: وصول الطابق الأربعين", en: "Complete: The Forty-Floor Access" },
+      card: { ar: "هدف جديد", en: "New objective" }
+    }
+  },
   things: {
-    service: { label: { ar: "مدخل الخدمة المقيّد", en: "Restricted service entrance" }, verb: { ar: "استخدم سجل يوسف", en: "Use Yousuf's record" } },
+    maint: { label: { ar: "لوحة الصيانة القديمة", en: "Old maintenance panel" }, verb: { ar: "افحص اللوحة", en: "Inspect the panel" } },
+    service: { label: { ar: "مدخل الخدمة المقيّد", en: "Restricted service entrance" }, verb: { ar: "استخدم سجل يوسف", en: "Use Yousuf's record" }, verb2: { ar: "ادخل خلال نافذة الصيانة", en: "Go in during the window" } },
     market: { label: { ar: "درج السوق السفلي", en: "Underground market stairs" }, verb: { ar: "تحدّث مع أبو ناصر", en: "Talk to Abu Nasser" } },
     signal: { label: { ar: "محطة قديمة", en: "Old terminal" }, verb: { ar: "قرّب المفتاح", en: "Hold up the key" } },
     tower: { label: { ar: "برج MJT", en: "MJT Tower" }, verb: { ar: "ادخل", en: "Enter" } },
