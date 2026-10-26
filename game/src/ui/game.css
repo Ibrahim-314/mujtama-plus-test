@@ -499,3 +499,21 @@
 .gm-guide[hidden] { display: none; }
 .gm-guide svg { color: #2fe6ff; transition: transform 0.15s linear; filter: drop-shadow(0 0 6px #2fe6ff); }
 @keyframes gm-pulse-g { 50% { opacity: 0.35; } }
+/* Season 1 Phase 4 «المدخل المحظور»: the service corridor, a dimmed overlay over the camera push (no 3D interior) */
+.gm-svc { position: absolute; inset: 0; z-index: 12; pointer-events: none; opacity: 0; transition: opacity 0.5s ease;
+  background: radial-gradient(ellipse at 50% 38%, rgba(255, 150, 40, 0.10), transparent 55%), linear-gradient(180deg, rgba(4, 5, 10, 0.86), rgba(10, 6, 4, 0.92));
+  box-shadow: inset 0 0 140px rgba(0, 0, 0, 0.9); }
+.gm-svc.on { opacity: 1; }
+.gm-svc::before { content: ""; position: absolute; top: 14%; inset-inline: 22%; height: 3px; background: #ffb020; box-shadow: 0 0 18px #ffb020; opacity: 0.55; animation: gm-svc-blink 3.2s steps(1) infinite; }
+.gm-svc-k { position: absolute; top: max(86px, calc(env(safe-area-inset-top) + 76px)); inset-inline: 0; text-align: center; font-size: 0.78rem; letter-spacing: 0.18em; color: #ffcf7a; opacity: 0.85; }
+.gm-svc-scr { position: absolute; top: 24%; left: 50%; width: min(300px, 72vw); aspect-ratio: 16 / 10; transform: translateX(-50%); display: grid; place-items: center; padding: 14px;
+  border: 2px solid #2a2f3a; border-radius: 6px; background: #06090f; box-shadow: 0 0 0 6px #111521, 0 20px 40px rgba(0, 0, 0, 0.6); overflow: hidden; }
+.gm-svc-scr i { font-style: normal; font: 700 2.2rem/1 ui-monospace, monospace; color: #2fe6ff; text-shadow: 0 0 14px #2fe6ff; opacity: 0; transform: scale(0.9); transition: opacity 0.6s, transform 0.6s; }
+.gm-svc-scr p { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; padding: 14px; text-align: center; font: 600 0.95rem/1.6 inherit; color: #9effc2; text-shadow: 0 0 10px #3dff8a; background: #030806; opacity: 0; }
+.gm-svc.scan .gm-svc-scr { animation: gm-svc-scan 0.7s steps(6) 1; }
+.gm-svc.f40 .gm-svc-scr i { opacity: 1; transform: none; }
+.gm-svc.msg .gm-svc-scr p { opacity: 1; animation: gm-svc-glitch 0.18s steps(2) infinite; }
+@keyframes gm-svc-blink { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.15; } }
+@keyframes gm-svc-scan { 0% { background: #06090f; } 50% { background: #0b2a33; } 100% { background: #06090f; } }
+@keyframes gm-svc-glitch { 0% { transform: translateX(0); } 50% { transform: translateX(1.5px); } }
+@media (prefers-reduced-motion: reduce) { .gm-svc::before, .gm-svc.msg .gm-svc-scr p, .gm-svc.scan .gm-svc-scr { animation: none; } }
