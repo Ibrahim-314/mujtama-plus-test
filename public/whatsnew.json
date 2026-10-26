@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.99.0",
+    "date": "2026-10-26",
+    "ar": {
+      "title": "الموسم الأول: الإشارة",
+      "items": [
+        "مقدمة سينمائية حية: القرية، رسالة يوسف، مفتاح 40، القطار والمدينة",
+        "سلمى عند باب برج MJT تكشف سرّ يوسف والطابق الأربعين",
+        "مهام وخبرة ومستويات محفوظة على الخادم",
+        "حركة كاميرا أنعم حول البرج"
+      ]
+    },
+    "en": {
+      "title": "Season 1: The Signal",
+      "items": [
+        "A live cinematic prologue: the village, Yousuf's message, key 40, the train and the city",
+        "Salma at the MJT Tower door reveals Yousuf's secret and the 40th floor",
+        "Missions, XP and levels saved on the server",
+        "Smoother camera around the tower"
+      ]
+    }
+  },
+  {
     "v": "2.98.0",
     "date": "2026-10-25",
     "ar": {
