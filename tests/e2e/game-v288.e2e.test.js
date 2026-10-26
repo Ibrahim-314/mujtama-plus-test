@@ -223,6 +223,34 @@ async function run(label, ctxOpts) {
   await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.ui.modalOpen, null, 10000);
   assert.ok(await p.evaluate(() => /الطابق|floor/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().signal), "the next objective is up and the terminal went quiet");
   await shot(p, label + "-8e-sada");
+  // Season 1 Phase 3 «السوق السفلي»: back at the tower Sada stops you, then the market stairs, Abu Nasser and a choice
+  const clickDlg = () => p.evaluate(() => { const d = document.querySelector("#gm-dlg"); if (d && !d.hidden && d.classList.contains("on")) d.click(); });
+  assert.ok(await p.evaluate(() => !window.MPGame.street.state().market), "the market is quiet before Sada finds the route");
+  p.evaluate(() => { window.MPGame.street.use("tower"); }).catch(() => {});
+  { const end = Date.now() + 30000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().route))) { await clickDlg(); await p.waitForTimeout(150); } }
+  await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.ui.modalOpen && !document.querySelector("#gm-tw"), null, 10000);
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().market && /السوق|market/i.test(document.querySelector("#gm-obj-t").textContent)), "route found: the market is the objective");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().mkAt; s.player.pos.set(a.x, 0, a.z + 0.3); });
+  await until(p, () => window.MPGame.street.state().near === "market" && !document.querySelector("#gm-act").hidden, null, 10000);
+  assert.ok(await p.evaluate(() => /أبو ناصر|Abu Nasser/.test(document.querySelector("#gm-act-v").textContent)), "the action names Abu Nasser");
+  await shot(p, label + "-8f-market");
+  await p.click("#gm-act");
+  const pickN = label === "m" ? 1 : 0; // phone takes the signal way, desktop the key way
+  { const end = Date.now() + 30000;
+    while (Date.now() < end && !(await p.evaluate(() => !!document.querySelector("#gm-modal [data-ch]")))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-modal [data-ch]").length === 2 && getComputedStyle(document.querySelector("#gm-modal .gm-panel")).direction === "rtl"), "two choices, RTL");
+  await shot(p, label + "-8g-choice");
+  await p.click(`#gm-modal [data-ch="${pickN}"]`);
+  { const end = Date.now() + 45000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().record))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate((w) => window.MPGame.street.state().record && window.MPGame.save.flag("story.nasser." + w), pickN ? "signal" : "key"), "the record is saved with the chosen way");
+  await until(p, () => !window.MPGame.street.state().busy, null, 10000);
+  assert.ok(await p.evaluate(() => /مدخل الخدمة|service entrance/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().market), "next objective: the service entrance; the stall went quiet");
+  await shot(p, label + "-8h-record");
+  // repeating: the stall no longer offers the beat, the tower opens normally (no second route beat)
+  await p.evaluate(() => window.MPGame.street.use("market")); await p.waitForTimeout(300);
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-dlg").classList.contains("on") && !window.MPGame.ui.modalOpen), "no replay at the stall");
   // and home again: the room, the door closes behind the player
   p.evaluate(() => { window.MPGame.street.use("home"); }).catch(() => {});
   await until(p, () => window.MPGame?.scenes.name === "room" && !window.MPGame.scenes.busy, null, 60000);
@@ -257,5 +285,5 @@ async function run(label, ctxOpts) {
 test.before(async () => { ensureBuild(); S = await startStack(); });
 test.after(async () => { if (S) await S.close(); });
 
-test("game v2.88 — phone 390", { timeout: 300000 }, () => run("m", MOBILE));
-test("game v2.88 — desktop 1366", { timeout: 300000 }, () => run("d", { viewport: { width: 1366, height: 800 }, locale: "ar-SA" }));
+test("game v2.88 — phone 390", { timeout: 480000 }, () => run("m", MOBILE));
+test("game v2.88 — desktop 1366", { timeout: 480000 }, () => run("d", { viewport: { width: 1366, height: 800 }, locale: "ar-SA" }));
