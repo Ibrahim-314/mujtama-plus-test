@@ -278,13 +278,26 @@ async function createBabylon(game, params) {
   // ---------- the two places you can use: a turning marker over each, a halo on the ground when you're close ----------
   const things = [
     { id: "tower", at: new Vector3(0, 0, GATE_Z + 1.4), mark: new Vector3(0, 8.6, GATE_Z + 0.4), face: new Vector3(0, 0, GATE_Z - 3), hitAt: new Vector3(0, 2.6, GATE_Z + 0.4), hitS: [5.2, 5.6, 2] },
+    // Season 1: the dead public terminal on the left pavement where Yousuf's signal surfaces (live only between Salma and Sada)
+    { id: "signal", at: new Vector3(-(ROAD + 1.5), 0, midZ + 1.2), mark: new Vector3(-(ROAD + 2.4), 3.1, midZ), face: new Vector3(-(ROAD + 2.4), 0, midZ), hitAt: new Vector3(-(ROAD + 2.4), 1.2, midZ), hitS: [1.4, 2.4, 1.2] },
     { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.4, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
   ];
   for (const th of things) {
     const col = th.id === "tower" ? "#ffc23d" : "#2fe6ff";
-    th.m = CreatePolyhedron("mark", { type: 1, size: th.id === "tower" ? 0.36 : 0.16 }, scene); th.m.material = glowMat(scene, col, 1.8, "mark"); th.m.position.copyFrom(th.mark); th.m.isPickable = false;
+    th.m = CreatePolyhedron("mark", { type: 1, size: th.id === "tower" ? 0.36 : th.id === "signal" ? 0.22 : 0.16 }, scene); th.m.material = glowMat(scene, col, 1.8, "mark"); th.m.position.copyFrom(th.mark); th.m.isPickable = false;
     th.h = CreateDisc("halo", { radius: 0.6, tessellation: 40 }, scene); const hm = glowMat(scene, col, 1.4, "halo"); hm.alpha = 0; hm.alphaMode = Constants.ALPHA_ADD; hm.disableDepthWrite = true; th.h.material = hm; th.h.rotation.x = Math.PI / 2; th.h.position.set(th.at.x, 0.2, th.at.z); th.h.isPickable = false;
     th.hit = CreateBox("hit", { width: th.hitS[0], height: th.hitS[1], depth: th.hitS[2] }, scene); th.hit.position.copyFrom(th.hitAt); th.hit.isVisible = false; th.hit.metadata = { thing: th };
+  }
+  // the terminal itself: a slim dark pillar with a dead screen that flickers while the signal is live (procedural, no new asset)
+  const sig = things.find((x) => x.id === "signal");
+  const sigLive = () => !!game.save.flag("story.salma") && !game.save.flag("story.sada");
+  {
+    const body = CreateBox("sigBody", { width: 0.5, height: 2.2, depth: 0.9 }, scene); body.position.set(sig.hitAt.x, 1.1 + 0.16, sig.hitAt.z);
+    const bm = new PBRMaterial("sigBodyM", scene); bm.albedoColor = new Color3(0.06, 0.07, 0.09); bm.metallic = 0.7; bm.roughness = 0.45; body.material = bm;
+    sig.screen = CreateBox("sigScreen", { width: 0.7, height: 1.0, depth: 0.04 }, scene); sig.screen.position.set(sig.hitAt.x + 0.27, 1.5 + 0.16, sig.hitAt.z); sig.screen.rotation.y = Math.PI / 2; // facing the road
+    sig.screenM = glowMat(scene, "#2fe6ff", 0.05, "sigScreen"); sig.screen.material = sig.screenM; sig.screen.isPickable = false; body.isPickable = false;
+    sig.body = body; if (shadows) shadows.addShadowCaster(body, false);
+    colliders.push({ min: { x: sig.hitAt.x - 0.35, z: sig.hitAt.z - 0.55 }, max: { x: sig.hitAt.x + 0.35, z: sig.hitAt.z + 0.55 } });
   }
   const tapFloor = CreateGround("tapFloor", { width: 60, height: 120 }, scene); tapFloor.position.set(0, 0, midZ); tapFloor.isVisible = false; tapFloor.metadata = { floor: true };
   const pickable = (m) => m === tapFloor || !!m.metadata?.thing;
@@ -357,7 +370,7 @@ async function createBabylon(game, params) {
       </div>
     </header>
     <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
-      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li></ul></section>
+      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li></ul></section>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
     <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>`, "gm-room gm-street");
@@ -366,7 +379,9 @@ async function createBabylon(game, params) {
     $("[data-g=tower]").classList.toggle("ok", !!game.save.flag("street.tower"));
     // Season 1: once Salma has spoken, the objective moves on to the fortieth floor
     const met = !!game.save.flag("story.salma"), li = $("[data-g=salma]");
-    li.hidden = !met; li.classList.toggle("ok", met); $("#gm-obj-t").textContent = tl(met ? C.next.objective : C.objective);
+    const heard = met && !!game.save.flag("story.sada"), l2 = $("[data-g=sada]");
+    li.hidden = !met; li.classList.toggle("ok", heard); l2.hidden = !heard;
+    $("#gm-obj-t").textContent = tl(heard ? C.after.objective : met ? C.next.objective : C.objective);
   };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
   refreshBal(); paintObj(); game.missions?.paint();
@@ -398,6 +413,7 @@ async function createBabylon(game, params) {
         await wait(250); flash(false);
         return;
       }
+      if (th.id === "signal") { if (sigLive()) await meetSada(); return; }
       if (th.id === "home") {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.0, HOME_Z - 3.6), lf: look.clone(), look: new Vector3(0, 1.3, HOME_Z + 4), k: 0 };
@@ -418,6 +434,18 @@ async function createBabylon(game, params) {
     for (const beat of C.salma) await game.ui.dialog(beat.lines.map((l) => fill(tl(l), { name })), names[beat.who] || "");
     game.save.set({ flags: { "story.salma": true } }); game.audio.sfx("ping"); paintObj();
     card(tl(C.next.card), tl(C.next.objective)); game.save.flush();
+    toastHint();
+  }
+  const toastHint = () => game.ui.toast(esc(tl(C.next.hint)));
+  // ---------- Season 1, «الإشارة الأولى»: the key wakes the dead terminal, Yousuf's recording, first contact with Sada ----------
+  async function meetSada() {
+    player.face(sig.hitAt.x, sig.hitAt.z); game.audio.sfx("reveal");
+    const names = { narrator: tl(C.narrator), yousuf: tl(C.yousufName), sada: tl(C.sadaName) };
+    for (const beat of C.signal) await game.ui.dialog(beat.lines.map((l) => fill(tl(l), { name })), names[beat.who] || "");
+    // story progress lives in the save (presentation); the XP is the server's alone (fixed in its catalogue, once per member)
+    game.save.set({ flags: { "story.sada": true } }); game.audio.sfx("ping"); paintObj();
+    game.missions?.complete("c1.signal");
+    card(tl(C.after.card), tl(C.after.objective)); game.save.flush();
   }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
@@ -502,7 +530,7 @@ async function createBabylon(game, params) {
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma") }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z } }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -532,7 +560,10 @@ async function createBabylon(game, params) {
       player.update(dt, busy ? STILL : mv, 0, world);
       if (salma) { salma.update(dt, STILL, 0, null); salma.body.position.y = 0.14; }
       let best = null, bd = 1.6;
+      const live = sigLive(); sig.m.isVisible = sig.h.isVisible = live;
+      sig.screenM.emissiveIntensity = live ? 0.55 + Math.max(0, Math.sin(time * 9.0) * Math.sin(time * 2.3)) * 1.4 : 0.05;
       for (const th of things) {
+        if (th === sig && !live) continue;
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
         th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
         th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
