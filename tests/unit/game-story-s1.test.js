@@ -35,3 +35,20 @@ test("Season 1 «الإشارة الأولى»: the terminal, Yousuf's fragment 
   assert.ok(C.things.signal.label.ar && C.things.signal.verb.ar);
   assert.ok(C.next.hint.ar.includes("محطة"), "Salma's beat points at the terminal");
 });
+
+test("Season 1 Phase 3 «السوق السفلي»: route, Abu Nasser, two choices, the record and the service entrance", async () => {
+  const { CHAPTER1: C } = await load("story/chapter1.js");
+  const beats = [...C.route, ...C.nasser, ...C.byKey, ...C.bySignal, ...C.record];
+  for (const l of beats.flatMap((b) => b.lines)) { assert.ok(l.ar && l.en, "both languages"); assert.ok(/[\u0600-\u06FF]/.test(l.ar)); assert.ok(l.ar.length < 140, "short lines"); }
+  assert.ok(C.route.flatMap((b) => b.lines).some((l) => l.ar.includes("السوق السفلي")) && C.route.every((b) => b.who === "sada"), "Sada finds the route");
+  assert.ok(C.nasserName.ar.includes("أبو ناصر"));
+  assert.ok(C.choice.key.ar && C.choice.signal.ar && C.choice.key.ar !== C.choice.signal.ar, "two distinct choices");
+  const k = C.byKey.flatMap((b) => b.lines).map((l) => l.ar).join(" "), s = C.bySignal.flatMap((b) => b.lines).map((l) => l.ar).join(" ");
+  assert.ok(k.includes("40") && s.includes("تردد") && k !== s, "the two branches reveal different things");
+  const r = C.record.flatMap((b) => b.lines).map((l) => l.ar).join(" ");
+  assert.ok(r.includes("مدخل الخدمة") && r.includes("ثلاثة أيام") && C.record.some((b) => b.who === "fragment") && r.includes("داخل برج MJT"), "record, clue, voice fragment");
+  const all = beats.flatMap((b) => b.lines).map((l) => l.ar + " " + l.en.toLowerCase()).join(" ");
+  assert.ok(!/مرآة|mirror/.test(all), "no mirror spoiler");
+  assert.ok(C.serviceNext.objective.ar.includes("مدخل الخدمة") && C.routeNext.objective.ar.includes("السوق"));
+  assert.ok(C.things.market.label.ar && C.things.market.verb.ar);
+});
