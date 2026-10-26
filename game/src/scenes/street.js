@@ -282,6 +282,8 @@ async function createBabylon(game, params) {
     { id: "signal", at: new Vector3(-(ROAD + 1.5), 0, midZ + 1.2), mark: new Vector3(-(ROAD + 2.4), 3.1, midZ), face: new Vector3(-(ROAD + 2.4), 0, midZ), hitAt: new Vector3(-(ROAD + 2.4), 1.2, midZ), hitS: [1.4, 2.4, 1.2] },
     // Season 1 Phase 3: the stairs down to the underground market on the right pavement, Abu Nasser's stall at their mouth
     { id: "market", at: new Vector3(ROAD + 1.5, 0, midZ - 6 + 1.2), mark: new Vector3(ROAD + 2.6, 3.3, midZ - 6), face: new Vector3(ROAD + 2.6, 0, midZ - 6 + 1.8), hitAt: new Vector3(ROAD + 2.6, 1.2, midZ - 6), hitS: [1.8, 2.4, 2.6] },
+    // Season 1 Phase 4: the tower's restricted service entrance, a grey annex door right of the main doors (x>0)
+    { id: "service", at: new Vector3(ROAD + 2.0, 0, GATE_Z + 1.5), mark: new Vector3(ROAD + 2.0, 4.1, GATE_Z - 0.1), face: new Vector3(ROAD + 2.0, 0, GATE_Z - 2), hitAt: new Vector3(ROAD + 2.0, 1.4, GATE_Z - 0.1), hitS: [2.0, 2.8, 1.4] },
     { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.4, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
   ];
   for (const th of things) {
@@ -317,11 +319,29 @@ async function createBabylon(game, params) {
     for (const m of parts) { m.isPickable = false; if (shadows && m !== mouth) shadows.addShadowCaster(m, false); }
     colliders.push({ min: { x: X - 0.75, z: Z - 1.15 }, max: { x: X + 0.75, z: Z + 1.15 } }, { min: { x: X - 0.2, z: Z + 1.8 }, max: { x: X + 0.6, z: Z + 2.6 } });
   }
+  // the service entrance: a low concrete annex with a steel door, an amber hazard strip and a card reader (procedural)
+  const svc = things.find((x) => x.id === "service");
+  const svcLive = () => !!game.save.flag("story.record") && !game.save.flag("story.service");
+  {
+    const X = svc.hitAt.x, Z = GATE_Z - 0.6;
+    const con = new PBRMaterial("svcCon", scene); con.albedoColor = new Color3(0.16, 0.17, 0.19); con.roughness = 0.85;
+    const steel = new PBRMaterial("svcSteel", scene); steel.albedoColor = new Color3(0.32, 0.34, 0.37); steel.metallic = 0.85; steel.roughness = 0.4;
+    const annex = CreateBox("svcAnnex", { width: 2.8, height: 3.6, depth: 1.2 }, scene); annex.position.set(X, 1.8 + 0.16, Z); annex.material = con;
+    svc.door = CreateBox("svcDoor", { width: 1.3, height: 2.3, depth: 0.06 }, scene); svc.door.position.set(X, 1.15 + 0.16, Z + 0.62); svc.door.material = steel;
+    const strip = CreateBox("svcStrip", { width: 2.8, height: 0.14, depth: 0.04 }, scene); strip.position.set(X, 3.0 + 0.16, Z + 0.62); strip.material = glowMat(scene, "#ffb020", 0.7, "svcStrip");
+    svc.reader = CreateBox("svcReader", { width: 0.22, height: 0.32, depth: 0.06 }, scene); svc.reader.position.set(X + 0.95, 1.3 + 0.16, Z + 0.64);
+    svc.readerM = glowMat(scene, "#ffb020", 0.3, "svcReader"); svc.reader.material = svc.readerM;
+    svc.light = CreateBox("svcLight", { width: 0.5, height: 0.12, depth: 0.12 }, scene); svc.light.position.set(X, 2.65 + 0.16, Z + 0.66);
+    svc.lightM = glowMat(scene, "#ff3030", 0.2, "svcLight"); svc.light.material = svc.lightM;
+    for (const m of [annex, svc.door, strip, svc.reader, svc.light]) m.isPickable = false;
+    if (shadows) shadows.addShadowCaster(annex, false);
+    colliders.push({ min: { x: X - 1.45, z: Z - 0.65 }, max: { x: X + 1.45, z: Z + 0.68 } });
+  }
   // ---------- v2.101.1: a guide to the live story spot — a light beam over it, a pulsing trail on the ground, tap the goal to walk ----------
-  const storyGoal = () => (sigLive() ? sig : mkLive() ? mk : null);
+  const storyGoal = () => (sigLive() ? sig : mkLive() ? mk : svcLive() ? svc : null);
   const beams = {};
-  for (const th of [sig, mk]) {
-    const col = th === mk ? "#ff3fb4" : "#2fe6ff";
+  for (const th of [sig, mk, svc]) {
+    const col = th === mk ? "#ff3fb4" : th === svc ? "#ffb020" : "#2fe6ff";
     const bm = CreateCylinder("markBeam", { diameterTop: 0.25, diameterBottom: 0.7, height: 16, tessellation: 18 }, scene);
     const m = glowMat(scene, col, 1.2, "markBeam"); m.alpha = 0.32; m.alphaMode = Constants.ALPHA_ADD; m.disableDepthWrite = true; m.backFaceCulling = false;
     bm.material = m; bm.position.set(th.hitAt.x, 8, th.hitAt.z); bm.isPickable = false; bm.isVisible = false; beams[th.id] = bm;
@@ -349,7 +369,7 @@ async function createBabylon(game, params) {
     }
     for (const [id, b] of Object.entries(beams)) { b.isVisible = !!g && g.id === id; if (b.isVisible) b.material.alpha = 0.24 + Math.sin(time * 2.4) * 0.08; }
     const dx = g ? g.at.x - player.pos.x : 0, dz = g ? g.at.z - player.pos.z : 0, dist = Math.hypot(dx, dz);
-    const show = !!g && dist > 2.4, col = g === mk ? [1, 0.25, 0.7] : [0.18, 0.9, 1];
+    const show = !!g && dist > 2.4, col = g === mk ? [1, 0.25, 0.7] : g === svc ? [1, 0.7, 0.12] : [0.18, 0.9, 1];
     for (let i = 0; i < trail.length; i++) {
       const t = trail[i], at = 1.1 + i * 1.15, on = show && at < dist - 0.9; t.isVisible = on; if (!on) continue;
       const x = player.pos.x + (dx / dist) * at, z = player.pos.z + (dz / dist) * at;
@@ -438,11 +458,12 @@ async function createBabylon(game, params) {
       </div>
     </header>
     <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
-      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li></ul></section>
+      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li><li data-g="service" hidden>${icon("check")}<span>${esc(tl(C.service.next.goal))}</span></li></ul></section>
     <button class="gm-guide" id="gm-guide" type="button" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3l7 9h-4.5v9h-5v-9H5z" fill="currentColor"/></svg><span></span></button>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
-    <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>`, "gm-room gm-street");
+    <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>
+    <div class="gm-svc" id="gm-svc" hidden aria-hidden="true"><span class="gm-svc-k">${esc(tl(C.service.inside))}</span><div class="gm-svc-scr"><i>F-40</i><p>${esc(tl(C.service.hook[1].lines[0]))}</p></div></div>`, "gm-room gm-street");
   const $ = (s) => L.querySelector(s);
   const paintObj = () => {
     $("[data-g=tower]").classList.toggle("ok", !!game.save.flag("street.tower"));
@@ -451,13 +472,14 @@ async function createBabylon(game, params) {
     const heard = met && !!game.save.flag("story.sada"), l2 = $("[data-g=sada]");
     const route = heard && !!game.save.flag("story.route"), rec = route && !!game.save.flag("story.record");
     li.hidden = !met; li.classList.toggle("ok", heard); l2.hidden = !heard; l2.classList.toggle("ok", route);
-    const l3 = $("[data-g=route]"), l4 = $("[data-g=record]"); l3.hidden = !route; l3.classList.toggle("ok", rec); l4.hidden = !rec;
-    $("#gm-obj-t").textContent = tl(rec ? C.serviceNext.objective : route ? C.routeNext.objective : heard ? C.after.objective : met ? C.next.objective : C.objective);
+    const done4 = rec && !!game.save.flag("story.service");
+    const l3 = $("[data-g=route]"), l4 = $("[data-g=record]"), l5 = $("[data-g=service]"); l3.hidden = !route; l3.classList.toggle("ok", rec); l4.hidden = !rec; l4.classList.toggle("ok", done4); l5.hidden = !done4;
+    $("#gm-obj-t").textContent = tl(done4 ? C.service.next.objective : rec ? C.serviceNext.objective : route ? C.routeNext.objective : heard ? C.after.objective : met ? C.next.objective : C.objective);
   };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
   refreshBal(); paintObj(); game.missions?.paint();
   const goGuide = () => { const th = storyGoal(); if (th && canWalk()) { pending = null; guideTo(th); hideHelp(); game.audio.sfx("hover"); } };
-  for (const g of ["salma", "route"]) $(`[data-g=${g}]`).addEventListener("click", goGuide);
+  for (const g of ["salma", "route", "record"]) $(`[data-g=${g}]`).addEventListener("click", goGuide);
   $("#gm-guide").addEventListener("click", goGuide);
   $("#gm-menu").addEventListener("click", () => openPause(game));
   game.input.on("pause", () => { if (game.scenes.name === "street" && !game.ui.modalOpen && !busy) openPause(game); });
@@ -491,6 +513,7 @@ async function createBabylon(game, params) {
       }
       if (th.id === "signal") { if (sigLive()) await meetSada(); return; }
       if (th.id === "market") { if (mkLive()) await meetNasser(); return; }
+      if (th.id === "service") { if (svcLive()) await enterService(); else { game.audio.sfx("locked"); card(tl(C.things.service.label), t("الباب مقفل", "The door is locked")); } return; }
       if (th.id === "home") {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.0, HOME_Z - 3.6), lf: look.clone(), look: new Vector3(0, 1.3, HOME_Z + 4), k: 0 };
@@ -545,6 +568,50 @@ async function createBabylon(game, params) {
     game.missions?.complete("c1.market");
     card(tl(C.title), tl(C.serviceNext.done)); game.save.flush();
     await wait(3400); card(tl(C.serviceNext.card), tl(C.serviceNext.objective));
+  }
+  // ---------- Season 1 Phase 4, «المدخل المحظور»: the record at the reader, Salma opens from inside, a choice, the revocation,
+  // the hidden «F-40», a message to Yousuf on the corridor screen. The tower's inside is not an explorable 3D interior: the
+  // corridor is a dimmed overlay over a camera push into the service door, and the conversation plays there.
+  const svcEl = () => $("#gm-svc");
+  async function enterService() {
+    const S = C.service, n = { ...names3(), salma: tl(C.salmaName), reader: tl(S.readerName), screen: tl(S.screenName) };
+    const say = async (beats) => { for (const b of beats) await game.ui.dialog(b.lines.map((l) => fill(tl(l), { name })), n[b.who] || ""); };
+    player.face(svc.reader.position.x, svc.reader.position.z);
+    // 1) the record at the reader: refused (red), a silent alert (amber pulse)
+    await say(S.reader.slice(0, 2));
+    game.audio.sfx("scan"); svc.readerM.emissiveColor.set(1.6, 0.15, 0.1); svc.lightM.emissiveIntensity = 1.6; await wait(500);
+    game.audio.sfx("locked"); await say(S.reader.slice(2));
+    svc.readerM.emissiveColor.set(1.6, 1.0, 0.2);
+    // 2) the door opens from inside: Salma comes round from the front desk
+    if (salma) { salma.pos.set(svc.hitAt.x - 0.2, 0.14, GATE_Z + 0.3); salma.heading = 0; }
+    game.audio.sfx("open"); svc.door.position.x += 1.1; svc.lightM.emissiveIntensity = 0.2;
+    await say(S.salma);
+    // 3) inside: a camera push into the door, then the dimmed corridor overlay
+    push = { from: camera.position.clone(), to: new Vector3(svc.hitAt.x, 1.9, GATE_Z + 2.2), lf: look.clone(), look: new Vector3(svc.hitAt.x, 1.4, GATE_Z - 4), k: 0 };
+    await wait(800); game.audio.sfx("whoosh"); flash(true); await wait(320);
+    const ov = svcEl(); ov.hidden = false; requestAnimationFrame(() => ov.classList.add("on")); await wait(200); flash(false);
+    const ch = S.choice, i = await game.ui.choose(tl(ch.prompt), [{ label: tl(ch.knew), hint: tl(ch.knewHint) }, { label: tl(ch.floor), hint: tl(ch.floorHint) }]);
+    const way = i === 0 ? "knew" : "floor";
+    await say(way === "knew" ? S.byKnew : S.byFloor);
+    await say(S.revoked);
+    // 4) the required interaction: examining the record reveals the contradiction and the hidden floor-40 reference
+    const ex = S.examine; await game.ui.choose(tl(ex.prompt), [{ label: tl(ex.go), hint: tl(ex.goHint) }]);
+    game.audio.sfx("scan"); ov.classList.add("scan"); await wait(700);
+    ov.classList.add("f40"); await say(S.found);
+    // 5) the hook: the message to Yousuf flashes on the corridor screen and is gone
+    ov.classList.add("msg"); game.audio.sfx("reveal"); await say(S.hook.slice(0, 2)); ov.classList.remove("msg");
+    await say(S.hook.slice(2));
+    // progress is the save's (presentation, once); the XP is the server's alone (fixed in its catalogue, once per member)
+    game.save.set({ flags: { "story.service": true, ["story.salma2." + way]: true } }); game.audio.sfx("ping");
+    game.missions?.complete("c1.service");
+    game.save.flush();
+    // back out on the street, at the service door
+    flash(true); await wait(300); ov.classList.remove("on", "scan", "f40"); ov.hidden = true;
+    push = null; player.walkTo(null); player.pos.set(svc.at.x, 0, svc.at.z + 0.6); player.heading = 0;
+    svc.door.position.x -= 1.1; svc.readerM.emissiveColor.set(1.6, 1.0, 0.2); svc.readerM.emissiveIntensity = 0.3;
+    if (salma) { salma.pos.set(1.9, 0.14, GATE_Z + 1.1); salma.heading = 0; }
+    await wait(250); flash(false); paintObj();
+    card(tl(C.title), tl(S.next.done)); await wait(3400); card(tl(S.next.card), tl(S.next.objective));
   }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
@@ -632,7 +699,7 @@ async function createBabylon(game, params) {
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), guide: storyGoal()?.id || null, mkAt: { x: mk.at.x, z: mk.at.z } }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), guide: storyGoal()?.id || null, mkAt: { x: mk.at.x, z: mk.at.z }, service: svcLive(), served: !!game.save.flag("story.service"), svcAt: { x: svc.at.x, z: svc.at.z }, inside: !!svcEl() && !svcEl().hidden }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -667,8 +734,10 @@ async function createBabylon(game, params) {
       let best = null, bd = 1.6;
       const live = sigLive(); sig.m.isVisible = sig.h.isVisible = live;
       sig.screenM.emissiveIntensity = live ? 0.55 + Math.max(0, Math.sin(time * 9.0) * Math.sin(time * 2.3)) * 1.4 : 0.05;
+      const sLive = svcLive(); svc.m.isVisible = svc.h.isVisible = sLive;
+      if (!busy) svc.readerM.emissiveIntensity = sLive ? 0.6 + Math.max(0, Math.sin(time * 4.2)) * 0.9 : 0.3;
       for (const th of things) {
-        if ((th === sig && !live) || (th === mk && !mLive)) continue;
+        if ((th === sig && !live) || (th === mk && !mLive) || (th === svc && !sLive)) continue;
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
         th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
         th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
