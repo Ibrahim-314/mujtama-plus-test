@@ -65,7 +65,7 @@ async function createBabylon(game, params) {
   const { canvas, engine } = makeEngine(game.surface, q);
   const scene = new Scene(engine);
   scene.useRightHandedSystem = true;
-  scene.clearColor = new Color4(0.012, 0.012, 0.03, 1);
+  scene.clearColor = new Color4(0.03, 0.035, 0.08, 1); // v2C: deep night blue around the cut-away room, not a black void
   scene.skipPointerMovePicking = true; scene.skipPointerDownPicking = true; scene.skipPointerUpPicking = true;
   scene.detachControl?.();
   const models = new Models(scene);
@@ -75,16 +75,16 @@ async function createBabylon(game, params) {
 
   // ---------- light: night through the window (moon + the city's violet glow), warm lamps inside ----------
   const env = CubeTexture.CreateFromPrefilteredData(ASSET("city/sky.env"), scene);
-  scene.environmentTexture = env; scene.environmentIntensity = 0.22;
+  scene.environmentTexture = env; scene.environmentIntensity = 0.3;
   const hemi = new HemisphericLight("fill", new Vector3(0, 1, 0), scene);
-  hemi.diffuse = Color3.FromHexString("#5a60a8"); hemi.groundColor = Color3.FromHexString("#22160f"); hemi.intensity = 0.42;
+  hemi.diffuse = Color3.FromHexString("#6a72b8"); hemi.groundColor = Color3.FromHexString("#2a1c14"); hemi.intensity = 0.52; // walls read as walls, not black
   const MOON = new Vector3(0.25, -0.62, 0.74).normalize();
   const moon = new DirectionalLight("moon", MOON, scene); moon.position = MOON.scale(-14); moon.diffuse = Color3.FromHexString("#9db2ff"); moon.intensity = 1.5;
   let shadows = null;
   if (!low) {
     shadows = new ShadowGenerator(high ? 2048 : 1024, moon);
     shadows.usePercentageCloserFiltering = true; shadows.filteringQuality = high ? ShadowGenerator.QUALITY_MEDIUM : ShadowGenerator.QUALITY_LOW;
-    shadows.bias = 0.0008; shadows.normalBias = 0.02; shadows.darkness = 0.25;
+    shadows.bias = 0.0008; shadows.normalBias = 0.02; shadows.darkness = 0.32;
     moon.shadowMinZ = 1; moon.shadowMaxZ = 40; moon.autoUpdateExtends = true; moon.autoCalcShadowZBounds = true;
   }
   const cast = (m) => { if (shadows && m) shadows.addShadowCaster(m, false); };
@@ -92,6 +92,7 @@ async function createBabylon(game, params) {
   point("city", "#a685ff", 2.6, 8, 0, 1.8, -2.3);
   point("lampL", "#ffa860", 2.2, 5, -1.85, 1.0, -2.55);
   point("lampF", "#ffc285", 2.6, 6, -3.6, 1.6, 2.45);
+  point("desk", "#ffe0b0", 1.1, 3.2, 2.6, 2.2, -1.0); // v2C: a soft key over the workstation, so the computer reads at a glance
   const monGlow = point("mon", hex(PALETTE.cyan), 0.8, 3.5, 3.15, 1.15, -1.55);
   const spillLight = point("spill", "#ffd59a", 0, 6, W - 0.5, 1.5, (DOOR.z0 + DOOR.z1) / 2);
 
@@ -159,9 +160,9 @@ async function createBabylon(game, params) {
   box("sill", WIN.x1 - WIN.x0 + 0.3, 0.05, 0.3, 0, WIN.y0 - 0.01, -D + 0.12, pbr("sillM", "#3a3746", 0.3, 0.1));
 
   // neon: ceiling-edge strips (cyan), baseboard (gold), window outline (magenta) — softer than before, the glow layer does the rest
-  strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, -D + 0.05), PALETTE.cyan, 1.05);
-  strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(-W + 0.05, H - 0.06, D), PALETTE.cyan, 1.05);
-  strip(new Vector3(W - 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, D), PALETTE.cyan, 1.05);
+  strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, -D + 0.05), PALETTE.cyan, 0.75);
+  strip(new Vector3(-W + 0.05, H - 0.06, -D + 0.05), new Vector3(-W + 0.05, H - 0.06, D), PALETTE.cyan, 0.75);
+  strip(new Vector3(W - 0.05, H - 0.06, -D + 0.05), new Vector3(W - 0.05, H - 0.06, D), PALETTE.cyan, 0.75);
   strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(W - 0.03, 0.04, -D + 0.03), PALETTE.gold, 0.8, 0.025);
   strip(new Vector3(-W + 0.03, 0.04, -D + 0.03), new Vector3(-W + 0.03, 0.04, D), PALETTE.gold, 0.8, 0.025);
   strip(new Vector3(WIN.x0, WIN.y1 + 0.06, -D + 0.06), new Vector3(WIN.x1, WIN.y1 + 0.06, -D + 0.06), PALETTE.magenta, 1.0, 0.03);
@@ -245,7 +246,9 @@ async function createBabylon(game, params) {
 
   // ---------- the workstation: thin-bezel monitor on an aluminium stand, keyboard, mouse on a pad ----------
   let mining = null;
-  game.host.api("GET", "/api/mjt/mining").then((m) => { mining = m; }).catch(() => { mining = null; });
+  // c0.mining is a verify "server" mission: the server checks its own mining record; the client only asks
+  const minedOnce = (m) => { if (m && (m.session || Number(m.totals?.sessions) > 0)) game.missions?.complete("c0.mining"); };
+  game.host.api("GET", "/api/mjt/mining").then((m) => { mining = m; minedOnce(m); }).catch(() => { mining = null; });
   const live = (w, h, nm, draw) => { const tx = new DynamicTexture(nm, { width: w, height: h }, scene, true); const x = tx.getContext(); return { tx, tick(time) { draw(x, w, h, time); tx.update(true); } }; };
   const scr = live(512, 320, "miner", (x, w, h, time) => {
     x.save(); x.scale(2, 2); w /= 2; h /= 2;
@@ -331,7 +334,7 @@ async function createBabylon(game, params) {
   const ch = spawnCharacter(await models.get(charUrl(save.char || "hoodie")), 1.72, "hero");
   const player = new Hero(scene, ch, game.audio); for (const m of ch.meshes) { cast(m); m.receiveShadows = true; }
   const fromDoor = params.from === "door";
-  const pos = fromDoor ? { x: W - 0.7, z: (DOOR.z0 + DOOR.z1) / 2, r: -Math.PI / 2 } : save.pos && !params.arrival ? save.pos : { x: -0.4, z: 0.9, r: Math.PI };
+  const pos = fromDoor ? { x: W - 0.7, z: (DOOR.z0 + DOOR.z1) / 2, r: -Math.PI / 2 } : save.pos && !params.arrival && (save.scene || "room") === "room" ? save.pos : { x: -0.4, z: 0.9, r: Math.PI }; // a street position never lands in the room
   if (fromDoor) { doorK = 1; spillM.alpha = 0.95; spillLight.intensity = 4; setTimeout(() => { doorGoal = 0; game.audio.sfx("open"); }, 900); }
   player.pos.set(pos.x, 0, pos.z); player.heading = pos.r ?? Math.PI;
   const world = { colliders, bounds: { minX: -W + 0.05, maxX: W - 0.05, minZ: -D + 0.05, maxZ: D - 0.1 } };
@@ -341,11 +344,11 @@ async function createBabylon(game, params) {
   // ---------- camera + post ----------
   const camera = new FreeCamera("cam", new Vector3(0, 6, 7.4), scene); camera.minZ = 0.05; camera.maxZ = 200; camera.inputs.clear();
   const ip = scene.imageProcessingConfiguration;
-  ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.15; ip.contrast = 1.12;
+  ip.toneMappingEnabled = true; ip.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES; ip.exposure = 1.2; ip.contrast = 1.08;
   ip.vignetteEnabled = !low; ip.vignetteWeight = 2.2; ip.vignetteColor = new Color4(0.02, 0.01, 0.06, 0);
   let glow = null;
   if (!low) {
-    glow = new GlowLayer("glow", scene, { mainTextureRatio: high ? 0.5 : 0.35, blurKernelSize: high ? 32 : 24 }); glow.intensity = 0.55;
+    glow = new GlowLayer("glow", scene, { mainTextureRatio: high ? 0.5 : 0.35, blurKernelSize: high ? 32 : 24 }); glow.intensity = 0.42; // v2C: the cyan cove lines no longer bloom over the walls
     for (const m of [glass, screen, panel, floor, ...prints, ...blobs]) glow.addExcludedMesh(m);
     const pipe = new DefaultRenderingPipeline("post", true, scene, [camera]);
     pipe.fxaaEnabled = true; pipe.samples = high ? 4 : 1;
@@ -373,7 +376,7 @@ async function createBabylon(game, params) {
   const $ = (s) => L.querySelector(s);
   const paintObj = () => { for (const li of L.querySelectorAll("[data-g]")) li.classList.toggle("ok", done(li.dataset.g)); };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
-  refreshBal(); paintObj();
+  refreshBal(); paintObj(); game.missions?.paint();
   $("#gm-menu").addEventListener("click", () => openPause(game));
   game.input.on("pause", () => { if (game.scenes.name === "room" && !game.ui.modalOpen && !busy) openPause(game); });
 
@@ -413,6 +416,7 @@ async function createBabylon(game, params) {
   async function finale() {
     if (busy) return setTimeout(finale, 800);
     busy = true; game.save.set({ flags: { "room.done": true } }); game.audio.sfx("reveal");
+    game.missions?.complete("c0.explore"); // Phase 2D-A: the server decides and grants the XP (story-flow check)
     card(tl(C.title) + " · " + tl(C.name), t("اكتمل", "Complete"));
     await player.gesture("Cheer"); await game.ui.dialog(lines(C.done), tl(C.narrator));
     setLed(hex(PALETTE.gold), 1.8); busy = false;
@@ -430,6 +434,7 @@ async function createBabylon(game, params) {
     await wait(900);
     game.audio.sfx("whoosh"); game.root.classList.add("gm-flash-on"); await wait(380);
     game.save.set({ pos: { x: +(W - 0.7).toFixed(2), z: 1.55, r: -1.57 }, scene: "room", flags: { "room.out": true } }); lastSaved = "";
+    game.missions?.complete("c0.leave");
     await game.scenes.go("street", { fade: 250, fadeIn: 700 });
   }
   function card(k, v) { const c = $("#gm-card"); c.querySelector("small").textContent = k; c.querySelector("b").textContent = v; c.hidden = false; c.classList.remove("on"); void c.offsetWidth; c.classList.add("on"); setTimeout(() => { c.hidden = true; }, 3600); }
@@ -464,7 +469,7 @@ async function createBabylon(game, params) {
       onClose: () => {
         alive = false; osHook = null; pcOn(false); removeEventListener("resize", onResize); clearTimeout(settleT);
         game.loop.pause(false); cine = null; busy = false; refreshBal();
-        game.host.api("GET", "/api/mjt/mining").then((x) => { mining = x; }).catch(() => { });
+        game.host.api("GET", "/api/mjt/mining").then((x) => { mining = x; minedOnce(x); }).catch(() => { });
       }
     });
     const panelEl = os.panel, wrap = panelEl.parentElement;
@@ -531,13 +536,28 @@ async function createBabylon(game, params) {
 
   // camera: a three-quarter follow camera that keeps the whole room readable
   const camT = new Vector3(), camP = new Vector3();
+  let camX = null, camLastX = null, camLead = 0; // portrait follow state (dead zone + walking lead)
   const frame = () => { camera.fov = (aspect() < 0.8 ? 58 : 46) * Math.PI / 180; engine.resize(); };
   const onWinResize = () => frame(); addEventListener("resize", onWinResize);
   const goalCam = () => {
     const asp = aspect(), portrait = asp < 0.8, halfH = Math.atan(Math.tan(camera.fov / 2) * asp);
-    const dist = portrait ? Math.min(11, Math.max(7.6, 2.6 / Math.tan(halfH))) : 7.4, hgt = portrait ? dist * 1.05 : 6.0;
-    const tx = Math.max(-1.6, Math.min(1.6, player.pos.x * (portrait ? 0.8 : 0.55))), tz = Math.max(-1.4, Math.min(1.2, player.pos.z * 0.45));
-    camT.set(tx, 0.7, tz - (portrait ? 1.1 : 0.4)); camP.set(tx * 0.9, hgt, tz + dist);
+    // portrait: frame ~1.5 m either side of the follow point (not the whole room width, which left ~60% of a tall
+    // screen as empty void above/below the room)
+    const dist = portrait ? Math.min(11, Math.max(5.5, 1.5 / Math.tan(halfH))) : 7.4, hgt = portrait ? dist * 1.32 : 6.0;
+    let tx = Math.max(-1.6, Math.min(1.6, player.pos.x * 0.55));
+    if (portrait) {
+      // a tall screen can only show ~±2.2 m of the 8 m room without empty void, so compose instead of chasing:
+      // rest centred on the room, move only when the player leaves a dead zone, lead a little toward where they are
+      // walking (the desk, the door, the bed come into view before they arrive), and stop at the walls (no void).
+      const hw = Math.tan(halfH) * Math.hypot(hgt - 0.7, dist * 0.8 + 0.5), lim = Math.max(0, W + 0.9 - hw), band = hw * 0.3;
+      const dx = player.pos.x - (camLastX ?? player.pos.x); camLastX = player.pos.x;
+      camLead += ((Math.abs(dx) > 0.002 ? Math.sign(dx) * 0.5 : 0) - camLead) * 0.04;
+      const want = player.pos.x + camLead;
+      camX = Math.max(-lim, Math.min(lim, Math.max(want - band, Math.min(want + band, camX ?? 0))));
+      tx = camX;
+    }
+    const tz = Math.max(-1.4, Math.min(1.2, player.pos.z * 0.45));
+    camT.set(tx, 0.7, tz - (portrait ? 0.5 : 0.4)); camP.set(tx * 0.9, hgt, tz + (portrait ? dist * 0.8 : dist));
   };
   frame(); goalCam(); camera.position.copyFrom(camP); look.copyFrom(camT);
   const first = params.arrival || !game.save.flag("intro.done");
@@ -549,7 +569,7 @@ async function createBabylon(game, params) {
   const savePos = () => { const p = { x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), r: +player.heading.toFixed(2) }; const k = JSON.stringify(p); if (k !== lastSaved) { lastSaved = k; game.save.set({ pos: p, scene: "room" }); } };
 
   game.room = { use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, player, door: () => doorK, engine: "babylon" }; // the game's own tests
-  const onStationClose = () => { refreshBal(); game.host.api("GET", "/api/mjt/mining").then((m) => { mining = m; }).catch(() => { }); };
+  const onStationClose = () => { refreshBal(); game.host.api("GET", "/api/mjt/mining").then((m) => { mining = m; minedOnce(m); }).catch(() => { }); };
   game.bus.on("station-closed", onStationClose);
 
   await scene.whenReadyAsync();
