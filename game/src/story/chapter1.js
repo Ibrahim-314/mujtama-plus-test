@@ -29,10 +29,40 @@ export const CHAPTER1 = {
   /** the objective once Salma has spoken */
   next: {
     objective: { ar: "ابحث عن طريق إلى الطابق 40", en: "Find a way to the fortieth floor" },
-    goal: { ar: "تحدّث مع سلمى عن المفتاح", en: "Ask Salma about the key" },
+    goal: { ar: "تتبّع الإشارة إلى المحطة القديمة على الرصيف", en: "Trace the signal to the old terminal on the pavement" },
+    /** said once Salma has finished: where to look next */
+    hint: { ar: "المفتاح يسخن من جديد… والإشارة تنبض من محطة قديمة على الرصيف الأيسر.", en: "The key warms again… the signal pulses from an old terminal on the left pavement." },
+    card: { ar: "هدف جديد", en: "New objective" }
+  },
+  /** Season 1, «الإشارة الأولى»: the dead public terminal, a fragment of Yousuf's recording, first contact with Sada.
+   * Played once (story flag "story.sada"), only after Salma has spoken. Each beat is one speaker. */
+  signal: [
+    { who: "narrator", lines: [
+      { ar: "محطة عامة ماتت مع الانقطاع الكبير. لكن المفتاح يسخن كلما اقتربت منها.", en: "A public terminal that died in the Great Blackout. Yet the key grows warmer the closer you get." },
+      { ar: "تقرّب المفتاح من الزجاج… فيتوهّج الرقم 40.", en: "You hold the key to the glass… and the number 40 lights up." }
+    ] },
+    { who: "yousuf", lines: [
+      { ar: "…إذا وصلت إلى هنا، فقد سمعت رسالتي.", en: "…If you made it here, you heard my message." },
+      { ar: "لا تبحث عني في الشاشات… ابحث بينها.", en: "Don't look for me in the screens… look between them." }
+    ] },
+    { who: "sada", lines: [
+      { ar: "…صوت. أعرف هذا الصوت.", en: "…A voice. I know this voice." },
+      { ar: "أنا صدى. كنت أعرف هذه المدينة كلها… ثم تقطّعت ذاكرتي مع الانقطاع.", en: "I am Sada. I used to know this whole city… then my memory broke with the Blackout." },
+      { ar: "بصمة هذا التسجيل: يوسف. الاسم عندي… وكل ما حوله ممسوح.", en: "This recording's signature: Yousuf. I have the name… and everything around it is erased." },
+      { ar: "بقي عندي سؤال واحد سليم: لماذا لا يوجد طابق أربعون في مخططات البرج… وأنا أراه من هنا؟", en: "One question survived intact: why is there no fortieth floor on the tower's plans… when I can see it from here?" }
+    ] },
+    { who: "narrator", lines: [{ ar: "تنطفئ الشاشة. ويبقى على زجاجها أثر رقم واحد: 40.", en: "The screen goes dark. One number lingers on the glass: 40." }] }
+  ],
+  yousufName: { ar: "تسجيل — يوسف", en: "Recording — Yousuf" },
+  sadaName: { ar: "صدى", en: "Sada" },
+  /** the objective once Sada has spoken */
+  after: {
+    objective: { ar: "عُد إلى برج MJT: ابحث عن الطابق الذي لا تظهره المخططات", en: "Return to the MJT Tower: find the floor the plans don't show" },
+    goal: { ar: "ارجع إلى البرج ومعك المفتاح 40", en: "Go back to the tower with key 40" },
     card: { ar: "هدف جديد", en: "New objective" }
   },
   things: {
+    signal: { label: { ar: "محطة قديمة", en: "Old terminal" }, verb: { ar: "قرّب المفتاح", en: "Hold up the key" } },
     tower: { label: { ar: "برج MJT", en: "MJT Tower" }, verb: { ar: "ادخل", en: "Enter" } },
     home: { label: { ar: "شقتك", en: "Your apartment" }, verb: { ar: "ارجع", en: "Go back" } }
   }
