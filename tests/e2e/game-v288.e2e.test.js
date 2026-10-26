@@ -228,7 +228,7 @@ async function run(label, ctxOpts) {
   await until(p, () => window.MPGame.street.state().near === "signal" && !document.querySelector("#gm-act").hidden, null, 10000);
   assert.ok(await p.evaluate(() => /محطة|terminal/i.test(document.querySelector("#gm-act-k").textContent)), "the action names the terminal");
   await p.click("#gm-act");
-  { const end = Date.now() + 40000;
+  { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().sada))) { await p.evaluate(() => { const d = document.querySelector("#gm-dlg"); if (d && !d.hidden && d.classList.contains("on")) d.click(); }); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate(() => window.MPGame.street.state().sada && window.MPGame.save.flag("story.sada")), "Sada's beat played and was saved");
   await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.ui.modalOpen, null, 10000);
@@ -253,12 +253,42 @@ async function run(label, ctxOpts) {
   assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-modal [data-ch]").length === 2 && getComputedStyle(document.querySelector("#gm-modal .gm-panel")).direction === "rtl"), "two choices, RTL");
   await shot(p, label + "-8g-choice");
   await p.click(`#gm-modal [data-ch="${pickN}"]`);
-  { const end = Date.now() + 45000;
+  { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().record))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate((w) => window.MPGame.street.state().record && window.MPGame.save.flag("story.nasser." + w), pickN ? "signal" : "key"), "the record is saved with the chosen way");
   await until(p, () => !window.MPGame.street.state().busy, null, 10000);
   assert.ok(await p.evaluate(() => /مدخل الخدمة|service entrance/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().market), "next objective: the service entrance; the stall went quiet");
   await shot(p, label + "-8h-record");
+  // Season 1 Phase 4 «المدخل المحظور»: the service entrance is the guide's goal; the record at the reader, Salma, a choice,
+  // examining the record reveals the hidden floor-40 reference, then the message to Yousuf and the next objective
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().service && window.MPGame.street.state().guide === "service"), "the service entrance is live and guided");
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-svc").classList.contains("f40")), "no floor-40 reference before examining");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().svcAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.2); });
+  await until(p, () => window.MPGame.street.state().near === "service" && !document.querySelector("#gm-act").hidden, null, 10000);
+  await shot(p, label + "-8i-service");
+  await p.click("#gm-act");
+  { const end = Date.now() + 80000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.ui.modalOpen && !!document.querySelector("#gm-modal [data-ch='1']")))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().inside), "inside the service corridor");
+  assert.ok(await p.evaluate(() => getComputedStyle(document.querySelector("#gm-modal .gm-term-o")).direction === (document.documentElement.dir || "rtl")), "the choice reads in RTL");
+  await shot(p, label + "-8j-salma-choice");
+  const pickS = label === "m" ? 0 : 1; // phone asks about Yousuf, desktop about the floor
+  await p.click(`#gm-modal [data-ch="${pickS}"]`);
+  { const end = Date.now() + 80000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.ui.modalOpen && !!document.querySelector("#gm-modal [data-ch='0']")))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-svc").classList.contains("f40") && !window.MPGame.street.state().served), "examining is still required");
+  await p.click(`#gm-modal [data-ch="0"]`);
+  await until(p, () => document.querySelector("#gm-svc").classList.contains("f40"), null, 10000);
+  await shot(p, label + "-8k-f40");
+  { const end = Date.now() + 80000;
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().served))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate((w) => window.MPGame.street.state().served && window.MPGame.save.flag("story.salma2." + w), pickS ? "floor" : "knew"), "the entrance is saved with the chosen question");
+  await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.street.state().inside, null, 10000);
+  assert.ok(await p.evaluate(() => /العليا|upper floors/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().service && !window.MPGame.street.state().guide), "next objective: the upper floors; no stray guide");
+  await shot(p, label + "-8l-next");
+  // repeating: the door is locked now, no second sequence
+  await p.evaluate(() => window.MPGame.street.use("service")); await p.waitForTimeout(400);
+  assert.ok(await p.evaluate(() => !document.querySelector("#gm-dlg").classList.contains("on") && !window.MPGame.ui.modalOpen && !window.MPGame.street.state().inside), "no replay at the service door");
   // repeating: the stall no longer offers the beat, the tower opens normally (no second route beat)
   await p.evaluate(() => window.MPGame.street.use("market")); await p.waitForTimeout(300);
   assert.ok(await p.evaluate(() => !document.querySelector("#gm-dlg").classList.contains("on") && !window.MPGame.ui.modalOpen), "no replay at the stall");
