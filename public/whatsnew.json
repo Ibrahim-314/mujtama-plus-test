@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.103.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "عالم بكسل 2D",
+      "items": [
+        "المدينة الرقمية صارت بكسل آرت بمنظور علوي: المقدمة والشقة والشارع",
+        "نفس القصة والحوارات والحفظ والمهام، والتحكم باللمس والعصا والكيبورد",
+        "المرحلة الخامسة: لوحة الصيانة وأدلة الطابق 40 ونافذة 60 ثانية",
+        "تقدر ترجع للعالم ثلاثي الأبعاد من الإعدادات متى شئت"
+      ]
+    },
+    "en": {
+      "title": "A 2D pixel world",
+      "items": [
+        "The Digital City is now top-down pixel art: the prologue, the apartment and the street",
+        "Same story, dialogue, saves and missions, with touch, stick and keyboard controls",
+        "Phase 5: the maintenance panel, the floor-40 evidence and a 60-second window",
+        "Switch back to the 3D world from Settings any time"
+      ]
+    }
+  },
+  {
     "v": "2.102.0",
     "date": "2026-10-26",
     "ar": {
