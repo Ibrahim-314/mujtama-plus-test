@@ -492,3 +492,10 @@
 .gm-cine-skip .gm-i { width: 16px; height: 16px; }
 [dir="rtl"] .gm-cine-skip .gm-i { transform: scaleX(-1); }
 @media (prefers-reduced-motion: reduce) { .gm-cine-title, .gm-cine-sub, .gm-cine-bar { transition: none; } }
+/* v2.101.1: the live story goal can be tapped to walk there */
+.gm-obj li[data-g="salma"]:not(.ok), .gm-obj li[data-g="route"]:not(.ok) { pointer-events: auto; cursor: pointer; color: #bff6ff; }
+.gm-obj li[data-g="salma"]:not(.ok)::after, .gm-obj li[data-g="route"]:not(.ok)::after { content: ""; flex: none; width: 8px; height: 8px; margin-inline-start: auto; border-radius: 50%; background: #2fe6ff; box-shadow: 0 0 10px #2fe6ff; animation: gm-pulse-g 1.6s ease-in-out infinite; }
+.gm-guide { position: absolute; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 92px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px 16px 8px 10px; border: 1px solid rgba(47, 230, 255, 0.55); border-radius: 999px; background: rgba(6, 14, 30, 0.82); color: #bff6ff; font: inherit; font-size: 0.9rem; box-shadow: 0 0 18px rgba(47, 230, 255, 0.25); pointer-events: auto; cursor: pointer; z-index: 6; }
+.gm-guide[hidden] { display: none; }
+.gm-guide svg { color: #2fe6ff; transition: transform 0.15s linear; filter: drop-shadow(0 0 6px #2fe6ff); }
+@keyframes gm-pulse-g { 50% { opacity: 0.35; } }
