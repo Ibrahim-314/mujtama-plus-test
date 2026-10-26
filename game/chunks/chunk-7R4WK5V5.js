@@ -1,1 +1,0 @@
-function r(e){try{let t=new URLSearchParams(location.search).get("world");if(t==="3d"||t==="pixel")return t}catch{}return e?.save?.data?.settings?.world==="3d"?"3d":"pixel"}var o=e=>r(e)==="pixel";export{r as a,o as b};
