@@ -109,7 +109,8 @@ export async function create(game, params = {}) {
     game.save.set({ char: CHARS[idx].id, name, scene: "room", pos: null, flags: params.fresh || !prev ? STORY_RESET : {} });
     await game.save.flush();
     if (cur) cur.acts.Cheer && (cur.acts.Cheer.reset().play(), cur.idle.crossFadeTo(cur.acts.Cheer, 0.2, false));
-    setTimeout(() => game.scenes.go("room", { arrival: true, fade: 700 }), 900);
+    // Season 1 opens with the prologue («الإشارة»), which hands over to the room exactly as the creator used to
+    setTimeout(() => game.scenes.go("prologue", { fade: 700, next: "room", nextParams: { arrival: true, fade: 700 } }), 900);
   });
   nm.addEventListener("input", () => nm.classList.remove("bad"));
   // drag to turn the character
