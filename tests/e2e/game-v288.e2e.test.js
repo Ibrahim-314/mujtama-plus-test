@@ -45,11 +45,12 @@ async function run(label, ctxOpts) {
   await until(p, () => !document.querySelector("#gm-load")?.classList.contains("on"), null, 60000);
   assert.ok(await p.evaluate(() => document.body.classList.contains("gm-on")), "body.gm-on while the game is open");
   assert.ok(await p.evaluate(() => !!window.MPGame && window.MPGame.scenes.name === "title"), "title scene");
+  await until(p, () => { const l = document.querySelector("#gm-load"); return !l || getComputedStyle(l).visibility === "hidden"; }, null, 30000); // the loading veil has finished fading out
   await p.waitForTimeout(800);
   await shot(p, label + "-1-title");
 
   // title → menu → new game: the press button must be the top element under its own centre (no invisible layer over it)
-  const top = await p.evaluate(() => { const b = document.querySelector("#gm-press").getBoundingClientRect(); return document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.id; });
+  const top = await p.evaluate(() => { const b = document.querySelector("#gm-press").getBoundingClientRect(); const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return e && (e.closest("#gm-press") ? "gm-press" : (e.id || "") + "." + e.className + " in " + (e.parentElement?.id || e.parentElement?.className)); });
   assert.equal(top, "gm-press", "nothing covers «المس للبدء»");
   for (const id of await p.$$eval("#gm-root [hidden]", (els) => els.filter((e) => getComputedStyle(e).display !== "none").map((e) => e.id || e.className))) assert.fail("hidden but displayed: " + id);
   await tap(p, "#gm-press");
@@ -70,6 +71,12 @@ async function run(label, ctxOpts) {
   await until(p, () => document.querySelector("#gm-nm")?.classList.contains("bad"));
   await p.fill("#gm-nm", "نور");
   await tap(p, "#gm-go");
+
+  // v2.99 Phase 2B: the prologue «الإشارة» plays first — one canvas, a visible skip, then the room as before
+  await until(p, () => window.MPGame?.scenes.name === "prologue" && !window.MPGame.scenes.busy, null, 120000);
+  await visible(p, "#gm-cine-skip", 60000);
+  assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-root canvas").length === 1 && window.MPGame.prologue?.shareContext === true), "the prologue draws on the game's one WebGL context");
+  await tap(p, "#gm-cine-skip");
 
   // the room: arrival, saved profile, intro dialogue
   await until(p, () => window.MPGame?.scenes.name === "room", null, 60000);
@@ -181,6 +188,12 @@ async function run(label, ctxOpts) {
   // up to the tower and in: the tower's own game screen (v2.96, MJT OS style) opens over the still street — no station page
   await p.evaluate(() => { const s = window.MPGame.street; s.player.pos.set(0, 0, s.gate + 2); });
   await p.evaluate(() => { window.MPGame.street.use("tower"); });
+  // Season 1: the first time in, Salma speaks at the door (the key «40», Yousuf, the fortieth floor) before the screen opens
+  { const end = Date.now() + 60000; // several dialogue beats in a row: keep tapping until the beat is saved
+    while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().salma))) { await p.evaluate(() => { const d = document.querySelector("#gm-dlg"); if (d && !d.hidden && d.classList.contains("on")) d.click(); }); await p.waitForTimeout(150); } }
+  if (!(await p.evaluate(() => window.MPGame.street.state().salma))) console.log("SALMASTATE", JSON.stringify(await p.evaluate(() => ({ st: window.MPGame.street.state(), dlg: document.querySelector("#gm-dlg")?.className, flags: window.MPGame.save?.data?.flags }))), errors.slice(0, 5));
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().salma), "Salma's beat played and was saved");
+  assert.ok(await p.evaluate(() => /40/.test(document.querySelector("#gm-obj-t")?.textContent || "")), "the objective moved on to the fortieth floor");
   await visible(p, "#gm-tw .tw-hero", 20000);
   assert.ok(await p.evaluate(() => !!window.MPGame.save.flag("street.tower")), "tower goal done");
   const h0 = await p.evaluate(() => location.hash);
