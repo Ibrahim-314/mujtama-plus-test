@@ -36,6 +36,7 @@ import { PALETTE, ASSET, charById } from "../config.js";
 import { t, tl, fill } from "../engine/i18n.js";
 import { esc, icon } from "../ui/ui.js";
 import { openPause } from "../ui/menus.js";
+import { isPixel } from "../px/mode.js";
 import { CHAPTER0 as C } from "../story/chapter0.js";
 import { openOS } from "../os/desktop.js";
 import "../os/apps.js";
@@ -51,6 +52,7 @@ function canBabylon() {
 }
 
 export async function create(game, params = {}) {
+  if (isPixel(game)) return (await import("./room-px.js")).create(game, params); // 2026-10-27: the 2D pixel world (3D stays as a setting)
   if (!canBabylon() || game.forceClassicRoom) return (await import("./room-classic.js")).create(game, params);
   try { return await createBabylon(game, params); } catch (e) {
     console.error("[room] babylon failed, classic room", e);
