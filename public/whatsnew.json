@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.102.0",
+    "date": "2026-10-26",
+    "ar": {
+      "title": "قصة اللعبة: المدخل المحظور",
+      "items": [
+        "مدخل خدمة مقيّد بجانب برج MJT تستخدم عنده سجل يوسف",
+        "سلمى تفتح لك من الداخل، واختر سؤالك لها",
+        "افحص سجل الإلغاء مع صدى واكتشف المرجع المخفي للطابق 40"
+      ]
+    },
+    "en": {
+      "title": "Game story: The Forbidden Entrance",
+      "items": [
+        "A restricted service entrance beside the MJT Tower where you use Yousuf's record",
+        "Salma opens it from inside — choose what to ask her",
+        "Examine the revocation record with Sada and find the hidden floor-40 reference"
+      ]
+    }
+  },
+  {
     "v": "2.101.1",
     "date": "2026-10-26",
     "ar": {
