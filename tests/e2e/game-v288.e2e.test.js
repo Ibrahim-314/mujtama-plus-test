@@ -19,6 +19,8 @@ const visible = async (p, sel, ms) => { try { await visible0(p, sel, ms); } catc
 /** advance a dialogue to its end (taps: first finishes the typing, the next moves on) */
 async function talk(p, ms = 40000) {
   await visible(p, "#gm-dlg", ms);
+  // wait for THIS dialogue to open (a previous one may still be fading out, and a gesture can precede the lines)
+  await until(p, () => { const d = document.querySelector("#gm-dlg"); return !!d && !d.hidden && d.classList.contains("on"); }, null, ms);
   const end = Date.now() + ms;
   while (Date.now() < end) {
     const open = await p.evaluate(() => { const d = document.querySelector("#gm-dlg"); return !!d && !d.hidden && d.classList.contains("on"); });
@@ -75,7 +77,10 @@ async function run(label, ctxOpts) {
   // v2.99 Phase 2B: the prologue «الإشارة» plays first — one canvas, a visible skip, then the room as before
   await until(p, () => window.MPGame?.scenes.name === "prologue" && !window.MPGame.scenes.busy, null, 120000);
   await visible(p, "#gm-cine-skip", 60000);
-  assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-root canvas").length === 1 && window.MPGame.prologue?.shareContext === true), "the prologue draws on the game's one WebGL context");
+  // 2026-10-27: the world is 2D pixel art by default (the prologue paints on one 2D canvas; 3D stays a setting)
+  const PX = await p.evaluate(() => window.MPGame.prologue?.engine === "pixel");
+  assert.ok(PX, "the prologue plays in pixel art");
+  assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-root canvas.gm-px").length === 1 && window.MPGame.prologue?.shareContext === true), "the prologue draws on one pixel canvas");
   await tap(p, "#gm-cine-skip");
 
   // the room: arrival, saved profile, intro dialogue
@@ -98,8 +103,10 @@ async function run(label, ctxOpts) {
   assert.ok(Math.hypot(pos1.x - pos0.x, pos1.z - pos0.z) > 0.2, `player moved ${JSON.stringify(pos0)} → ${JSON.stringify(pos1)}`);
 
   // the window (a story goal)
+  await until(p, () => { const d = document.querySelector("#gm-dlg"); return !d || d.hidden; }, null, 10000); // the arrival lines are over
   await p.evaluate(() => { window.MPGame.room.use("window"); });
   await talk(p);
+  await until(p, () => !!window.MPGame.save.flag("room.window"), null, 5000).catch(() => {});
   assert.ok(await p.evaluate(() => !!window.MPGame.save.flag("room.window")), "window goal done");
 
   // the computer → terminal → mining station over the paused game
@@ -107,21 +114,12 @@ async function run(label, ctxOpts) {
   await talk(p);
   // MJT OS: desktop + taskbar + start menu, the Mining program opens in a window
   // outside view: the desktop is drawn on the monitor in the room, then «ادخل الشاشة» dives in
-  await visible(p, "#gm-modal.os-out .os-cb.in");
-  await until(p, () => window.MPGame.loop.paused);
-  await shot(p, label + "-5o-outside");
-  assert.ok(await p.evaluate(() => /matrix3d/.test(document.querySelector("#gm-modal .gm-panel").style.transform)), "OS sits on the monitor in perspective");
-  assert.ok(await p.evaluate(() => window.MPGame.loop.paused), "3D loop rests while the view is still");
-  await tap(p, "#gm-modal .os-cb.in");
+  // pixel world: MJT OS fills the screen straight away and the pixel loop rests behind it
+  assert.ok(await p.evaluate(() => window.MPGame.room.engine === "pixel"), "the room is pixel art");
   await visible(p, "#gm-modal.os-full #gm-os .os-bar");
+  await until(p, () => window.MPGame.loop.paused);
   await p.waitForTimeout(700);
   await shot(p, label + "-5a-desktop");
-  // back outside and in again via the taskbar button
-  await tap(p, "#gm-os [data-os=out]");
-  await visible(p, "#gm-modal.os-out .os-cb.in");
-  await until(p, () => window.MPGame.loop.paused);
-  await tap(p, "#gm-modal .os-cb.in");
-  await visible(p, "#gm-modal.os-full #gm-os .os-bar");
   await p.waitForTimeout(500);
   await tap(p, "#gm-os [data-os=start]");
   await visible(p, "#gm-os .os-start .os-pin[data-app=mining]");
@@ -203,12 +201,12 @@ async function run(label, ctxOpts) {
   await until(p, () => !!document.querySelector("#gm-tw .tw-body .wl-card"), null, 20000);
   await p.waitForTimeout(1100);
   await shot(p, label + "-8c-tower");
-  await p.click("#gm-tw [data-tab=history]");
+  await tap(p, "#gm-tw [data-tab=history]");
   await until(p, () => document.querySelector("#gm-tw .tw-tab.act")?.dataset.tab === "history", null, 5000);
-  await p.click("#gm-tw [data-tab=send]");
+  await tap(p, "#gm-tw [data-tab=send]");
   await until(p, () => !!document.querySelector("#gm-tw .tw-body .wl-card"), null, 20000);
   await shot(p, label + "-8d-tower-wallet");
-  await p.click("#gm-tw [data-tw=exit]");
+  await tap(p, "#gm-tw [data-tw=exit]");
   await until(p, () => !document.querySelector("#gm-tw") && !window.MPGame.ui.modalOpen && window.MPGame.street.state().busy === false, null, 10000);
   assert.ok(await p.evaluate(() => window.MPGame?.scenes.name === "street"), "back on the street after the tower");
   // Season 1 «الإشارة الأولى»: the terminal is live now, the player walks up to it and acts (the real action button)
@@ -219,7 +217,7 @@ async function run(label, ctxOpts) {
   await shot(p, label + "-8e-signal-guide");
   assert.ok(await p.evaluate(() => !document.querySelector("#gm-guide").hidden), "the on-screen guide shows the way");
   const zG = await p.evaluate(() => window.MPGame.street.player.pos.z);
-  await p.click("#gm-obj [data-g=salma]");
+  await tap(p, "#gm-obj [data-g=salma]");
   await p.waitForTimeout(2500);
   await shot(p, label + "-8f-signal-walking");
   // headless frames are slow, so check the route was taken (heading down the clear middle of the road) rather than wait it out
@@ -227,7 +225,7 @@ async function run(label, ctxOpts) {
   await p.evaluate(() => { const s = window.MPGame.street, a = s.state().sigAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.3); });
   await until(p, () => window.MPGame.street.state().near === "signal" && !document.querySelector("#gm-act").hidden, null, 10000);
   assert.ok(await p.evaluate(() => /محطة|terminal/i.test(document.querySelector("#gm-act-k").textContent)), "the action names the terminal");
-  await p.click("#gm-act");
+  await tap(p, "#gm-act");
   { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().sada))) { await p.evaluate(() => { const d = document.querySelector("#gm-dlg"); if (d && !d.hidden && d.classList.contains("on")) d.click(); }); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate(() => window.MPGame.street.state().sada && window.MPGame.save.flag("story.sada")), "Sada's beat played and was saved");
@@ -246,13 +244,13 @@ async function run(label, ctxOpts) {
   await until(p, () => window.MPGame.street.state().near === "market" && !document.querySelector("#gm-act").hidden, null, 10000);
   assert.ok(await p.evaluate(() => /أبو ناصر|Abu Nasser/.test(document.querySelector("#gm-act-v").textContent)), "the action names Abu Nasser");
   await shot(p, label + "-8f-market");
-  await p.click("#gm-act");
+  await tap(p, "#gm-act");
   const pickN = label === "m" ? 1 : 0; // phone takes the signal way, desktop the key way
   { const end = Date.now() + 30000;
     while (Date.now() < end && !(await p.evaluate(() => !!document.querySelector("#gm-modal [data-ch]")))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate(() => document.querySelectorAll("#gm-modal [data-ch]").length === 2 && getComputedStyle(document.querySelector("#gm-modal .gm-panel")).direction === "rtl"), "two choices, RTL");
   await shot(p, label + "-8g-choice");
-  await p.click(`#gm-modal [data-ch="${pickN}"]`);
+  await tap(p, `#gm-modal [data-ch="${pickN}"]`);
   { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().record))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate((w) => window.MPGame.street.state().record && window.MPGame.save.flag("story.nasser." + w), pickN ? "signal" : "key"), "the record is saved with the chosen way");
@@ -266,26 +264,53 @@ async function run(label, ctxOpts) {
   await p.evaluate(() => { const s = window.MPGame.street, a = s.state().svcAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.2); });
   await until(p, () => window.MPGame.street.state().near === "service" && !document.querySelector("#gm-act").hidden, null, 10000);
   await shot(p, label + "-8i-service");
-  await p.click("#gm-act");
+  await tap(p, "#gm-act");
   { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.ui.modalOpen && !!document.querySelector("#gm-modal [data-ch='1']")))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate(() => window.MPGame.street.state().inside), "inside the service corridor");
   assert.ok(await p.evaluate(() => getComputedStyle(document.querySelector("#gm-modal .gm-term-o")).direction === (document.documentElement.dir || "rtl")), "the choice reads in RTL");
   await shot(p, label + "-8j-salma-choice");
   const pickS = label === "m" ? 0 : 1; // phone asks about Yousuf, desktop about the floor
-  await p.click(`#gm-modal [data-ch="${pickS}"]`);
+  await tap(p, `#gm-modal [data-ch="${pickS}"]`);
+  await until(p, () => !document.querySelector("#gm-modal [data-ch]"), null, 10000); // the first choice has gone
   { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.ui.modalOpen && !!document.querySelector("#gm-modal [data-ch='0']")))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate(() => !document.querySelector("#gm-svc").classList.contains("f40") && !window.MPGame.street.state().served), "examining is still required");
-  await p.click(`#gm-modal [data-ch="0"]`);
+  await tap(p, `#gm-modal [data-ch="0"]`);
   await until(p, () => document.querySelector("#gm-svc").classList.contains("f40"), null, 10000);
   await shot(p, label + "-8k-f40");
   { const end = Date.now() + 80000;
     while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().served))) { await clickDlg(); await p.waitForTimeout(150); } }
   assert.ok(await p.evaluate((w) => window.MPGame.street.state().served && window.MPGame.save.flag("story.salma2." + w), pickS ? "floor" : "knew"), "the entrance is saved with the chosen question");
   await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.street.state().inside, null, 10000);
-  assert.ok(await p.evaluate(() => /العليا|upper floors/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().service && !window.MPGame.street.state().guide), "next objective: the upper floors; no stray guide");
+  assert.ok(await p.evaluate(() => /العليا|upper floors/i.test(document.querySelector("#gm-obj-t").textContent) && !window.MPGame.street.state().service && window.MPGame.street.state().guide === "maint"), "next objective: the upper floors; the guide moves to the old panel");
   await shot(p, label + "-8l-next");
+  // Season 1 Phase 5 «وصول الطابق الأربعين»: the old maintenance panel — evidence (two at least), the route code (a wrong
+  // one first is refused), the key's bit, a 60-second window, the service door, the old log against the official one
+  const pickCh = async (want, ms = 40000) => { const end = Date.now() + ms; while (Date.now() < end && !(await p.evaluate(() => !!document.querySelector("#gm-modal [data-ch]")))) { await clickDlg(); await p.waitForTimeout(150); } assert.ok(await p.evaluate(() => !!document.querySelector("#gm-modal [data-ch]")), "a choice is up"); await tap(p, `#gm-modal [data-ch="${want}"]`); await p.waitForTimeout(350); };
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().maint), "the panel is live after the restricted entrance");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().mtAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.2); });
+  await until(p, () => window.MPGame.street.state().near === "maint" && !document.querySelector("#gm-act").hidden, null, 10000);
+  await shot(p, label + "-8m-panel");
+  await tap(p, "#gm-act");
+  await pickCh(0); await pickCh(0); // two pieces of evidence…
+  await pickCh(1); // …then «that's enough» (the option after the one evidence left)
+  await pickCh(0); // a wrong code: refused, asked again
+  await pickCh(1); // F-40
+  await pickCh(1); // the record is not what the panel asks for
+  await pickCh(0); // the key's bit
+  { const end = Date.now() + 40000; while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().win > 0 && !window.MPGame.street.state().busy))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().win > 40 && !document.querySelector("#gm-timer").hidden && window.MPGame.save.flag("story.maintCode")), "the window is open with its countdown");
+  await shot(p, label + "-8n-window");
+  await p.evaluate(() => { const s = window.MPGame.street, a = s.state().svcAt; s.player.walkTo(null); s.player.pos.set(a.x, 0, a.z + 0.2); });
+  await until(p, () => window.MPGame.street.state().near === "service" && !document.querySelector("#gm-act").hidden, null, 10000);
+  await tap(p, "#gm-act");
+  await pickCh(0); // open the night's logs
+  { const end = Date.now() + 80000; while (Date.now() < end && !(await p.evaluate(() => window.MPGame.street.state().maintDone))) { await clickDlg(); await p.waitForTimeout(150); } }
+  assert.ok(await p.evaluate(() => window.MPGame.street.state().maintDone && window.MPGame.save.flag("story.maint")), "the maintenance route is saved");
+  await until(p, () => !window.MPGame.street.state().busy && !window.MPGame.street.state().inside, null, 10000);
+  assert.ok(await p.evaluate(() => !window.MPGame.street.state().guide && document.querySelector("#gm-timer").hidden && /التناقض|contradiction/i.test(document.querySelector("#gm-obj-t").textContent)), "next objective set; no guide, no timer");
+  await shot(p, label + "-8o-done");
   // repeating: the door is locked now, no second sequence
   await p.evaluate(() => window.MPGame.street.use("service")); await p.waitForTimeout(400);
   assert.ok(await p.evaluate(() => !document.querySelector("#gm-dlg").classList.contains("on") && !window.MPGame.ui.modalOpen && !window.MPGame.street.state().inside), "no replay at the service door");
