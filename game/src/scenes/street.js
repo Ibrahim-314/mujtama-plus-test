@@ -33,6 +33,7 @@ import { ASSET, CHARS, charById } from "../config.js";
 import { t, tl, fill } from "../engine/i18n.js";
 import { esc, icon } from "../ui/ui.js";
 import { openPause } from "../ui/menus.js";
+import { isPixel } from "../px/mode.js";
 import { CHAPTER1 as C } from "../story/chapter1.js";
 import { openTower } from "../os/tower.js";
 
@@ -50,6 +51,7 @@ function canBabylon() {
 }
 
 export async function create(game, params = {}) {
+  if (isPixel(game)) return (await import("./street-px.js")).create(game, params); // 2026-10-27: the 2D pixel world (3D stays as a setting)
   if (!canBabylon() || game.forceClassicStreet) return (await import("./street-classic.js")).create(game, params);
   try { return await createBabylon(game, params); } catch (e) {
     console.error("[street] babylon failed, classic street", e);
@@ -284,6 +286,8 @@ async function createBabylon(game, params) {
     { id: "market", at: new Vector3(ROAD + 1.5, 0, midZ - 6 + 1.2), mark: new Vector3(ROAD + 2.6, 3.3, midZ - 6), face: new Vector3(ROAD + 2.6, 0, midZ - 6 + 1.8), hitAt: new Vector3(ROAD + 2.6, 1.2, midZ - 6), hitS: [1.8, 2.4, 2.6] },
     // Season 1 Phase 4: the tower's restricted service entrance, a grey annex door right of the main doors (x>0)
     { id: "service", at: new Vector3(ROAD + 2.0, 0, GATE_Z + 1.5), mark: new Vector3(ROAD + 2.0, 4.1, GATE_Z - 0.1), face: new Vector3(ROAD + 2.0, 0, GATE_Z - 2), hitAt: new Vector3(ROAD + 2.0, 1.4, GATE_Z - 0.1), hitS: [2.0, 2.8, 1.4] },
+    // Season 1 Phase 5: an old maintenance panel in the wall left of the tower doors (x<0)
+    { id: "maint", at: new Vector3(-(ROAD + 2.0), 0, GATE_Z + 1.5), mark: new Vector3(-(ROAD + 2.0), 3.4, GATE_Z - 0.2), face: new Vector3(-(ROAD + 2.0), 0, GATE_Z - 2), hitAt: new Vector3(-(ROAD + 2.0), 1.3, GATE_Z - 0.2), hitS: [1.6, 2.6, 1.2] },
     { id: "home", at: new Vector3(0, 0, HOME_Z - 1.1), mark: new Vector3(0, 3.4, HOME_Z - 0.2), face: new Vector3(0, 0, HOME_Z + 3), hitAt: new Vector3(0, 1.3, HOME_Z - 0.2), hitS: [2.2, 2.6, 0.8] }
   ];
   for (const th of things) {
@@ -337,11 +341,26 @@ async function createBabylon(game, params) {
     if (shadows) shadows.addShadowCaster(annex, false);
     colliders.push({ min: { x: X - 1.45, z: Z - 0.65 }, max: { x: X + 1.45, z: Z + 0.68 } });
   }
+  // the maintenance panel: a dusty steel box with an amber screen (procedural); live once «المدخل المحظور» is done
+  const mt = things.find((x) => x.id === "maint");
+  let win = null; // Phase 5: the limited maintenance window { until } (this session only; the code step is saved)
+  const winOpen = () => !!win && !game.save.flag("story.maint");
+  const mtLive = () => !!game.save.flag("story.service") && !game.save.flag("story.maint") && !winOpen();
+  {
+    const X = mt.hitAt.x, Z = GATE_Z - 0.55;
+    const box = CreateBox("mtBox", { width: 1.2, height: 2.0, depth: 0.5 }, scene); box.position.set(X, 1.0 + 0.16, Z);
+    const bm = new PBRMaterial("mtBoxM", scene); bm.albedoColor = new Color3(0.2, 0.19, 0.17); bm.metallic = 0.6; bm.roughness = 0.7; box.material = bm;
+    mt.screen = CreateBox("mtScreen", { width: 0.7, height: 0.5, depth: 0.04 }, scene); mt.screen.position.set(X, 1.45 + 0.16, Z + 0.27);
+    mt.screenM = glowMat(scene, "#ffb020", 0.08, "mtScreen"); mt.screen.material = mt.screenM;
+    for (const m of [box, mt.screen]) m.isPickable = false;
+    if (shadows) shadows.addShadowCaster(box, false);
+    colliders.push({ min: { x: X - 0.65, z: Z - 0.3 }, max: { x: X + 0.65, z: Z + 0.3 } });
+  }
   // ---------- v2.101.1: a guide to the live story spot — a light beam over it, a pulsing trail on the ground, tap the goal to walk ----------
-  const storyGoal = () => (sigLive() ? sig : mkLive() ? mk : svcLive() ? svc : null);
+  const storyGoal = () => (sigLive() ? sig : mkLive() ? mk : svcLive() || winOpen() ? svc : mtLive() ? mt : null);
   const beams = {};
-  for (const th of [sig, mk, svc]) {
-    const col = th === mk ? "#ff3fb4" : th === svc ? "#ffb020" : "#2fe6ff";
+  for (const th of [sig, mk, svc, mt]) {
+    const col = th === mk ? "#ff3fb4" : th === svc || th === mt ? "#ffb020" : "#2fe6ff";
     const bm = CreateCylinder("markBeam", { diameterTop: 0.25, diameterBottom: 0.7, height: 16, tessellation: 18 }, scene);
     const m = glowMat(scene, col, 1.2, "markBeam"); m.alpha = 0.32; m.alphaMode = Constants.ALPHA_ADD; m.disableDepthWrite = true; m.backFaceCulling = false;
     bm.material = m; bm.position.set(th.hitAt.x, 8, th.hitAt.z); bm.isPickable = false; bm.isVisible = false; beams[th.id] = bm;
@@ -369,7 +388,7 @@ async function createBabylon(game, params) {
     }
     for (const [id, b] of Object.entries(beams)) { b.isVisible = !!g && g.id === id; if (b.isVisible) b.material.alpha = 0.24 + Math.sin(time * 2.4) * 0.08; }
     const dx = g ? g.at.x - player.pos.x : 0, dz = g ? g.at.z - player.pos.z : 0, dist = Math.hypot(dx, dz);
-    const show = !!g && dist > 2.4, col = g === mk ? [1, 0.25, 0.7] : g === svc ? [1, 0.7, 0.12] : [0.18, 0.9, 1];
+    const show = !!g && dist > 2.4, col = g === mk ? [1, 0.25, 0.7] : g === svc || g === mt ? [1, 0.7, 0.12] : [0.18, 0.9, 1];
     for (let i = 0; i < trail.length; i++) {
       const t = trail[i], at = 1.1 + i * 1.15, on = show && at < dist - 0.9; t.isVisible = on; if (!on) continue;
       const x = player.pos.x + (dx / dist) * at, z = player.pos.z + (dz / dist) * at;
@@ -458,11 +477,12 @@ async function createBabylon(game, params) {
       </div>
     </header>
     <section class="gm-obj" id="gm-obj"><span class="gm-obj-k">${esc(tl(C.title))} · ${esc(tl(C.name))}</span><b id="gm-obj-t">${esc(tl(C.objective))}</b>
-      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li><li data-g="service" hidden>${icon("check")}<span>${esc(tl(C.service.next.goal))}</span></li></ul></section>
+      <ul><li data-g="tower">${icon("check")}<span>${esc(tl(C.things.tower.label))}</span></li><li data-g="salma" hidden>${icon("check")}<span>${esc(tl(C.next.goal))}</span></li><li data-g="sada" hidden>${icon("check")}<span>${esc(tl(C.after.goal))}</span></li><li data-g="route" hidden>${icon("check")}<span>${esc(tl(C.routeNext.goal))}</span></li><li data-g="record" hidden>${icon("check")}<span>${esc(tl(C.serviceNext.goal))}</span></li><li data-g="service" hidden>${icon("check")}<span>${esc(tl(C.service.next.goal))}</span></li><li data-g="maint" hidden>${icon("check")}<span>${esc(tl(C.maint.next.goal))}</span></li></ul></section>
     <button class="gm-guide" id="gm-guide" type="button" hidden><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3l7 9h-4.5v9h-5v-9H5z" fill="currentColor"/></svg><span></span></button>
     <p class="gm-help" id="gm-help">${esc(game.input.touch ? t("المس الطريق لتمشي · المس البرج لتدخله", "Tap the road to walk · tap the tower to go in") : t("WASD أو الأسهم للتحرك · انقر للمشي · E للدخول", "WASD / arrows or click to walk · E to enter"))}</p>
     <button type="button" class="gm-act" id="gm-act" hidden data-sfx="click"><span class="gm-act-i">${icon("hand")}</span><span class="gm-act-t"><small id="gm-act-k"></small><b id="gm-act-v"></b></span></button>
     <div class="gm-card" id="gm-card" hidden><small></small><b></b></div>
+    <div class="gm-timer" id="gm-timer" hidden><small>${esc(tl(C.maint.timer))}</small><b>60</b></div>
     <div class="gm-svc" id="gm-svc" hidden aria-hidden="true"><span class="gm-svc-k">${esc(tl(C.service.inside))}</span><div class="gm-svc-scr"><i>F-40</i><p>${esc(tl(C.service.hook[1].lines[0]))}</p></div></div>`, "gm-room gm-street");
   const $ = (s) => L.querySelector(s);
   const paintObj = () => {
@@ -474,12 +494,13 @@ async function createBabylon(game, params) {
     li.hidden = !met; li.classList.toggle("ok", heard); l2.hidden = !heard; l2.classList.toggle("ok", route);
     const done4 = rec && !!game.save.flag("story.service");
     const l3 = $("[data-g=route]"), l4 = $("[data-g=record]"), l5 = $("[data-g=service]"); l3.hidden = !route; l3.classList.toggle("ok", rec); l4.hidden = !rec; l4.classList.toggle("ok", done4); l5.hidden = !done4;
-    $("#gm-obj-t").textContent = tl(done4 ? C.service.next.objective : rec ? C.serviceNext.objective : route ? C.routeNext.objective : heard ? C.after.objective : met ? C.next.objective : C.objective);
+    const done5 = done4 && !!game.save.flag("story.maint"), l6 = $("[data-g=maint]"); l5.classList.toggle("ok", done5); l6.hidden = !done5;
+    $("#gm-obj-t").textContent = tl(done5 ? C.maint.next.objective : done4 ? C.service.next.objective : rec ? C.serviceNext.objective : route ? C.routeNext.objective : heard ? C.after.objective : met ? C.next.objective : C.objective);
   };
   const refreshBal = () => { if (!game.member) { $("#gm-bal").textContent = "—"; return; } game.host.api("GET", "/api/mjt/me").then((m) => { $("#gm-bal").textContent = String(m.balance.mjt); }, () => { $("#gm-bal").textContent = "—"; }); };
   refreshBal(); paintObj(); game.missions?.paint();
   const goGuide = () => { const th = storyGoal(); if (th && canWalk()) { pending = null; guideTo(th); hideHelp(); game.audio.sfx("hover"); } };
-  for (const g of ["salma", "route", "record"]) $(`[data-g=${g}]`).addEventListener("click", goGuide);
+  for (const g of ["salma", "route", "record", "service"]) $(`[data-g=${g}]`).addEventListener("click", goGuide);
   $("#gm-guide").addEventListener("click", goGuide);
   $("#gm-menu").addEventListener("click", () => openPause(game));
   game.input.on("pause", () => { if (game.scenes.name === "street" && !game.ui.modalOpen && !busy) openPause(game); });
@@ -487,7 +508,7 @@ async function createBabylon(game, params) {
 
   // ---------- interaction ----------
   let near = null, busy = false, inHall = false, helpGone = false, push = null, doorGlow = 0;
-  const showAct = (th) => { const a = $("#gm-act"); if (!th) { a.hidden = true; return; } $("#gm-act-k").textContent = tl(C.things[th.id].label); $("#gm-act-v").textContent = tl(C.things[th.id].verb); a.hidden = false; a.dataset.goal = th.id === "tower" ? "1" : ""; };
+  const showAct = (th) => { const a = $("#gm-act"); if (!th) { a.hidden = true; return; } $("#gm-act-k").textContent = tl(C.things[th.id].label); $("#gm-act-v").textContent = tl(th.id === "service" && winOpen() ? C.things.service.verb2 : C.things[th.id].verb); a.hidden = false; a.dataset.goal = th.id === "tower" ? "1" : ""; };
   const hideHelp = () => { if (helpGone) return; helpGone = true; $("#gm-help").classList.add("gone"); };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const flash = (on) => game.root.classList.toggle("gm-flash-on", on);
@@ -513,7 +534,8 @@ async function createBabylon(game, params) {
       }
       if (th.id === "signal") { if (sigLive()) await meetSada(); return; }
       if (th.id === "market") { if (mkLive()) await meetNasser(); return; }
-      if (th.id === "service") { if (svcLive()) await enterService(); else { game.audio.sfx("locked"); card(tl(C.things.service.label), t("الباب مقفل", "The door is locked")); } return; }
+      if (th.id === "maint") { if (mtLive()) await usePanel(); return; }
+      if (th.id === "service") { if (svcLive()) await enterService(); else if (winOpen()) await enterMaint(); else { game.audio.sfx("locked"); card(tl(C.things.service.label), t("الباب مقفل", "The door is locked")); } return; }
       if (th.id === "home") {
         game.audio.sfx("open"); game.scenes.reg.room?.().catch(() => { }); player.walkTo({ x: 0, z: HOME_Z - 0.5 });
         push = { from: camera.position.clone(), to: new Vector3(0, 2.0, HOME_Z - 3.6), lf: look.clone(), look: new Vector3(0, 1.3, HOME_Z + 4), k: 0 };
@@ -613,6 +635,80 @@ async function createBabylon(game, params) {
     await wait(250); flash(false); paintObj();
     card(tl(C.title), tl(S.next.done)); await wait(3400); card(tl(S.next.card), tl(S.next.objective));
   }
+  // ---------- Season 1 Phase 5, «وصول الطابق الأربعين»: evidence at the old maintenance panel, a route code, the key's bit,
+  // a 60-second maintenance window to reach the service door, the old log vs the official one, a message to the player.
+  // Still no explorable 3D interior: the corridor is the same dimmed overlay as Phase 4. No new server mission (XP) here.
+  const WIN_S = 60;
+  const sayM = async (beats) => { const n = { ...names3(), panel: tl(C.maint.panelName), official: tl(C.maint.officialName), old: tl(C.maint.oldName), screen: tl(C.service.screenName) };
+    for (const b of beats) await game.ui.dialog(b.lines.map((l) => fill(tl(l), { name })), n[b.who] || ""); };
+  async function usePanel() {
+    const M = C.maint; player.face(mt.hitAt.x, mt.hitAt.z); mt.screenM.emissiveIntensity = 1.2; game.audio.sfx("scan");
+    if (!game.save.flag("story.maintCode")) {
+      await sayM(M.open);
+      // 1) evidence: the player examines at least two of the three things they carry
+      const seen = new Set();
+      for (;;) {
+        const left = M.evidence.items.filter((e) => !seen.has(e.id));
+        const opts = left.map((e) => ({ label: tl(e.label), hint: tl(e.hint) }));
+        if (seen.size >= 2) opts.push({ label: tl(M.evidence.done), hint: tl(M.evidence.doneHint) });
+        if (!opts.length) break;
+        const i = await game.ui.choose(tl(M.evidence.prompt), opts);
+        if (i >= left.length) break;
+        const e = left[i]; seen.add(e.id); game.audio.sfx("type");
+        await game.ui.dialog(e.lines.map((l) => tl(l)), tl(C.narrator));
+      }
+      game.save.set({ flags: { "story.maintEv": [...seen].join(",") } });
+      // 2) the route reference: only F-40 opens it; a wrong one is refused and asked again (nothing is lost)
+      for (;;) {
+        const i = await game.ui.choose(tl(M.code.prompt), M.code.opts.map((o) => ({ label: tl(o.label), hint: tl(o.hint) })));
+        if (M.code.opts[i].id === "f40") break;
+        game.audio.sfx("locked"); await game.ui.dialog([tl(M.code.wrong)], tl(M.panelName));
+      }
+      game.save.set({ flags: { "story.maintCode": true } }); game.save.flush(); game.audio.sfx("confirm");
+    }
+    // 3) the engineer's confirmation: the brass key's bit, not the revoked record
+    for (;;) {
+      const i = await game.ui.choose(tl(M.confirm.prompt), M.confirm.opts.map((o) => ({ label: tl(o.label), hint: tl(o.hint) })));
+      if (M.confirm.opts[i].id === "key") break;
+      game.audio.sfx("locked"); await game.ui.dialog([tl(M.confirm.wrong)], tl(M.panelName));
+    }
+    game.audio.sfx("ping"); await sayM(M.granted);
+    // 4) the limited window: reach the service door in time (holds while a dialogue plays)
+    win = { until: performance.now() + WIN_S * 1000 }; $("#gm-timer").hidden = false; paintTimer();
+    card(tl(M.timer), String(WIN_S) + t(" ثانية", " seconds"));
+  }
+  const paintTimer = () => { if (!win) return; const left = Math.max(0, Math.ceil((win.until - performance.now()) / 1000)); const b = $("#gm-timer b"); if (b.textContent !== String(left)) b.textContent = String(left); };
+  let winT = 0;
+  const stepWindow = () => {
+    const now = performance.now(), dt = winT ? now - winT : 0; winT = now;
+    if (!win) return;
+    if (busy || game.ui.modalOpen) { win.until += dt; return; }
+    paintTimer();
+    if (now >= win.until) { win = null; $("#gm-timer").hidden = true; mt.screenM.emissiveIntensity = 0.08; game.audio.sfx("locked"); game.ui.toast(esc(tl(C.maint.expired))); }
+  };
+  async function enterMaint() {
+    const M = C.maint; $("#gm-timer").hidden = true;
+    player.face(svc.reader.position.x, svc.reader.position.z);
+    svc.readerM.emissiveColor.set(0.3, 1.6, 0.5); game.audio.sfx("open"); svc.door.position.x += 1.1;
+    push = { from: camera.position.clone(), to: new Vector3(svc.hitAt.x, 1.9, GATE_Z + 2.2), lf: look.clone(), look: new Vector3(svc.hitAt.x, 1.4, GATE_Z - 4), k: 0 };
+    await wait(800); game.audio.sfx("whoosh"); flash(true); await wait(320);
+    const ov = svcEl(); ov.querySelector(".gm-svc-k").textContent = tl(M.inside); ov.hidden = false; requestAnimationFrame(() => ov.classList.add("on")); await wait(200); flash(false);
+    await sayM(M.terminal);
+    // the required action: open the night's logs
+    await game.ui.choose(tl(M.look.prompt), [{ label: tl(M.look.go), hint: tl(M.look.goHint) }]);
+    game.audio.sfx("scan"); ov.classList.add("scan", "logs"); await wait(700);
+    await sayM(M.found);
+    ov.classList.remove("logs"); ov.querySelector(".gm-svc-scr p").textContent = fill(tl(M.hook[0].lines[0]), { name });
+    ov.classList.add("msg"); game.audio.sfx("reveal");
+    await sayM(M.hook.slice(0, 1)); ov.classList.remove("msg"); await sayM(M.hook.slice(1));
+    game.save.set({ flags: { "story.maint": true } }); game.audio.sfx("ping"); game.save.flush(); win = null;
+    flash(true); await wait(300); ov.classList.remove("on", "scan"); ov.hidden = true;
+    ov.querySelector(".gm-svc-k").textContent = tl(C.service.inside); ov.querySelector(".gm-svc-scr p").textContent = tl(C.service.hook[1].lines[0]);
+    push = null; player.walkTo(null); player.pos.set(svc.at.x, 0, svc.at.z + 0.6); player.heading = 0;
+    svc.door.position.x -= 1.1; svc.readerM.emissiveColor.set(1.6, 1.0, 0.2); mt.screenM.emissiveIntensity = 0.08;
+    await wait(250); flash(false); paintObj();
+    card(tl(C.title), tl(M.next.done)); await wait(3400); card(tl(M.next.card), tl(M.next.objective));
+  }
   const onStationClose = () => {
     if (game.scenes.name !== "street") return;
     refreshBal(); push = null; doorGlow = 0; busy = false; inHall = false; flash(false);
@@ -699,7 +795,7 @@ async function createBabylon(game, params) {
   if (intro) { camera.position.set(0, 2.2, HOME_Z - 2.4); look.copyFrom(tower.lookAt); } else { camera.position.copyFrom(camP); look.copyFrom(camT); }
   camera.setTarget(look);
 
-  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), guide: storyGoal()?.id || null, mkAt: { x: mk.at.x, z: mk.at.z }, service: svcLive(), served: !!game.save.flag("story.service"), svcAt: { x: svc.at.x, z: svc.at.z }, inside: !!svcEl() && !svcEl().hidden }) }; // the game's own tests
+  game.street = { lookUp: () => (busy || push || intro ? false : startGaze()), use: (id) => { const th = things.find((x) => x.id === id); if (th) return use(th); }, walk, player, gate: GATE_Z, home: HOME_Z, engine: "babylon", state: () => ({ busy, intro: !!intro, target: player.target && { x: player.target.x, z: player.target.z }, locked: player.locked, near: near && near.id, gaze: { g: +gaze.g.toFixed(3), on: gaze.t >= 0, n: gaze.n }, salma: !!game.save.flag("story.salma"), sada: !!game.save.flag("story.sada"), signal: sigLive(), sigAt: { x: sig.at.x, z: sig.at.z }, route: !!game.save.flag("story.route"), record: !!game.save.flag("story.record"), market: mkLive(), guide: storyGoal()?.id || null, mkAt: { x: mk.at.x, z: mk.at.z }, service: svcLive(), served: !!game.save.flag("story.service"), svcAt: { x: svc.at.x, z: svc.at.z }, inside: !!svcEl() && !svcEl().hidden, maint: mtLive(), mtAt: { x: mt.at.x, z: mt.at.z }, win: winOpen() ? Math.max(0, Math.ceil((win.until - performance.now()) / 1000)) : 0, maintDone: !!game.save.flag("story.maint") }) }; // the game's own tests
 
   await scene.whenReadyAsync();
   game.canvas.style.visibility = "hidden";
@@ -734,10 +830,13 @@ async function createBabylon(game, params) {
       let best = null, bd = 1.6;
       const live = sigLive(); sig.m.isVisible = sig.h.isVisible = live;
       sig.screenM.emissiveIntensity = live ? 0.55 + Math.max(0, Math.sin(time * 9.0) * Math.sin(time * 2.3)) * 1.4 : 0.05;
-      const sLive = svcLive(); svc.m.isVisible = svc.h.isVisible = sLive;
+      stepWindow();
+      const mtL = mtLive(); mt.m.isVisible = mt.h.isVisible = mtL;
+      if (!busy) mt.screenM.emissiveIntensity = mtL ? 0.4 + Math.max(0, Math.sin(time * 3.3)) * 0.8 : winOpen() ? 1.2 : 0.08;
+      const sLive = svcLive() || winOpen(); svc.m.isVisible = svc.h.isVisible = sLive;
       if (!busy) svc.readerM.emissiveIntensity = sLive ? 0.6 + Math.max(0, Math.sin(time * 4.2)) * 0.9 : 0.3;
       for (const th of things) {
-        if ((th === sig && !live) || (th === mk && !mLive) || (th === svc && !sLive)) continue;
+        if ((th === sig && !live) || (th === mk && !mLive) || (th === svc && !sLive) || (th === mt && !mtL)) continue;
         const d = Math.hypot(th.at.x - player.pos.x, th.at.z - player.pos.z); if (d < bd) { bd = d; best = th; }
         th.m.position.y = th.mark.y + Math.sin(time * 2.2 + th.mark.z) * 0.12; th.m.rotation.y += dt * 1.6;
         th.h.material.alpha += (((th === best) ? 0.9 : 0) - th.h.material.alpha) * Math.min(1, dt * 8);
