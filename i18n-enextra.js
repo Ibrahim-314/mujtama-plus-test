@@ -11,6 +11,8 @@
 "أرقام شهرية مجمّعة": "Monthly aggregated stats",
 "من نحن": "About Us",
 "الدعوات والتسجيل": "Invites & Sign-up",
+"سجل الإصدارات": "Release history",
+"ما الجديد في كل إصدار": "What changed in each version",
 "التطبيق": "App",
 "التثبيت والإشعارات": "Install and notifications",
 "كل الإعدادات": "All Settings",
