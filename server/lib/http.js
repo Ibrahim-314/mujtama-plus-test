@@ -74,11 +74,11 @@ const FRAME_ANCESTORS = ["'self'", "https://*.pinet.com", "https://*.minepi.com"
 const extraAncestors = String(process.env.CSP_FRAME_ANCESTORS_EXTRA || "")
   .split(/\s+/)
   .filter(o => /^https:\/\/(\*\.)?[a-z0-9.-]+\.[a-z]{2,}(:\d+)?$/i.test(o));
-function buildCsp(scriptHashes = []) {
+function buildCsp(scriptHashes = [], scriptExtra = "") {
   const connect = ["'self'", "https://api.minepi.com", "https://socialchain.app", ...(process.env.LIVEKIT_URL ? [process.env.LIVEKIT_URL] : [])];
   return [
     "default-src 'self'",
-    `script-src 'self' ${PI_SDK_ORIGIN}${scriptHashes.map(h => ` 'sha256-${h}'`).join("")}`,
+    `script-src 'self' ${PI_SDK_ORIGIN}${scriptExtra}${scriptHashes.map(h => ` 'sha256-${h}'`).join("")}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:", // map tiles (phase 66: https://tile.openstreetmap.org) are plain <img>; no connect-src needed
     "media-src 'self' blob:",
@@ -114,7 +114,10 @@ const htmlCsp = new Map(); // file → { mtime, csp }
 function cspForHtml(file) {
   const mtime = fs.statSync(file).mtimeMs, hit = htmlCsp.get(file);
   if (hit && hit.mtime === mtime) return hit.csp;
-  const csp = buildCsp(inlineScriptHashes(fs.readFileSync(file, "utf8")));
+  /* v2.105: the Godot game page (/nabd/engine/) compiles its WebAssembly engine and lets the game script call JavaScriptBridge.eval
+   * (touch detection, query string, postMessage to the app), so ONLY that page gets 'wasm-unsafe-eval' 'unsafe-eval'. */
+  const game = /[\\/]nabd[\\/]engine[\\/]index\.html$/.test(file);
+  const csp = buildCsp(inlineScriptHashes(fs.readFileSync(file, "utf8")), game ? " 'wasm-unsafe-eval' 'unsafe-eval'" : "");
   htmlCsp.set(file, { mtime, csp });
   return csp;
 }
@@ -126,6 +129,7 @@ const MIME = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json",
+  ".wasm": "application/wasm",
   ".png": "image/png",
   ".jpg": "image/jpeg",
   ".jpeg": "image/jpeg",
@@ -171,11 +175,11 @@ function serveStatic(root, req, res, urlPath) {
         preloadLinks = "";
       }
     }
-    if (preloadLinks) headers.Link = preloadLinks;
+    if (preloadLinks && !/[\\/]nabd[\\/]/.test(file)) headers.Link = preloadLinks; // v2.105: not on the game page
   }
   const ae = String(req.headers["accept-encoding"] || "");
   let serve = file;
-  if (/\.(js|css|html|svg|json)$/.test(ext)) {
+  if (/\.(js|css|html|svg|json|wasm|pck)$/.test(ext)) { // v2.105: the game engine/pack ship pre-gzipped
     if (/\bbr\b/.test(ae) && fs.existsSync(file + ".br")) {
       serve = file + ".br";
       headers["Content-Encoding"] = "br";
