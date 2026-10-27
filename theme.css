@@ -997,3 +997,7 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 .seg .sai-tab{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding-inline:10px}
 .seg .sai-tab svg{color:var(--accent)}.seg .sai-tab.on svg,.seg .sai-tab:hover svg{color:var(--brand-2)}
 .sai-main{background:linear-gradient(135deg,var(--accent),var(--brand-2));border:0;color:var(--on-accent,white)}
+.sai2 .sai-sub{display:block;margin:14px 0 6px}.sai-posts{display:flex;flex-direction:column;gap:6px}
+.sai-post{display:flex;gap:8px;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2);color:inherit;font:inherit;text-align:start}
+.sai-post:disabled{opacity:.55}.sai-head{font-weight:600;margin:0 0 6px}.sai-ul{margin:4px 0 8px;padding-inline-start:20px}
+.sai-reply{padding:10px 0;border-top:1px solid var(--line)}.sai-reply .sai-in{margin:6px 0;min-height:64px}
