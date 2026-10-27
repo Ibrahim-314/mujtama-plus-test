@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.113.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: بطل جديد بتصميمنا وحركات حقيقية",
+      "items": [
+        "شخصية جديدة كاملة بهيكل بشري احترافي بدل الجندي القديم",
+        "بدلة تقنية رمادية داكنة بخطوط سماوية مضيئة عند الياقة والمعصمين",
+        "مشي وهرولة وجري سريع تنتقل بينها بسلاسة حسب ضغطك على العصا",
+        "إيماءات عند المهام: يصلح وهو جاثٍ، يلتقط الطرد، يهز رأسه عند النجاح",
+        "وقفات حيّة عند الوقوف (يكتّف يديه، يمسك الجوال، يتّكئ) ويتكلم بيديه في الحوار"
+      ]
+    },
+    "en": {
+      "title": "Nabd: our own new hero with real animations",
+      "items": [
+        "A brand-new professionally rigged hero replaces the old soldier",
+        "Dark graphite tech suit with glowing cyan collar and cuffs",
+        "Smooth walk, jog and sprint blending with how far you push the stick",
+        "Gestures on tasks: kneels to repair, picks up parcels, nods on success",
+        "Idle life (folds arms, checks phone, leans) and talks with his hands in dialogue"
+      ]
+    }
+  },
+  {
     "v": "2.112.0",
     "date": "2026-10-27",
     "ar": {
