@@ -24,6 +24,7 @@
     const x = root.querySelector(".nb-x"); x.textContent = "✕"; x.setAttribute("aria-label", T("خروج من اللعبة")); x.onclick = leave;
     const f = document.createElement("iframe");
     f.src = SRC; f.title = T("نبض النواة"); f.allow = "fullscreen; autoplay; gamepad"; f.setAttribute("allowfullscreen", "");
+    f.addEventListener("load", () => { const b = root && root.querySelector(".nb-boot"); if (b) b.remove(); }); // the game's own loading screen takes over
     root.append(f); document.body.append(root);
     timer = setTimeout(() => { const s = root && root.querySelector(".nb-boot span"); if (s && root.querySelector(".nb-boot")) s.textContent = T("الاتصال بطيء — ما زال التحميل مستمراً"); }, 45000);
   }
