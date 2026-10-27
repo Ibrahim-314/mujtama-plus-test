@@ -250,10 +250,64 @@
       </div>
       <p class="muted u-t-xs sai-note">يعمل بحسابك المرتبط في «مركز الذكاء» أو بالرصيد المجاني اليومي. لا نخزّن نصك.</p>
     </div><div id="sai-out" aria-live="polite"></div>
+    <div class="card sai2"><div class="row"><b class="grow">${ic("chart", "sm")} بعد النشر</b></div>
+      <p class="muted u-t-xs">نشرح أرقامك بكلام بسيط، ونلخّص تعليقات منشوراتك ونقترح ردوداً تعدّلها وترسلها بنفسك.</p>
+      <div class="sai-acts"><button class="btn sai-main" data-sai2="insights">${ic("sparkle", "xs")} اشرح أرقامي</button></div>
+      <b class="sai-sub">لخّص تعليقات منشور</b><div id="sai2-posts" class="sai-posts"><div class="skel"></div></div>
+    </div><div id="sai2-out" aria-live="polite"></div>
     <div class="card sai-tip"><b>نصيحة</b><p class="muted">اكتب فكرتك بكلماتك أولاً، ثم اطلب العناوين والهاشتاقات. افحص المنشور قبل النشر لتتجنّب الأخطاء ومشاركة معلومات شخصية.</p></div>`;
     const inp = body.querySelector("#sai-in"), out = body.querySelector("#sai-out");
     inp.addEventListener("input", () => { view._aiText = inp.value; });
     body.querySelectorAll("[data-sai]").forEach((b) => b.onclick = () => runAI(b.dataset.sai, b.dataset.lang, inp, out, b));
+    const out2 = body.querySelector("#sai2-out"), posts = body.querySelector("#sai2-posts");
+    if (view._ai2) { out2.innerHTML = view._ai2; wire2(out2); }
+    if (view._ai1) { out.innerHTML = view._ai1; wireAI(out, inp); }
+    body.querySelector('[data-sai2="insights"]').onclick = () => runAI2({ tool: "insights" }, out2, body);
+    try {
+      const o = await api("GET", "/api/studio/overview?days=90");
+      const list = (o.top || []).slice().sort((a, b) => (b.comments > 0) - (a.comments > 0) || new Date(b.at) - new Date(a.at)).slice(0, 5);
+      posts.innerHTML = list.map((x) => `<button class="sai-post" data-sai2="comments" data-post="${esc(x.id)}" ${x.comments ? "" : "disabled"}><bdi class="grow">${esc(x.title)}</bdi><span class="muted">${ic("comment", "xs")} ${fmtN(x.comments)}</span></button>`).join("") || `<p class="muted u-t-xs">انشر منشوراً وتصلك تعليقات لنلخّصها هنا</p>`;
+      posts.querySelectorAll("[data-post]").forEach((b) => b.onclick = () => runAI2({ tool: "comments", post: b.dataset.post }, out2, body));
+    } catch { posts.innerHTML = `<p class="muted u-t-xs">تعذّر تحميل منشوراتك</p>`; }
+  }
+  const MOOD = { positive: ["ok", "إيجابي"], mixed: ["mid", "متباين"], negative: ["low", "سلبي"] };
+  /* stage-2 result panel: survives a studio re-render (background sync refresh) — HTML kept on view._ai2 and re-wired */
+  function wire2(out) {
+    const keep = () => { view._ai2 = out.innerHTML; };
+    out.querySelectorAll("[data-skip]").forEach((b) => b.onclick = () => { b.closest(".sai-reply").remove(); keep(); });
+    out.querySelectorAll("[data-send]").forEach((b) => b.onclick = async () => {
+      const box = b.closest(".sai-reply"), text = box.querySelector("textarea").value.trim(); if (!text) return;
+      b.disabled = true;
+      try { const c = await api("POST", "/api/comments", { post: b.dataset.send, parent: box.dataset.cid, text, id: rid("c") }); box.innerHTML = `<p class="muted u-t-xs">${c?.comment?.status === "pending" ? "ردّك بانتظار موافقة المشرفين" : "✓ أُرسل ردّك"}</p>`; keep(); }
+      catch (e) { b.disabled = false; toast(e.message); }
+    });
+  }
+  async function runAI2(req, out, root) {
+    /* the studio can re-render while the model thinks: write into the panel that is on screen now */
+    const put = (h) => { view._ai2 = h; const o = out.isConnected ? out : document.getElementById("sai2-out"); if (o) { o.innerHTML = h; out = o; wire2(o); } };
+    const all = root.querySelectorAll("[data-sai2]"), was = [...all].map((x) => x.disabled); all.forEach((x) => x.disabled = true);
+    out.innerHTML = `<div class="card"><div class="skel"></div><div class="skel"></div></div>`; out.setAttribute("aria-busy", "true");
+    try {
+      const r = await api("POST", "/api/aihub/studio", req);
+      if (r.empty) { put(`<div class="card sai-res"><p class="muted">${esc(r.message || "لا بيانات كافية بعد")}</p></div>`); return; }
+      const x = r.result || {}, free = r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "";
+      const ul = (h, a) => a?.length ? `<b>${h}</b><ul class="sai-ul">${a.map((t) => `<li><bdi>${esc(t)}</bdi></li>`).join("")}</ul>` : "";
+      if (r.tool === "insights") put(`<div class="card sai-res">${x.headline ? `<p class="sai-head"><bdi>${esc(x.headline)}</bdi></p>` : ""}
+        ${(x.points || []).map((pt) => `<div class="sai-issue"><div class="grow"><b><bdi>${esc(pt.title)}</bdi></b><div class="muted"><bdi>${esc(pt.detail)}</bdi></div></div></div>`).join("")}
+        ${ul("جرّب هذا الأسبوع", x.actions)}</div>${free}`);
+      else {
+        const m = MOOD[x.mood] || MOOD.mixed;
+        put(`<div class="card sai-res"><div class="row"><b class="grow"><bdi>${esc(x.title)}</bdi></b><span class="sai-score ${m[0]}">${m[1]}</span></div>
+          <p class="muted u-t-xs">حلّلنا ${fmtN(x.count)} تعليقاً</p>${x.summary ? `<p><bdi>${esc(x.summary)}</bdi></p>` : ""}
+          ${ul("ما أعجبهم", x.liked)}${ul("ما انتقدوه", x.criticized)}${ul("أسئلة تستحق الرد", x.questions)}
+          ${(x.replies || []).length ? `<b>ردود مقترحة</b>${x.replies.map((rp) => `<div class="sai-reply" data-cid="${esc(rp.id)}"><div class="muted u-t-xs"><bdi>${esc(rp.comment)}</bdi></div>
+            <textarea class="sai-in sai-rin" rows="2" maxlength="2000" aria-label="الرد المقترح">${esc(rp.reply)}</textarea>
+            <div class="row"><button class="btn sm" data-send="${esc(x.post)}">أرسل الرد</button><button class="btn ghost sm" data-skip>تجاهل</button></div></div>`).join("")}` : ""}</div>${free}`);
+      }
+    } catch (e) {
+      const link = /اربط|غير مفعّل|مجاناً اليوم/.test(e.message || "") || e.status === 503 || e.status === 429;
+      put(`<div class="card sai-err"><p>${esc(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}</div>`);
+    } finally { all.forEach((x, i) => x.disabled = was[i]); out.removeAttribute("aria-busy"); }
   }
   async function runAI(tool, lang, inp, out, btn) {
     const text = inp.value.trim();
@@ -262,8 +316,9 @@
     out.innerHTML = `<div class="card"><div class="skel"></div><div class="skel"></div></div>`; out.setAttribute("aria-busy", "true");
     try {
       const r = await api("POST", "/api/aihub/studio", { tool, text, lang: lang || "ar" });
-      out.innerHTML = aiResult(r) + (r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "");
-      wireAI(out, inp);
+      view._ai1 = aiResult(r) + (r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "");
+      const o1 = out.isConnected ? out : document.getElementById("sai-out"), i1 = inp.isConnected ? inp : document.getElementById("sai-in");
+      if (o1) { o1.innerHTML = view._ai1; wireAI(o1, i1); }
     } catch (e) {
       const link = /اربط|غير مفعّل|مجاناً اليوم|not_configured|free_limit|not_linked/.test(e.message || "") || e.status === 503 || e.status === 429;
       out.innerHTML = `<div class="card sai-err"><p>${esc(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}</div>`;
