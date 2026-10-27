@@ -64,11 +64,11 @@ body{color:#fff;background:#03040f;overflow:hidden;touch-action:none;-webkit-use
 <script>
 /* Phones: render the canvas at a capped pixel ratio so the GPU is not asked to shade 3x the pixels. */
 (function(){try{var real=window.devicePixelRatio||1,touch=(navigator.maxTouchPoints||0)>0&&Math.min(screen.width,screen.height)<900;
-if(touch&&real>1.25){Object.defineProperty(window,'devicePixelRatio',{configurable:true,get:function(){return 1.25}})}}catch(e){}})();
+if(touch&&real>2){Object.defineProperty(window,'devicePixelRatio',{configurable:true,get:function(){return 2}})}}catch(e){}})();
 </script>
 <script src="index.js"></script>
 <script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9952900,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9954340,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 (function(){
