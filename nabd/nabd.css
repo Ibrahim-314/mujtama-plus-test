@@ -1,0 +1,14 @@
+/* «نبض النواة» — while the game is mounted the app's chrome steps aside and the game owns the screen. */
+body.nb-on { overflow: hidden; overscroll-behavior: none; }
+body.nb-on .topbar, body.nb-on .bottomnav, body.nb-on .sidebar, body.nb-on .fab, body.nb-on #install-banner { visibility: hidden !important; }
+#nb-root { position: fixed; inset: 0; z-index: 2147483000; background: #03040f; }
+#nb-root iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #03040f; }
+.nb-boot { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 12px; padding: 24px; text-align: center; color: #eaf2ff; background: radial-gradient(circle at 50% 40%, #0d2340, #02030b 70%); pointer-events: none; }
+.nb-boot b { font-size: 1.5rem; letter-spacing: .02em; color: #7ff3ff; text-shadow: 0 0 18px rgba(0, 220, 255, .55); }
+.nb-boot span { opacity: .8; font-size: .92rem; max-width: 30ch; }
+.nb-boot i { width: 64px; height: 64px; border-radius: 50%; border: 3px solid rgba(0, 220, 255, .18); border-top-color: #00dcff; animation: nb-spin 1s linear infinite; }
+.nb-x { position: absolute; z-index: 3; top: calc(env(safe-area-inset-top, 0px) + 10px); inset-inline-start: 10px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(127, 243, 255, .35); background: rgba(3, 8, 20, .6); color: #eaf2ff; font-size: 16px; cursor: pointer; }
+#nb-root.ready .nb-x { opacity: .55; }
+.nb-x:focus-visible { outline: 2px solid #00dcff; outline-offset: 2px; }
+@keyframes nb-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .nb-boot i { animation: none; } }
