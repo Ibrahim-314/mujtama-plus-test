@@ -1,5 +1,33 @@
 [
   {
+    "v": "2.111.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: حركة الشخصية والكاميرا من جديد",
+      "items": [
+        "مشي وجري ينسابان بسلاسة حسب ضغطك على العصا، وأقدام ثابتة بلا انزلاق",
+        "ضغطة خفيفة = مشي، ضغطة كاملة = جري، ونقرتين على العصا مع الإمساك = ركض سريع",
+        "الشخصية تميل في المنعطفات وللأمام مع الانطلاق، وتلتفت بسرعة من الوقوف",
+        "صوت خطوات حقيقي، ورشّة ماء لما الأرض مبلولة",
+        "الكاميرا تلحق خلفك تلقائياً بهدوء، بزاوية فوق الكتف",
+        "ما عاد تقفز الكاميرا عند الجدران: تقترب فوراً وترجع بنعومة",
+        "تكبير وتصغير بإصبعين، ودوران الكاميرا بانسياب مع السحب"
+      ]
+    },
+    "en": {
+      "title": "Nabd: character movement & camera rebuilt",
+      "items": [
+        "Smooth walk-to-run blending with planted feet",
+        "Light push walks, full push runs, double-tap-hold sprints",
+        "Body leans into turns",
+        "Footstep sounds with wet splashes",
+        "Gentle auto-follow over-the-shoulder camera",
+        "No more camera popping at walls",
+        "Pinch to zoom and smooth flick orbit"
+      ]
+    }
+  },
+  {
     "v": "2.110.0",
     "date": "2026-10-27",
     "ar": {
