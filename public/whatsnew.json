@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.105.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "لعبة «نبض النواة»",
+      "items": [
+        "لعبة جديدة ثلاثية الأبعاد بمحرك Godot: حي مستقبلي سنة 2077 وأنت تنقذ نواة المدينة مع الروبوت بِت",
+        "الفصل الأول «الوردية الأولى»: إصلاح الأنابيب، توصيل الطرود، تشغيل الألواح الشمسية، مهارات ومستويات",
+        "افتحها من «المزيد» ← «نبض النواة»، تعمل بشاشة كاملة على الجوال والكمبيوتر"
+      ]
+    },
+    "en": {
+      "title": "«Nabd: The Core» game",
+      "items": [
+        "A new 3D Godot game: a 2077 floating district where you save the city's core with your robot Bit",
+        "Chapter 1 «First Shift»: fix pipes, deliver parcels, power solar panels, skills and levels",
+        "Open it from More → Nabd, full screen on phone and desktop"
+      ]
+    }
+  },
+  {
     "v": "2.104.0",
     "date": "2026-10-27",
     "ar": {
