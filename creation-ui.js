@@ -224,14 +224,70 @@
   const deltaTag = (d) => `<span class="delta ${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "▲" : d < 0 ? "▼" : "•"} ${Math.abs(d)}٪</span>`;
   async function studioView() {
     const tab = view._stab || "overview";
-    const TABS = [["overview", "نظرة عامة"], ["calendar", "التقويم"], ["best", "أفضل وقت"], ["recycle", "إعادة النشر"], ["templates", "القوالب"], ["weekly", "التقرير الأسبوعي"]];
-    view.innerHTML = `<div class="wrap studio"><header class="page-head row-head"><div class="ph-main"><div><h2>${ic("chart")}استوديو المنشئ</h2></div><div class="acts"><a class="btn outline sm" href="#/analytics">تحليلات متقدمة</a><button class="btn sm" data-ui="compose">${ic("pen", "xs")} إنشاء</button></div></div></header><div class="explore-shortcuts"><a href="#/scheduled">${ic("clock", "sm")}المجدولة</a><a href="#/drafts">${ic("doc", "sm")}المسودات</a><a href="#/series">${ic("book", "sm")}السلاسل</a></div><div class="seg">${TABS.map(([k, l]) => `<button class="${tab === k ? "on" : ""}" data-stab="${k}">${l}</button>`).join("")}</div><div id="st-body"><div class="skel"></div><div class="skel"></div></div></div>`;
+    const TABS = [["overview", "نظرة عامة"], ["ai", "الذكاء"], ["calendar", "التقويم"], ["best", "أفضل وقت"], ["recycle", "إعادة النشر"], ["templates", "القوالب"], ["weekly", "التقرير الأسبوعي"]];
+    view.innerHTML = `<div class="wrap studio"><header class="page-head row-head"><div class="ph-main"><div><h2>${ic("chart")}استوديو المنشئ</h2></div><div class="acts"><a class="btn outline sm" href="#/analytics">تحليلات متقدمة</a><button class="btn sm" data-ui="compose">${ic("pen", "xs")} إنشاء</button></div></div></header><div class="explore-shortcuts"><a href="#/scheduled">${ic("clock", "sm")}المجدولة</a><a href="#/drafts">${ic("doc", "sm")}المسودات</a><a href="#/series">${ic("book", "sm")}السلاسل</a></div><div class="seg">${TABS.map(([k, l]) => k === "ai" ? `<button class="sai-tab ${tab === k ? "on" : ""}" data-stab="ai" aria-label="${l}" title="${l}">${ic("sparkle", "sm")}</button>` : `<button class="${tab === k ? "on" : ""}" data-stab="${k}">${l}</button>`).join("")}</div><div id="st-body"><div class="skel"></div><div class="skel"></div></div></div>`;
     view.querySelectorAll("[data-stab]").forEach(b => b.onclick = () => { view._stab = b.dataset.stab; studioView(); });
     if (online()) startGuideMount(); // v2.61 «ابدأ هنا» (own section below)
     if (online()) goalsMount(); // v2.61 goals + «روابطك» (own section, below «ابدأ هنا»)
     if (!online()) { $("#st-body").innerHTML = `<div class="empty">الاستوديو يتطلب الاتصال</div>`; return; }
     const body = $("#st-body");
-    try { await ({ overview: stOverview, calendar: stCalendar, best: stBest, recycle: stRecycle, templates: stTemplates, weekly: stWeekly })[tab](body); } catch (e) { body.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+    try { await ({ overview: stOverview, ai: stAI, calendar: stCalendar, best: stBest, recycle: stRecycle, templates: stTemplates, weekly: stWeekly })[tab](body); } catch (e) { body.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  }
+
+  /* v2.114 «✨ مساعد الذكاء» — studio AI tools. All AI comes from «مركز الذكاء» (#/aihub): the member's own linked account for the
+   * «studio» feature, else the app's free daily allowance. POST /api/aihub/studio {tool: meta|translate|check, text, lang}. Text is not stored. */
+  const AI_KIND = { spelling: "إملاء", clarity: "وضوح", tone: "نبرة", sensitive: "حساس", privacy: "خصوصية", length: "طول" };
+  async function stAI(body) {
+    const draft = view._aiText || "";
+    body.innerHTML = `<div class="card sai">
+      <div class="row"><b class="grow">${ic("pen", "sm")} اكتب أو الصق نص منشورك</b><a class="btn ghost sm" href="#/aihub">${ic("chart", "xs")} مركز الذكاء</a></div>
+      <textarea id="sai-in" class="sai-in" rows="6" maxlength="6000" placeholder="مثال: جربت اليوم مطعم جديد في جدة…" aria-label="نص المنشور">${esc(draft)}</textarea>
+      <div class="sai-acts">
+        <button class="btn sai-main" data-sai="meta">${ic("sparkle", "xs")} اقترح عناوين ووصفاً وهاشتاقات</button>
+        <button class="btn outline" data-sai="check">${ic("eye", "xs")} افحص قبل النشر</button>
+        <button class="btn outline" data-sai="translate" data-lang="en">ترجم إلى English</button>
+        <button class="btn outline" data-sai="translate" data-lang="ar">ترجم إلى العربية</button>
+      </div>
+      <p class="muted u-t-xs sai-note">يعمل بحسابك المرتبط في «مركز الذكاء» أو بالرصيد المجاني اليومي. لا نخزّن نصك.</p>
+    </div><div id="sai-out" aria-live="polite"></div>
+    <div class="card sai-tip"><b>نصيحة</b><p class="muted">اكتب فكرتك بكلماتك أولاً، ثم اطلب العناوين والهاشتاقات. افحص المنشور قبل النشر لتتجنّب الأخطاء ومشاركة معلومات شخصية.</p></div>`;
+    const inp = body.querySelector("#sai-in"), out = body.querySelector("#sai-out");
+    inp.addEventListener("input", () => { view._aiText = inp.value; });
+    body.querySelectorAll("[data-sai]").forEach((b) => b.onclick = () => runAI(b.dataset.sai, b.dataset.lang, inp, out, b));
+  }
+  async function runAI(tool, lang, inp, out, btn) {
+    const text = inp.value.trim();
+    if (text.length < 3) { toast("اكتب نص المنشور أولاً"); inp.focus(); return; }
+    const all = inp.closest(".studio").querySelectorAll("[data-sai]"); all.forEach((x) => x.disabled = true);
+    out.innerHTML = `<div class="card"><div class="skel"></div><div class="skel"></div></div>`; out.setAttribute("aria-busy", "true");
+    try {
+      const r = await api("POST", "/api/aihub/studio", { tool, text, lang: lang || "ar" });
+      out.innerHTML = aiResult(r) + (r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "");
+      wireAI(out, inp);
+    } catch (e) {
+      const link = /اربط|غير مفعّل|مجاناً اليوم|not_configured|free_limit|not_linked/.test(e.message || "") || e.status === 503 || e.status === 429;
+      out.innerHTML = `<div class="card sai-err"><p>${esc(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}</div>`;
+    } finally { all.forEach((x) => x.disabled = false); out.removeAttribute("aria-busy"); }
+  }
+  const copyBtn = (v, l = "نسخ") => `<button class="btn ghost sm" data-copy="${esc(v)}">${l}</button>`;
+  const useBtn = (v) => `<button class="btn ghost sm" data-use="${esc(v)}">استخدم</button>`;
+  function aiResult(r) {
+    const x = r.result || {};
+    if (r.tool === "meta") return `<div class="card sai-res"><b>العناوين المقترحة</b>${(x.titles || []).map((t) => `<div class="sai-row"><bdi class="grow">${esc(t)}</bdi>${copyBtn(t)}</div>`).join("")}
+      ${x.description ? `<b>الوصف</b><div class="sai-row"><bdi class="grow">${esc(x.description)}</bdi>${copyBtn(x.description)}</div>` : ""}
+      ${(x.hashtags || []).length ? `<b>الهاشتاقات</b><div class="sai-row"><div class="grow chips">${x.hashtags.map((h) => `<span class="chip"><bdi>${esc(h)}</bdi></span>`).join("")}</div>${copyBtn(x.hashtags.join(" "))}</div>` : ""}
+      <button class="btn sm" data-compose="${esc([x.titles?.[0] ? "**" + x.titles[0] + "**" : "", view._aiText || "", (x.hashtags || []).join(" ")].filter(Boolean).join("\n\n"))}">${ic("pen", "xs")} انشر بهذه الاقتراحات</button></div>`;
+    if (r.tool === "translate") return `<div class="card sai-res"><b>الترجمة</b><div class="sai-row"><bdi class="grow sai-pre">${esc(x.text)}</bdi></div><div class="row">${copyBtn(x.text)}${useBtn(x.text)}</div></div>`;
+    const tone = x.score >= 80 ? "ok" : x.score >= 55 ? "mid" : "low";
+    return `<div class="card sai-res"><div class="row"><b class="grow">جاهزية النشر</b><span class="sai-score ${tone}">${x.score}/100</span></div>
+      ${x.safe === false ? `<p class="sai-warn">في النص ما قد يخالف الإرشادات أو يكشف معلومات شخصية. راجعه قبل النشر.</p>` : ""}
+      ${(x.issues || []).map((i) => `<div class="sai-issue"><span class="chip">${AI_KIND[i.kind] || i.kind}</span><div class="grow"><bdi>${esc(i.note)}</bdi>${i.fix ? `<div class="muted u-t-xs"><bdi>${esc(i.fix)}</bdi></div>` : ""}</div></div>`).join("") || `<p class="muted">لا ملاحظات مهمة — جاهز للنشر</p>`}
+      ${x.improved ? `<b>نسخة محسّنة</b><div class="sai-row"><bdi class="grow sai-pre">${esc(x.improved)}</bdi></div><div class="row">${copyBtn(x.improved)}${useBtn(x.improved)}</div>` : ""}</div>`;
+  }
+  function wireAI(out, inp) {
+    out.querySelectorAll("[data-copy]").forEach((b) => b.onclick = async () => { try { await navigator.clipboard.writeText(b.dataset.copy); toast("✓ نُسخ"); } catch { toast("تعذّر النسخ"); } });
+    out.querySelectorAll("[data-use]").forEach((b) => b.onclick = () => { inp.value = b.dataset.use; view._aiText = inp.value; inp.focus(); toast("✓ وُضع النص في المسودة"); });
+    out.querySelectorAll("[data-compose]").forEach((b) => b.onclick = () => composer({ data: { markdown: b.dataset.compose } }));
   }
   async function stOverview(body) {
     const days = view._sdays || 28, o = await api("GET", "/api/studio/overview?days=" + days);
