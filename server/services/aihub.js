@@ -315,11 +315,47 @@ module.exports = (ctx, opts = {}) => {
     translate: { max: 1400, ask: (t, lang) => `ترجم النص التالي إلى ${lang === "en" ? "الإنجليزية" : "العربية"} ترجمة طبيعية تحافظ على المعنى والنبرة والهاشتاقات والروابط كما هي.\nأعد: {"text":"..."}\n\nالنص:\n"""${t}"""` },
     check: { max: 900, ask: (t) => `راجع مسودة المنشور التالية قبل النشر وأعد ملاحظات عملية:\n- score: من 0 إلى 100 لجاهزية النشر\n- issues: قائمة {"kind":"spelling|clarity|tone|sensitive|privacy|length","note":"...","fix":"..."} (فقط المشكلات الحقيقية، بحد أقصى 6)\n- safe: false إذا فيه إساءة أو تحريض أو معلومات شخصية حساسة (رقم جوال، عنوان، هوية) أو ادعاءات طبية/مالية مضللة\n- improved: نسخة محسّنة من النص بنفس المعنى\nأعد: {"score":0,"safe":true,"issues":[],"improved":"..."}\n\nالمسودة:\n"""${t}"""` }
   };
+  /* v2.115 Stage 2 «بعد النشر»: the server gathers the creator's own numbers/comments (never trusts the client), the model only explains them */
+  const ST2 = {
+    insights: { max: 900, ask: (facts) => `هذه أرقام منشئ محتوى خلال آخر ${facts.days} يوماً (JSON). اشرحها له بكلام بسيط كصديق خبير، واستخدم هذه الأرقام فقط ولا تخترع غيرها.\n- headline: جملة واحدة تلخّص وضعه\n- points: من 2 إلى 4 ملاحظات {"title":"...","detail":"..."} تربط الأرقام بسببها المحتمل\n- actions: من 1 إلى 3 خطوات عملية قصيرة للأسبوع القادم\nأعد: {"headline":"...","points":[],"actions":[]}\n\nالأرقام:\n${JSON.stringify(facts)}` },
+    comments: { max: 1400, ask: (facts) => `هذه تعليقات الجمهور على منشور «${facts.title}» (JSON، لكل تعليق id ونص). حلّلها لصاحب المنشور:\n- summary: جملة أو جملتان\n- mood: positive أو mixed أو negative\n- liked: حتى 3 أشياء أعجبت الناس\n- criticized: حتى 3 انتقادات (فارغة إن لم توجد)\n- questions: حتى 3 أسئلة تكررت أو تستحق رداً\n- replies: حتى 5 ردود مقترحة مهذبة وقصيرة باسم صاحب المنشور على التعليقات التي تستحق رداً (الأسئلة والانتقادات أولاً) {"id":"معرّف التعليق","reply":"..."}؛ لا تعد بشيء لا تعرفه ولا تطلب معلومات شخصية\nأعد: {"summary":"...","mood":"mixed","liked":[],"criticized":[],"questions":[],"replies":[]}\n\nالتعليقات:\n${JSON.stringify(facts.comments)}` }
+  };
+  async function insightFacts(user) {
+    const st = ctx.services.studio; if (!st) throw fail(503, "not_configured", "إحصائيات الاستوديو غير متاحة الآن");
+    const o = await st.overview(user, 28);
+    const wk = []; const v = o.daily.views; for (let i = 0; i < v.length; i += 7) wk.push(v.slice(i, i + 7).reduce((a, b) => a + b.value, 0));
+    return { days: o.days, totals: o.totals, changeVsPreviousPeriodPct: o.deltas, engagementRatePct: o.engagementRate, viewsPerWeek: wk,
+      sources: o.sources.slice(0, 4).map((x) => ({ from: x.label, sharePct: x.share })),
+      topPosts: o.top.slice(0, 5).map((x) => ({ title: String(x.title || "").slice(0, 80), type: x.type, views: x.views, reactions: x.reactions, comments: x.comments })) };
+  }
+  async function commentFacts(user, postId) {
+    const p = typeof postId === "string" && postId.length < 80 ? await db.get("SELECT id, author, title, text FROM posts WHERE id=$1", [postId]) : null;
+    if (!p || p.author !== user.id) throw fail(404, "not_found", "اختر منشوراً من منشوراتك");
+    const rows = await db.all("SELECT id, text FROM comments WHERE post=$1 AND status='published' AND author<>$2 ORDER BY created_at DESC LIMIT 60", [p.id, user.id]);
+    return { post: p.id, title: String(p.title || p.text || "").slice(0, 80), comments: rows.map((r) => ({ id: r.id, text: String(r.text || "").slice(0, 300) })) };
+  }
   function parseJSON(text) {
     const m = String(text || "").replace(/^```(?:json)?/i, "").replace(/```\s*$/, "").match(/\{[\s\S]*\}/);
     try { return m ? JSON.parse(m[0]) : null; } catch { return null; }
   }
   const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+  const list = (a, n, m) => (Array.isArray(a) ? a : []).map((x) => str(x, m)).filter(Boolean).slice(0, n);
+  function shape2(tool, j, facts) {
+    if (!j) throw fail(502, "bad_output", "لم يرجع النموذج تحليلاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    if (tool === "insights") {
+      const points = (Array.isArray(j.points) ? j.points : []).slice(0, 4).map((x) => ({ title: str(x?.title, 90), detail: str(x?.detail, 300) })).filter((x) => x.title || x.detail);
+      const out = { headline: str(j.headline, 200), points, actions: list(j.actions, 3, 200) };
+      if (!out.headline && !points.length) throw fail(502, "bad_output", "لم يرجع النموذج تحليلاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+      return out;
+    }
+    const byId = new Map(facts.comments.map((c) => [c.id, c.text])), seen = new Set();
+    const replies = (Array.isArray(j.replies) ? j.replies : []).filter((x) => byId.has(x?.id) && !seen.has(x.id) && seen.add(x.id)).slice(0, 5)
+      .map((x) => ({ id: x.id, comment: byId.get(x.id), reply: str(x.reply, 500) })).filter((x) => x.reply);
+    const out = { post: facts.post, title: facts.title, count: facts.comments.length, summary: str(j.summary, 400), mood: ["positive", "mixed", "negative"].includes(j.mood) ? j.mood : "mixed",
+      liked: list(j.liked, 3, 200), criticized: list(j.criticized, 3, 200), questions: list(j.questions, 3, 200), replies };
+    if (!out.summary && !replies.length) throw fail(502, "bad_output", "لم يرجع النموذج تحليلاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    return out;
+  }
   function shape(tool, j, raw) {
     if (tool === "meta") {
       const titles = (Array.isArray(j?.titles) ? j.titles : []).map((x) => str(x, 90)).filter(Boolean).slice(0, 3);
@@ -337,7 +373,16 @@ module.exports = (ctx, opts = {}) => {
   }
   async function studio(user, b) {
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
-    const tool = String(b.tool || ""); const T = ST_TOOLS[tool]; if (!T) throw fail(400, "bad_request", "أداة غير معروفة");
+    const tool = String(b.tool || "");
+    if (ST2[tool]) {
+      const facts = tool === "insights" ? await insightFacts(user) : await commentFacts(user, b.post);
+      if (tool === "insights" && !facts.totals.views && !facts.topPosts.length) return { tool, empty: true, result: null, message: "انشر أول منشوراتك ثم عُد هنا لنشرح أرقامك" };
+      if (tool === "comments" && !facts.comments.length) return { tool, empty: true, result: null, message: "لا تعليقات من الجمهور على هذا المنشور بعد" };
+      const T2 = ST2[tool];
+      const o2 = await run(user, [{ role: "user", content: T2.ask(facts) }], { feature: "studio", system: ST_SYS, maxTokens: T2.max, freeMax: T2.max });
+      return { tool, result: shape2(tool, parseJSON(o2.text), facts), provider: o2.provider, via: o2.via || null, model: o2.model || null, free: o2.free || null };
+    }
+    const T = ST_TOOLS[tool]; if (!T) throw fail(400, "bad_request", "أداة غير معروفة");
     const text = typeof b.text === "string" ? b.text.trim() : "";
     if (text.length < 3) throw fail(400, "too_short", "اكتب نص المنشور أولاً (بضع كلمات على الأقل)");
     if (text.length > 6000) throw fail(413, "too_long", "النص طويل جداً لهذه الأداة (الحد 6000 حرف)");
