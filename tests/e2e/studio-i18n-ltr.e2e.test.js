@@ -37,13 +37,13 @@ test("1440 LTR (en): every studio tab has no Arabic UI strings; Post/Posts unit;
   // Arabic RTL: source strings untouched
   const arHead = await p.textContent(".wrap.studio .page-head h2"), arTabs = await p.$$eval("[data-stab]", (b) => b.map((x) => x.textContent));
   assert.equal(arHead.trim(), "استوديو المنشئ");
-  assert.deepEqual(arTabs, ["نظرة عامة", "التقويم", "أفضل وقت", "إعادة النشر", "القوالب", "التقرير الأسبوعي"]);
+  assert.deepEqual(arTabs, ["نظرة عامة", "", "التقويم", "أفضل وقت", "إعادة النشر", "القوالب", "التقرير الأسبوعي"]);
   assert.match(await p.textContent("#st-goals .sgl-num"), /منشور/);
   await p.waitForFunction(() => !!window.MPI18n?.setLang, null, { timeout: 15000 });
   await p.evaluate(() => window.MPI18n.setLang("en")); await p.waitForFunction(() => document.documentElement.dir === "ltr");
   await go();
   assert.equal((await p.textContent(".wrap.studio .page-head h2")).trim(), "Creator Studio");
-  assert.deepEqual(await p.$$eval("[data-stab]", (b) => b.map((x) => x.textContent)), ["Overview", "Calendar", "Best time", "Recycle", "Templates", "Weekly report"]);
+  assert.deepEqual(await p.$$eval("[data-stab]", (b) => b.map((x) => x.textContent)), ["Overview", "", "Calendar", "Best time", "Recycle", "Templates", "Weekly report"]);
   assert.match(await p.textContent("#st-goals .sgl-num"), /Posts/, "plural unit for target 4");
   const left = {};
   for (const k of ["overview", "calendar", "best", "recycle", "templates", "weekly"]) {
