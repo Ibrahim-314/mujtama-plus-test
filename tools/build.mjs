@@ -69,6 +69,19 @@ fs.writeFileSync(
   fs.readFileSync(path.join(ROOT, "sw.js"), "utf8").replace(/const VERSION = "[^"]+"/, `const VERSION = "mp-${release}"`).replaceAll("__APP_VERSION__", APP_VER) /* v2.68: the SW also knows the human version number */
 );
 fs.cpSync(path.join(ROOT, "vendor"), path.join(DIST, "vendor"), { recursive: true, filter: (f) => !f.endsWith("hls.light.min.js") }); // v2.70: hls.js ships only as the hashed lazy «hls» chunk
+/* v2.105 «نبض النواة»: the Godot Web export lives in nabd/engine/. The engine (.wasm) and data pack (.pck) are kept in the
+ * repo gzipped and split into <4 MB parts; here they are joined into the .gz the server sends (Content-Encoding: gzip)
+ * plus the raw file for clients without gzip. The game page itself is not hashed or rewritten. */
+{ const E = path.join(ROOT, "nabd", "engine"), ED = path.join(DIST, "nabd", "engine"); fs.mkdirSync(ED, { recursive: true });
+  for (const f of fs.readdirSync(E)) if (!/\.part\d+$/.test(f)) fs.copyFileSync(path.join(E, f), path.join(ED, f));
+  for (const f of ["index.wasm", "index.pck"]) {
+    const parts = fs.readdirSync(E).filter((p) => p.startsWith(f + ".gz.part")).sort((x, y) => +x.split("part")[1] - +y.split("part")[1]);
+    if (!parts.length) throw new Error("nabd/engine/" + f + ".gz.part* missing");
+    const gz = Buffer.concat(parts.map((p) => fs.readFileSync(path.join(E, p))));
+    fs.writeFileSync(path.join(ED, f + ".gz"), gz); fs.writeFileSync(path.join(ED, f), zlib.gunzipSync(gz));
+  }
+  fs.writeFileSync(path.join(ED, "index.html"), fs.readFileSync(path.join(E, "index.html"), "utf8"));
+}
 /* public/: plain static files copied verbatim to the dist root (e.g. /pi-app-validation.txt for Pi App Studio).
  * Not compressed, not hashed, not rewritten; served as ordinary static files before the SPA fallback. */
 const PUBLIC = path.join(ROOT, "public");
