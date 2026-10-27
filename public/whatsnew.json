@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.106.1",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "إصلاح حركة الشخصية في «نبض النواة»",
+      "items": [
+        "أي لمسة على الشاشة تكمّل الحوار، فتتحرك الشخصية مباشرة على الجوال",
+        "حماية تلقائية تمنع تجمّد الشخصية"
+      ]
+    },
+    "en": {
+      "title": "Nabd: hero movement fix",
+      "items": [
+        "Any tap now advances dialogue so the hero moves right away on phones",
+        "Auto-safety that keeps the hero from freezing"
+      ]
+    }
+  },
+  {
     "v": "2.106.0",
     "date": "2026-10-27",
     "ar": {
