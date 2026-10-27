@@ -42,7 +42,7 @@ test("fresh creator: «ابدأ هنا» on top, 0/5, all tabs + shortcuts kept;
   assert.deepEqual(order, [...order].sort((a, b) => a - b), "head → start guide → shortcuts → tabs");
   assert.equal(await m.getAttribute(".sg-bar", "aria-valuenow"), "0");
   assert.equal(await m.$$eval(".sg-list .li", (x) => x.length), 5);
-  assert.equal(await m.$$eval(".studio .seg [data-stab]", (x) => x.length), 6, "all six studio tabs remain");
+  assert.equal(await m.$$eval(".studio .seg [data-stab]", (x) => x.length), 7, "all seven studio tabs remain");
   assert.equal(await m.$$eval(".studio > .explore-shortcuts a", (x) => x.length), 3, "top shortcuts row kept (goals «روابطك» nav is separate)");
   assert.ok(await m.$('.sg-list [data-sg="schedule"]') && await m.$('.sg-list [data-ui="compose"]') && await m.$('.sg-list a[href="#/creator"]') && await m.$('.sg-list a[href="#/communities"]') && await m.$('.sg-list a[href="#/me"]'));
   assert.ok(await m.$eval(".sg-bar i", (i) => !i.getAttribute("style") || /width/.test(i.style.cssText)), "progress painted through CSSOM");
@@ -80,7 +80,7 @@ test("dismiss → compact restore chip, persisted across reloads; restore brings
   assert.equal(await m.$("#st-start .sg-card"), null);
   assert.equal(await m.evaluate(() => document.activeElement?.id), "sg-show");
   await m.reload(); await m.waitForSelector(".bottomnav a[data-r=home]"); await studio(m);
-  assert.ok(await m.$("#sg-show"), "still dismissed after reload"); assert.equal(await m.$$eval(".studio .seg [data-stab]", (x) => x.length), 6);
+  assert.ok(await m.$("#sg-show"), "still dismissed after reload"); assert.equal(await m.$$eval(".studio .seg [data-stab]", (x) => x.length), 7);
   await m.click("#sg-show"); await m.waitForSelector("#st-start .sg-card"); assert.equal(await m.evaluate(() => document.activeElement?.id), "sg-hide");
 });
 
