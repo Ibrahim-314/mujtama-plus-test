@@ -3251,5 +3251,10 @@
 "اضغط «ابدأ التعدين» مرة كل 24 ساعة.": "Tap “Start mining” once every 24 hours.",
 "يرتفع العداد معك حتى يكتمل": "The counter rises until it reaches",
 "استلم ما عدّنته وابدأ دورة جديدة، وادخل يومياً لمكافأة الدخول.": "Claim what you mined and start a new cycle; sign in daily for the sign-in reward.",
-"استلمت": "You claimed"
+"استلمت": "You claimed",
+"نبض النواة": "Nabd: The Core",
+"لعبة ثلاثية الأبعاد: أنقذ مدينة 2077": "3D game: save the city of 2077",
+"جارٍ تشغيل العالم… قد يستغرق التحميل الأول دقيقة": "Starting the world… the first load can take a minute",
+"الاتصال بطيء — ما زال التحميل مستمراً": "Slow connection — still loading",
+"خروج من اللعبة": "Exit the game"
 });
