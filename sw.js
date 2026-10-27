@@ -24,6 +24,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method === "POST" && url.pathname === "/api/auth/logout") { e.waitUntil(caches.delete(API).then(() => idb("clear"))); return; }
   if ((req.method === "PUT" || req.method === "DELETE") && /^\/api\/drafts\/[\w-]+$/.test(url.pathname)) { e.respondWith(draftWrite(req)); return; }
   if (req.method !== "GET") return;
+  if (url.pathname.startsWith("/nabd/engine/")) return; // v2.105: the game engine (~40 MB) stays in the HTTP cache, never the SW cache
   if (url.pathname === "/whatsnew.json") return; // v2.68: release notes always come from the network
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname === "/api/drafts") { e.respondWith(draftList(req)); return; }
