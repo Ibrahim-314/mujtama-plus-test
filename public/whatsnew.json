@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.107.2",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: تحكّم أسهل بالإصبع",
+      "items": [
+        "عصا المشي أكبر وأسهل ولا تلفّ الكاميرا بالغلط",
+        "أزرار المهارات والخروج انتقلت لليمين وتستجيب لأول لمسة",
+        "المس بطاقة الهدف لتمشي الشخصية إليه تلقائياً"
+      ]
+    },
+    "en": {
+      "title": "Nabd: easier touch controls",
+      "items": [
+        "Bigger, easier walk stick that no longer spins the camera",
+        "Skills and Exit moved to the right and respond on first tap",
+        "Tap the objective card to auto-walk to it"
+      ]
+    }
+  },
+  {
     "v": "2.107.1",
     "date": "2026-10-27",
     "ar": {
