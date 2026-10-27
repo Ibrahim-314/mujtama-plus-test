@@ -278,15 +278,19 @@ module.exports = (ctx, opts = {}) => {
   }
   async function chat(user, b) {
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
-    const messages = cleanMessages(b.messages);
-    const r = await resolve(user, typeof b.provider === "string" ? b.provider : null);
-    const sys = { role: "system", content: SYS + ((await isMinor(user.id)) ? SYS_MINOR : "") };
+    return run(user, cleanMessages(b.messages), { provider: typeof b.provider === "string" ? b.provider : null, model: b.model, maxTokens: b.maxTokens });
+  }
+  /** one AI call on the member's chosen account for `feature` (or the app's free daily allowance) — shared by the hub chat and the studio tools */
+  async function run(user, messages, o = {}) {
+    const b = { model: o.model, maxTokens: o.maxTokens };
+    const r = await resolve(user, o.provider || null, o.feature || "chat");
+    const sys = { role: "system", content: (o.system || SYS) + ((await isMinor(user.id)) ? SYS_MINOR : "") };
     if (r.pid === "free") {
       const st = await settings();
       if (!freeP || st.freeDaily <= 0) throw fail(503, "not_configured", OFF_FREE);
       const used = await usedToday(user.id, "free");
       if (used >= st.freeDaily) throw fail(429, "free_limit", `استخدمت ${st.freeDaily} من ${st.freeDaily} مجاناً اليوم. اربط حسابك لتكمل بلا حد من التطبيق، أو عُد غداً.`, { daily: st.freeDaily, resetsAt: nextReset() });
-      let out; try { out = await freeP.chat([sys, ...messages], { maxTokens: 700 }); } catch (e) { throw mapErr(e); }
+      let out; try { out = await freeP.chat([sys, ...messages], { maxTokens: o.freeMax || 700 }); } catch (e) { throw mapErr(e); }
       await count(user.id, "free");
       return { text: out.text, provider: "free", via: freeName(), model: out.model || null, free: { used: used + 1, left: Math.max(0, st.freeDaily - used - 1), daily: st.freeDaily } };
     }
@@ -303,6 +307,44 @@ module.exports = (ctx, opts = {}) => {
     return { text: out.text, provider: r.pid, model: out.model || model, usage: out.usage };
   }
 
+
+  /* ---------- v2.114 «مساعد الاستوديو» — creator-studio AI tools, powered by this hub (same accounts, allowance, privacy) ---------- */
+  const ST_SYS = "أنت مساعد منشئي محتوى داخل «مجتمع بلس» (شبكة اجتماعية عربية). تكتب بالعربية الفصحى المبسطة إلا إذا كان النص بالإنجليزية. كن عملياً ومختصراً. لا تختلق أرقاماً أو حقائق. أعد JSON صالحاً فقط بلا أي نص قبله أو بعده.";
+  const ST_TOOLS = {
+    meta: { max: 900, ask: (t, lang) => `اقرأ مسودة المنشور التالية واقترح لها (${lang === "en" ? "بالإنجليزية" : "بلغة المسودة"}):\n- titles: 3 عناوين جذابة صادقة (كل عنوان ≤ 70 حرفاً، بلا مبالغة أو طُعم نقرات)\n- description: وصف قصير واضح (≤ 220 حرفاً)\n- hashtags: 5 إلى 8 هاشتاقات مناسبة تبدأ بـ # بلا مسافات\nأعد: {"titles":[...],"description":"...","hashtags":[...]}\n\nالمسودة:\n"""${t}"""` },
+    translate: { max: 1400, ask: (t, lang) => `ترجم النص التالي إلى ${lang === "en" ? "الإنجليزية" : "العربية"} ترجمة طبيعية تحافظ على المعنى والنبرة والهاشتاقات والروابط كما هي.\nأعد: {"text":"..."}\n\nالنص:\n"""${t}"""` },
+    check: { max: 900, ask: (t) => `راجع مسودة المنشور التالية قبل النشر وأعد ملاحظات عملية:\n- score: من 0 إلى 100 لجاهزية النشر\n- issues: قائمة {"kind":"spelling|clarity|tone|sensitive|privacy|length","note":"...","fix":"..."} (فقط المشكلات الحقيقية، بحد أقصى 6)\n- safe: false إذا فيه إساءة أو تحريض أو معلومات شخصية حساسة (رقم جوال، عنوان، هوية) أو ادعاءات طبية/مالية مضللة\n- improved: نسخة محسّنة من النص بنفس المعنى\nأعد: {"score":0,"safe":true,"issues":[],"improved":"..."}\n\nالمسودة:\n"""${t}"""` }
+  };
+  function parseJSON(text) {
+    const m = String(text || "").replace(/^```(?:json)?/i, "").replace(/```\s*$/, "").match(/\{[\s\S]*\}/);
+    try { return m ? JSON.parse(m[0]) : null; } catch { return null; }
+  }
+  const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+  function shape(tool, j, raw) {
+    if (tool === "meta") {
+      const titles = (Array.isArray(j?.titles) ? j.titles : []).map((x) => str(x, 90)).filter(Boolean).slice(0, 3);
+      const hashtags = [...new Set((Array.isArray(j?.hashtags) ? j.hashtags : []).map((x) => "#" + str(x, 40).replace(/^#+/, "").replace(/\s+/g, "_")).filter((x) => x.length > 1))].slice(0, 8);
+      const description = str(j?.description, 300);
+      if (!titles.length && !description) throw fail(502, "bad_output", "لم يرجع النموذج اقتراحات مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
+      return { titles, description, hashtags };
+    }
+    if (tool === "translate") { const text = str(j?.text, 9000) || (j ? "" : str(raw, 9000)); if (!text) throw fail(502, "bad_output", "لم تصل الترجمة. أعد المحاولة."); return { text }; }
+    const KINDS = ["spelling", "clarity", "tone", "sensitive", "privacy", "length"];
+    if (!j) throw fail(502, "bad_output", "لم يرجع النموذج مراجعة مفهومة. أعد المحاولة.");
+    const score = Math.max(0, Math.min(100, Math.round(Number(j.score) || 0)));
+    const issues = (Array.isArray(j.issues) ? j.issues : []).slice(0, 6).map((x) => ({ kind: KINDS.includes(x?.kind) ? x.kind : "clarity", note: str(x?.note, 240), fix: str(x?.fix, 240) })).filter((x) => x.note);
+    return { score, safe: j.safe !== false, issues, improved: str(j.improved, 9000) };
+  }
+  async function studio(user, b) {
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const tool = String(b.tool || ""); const T = ST_TOOLS[tool]; if (!T) throw fail(400, "bad_request", "أداة غير معروفة");
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    if (text.length < 3) throw fail(400, "too_short", "اكتب نص المنشور أولاً (بضع كلمات على الأقل)");
+    if (text.length > 6000) throw fail(413, "too_long", "النص طويل جداً لهذه الأداة (الحد 6000 حرف)");
+    const lang = b.lang === "en" ? "en" : "ar";
+    const out = await run(user, [{ role: "user", content: T.ask(text.replace(/"""/g, "\"\"\""), lang) }], { feature: "studio", system: ST_SYS, maxTokens: T.max, freeMax: T.max });
+    return { tool, result: shape(tool, parseJSON(out.text), out.text), provider: out.provider, via: out.via || null, model: out.model || null, free: out.free || null };
+  }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
   async function providerFor(uid, feature) {
     const pr = await prefsOf(uid), pid = pr.features[feature];
@@ -338,8 +380,9 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/aihub/oauth/:provider/callback", async (req, res) => oauthCallback(req, res, L.byId(req.params.provider)?.link === "oauth" ? req.params.provider : "openrouter"));
   R.put("/api/aihub/prefs", A(async (req) => savePrefs(req.user, req.body || {})));
   R.post("/api/aihub/chat", A(async (req) => chat(req.user, req.body || {})));
+  R.post("/api/aihub/studio", A(async (req) => studio(req.user, req.body || {})));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
 
-  return { providerFor, overview, settings, chat, MSG };
+  return { providerFor, overview, settings, chat, studio, MSG };
 };
