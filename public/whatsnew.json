@@ -1,5 +1,31 @@
 [
   {
+    "v": "2.112.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: برج النواة الجديد بالكامل",
+      "items": [
+        "برج أطول بثلاث مرات تقريباً حول عمود طاقة سماوي يتوهّج وينبض",
+        "ثماني حلقات ذهبية وسماوية مزدوجة تدور حول البرج وتتمايل",
+        "تاج بأبراج حادة ومنارات حمراء تومض فوق القمة",
+        "قاعدة صناعية ضخمة بوحدات ونوافذ مضيئة وأنابيب طاقة",
+        "أشعة نور تنطلق من القاعدة للسماء",
+        "أول مبنى تقدر تدخله: بوابة بباب منزلق يفتح لما تقرب، وردهة فيها استقبال وشاشات وزجاج يطل على العمود"
+      ]
+    },
+    "en": {
+      "title": "Nabd: the Core tower, rebuilt",
+      "items": [
+        "A much taller tower around a pulsing cyan energy column",
+        "Eight double gold/cyan halo rings",
+        "Spire crown with blinking beacons",
+        "Heavy industrial podium",
+        "Light beams fanning into the sky",
+        "First walkable interior: sliding doors and a lobby facing the core"
+      ]
+    }
+  },
+  {
     "v": "2.111.0",
     "date": "2026-10-27",
     "ar": {
