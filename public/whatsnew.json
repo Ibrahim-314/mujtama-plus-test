@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.109.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: إعدادات الجودة ومبانٍ أوقعية",
+      "items": [
+        "قائمة إعدادات جديدة: جودة منخفضة ومتوسطة وعالية وفائقة",
+        "تخفيض تلقائي للجودة إذا ثقلت اللعبة، وعدّاد الإطارات وحساسية الكاميرا",
+        "أبراج زجاجية ومبانٍ سكنية بنوافذ تنور بالليل",
+        "لوحات محلات مضيئة حقيقية ولوحات إعلانات فوق الأسطح",
+        "سيارات بطلاء لامع وأنوار أمامية، وحركة سير أكثر"
+      ]
+    },
+    "en": {
+      "title": "Nabd: quality settings & realistic buildings",
+      "items": [
+        "New settings menu: Low, Medium, High and Ultra quality",
+        "Auto quality, FPS counter and camera sensitivity",
+        "Glass office towers and apartment blocks with lit windows at night",
+        "Real backlit shop signs and rooftop billboards",
+        "Glossy cars with headlights and more traffic"
+      ]
+    }
+  },
+  {
     "v": "2.108.0",
     "date": "2026-10-27",
     "ar": {
