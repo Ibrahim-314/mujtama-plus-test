@@ -1,5 +1,31 @@
 [
   {
+    "v": "2.110.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: نظام جودة جديد وأرضية واقعية",
+      "items": [
+        "خيار «تلقائي» يقيس جهازك ويختار، واختيارك اليدوي يثبت ولا يتغير",
+        "«فائقة» تشغّل دقة شاشتك الكاملة مع ظلال بعيدة وكل أعمدة الإنارة حقيقية",
+        "فروق واضحة بين المستويات في الدقة والظلال والإضاءة والتفاصيل ومدى الرؤية",
+        "عرض الدقة الحالية وعدد الإطارات داخل الإعدادات",
+        "أرضية واقعية: تشققات وترقيع وبقع زيت وآثار عجلات وبرك ماء تعكس الأضواء",
+        "أغطية صرف حديدية مفصّلة وبخار أنعم يتمايل مع الهواء ومصارف أمطار"
+      ]
+    },
+    "en": {
+      "title": "Nabd: new quality system & realistic ground",
+      "items": [
+        "Auto mode benchmarks your device; manual choices now stick",
+        "Ultra renders at your screen's full resolution with long shadows and every street lamp lit",
+        "Clear differences between levels",
+        "Live resolution and FPS in settings",
+        "Realistic ground: cracks, patches, oil, tyre tracks and reflective puddles",
+        "Detailed cast-iron manholes, softer drifting steam and storm drains"
+      ]
+    }
+  },
+  {
     "v": "2.109.0",
     "date": "2026-10-27",
     "ar": {
