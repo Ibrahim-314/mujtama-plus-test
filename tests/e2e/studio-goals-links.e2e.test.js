@@ -37,7 +37,7 @@ test("390 light: empty state → pick goals (max 3, Pi disabled) → saved in pr
   const m = await page(MOBILE, "390"); await login(m); await studio(m);
   assert.match(await m.textContent("#st-goals"), /اختر من هدف إلى ثلاثة أهداف/);
   // existing tabs untouched
-  assert.equal((await m.$$("[data-stab]")).length, 6, "all six studio tabs still there");
+  assert.equal((await m.$$("[data-stab]")).length, 7, "all seven studio tabs still there (AI icon tab added v2.114)");
   // order: goals section sits before the tabs
   assert.ok(await m.evaluate(() => !!(document.querySelector("#st-goals").compareDocumentPosition(document.querySelector(".wrap.studio .seg")) & Node.DOCUMENT_POSITION_FOLLOWING)));
   // links
