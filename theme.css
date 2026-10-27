@@ -984,3 +984,16 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 /* v2.83 «المدينة»: the city's place at the top of #/me is reserved before its lazy chunk lands (no layout shift) */
 .cy-slot { position: relative; max-width: 640px; margin: 0 auto 12px; }
 .cy-skel { aspect-ratio: 1 / 1; max-height: min(78vh, 640px); border-radius: 0 0 26px 26px; background: radial-gradient(120% 90% at 50% 40%, rgb(42 33 64), rgb(27 22 38) 60%, rgb(17 13 26)); }
+
+/* v2.114 studio AI */
+.sai .sai-in{width:100%;margin:10px 0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2,transparent);color:inherit;font:inherit;resize:vertical;min-height:120px}
+.sai-acts{display:flex;flex-wrap:wrap;gap:8px}.sai-acts .btn{min-height:44px}
+.sai-res b{display:block;margin:12px 0 6px}.sai-res b:first-child{margin-top:0}
+.sai-row{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.sai-row:last-child{border-bottom:0}
+.sai-row .btn,.sai-res .row .btn,.sai-err .btn{min-height:40px}.sai-pre{white-space:pre-wrap}
+.sai-score{font-weight:700;padding:4px 10px;border-radius:999px;background:var(--bg-2)}.sai-score.ok{color:var(--ok-ink)}.sai-score.mid{color:var(--warn)}.sai-score.low{color:var(--danger-ink)}
+.sai-issue{display:flex;gap:8px;align-items:flex-start;padding:8px 0}.sai-warn{color:var(--danger-ink);font-weight:600}
+.sai-tip p{margin:6px 0 0}.sai-free{margin:6px 4px}
+.seg .sai-tab{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding-inline:10px}
+.seg .sai-tab svg{color:var(--accent)}.seg .sai-tab.on svg,.seg .sai-tab:hover svg{color:var(--brand-2)}
+.sai-main{background:linear-gradient(135deg,var(--accent),var(--brand-2));border:0;color:var(--on-accent,white)}
