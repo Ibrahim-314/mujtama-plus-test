@@ -1,218 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
-		<title>نبض النواة</title>
-		<style>
-html, body, #canvas {
-	margin: 0;
-	padding: 0;
-	border: 0;
-}
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+<title>نبض النواة</title>
+<link rel="preload" href="loading-bg.webp" as="image">
+<style>
+html,body,#canvas{margin:0;padding:0;border:0}
+body{color:#fff;background:#03040f;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#canvas{display:block}#canvas:focus{outline:none}
+#ld{position:fixed;inset:0;z-index:5;overflow:hidden;font-family:"Cairo","Tajawal","Segoe UI",Tahoma,system-ui,sans-serif;background:#03040f;transition:opacity .7s ease,visibility .7s}
+#ld.out{opacity:0;visibility:hidden}
+#ld .bg{position:absolute;inset:-4%;background:#03040f url(loading-bg.webp) center 38%/cover no-repeat;animation:kb 26s ease-in-out infinite alternate;filter:saturate(1.08)}
+@keyframes kb{from{transform:scale(1.02) translate3d(0,0,0)}to{transform:scale(1.12) translate3d(-1.5%,-1.5%,0)}}
+#ld .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,4,15,.55) 0%,rgba(3,4,15,0) 22%,rgba(3,4,15,0) 52%,rgba(3,4,15,.86) 76%,#03040f 100%)}
+#ld .scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(127,243,255,.035) 0 1px,transparent 1px 3px);pointer-events:none;mix-blend-mode:screen}
+#ld .top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 7vh);left:0;right:0;text-align:center;padding:0 20px}
+#ld .chip{display:inline-block;font-size:11px;letter-spacing:.32em;color:#9ff6ff;border:1px solid rgba(127,243,255,.4);border-radius:999px;padding:5px 14px;background:rgba(3,10,24,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#ld h1{margin:14px 0 4px;font-size:clamp(38px,11vw,72px);font-weight:900;line-height:1.05;color:#eafcff;text-shadow:0 0 24px rgba(0,220,255,.65),0 0 2px #fff,0 4px 30px rgba(0,0,0,.6);letter-spacing:.01em}
+#ld h1 em{font-style:normal;color:#ffd36b;text-shadow:0 0 22px rgba(255,190,60,.7)}
+#ld .sub{font-size:clamp(13px,3.6vw,17px);color:#cfe9ff;opacity:.9;text-shadow:0 2px 10px #000}
+#ld .bot{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 5vh);padding:0 7vw;max-width:720px;margin:0 auto}
+#ld .tip{min-height:3.2em;display:flex;gap:10px;align-items:flex-start;margin-bottom:18px;color:#dbe9ff;font-size:clamp(13px,3.5vw,15px);line-height:1.6;transition:opacity .45s}
+#ld .tip b{flex:none;color:#03040f;background:#ffd36b;border-radius:6px;font-size:11px;padding:2px 8px;margin-top:3px;font-weight:800}
+#ld .row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:9px}
+#ld .stage{font-size:13px;color:#9ff6ff;letter-spacing:.04em}
+#ld .stage i{display:inline-block;width:7px;height:7px;border-radius:50%;background:#00e5ff;margin-inline-end:8px;box-shadow:0 0 10px #00e5ff;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.25}}
+#ld .pct{font-size:clamp(30px,9vw,44px);font-weight:900;color:#fff;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(0,220,255,.6);direction:ltr}
+#ld .pct small{font-size:.45em;color:#9ff6ff;margin-left:2px}
+#ld .bar{position:relative;height:12px;border-radius:999px;background:rgba(8,20,40,.75);border:1px solid rgba(127,243,255,.28);overflow:hidden;box-shadow:inset 0 1px 4px rgba(0,0,0,.6),0 0 22px rgba(0,200,255,.12);direction:ltr}
+#ld .fill{position:absolute;inset:0 auto 0 0;width:0;border-radius:inherit;background:linear-gradient(90deg,#0088ff,#00e5ff 60%,#9ffcff);box-shadow:0 0 16px rgba(0,229,255,.8)}
+#ld .fill:after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 0 35%,rgba(255,255,255,.55) 50%,transparent 65% 100%);background-size:220px 100%;animation:sh 1.3s linear infinite}
+@keyframes sh{from{background-position:-220px 0}to{background-position:220px 0}}
+#ld .ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9.6%,rgba(3,4,15,.55) 9.6% 10%)}
+#ld .foot{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:#7f93b5;direction:rtl}
+#ld.done .stage i{animation:none;background:#5dff9a;box-shadow:0 0 10px #5dff9a}
+#ld .err{display:none;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(120,30,50,.75);border:1px solid #ff7a90;font-size:13px;line-height:1.6}
+#ld.fail .err{display:block}
+@media (orientation:landscape){#ld .top{top:6vh}#ld h1{font-size:clamp(34px,6vw,64px)}#ld .bot{bottom:5vh}}
+@media (prefers-reduced-motion:reduce){#ld .bg,#ld .fill:after{animation:none}}
+</style>
 
-body {
-	color: white;
-	background-color: black;
-	overflow: hidden;
-	touch-action: none;
-}
-
-#canvas {
-	display: block;
-}
-
-#canvas:focus {
-	outline: none;
-}
-
-#status, #status-splash, #status-progress {
-	position: absolute;
-	left: 0;
-	right: 0;
-}
-
-#status, #status-splash {
-	top: 0;
-	bottom: 0;
-}
-
-#status {
-	background-color: #05080f;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	visibility: hidden;
-}
-
-#status-splash {
-	max-height: 100%;
-	max-width: 100%;
-	margin: auto;
-}
-
-#status-splash.show-image--false {
-	display: none;
-}
-
-#status-splash.fullsize--true {
-	height: 100%;
-	width: 100%;
-	object-fit: contain;
-}
-
-#status-splash.use-filter--false {
-	image-rendering: pixelated;
-}
-
-#status-progress, #status-notice {
-	display: none;
-}
-
-#status-progress {
-	bottom: 10%;
-	width: 50%;
-	margin: 0 auto;
-}
-
-#status-notice {
-	background-color: #5b3943;
-	border-radius: 0.5rem;
-	border: 1px solid #9b3943;
-	color: #e0e0e0;
-	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
-	line-height: 1.3;
-	margin: 0 2rem;
-	overflow: hidden;
-	padding: 1rem;
-	text-align: center;
-	z-index: 1;
-}
-		</style>
-		
-	</head>
-	<body>
-		<canvas id="canvas">
-			Your browser does not support the canvas tag.
-		</canvas>
-
-		<noscript>
-			Your browser does not support JavaScript.
-		</noscript>
-
-		<div id="status">
-			<img id="status-splash" class="show-image--false fullsize--true use-filter--true" src="index.png" alt="">
-			<progress id="status-progress"></progress>
-			<div id="status-notice"></div>
-		</div>
-
-		<script src="index.js"></script>
-		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9950452,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+</head>
+<body>
+<canvas id="canvas">Your browser does not support the canvas tag.</canvas>
+<noscript>Your browser does not support JavaScript.</noscript>
+<div id="ld" role="status" aria-live="polite">
+  <div class="bg"></div><div class="shade"></div><div class="scan"></div>
+  <div class="top">
+    <span class="chip">حيّ النواة · 2077</span>
+    <h1>نبض <em>النواة</em></h1>
+    <div class="sub">الفصل الأول · الوردية الأولى</div>
+  </div>
+  <div class="bot">
+    <div class="tip" id="tip"><b>نصيحة</b><span></span></div>
+    <div class="row"><div class="stage"><i></i><span id="stg">تجهيز المحرك…</span></div><div class="pct"><span id="pct">0</span><small>%</small></div></div>
+    <div class="bar"><div class="fill" id="fill"></div><div class="ticks"></div></div>
+    <div class="foot"><span id="mb" dir="ltr">0.0 / 0.0 م.ب</span><span>التحميل الأول فقط · بعدها أسرع</span></div>
+    <div class="err" id="err"></div>
+  </div>
+</div>
+<script>
+/* Phones: render the canvas at a capped pixel ratio so the GPU is not asked to shade 3x the pixels. */
+(function(){try{var real=window.devicePixelRatio||1,touch=(navigator.maxTouchPoints||0)>0&&Math.min(screen.width,screen.height)<900;
+if(touch&&real>1.25){Object.defineProperty(window,'devicePixelRatio',{configurable:true,get:function(){return 1.25}})}}catch(e){}})();
+</script>
+<script src="index.js"></script>
+<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9950996,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
-
-(function () {
-	const statusOverlay = document.getElementById('status');
-	const statusProgress = document.getElementById('status-progress');
-	const statusNotice = document.getElementById('status-notice');
-
-	let initializing = true;
-	let statusMode = '';
-
-	function setStatusMode(mode) {
-		if (statusMode === mode || !initializing) {
-			return;
-		}
-		if (mode === 'hidden') {
-			statusOverlay.remove();
-			initializing = false;
-			return;
-		}
-		statusOverlay.style.visibility = 'visible';
-		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
-		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
-		statusMode = mode;
-	}
-
-	function setStatusNotice(text) {
-		while (statusNotice.lastChild) {
-			statusNotice.removeChild(statusNotice.lastChild);
-		}
-		const lines = text.split('\n');
-		lines.forEach((line) => {
-			statusNotice.appendChild(document.createTextNode(line));
-			statusNotice.appendChild(document.createElement('br'));
-		});
-	}
-
-	function displayFailureNotice(err) {
-		console.error(err);
-		if (err instanceof Error) {
-			setStatusNotice(err.message);
-		} else if (typeof err === 'string') {
-			setStatusNotice(err);
-		} else {
-			setStatusNotice('An unknown error occurred.');
-		}
-		setStatusMode('notice');
-		initializing = false;
-	}
-
-	const missing = Engine.getMissingFeatures({
-		threads: GODOT_THREADS_ENABLED,
-	});
-
-	if (missing.length !== 0) {
-		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
-			let serviceWorkerRegistrationPromise;
-			try {
-				serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration();
-			} catch (err) {
-				serviceWorkerRegistrationPromise = Promise.reject(new Error('Service worker registration failed.'));
-			}
-			// There's a chance that installing the service worker would fix the issue
-			Promise.race([
-				serviceWorkerRegistrationPromise.then((registration) => {
-					if (registration != null) {
-						return Promise.reject(new Error('Service worker already exists.'));
-					}
-					return registration;
-				}).then(() => engine.installServiceWorker()),
-				// For some reason, `getRegistration()` can stall
-				new Promise((resolve) => {
-					setTimeout(() => resolve(), 2000);
-				}),
-			]).then(() => {
-				// Reload if there was no error.
-				window.location.reload();
-			}).catch((err) => {
-				console.error('Error while registering service worker:', err);
-			});
-		} else {
-			// Display the message as usual
-			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
-			displayFailureNotice(missingMsg + missing.join('\n'));
-		}
-	} else {
-		setStatusMode('progress');
-		engine.startGame({
-			'onProgress': function (current, total) {
-				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
-				}
-			},
-		}).then(() => {
-			setStatusMode('hidden');
-		}, displayFailureNotice);
-	}
-}());
-		</script>
-	</body>
+(function(){
+  const ld=document.getElementById('ld'),fill=document.getElementById('fill'),pct=document.getElementById('pct'),stg=document.getElementById('stg'),mb=document.getElementById('mb'),tipEl=document.querySelector('#tip span'),tipBox=document.getElementById('tip');
+  const TIPS=["كل مهمة تنجزها تغذّي النواة وتكسبك MJT حقيقية داخل اللعبة.","اسحب بإصبعك يسار الشاشة للمشي، ويمين الشاشة لتدوير الكاميرا.","اتبع الشعاع الذهبي في السماء، فهو يدلّك على هدفك التالي.","وصّل الطرود بسرعة قبل 40 ثانية لتحصل على مكافأة إضافية.","الروبوت «بِت» يتطوّر معك، وكل ترقية تفتح له قدرات جديدة.","برج «ظِلّ» يعِد بأرباح أسرع… لكن ليس كل ما يلمع ذهباً.","المس الحوار في أي مكان على الشاشة للمتابعة."];
+  let ti=Math.floor(Math.random()*TIPS.length);function nextTip(){tipBox.style.opacity=0;setTimeout(()=>{tipEl.textContent=TIPS[ti++%TIPS.length];tipBox.style.opacity=1},450)}tipEl.textContent=TIPS[ti++%TIPS.length];const tipT=setInterval(nextTip,4200);
+  const STAGES=[[0,"تجهيز المحرك…"],[12,"تحميل محرّك العالم…"],[45,"تحميل أحياء المدينة…"],[72,"بناء الشوارع والإضاءة…"],[86,"تشغيل النواة…"],[96,"تجهيز شخصيتك…"]];
+  let shown=0,target=0,dl=false,finished=false;
+  const total=Object.values(GODOT_CONFIG.fileSizes||{}).reduce((a,b)=>a+b,0)||1;
+  function paint(){
+    if(!dl&&!finished) target=Math.max(target,Math.min(10,target+0.02)); // engine warm-up before bytes flow
+    if(dl&&!finished) target=Math.min(97,target+0.035);             // compile/initialise after the download
+    shown+= (target-shown)*(finished?0.22:0.08);
+    if(finished&&shown>99.5) shown=100;
+    const v=Math.floor(shown);fill.style.width=shown.toFixed(2)+'%';pct.textContent=v;
+    let s=STAGES[0][1];for(const [k,t] of STAGES) if(v>=k) s=t; if(finished) s="جاهز — أهلاً بك في حيّ النواة";stg.textContent=s;
+    if(finished&&shown>=100){ld.classList.add('done');clearInterval(tipT);setTimeout(()=>{ld.classList.add('out');setTimeout(()=>ld.remove(),800)},450);return}
+    requestAnimationFrame(paint);
+  }
+  requestAnimationFrame(paint);
+  function fail(err){console.error(err);ld.classList.add('fail');document.getElementById('err').textContent=(err&&err.message)||String(err||'حدث خطأ غير معروف');stg.textContent="تعذّر التشغيل";}
+  const missing=Engine.getMissingFeatures({threads:GODOT_THREADS_ENABLED});
+  if(missing.length){fail("متصفحك لا يدعم تشغيل اللعبة (WebGL2).\n"+missing.join('، '));return}
+  engine.startGame({onProgress:function(cur,tot){
+      const t=tot>0?tot:total; if(cur>0){const k=Math.min(1,cur/t);target=Math.max(target,10+k*76);mb.textContent=(cur/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' م.ب';if(k>=0.999)dl=true}
+  }}).then(()=>{dl=true;setTimeout(()=>{finished=true},9000)},fail);
+  addEventListener('message',e=>{if(e.data==='nabd:ready'){dl=true;setTimeout(()=>{finished=true},250)}});
+})();
+</script>
+</body>
 </html>
 
