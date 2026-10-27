@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.107.4",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: التحديثات توصل فوراً",
+      "items": [
+        "الجوال صار يحمّل آخر نسخة من اللعبة دائماً بدل نسخة مخزنة قديمة"
+      ]
+    },
+    "en": {
+      "title": "Nabd: updates arrive instantly",
+      "items": [
+        "Phones always load the latest game build instead of a stale cached one"
+      ]
+    }
+  },
+  {
     "v": "2.107.3",
     "date": "2026-10-27",
     "ar": {
