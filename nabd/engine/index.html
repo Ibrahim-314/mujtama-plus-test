@@ -76,26 +76,29 @@ const engine = new Engine(GODOT_CONFIG);
   const TIPS=["كل مهمة تنجزها تغذّي النواة وتكسبك MJT حقيقية داخل اللعبة.","اسحب بإصبعك يسار الشاشة للمشي، ويمين الشاشة لتدوير الكاميرا.","اتبع الشعاع الذهبي في السماء، فهو يدلّك على هدفك التالي.","وصّل الطرود بسرعة قبل 40 ثانية لتحصل على مكافأة إضافية.","الروبوت «بِت» يتطوّر معك، وكل ترقية تفتح له قدرات جديدة.","برج «ظِلّ» يعِد بأرباح أسرع… لكن ليس كل ما يلمع ذهباً.","المس الحوار في أي مكان على الشاشة للمتابعة."];
   let ti=Math.floor(Math.random()*TIPS.length);function nextTip(){tipBox.style.opacity=0;setTimeout(()=>{tipEl.textContent=TIPS[ti++%TIPS.length];tipBox.style.opacity=1},450)}tipEl.textContent=TIPS[ti++%TIPS.length];const tipT=setInterval(nextTip,4200);
   const STAGES=[[0,"تجهيز المحرك…"],[12,"تحميل محرّك العالم…"],[45,"تحميل أحياء المدينة…"],[72,"بناء الشوارع والإضاءة…"],[86,"تشغيل النواة…"],[96,"تجهيز شخصيتك…"]];
-  let shown=0,target=0,dl=false,finished=false;
+  let shown=0,target=0,dl=false,finished=false,gone=false,last=performance.now();
   const total=Object.values(GODOT_CONFIG.fileSizes||{}).reduce((a,b)=>a+b,0)||1;
+  /* v2.107.1: time-based (not per-frame) so a busy main thread (wasm compile, world build, slow phone GPU) can never
+   * freeze the bar; the overlay closes on a timer the moment the game is ready, whatever the frame rate. */
+  function close(){if(gone)return;gone=true;finished=true;shown=100;fill.style.width='100%';pct.textContent=100;stg.textContent="جاهز — أهلاً بك في حيّ النواة";ld.classList.add('done');clearInterval(tipT);setTimeout(()=>{ld.classList.add('out');setTimeout(()=>ld.remove(),700)},300)}
   function paint(){
-    if(!dl&&!finished) target=Math.max(target,Math.min(10,target+0.02)); // engine warm-up before bytes flow
-    if(dl&&!finished) target=Math.min(97,target+0.035);             // compile/initialise after the download
-    shown+= (target-shown)*(finished?0.22:0.08);
-    if(finished&&shown>99.5) shown=100;
+    if(gone)return;
+    const now=performance.now(),dt=Math.min(2,(now-last)/1000);last=now;
+    if(!dl) target=Math.max(target,Math.min(10,target+dt*1.2));   // engine warm-up before bytes flow
+    else target=Math.min(98,target+dt*2.5);                        // compile/initialise after the download
+    shown+=(target-shown)*Math.min(1,dt*5);
     const v=Math.floor(shown);fill.style.width=shown.toFixed(2)+'%';pct.textContent=v;
-    let s=STAGES[0][1];for(const [k,t] of STAGES) if(v>=k) s=t; if(finished) s="جاهز — أهلاً بك في حيّ النواة";stg.textContent=s;
-    if(finished&&shown>=100){ld.classList.add('done');clearInterval(tipT);setTimeout(()=>{ld.classList.add('out');setTimeout(()=>ld.remove(),800)},450);return}
-    requestAnimationFrame(paint);
+    let s=STAGES[0][1];for(const [k,t] of STAGES) if(v>=k) s=t;stg.textContent=s;
   }
-  requestAnimationFrame(paint);
+  setInterval(paint,120);
   function fail(err){console.error(err);ld.classList.add('fail');document.getElementById('err').textContent=(err&&err.message)||String(err||'حدث خطأ غير معروف');stg.textContent="تعذّر التشغيل";}
   const missing=Engine.getMissingFeatures({threads:GODOT_THREADS_ENABLED});
   if(missing.length){fail("متصفحك لا يدعم تشغيل اللعبة (WebGL2).\n"+missing.join('، '));return}
   engine.startGame({onProgress:function(cur,tot){
       const t=tot>0?tot:total; if(cur>0){const k=Math.min(1,cur/t);target=Math.max(target,10+k*76);mb.textContent=(cur/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' م.ب';if(k>=0.999)dl=true}
-  }}).then(()=>{dl=true;setTimeout(()=>{finished=true},9000)},fail);
-  addEventListener('message',e=>{if(e.data==='nabd:ready'){dl=true;setTimeout(()=>{finished=true},250)}});
+  }}).then(()=>{dl=true;setTimeout(close,4000)},fail);
+  setTimeout(()=>{if(dl)close()},45000); // last-resort: never trap the player behind the loader
+  addEventListener('message',e=>{if(e.data==='nabd:ready'){dl=true;close()}});
 })();
 </script>
 </body>
