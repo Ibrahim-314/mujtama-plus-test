@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.106.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: شكل جديد وأداء أسرع",
+      "items": [
+        "شخصية واقعية بحركات مشي وجري بدل الشخصية المكعبة",
+        "عالم أجمل: واجهات مبانٍ ليلية حقيقية، أسفلت مبلل، سيارات تتحرك في الشوارع والسماء",
+        "إصلاح التعليق على الجوال: دمج مجسمات العالم وخفض الحمل تلقائياً إذا ثقل الجهاز"
+      ]
+    },
+    "en": {
+      "title": "«Nabd»: new look, smoother play",
+      "items": [
+        "A realistic animated hero with walk and run instead of the blocky one",
+        "A better-looking world: real night facades, wet asphalt, moving street and flying cars",
+        "Fixed stutter on phones: merged world geometry and automatic quality scaling"
+      ]
+    }
+  },
+  {
     "v": "2.105.0",
     "date": "2026-10-27",
     "ar": {
