@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.107.1",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: شاشة التحميل ما تتوقف",
+      "items": [
+        "شريط التحميل صار يتقدّم بالوقت ويختفي فور جاهزية اللعبة حتى على الجوالات البطيئة"
+      ]
+    },
+    "en": {
+      "title": "Nabd: loading screen no longer stalls",
+      "items": [
+        "The loading bar is time-based and closes as soon as the game is ready, even on slow phones"
+      ]
+    }
+  },
+  {
     "v": "2.107.0",
     "date": "2026-10-27",
     "ar": {
