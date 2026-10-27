@@ -161,7 +161,7 @@ function serveStatic(root, req, res, urlPath) {
   /** @type {Record<string, string>} */
   const headers = { ...SEC_HEADERS, "Content-Type": MIME[ext] || "application/octet-stream", Vary: "Accept-Encoding" };
   headers["Cache-Control"] =
-    ext === ".html" || base === "sw.js" ? "no-cache" : HASHED.test(base) ? "public, max-age=31536000, immutable" : "public, max-age=3600";
+    ext === ".html" || base === "sw.js" || /[\\/]nabd[\\/]engine[\\/]/.test(file) ? "no-cache" : HASHED.test(base) ? "public, max-age=31536000, immutable" : "public, max-age=3600";
   Object.assign(headers, require("./scale").cdnHeaders({ html: ext === ".html", hashed: HASHED.test(base), sw: base === "sw.js" })); // Phase 48: CDN_CACHE=1
   if (base === "sw.js") headers["Service-Worker-Allowed"] = "/";
   if (ext === ".html") {
@@ -187,6 +187,14 @@ function serveStatic(root, req, res, urlPath) {
       serve = file + ".gz";
       headers["Content-Encoding"] = "gzip";
     }
+  }
+  if (/[\\/]nabd[\\/]engine[\\/]/.test(file)) { // v2.107.4: game files revalidate every load (phones kept a stale pack for an hour)
+    try {
+      const stt = fs.statSync(serve);
+      const tag = '"' + stt.size.toString(36) + "-" + Math.floor(stt.mtimeMs).toString(36) + '"';
+      headers.ETag = tag;
+      if (req.headers["if-none-match"] === tag) { res.writeHead(304, { ETag: tag, "Cache-Control": "no-cache" }); res.end(); return true; }
+    } catch (e) {}
   }
   res.writeHead(200, headers);
   fs.createReadStream(serve).pipe(res);
