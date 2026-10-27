@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.107.0",
+    "date": "2026-10-27",
+    "ar": {
+      "title": "«نبض النواة»: شاشة تحميل جديدة وأداء أخف على الجوال",
+      "items": [
+        "شاشة تحميل سينمائية بخلفية حيّ النواة وشريط من 0 إلى 100٪ ونصائح تتبدّل",
+        "وضع أداء خاص للجوال يمنع تجمّد اللعبة ويحافظ على سلاسة الحركة"
+      ]
+    },
+    "en": {
+      "title": "Nabd: new loading screen, lighter on phones",
+      "items": [
+        "A cinematic loading screen with a 0–100% bar and rotating tips",
+        "A phone performance mode that stops the game from freezing"
+      ]
+    }
+  },
+  {
     "v": "2.106.1",
     "date": "2026-10-27",
     "ar": {
