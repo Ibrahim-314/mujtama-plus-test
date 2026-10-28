@@ -63,6 +63,7 @@
 <div class="ops-grid"><div class="ops-kpi"><b>${nf(lm.requests)}</b><span>طلبات آخر دقيقة</span></div><div class="ops-kpi"><b>${lm.requests ? esc(Math.round((lm.errors / lm.requests) * 1000) / 10) : 0}٪</b><span>أخطاء آخر دقيقة</span></div><div class="ops-kpi"><b>${nf(Math.round(lm.p95))}</b><span>p95 آخر دقيقة (م.ث)</span></div><div class="ops-kpi"><b>${nf(o.now.queue.queued || 0)}</b><span>مهام في الطابور</span></div><div class="ops-kpi"><b>${nf(o.now.memoryMb)}</b><span>الذاكرة (MB)</span></div><div class="ops-kpi"><b>${o.alerts.firing.length}</b><span>تنبيهات نشطة</span></div></div>
 <div class="card"><p style="margin:0">${comps}</p></div>
 <section class="card" id="ops-qoe" aria-labelledby="ops-qoe-h" aria-busy="true"><h3 id="ops-qoe-h">جودة تشغيل الفيديو</h3><div class="skel"></div></section>
+<section class="card" id="ops-srch" aria-labelledby="ops-srch-h" aria-busy="true"><h3 id="ops-srch-h">جودة البحث</h3><div class="skel"></div></section>
 <div class="card"><h3>الطلبات</h3>${line(s, { key: "requests", fmtX: p => hm(p.t) })}<p class="muted" style="margin:0;font-size:12px">كل نقطة = ${esc(o.stepMin)} دقيقة</p></div>
 <div class="card"><h3>نسبة الأخطاء ٪</h3>${line(s, { key: "errorRate", color: "#dc2626", unit: "٪", fmtX: p => hm(p.t) })}</div>
 <div class="card"><h3>زمن الاستجابة p95 (م.ث)</h3>${line(s, { key: "p95", color: "#d97706", fmtX: p => hm(p.t) })}</div>
@@ -88,7 +89,7 @@ ${hist ? `<details style="margin-top:8px"><summary>سجل التنبيهات</su
       try { await api("POST", "/api/admin/ops/incidents", { title: $("#ops-inc-t").value, body: $("#ops-inc-b").value, impact: $("#ops-inc-i").value, components: [...v.querySelectorAll("[name=ops-c]:checked")].map(c => c.value) }); note("نُشرت الحادثة على صفحة الحالة"); e.target.reset(); incidents(); }
       catch (er) { note(er.message); } finally { btn.disabled = false; }
     });
-    incidents(); qoeCard(7);
+    incidents(); qoeCard(7); searchCard(7);
   }
   /* v2.70: «جودة تشغيل الفيديو» — startup p50/p90, stall rate, average watched time from GET /api/admin/video/qoe */
   async function qoeCard(days) {
@@ -104,6 +105,21 @@ ${q.plays ? `<div class="ops-grid"><div class="ops-kpi"><b>${sec(q.p50StartupMs)
 ${q.perDay.length > 1 ? bars(q.perDay, ["plays"], ["#2563eb"]) + line(q.perDay.filter(d => d.plays), { key: "p90StartupMs", color: "#d97706", fmtX: x => x.day }) + legend([["#2563eb", "التشغيلات يومياً"], ["#d97706", "زمن البدء p90 يومياً (م.ث)"]]) : ""}
 <div class="ops-x"><table class="ops-tbl"><thead><tr><th>المصدر</th><th>التشغيلات</th><th>p50 (ث)</th><th>p90 (ث)</th><th>التقطّع</th></tr></thead><tbody>${row("clips", "المقاطع القصيرة")}${row("post", "فيديو المنشورات")}</tbody></table></div>` : `<p class="muted">لا توجد قياسات تشغيل بعد في هذه المدة.</p>`}`;
     box.querySelectorAll("[data-qdays]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); qoeCard(+a.dataset.qdays); }));
+  }
+  /* v2.133: «جودة البحث» — searches, zero-result rate, click-through, latency, engine + index coverage, and the queries that found
+   * nothing (what the index or the community is missing). GET /api/admin/search/metrics */
+  async function searchCard(days) {
+    const box = $("#ops-srch"); if (!box) return;
+    let m; try { m = await api("GET", "/api/admin/search/metrics?days=" + days); } catch (e) { box.removeAttribute("aria-busy"); box.innerHTML = `<h3 id="ops-srch-h">جودة البحث</h3><p class="muted">${esc(e.message)}</p>`; return; }
+    if (!document.body.contains(box)) return;
+    box.removeAttribute("aria-busy");
+    const pct = (x) => (x === null || x === undefined ? "—" : esc(x) + "٪"), eng = { hybrid: "هجين (كلمات + معنى)", index: "فهرس الكلمات", builtin: "مسح احتياطي" }[m.engine] || m.engine;
+    box.innerHTML = `<h3 id="ops-srch-h">جودة البحث</h3>
+<div class="ops-tabs" role="group" aria-label="مدى جودة البحث">${[1, 7, 30].map(d => `<a href="#" data-sdays="${d}"${d === m.days ? ' aria-current="page"' : ""}>${d === 1 ? "اليوم" : d === 7 ? "7 أيام" : d + " يوماً"}</a>`).join("")}</div>
+<div class="ops-grid"><div class="ops-kpi"><b>${nf(m.searches)}</b><span>عمليات بحث</span></div><div class="ops-kpi"><b>${pct(m.zeroRate)}</b><span>بلا نتائج</span></div><div class="ops-kpi"><b>${pct(m.ctr)}</b><span>نسبة النقر</span></div><div class="ops-kpi"><b>${m.avgMs === null ? "—" : nf(m.avgMs)}</b><span>متوسط الزمن (م.ث)</span></div><div class="ops-kpi"><b>${pct(m.coverage ? Math.round(m.coverage.ratio * 1000) / 10 : null)}</b><span>تغطية الفهرس</span></div><div class="ops-kpi"><b>${esc(eng)}</b><span>المحرك</span></div></div>
+${m.perDay.length > 1 ? bars(m.perDay.map(d => ({ ...d, ok: d.searches - d.zero })), ["ok", "zero"], ["#2563eb", "#d97706"]) + legend([["#2563eb", "بحث بنتائج"], ["#d97706", "بلا نتائج"]]) : ""}
+${m.zeroQueries.length ? `<div class="ops-x"><table class="ops-tbl"><thead><tr><th>بحث بلا نتائج</th><th>المرات</th></tr></thead><tbody>${m.zeroQueries.map(z => `<tr><td><bdi>${esc(z.q)}</bdi></td><td>${nf(z.n)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">لا توجد عمليات بحث بلا نتائج في هذه الفترة.</p>`}`;
+    box.querySelectorAll("[data-sdays]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); searchCard(+a.dataset.sdays); }));
   }
   async function incidents() {
     const box = $("#ops-inc"); if (!box) return;
