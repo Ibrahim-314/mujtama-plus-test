@@ -3,6 +3,9 @@
  * Categories: exact, natural (question phrasing), dialect, typo, morph (plurals/prefixes), comment (answer lives in a comment),
  * article (answer in the article body), english, mixed (ar+en), semantic (no shared word — needs stage 2). */
 const posts = [
+  // v2.124 «sound» set: loanwords that are in NO word list — found only by the cross-script sound key
+  { k: "k8s", text: "نصائح لتشغيل Kubernetes في الإنتاج: ابدأ بعنقود صغير وراقب الموارد" },
+  { k: "docker_ar", text: "شرح دوكر للمبتدئين خطوة بخطوة مع أمثلة" },
   { k: "py_q", type: "question", text: "ما أفضل طريقة لتعلم Python من الصفر في ٢٠٢٦؟", comments: ["ابدأ بمشروع صغير يحل مشكلة عندك، وتعلم أثناء البناء.", "كتاب Automate the Boring Stuff ممتاز للبداية.", "نعم، ثم انتقل لمشاريع حقيقية."] },
   { k: "py_art", type: "article", title: "دليلي لتعلم البرمجة", text: "", doc: { v: 1, blocks: [{ t: "p", r: [["بدأت ببايثون عن طريق كورس CS50P المجاني، ثم بنيت أدوات صغيرة لعملي."]] }, { t: "h", r: [["نصائح"]] }, { t: "p", r: [["خصص ساعة يومياً وحل تمارين على موقع Exercism."]] }] } },
   { k: "react_vue", text: "React أو Vue لمشروع جديد؟ أنا شخصياً أختار الأبسط لفريقك. #برمجة", comments: ["Vue أسهل للمبتدئين", "React سوقه أكبر في الوظائف"] },
@@ -29,6 +32,10 @@ const posts = [
   { k: "priv", text: "محمصة سرية في جدة لا يعرفها أحد", visibility: "followers" },
 ];
 const queries = [
+  { q: "كوبرنيتس", want: ["k8s"], cat: "sound" },
+  { q: "docker", want: ["docker_ar"], cat: "sound" },
+  { q: "بايثن", want: ["py_q", "py_art"], cat: "typo" },
+  { q: "اتعلم بايثون من الصفر", want: ["py_q"], cat: "natural" },
   { q: "ما أفضل طريقة لتعلم Python من الصفر في ٢٠٢٦؟", want: ["py_q"], cat: "exact" },
   { q: "python", want: ["py_q", "py_art"], cat: "english" },
   { q: "كيف اتعلم بايثون", want: ["py_q", "py_art"], cat: "mixed" },
