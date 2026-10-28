@@ -664,5 +664,5 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
 
-  return { providerFor, overview, settings, chat, studio, brief, MSG };
+  return { providerFor, overview, settings, chat, studio, brief, queryPlan, MSG };
 };
