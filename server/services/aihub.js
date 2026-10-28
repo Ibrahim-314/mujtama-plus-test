@@ -454,6 +454,44 @@ module.exports = (ctx, opts = {}) => {
     briefCache.set(user.id, { hash, at, brief: out });
     return { brief: out, generatedAt: new Date(at).toISOString(), available: facts.posts.length, cached: false, provider: o.provider, via: o.via || null, model: o.model || null, free: o.free || null };
   }
+  /* ---------- v2.118 «اسأل عن يومك» + «ليش رائج؟» — answers only from posts the viewer can see, each claim cites them ---------- */
+  const cites = (arr, ok) => [...new Set((Array.isArray(arr) ? arr : []).filter((c) => ok.has(c)))].slice(0, 4);
+  const srcMap = (posts, used) => Object.fromEntries(posts.filter((p) => used.has(p.id)).map((p) => [p.id, { by: p.by, community: p.community || null }]));
+  async function askDay(user, b) {
+    const q = str(b.q, 300); if (q.length < 2) throw E.bad("اكتب سؤالك");
+    const facts = await briefFacts(user);
+    if (!facts.posts.length) return { answer: "لا جديد في آخر ٢٤ ساعة لأسأل عنه — أنت مطّلع على كل شيء.", found: false, cites: [], sources: {} };
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const ask = `سؤال القارئ عن يومه: «${q}»\nأجب من هذه المنشورات فقط (آخر ٢٤ ساعة، JSON؛ followed=true يعني أنه يتابع الكاتب). إن لم تجد الجواب فيها قل ذلك بلطف ولا تخمّن، ولا تجب عن أشياء خارجها.\nأعد: {"answer":"جواب قصير واضح (1-4 جمل)","found":true|false,"cites":["معرّفات المنشورات التي اعتمدت عليها"]}\n\nالمنشورات:\n${JSON.stringify(facts.posts)}`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 700, freeMax: 700 });
+    const j = parseJSON(o.text), ok = new Set(facts.posts.map((p) => p.id));
+    const answer = str(j?.answer, 700);
+    if (!answer) throw fail(502, "bad_output", "لم يرجع النموذج جواباً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    const c = cites(j.cites, ok), found = j.found !== false && c.length > 0;
+    return { q, answer, found, cites: found ? c : [], sources: found ? srcMap(facts.posts, new Set(c)) : {}, provider: o.provider, model: o.model || null, free: o.free || null };
+  }
+  const whyCache = new Map(); // user|tag → { hash, at, out } (1 h)
+  async function whyTrend(user, b) {
+    const tg = ctx.services.trends; if (!tg) throw fail(503, "not_configured", "الرائج غير متاح الآن");
+    const raw = str(b.tag, 80).replace(/^#/, ""); if (!raw) throw E.bad("اختر وسماً");
+    const d = await tg.detail(user, raw), since = Date.now() - 48 * 3600e3;
+    const names = new Map((d.users || []).map((u) => [u.id, u.name]));
+    const posts = (d.posts || []).filter((p) => !p.createdAt || new Date(p.createdAt).getTime() > since).filter((p) => String(p.text || p.title || "").trim().length > 8).slice(0, 20)
+      .map((p) => ({ id: p.id, by: names.get(p.author) || "", text: String((p.title ? p.title + " — " : "") + (p.text || "")).replace(/\s+/g, " ").slice(0, 300) }));
+    if (posts.length < 2) return { tag: d.tag, why: "", angles: [], few: true, message: "لا توجد منشورات كافية تراها عن هذا الوسم لنشرح سبب رواجه." };
+    const hash = posts.map((p) => p.id).join("|"), key = user.id + "|" + d.tag, hit = whyCache.get(key);
+    if (hit && hit.hash === hash && Date.now() - hit.at < 3600e3) return { ...hit.out, cached: true };
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const ask = `الوسم #${d.tag} رائج الآن${d.trend ? ` (${d.trend.posts || posts.length} منشوراً)` : ""}. من هذه المنشورات فقط اشرح للقارئ ببساطة لماذا هو رائج، وما الزوايا أو الآراء المختلفة حوله (بدون انحياز ولا حكم على الأشخاص، ولا تخترع أحداثاً).\nأعد: {"why":"جملة أو جملتان: لماذا يتكلم الناس عنه","angles":[{"text":"زاوية أو رأي","cites":["معرّفات المنشورات"]}]} (2-4 زوايا)\n\nالمنشورات:\n${JSON.stringify(posts)}`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 900, freeMax: 900 });
+    const j = parseJSON(o.text), ok = new Set(posts.map((p) => p.id));
+    const why = str(j?.why, 400), angles = (Array.isArray(j?.angles) ? j.angles : []).map((a) => ({ text: str(a?.text, 260), cites: cites(a?.cites, ok) })).filter((a) => a.text && a.cites.length).slice(0, 4);
+    if (!why) throw fail(502, "bad_output", "لم يرجع النموذج شرحاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    const out = { tag: d.tag, why, angles, count: posts.length, sources: srcMap(posts, new Set(angles.flatMap((a) => a.cites))), free: o.free || null };
+    if (whyCache.size > 3000) whyCache.delete(whyCache.keys().next().value);
+    whyCache.set(key, { hash, at: Date.now(), out });
+    return out;
+  }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
   async function providerFor(uid, feature) {
     const pr = await prefsOf(uid), pid = pr.features[feature];
@@ -492,6 +530,8 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/aihub/studio", A(async (req) => studio(req.user, req.body || {})));
   R.get("/api/aihub/brief", A(async (req) => brief(req.user, {}, false)));
   R.post("/api/aihub/brief", A(async (req) => brief(req.user, req.body || {}, true)));
+  R.post("/api/aihub/brief/ask", A(async (req) => askDay(req.user, req.body || {})));
+  R.post("/api/aihub/trend", A(async (req) => whyTrend(req.user, req.body || {})));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
 
