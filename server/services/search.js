@@ -13,6 +13,8 @@ const A = require("../lib/arabic");
 const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
+const VIEWS = ["latest", "media"]; // v2.127: post views with their own ordering/filter (results come back in groups.posts)
+const hasMedia = (p) => { let d = p.data; try { d = typeof d === "string" ? JSON.parse(d) : d; } catch { d = null; } return !!(d && !d.paid && (d.media || (Array.isArray(d.images) && d.images.length) || d.video || d.audio)) || p.type === "video" || p.type === "audio"; };
 const RT = require("../../richtext.js");
 const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic"), EM = require("../lib/search-embed");
 const SV = 1, VEC_KINDS = new Set(["post", "community"]); // v2.125 meaning vectors (086): model version + which documents carry one
@@ -228,10 +230,13 @@ module.exports = (ctx) => {
 
   /* ---------- query ---------- */
   function parseFilters(qs = {}) {
-    const f = { type: oneOf(qs.type, ["all", ...GROUPS], "all"), ptype: oneOf(qs.ptype, PTYPES, null), community: str(qs.community, 80), lang: oneOf(qs.lang, ["ar", "en"], null), date: oneOf(qs.date, Object.keys(DATES), null), from: null, to: null };
+    const f = { type: oneOf(qs.type, ["all", ...GROUPS, ...VIEWS], "all"), ptype: oneOf(qs.ptype, PTYPES, null), community: str(qs.community, 80), lang: oneOf(qs.lang, ["ar", "en"], null), date: oneOf(qs.date, Object.keys(DATES), null), from: null, to: null };
     if (f.date) f.from = new Date(Date.now() - DATES[f.date]).toISOString();
     if (qs.from && !isNaN(Date.parse(qs.from))) f.from = new Date(qs.from).toISOString();
     if (qs.to && !isNaN(Date.parse(qs.to))) f.to = new Date(qs.to).toISOString();
+    // v2.127 X-style tabs: «الأحدث» = the same relevant posts newest first; «وسائط» = relevant posts that carry images/video/audio
+    f.sort = f.type === "latest" ? "latest" : oneOf(qs.sort, ["top", "latest"], "top");
+    f.media = f.type === "media" || qs.media === "1";
     return f;
   }
   /* v2.121 ranking. A query becomes CONCEPTS (a word and its variants: «بجده» → جده, «محمصات» → محمص; the AI query plan can add
@@ -534,14 +539,16 @@ module.exports = (ctx) => {
     }
   }
   async function run(viewer, q, f, { limit = 20 } = {}) {
-    const want = f.type === "all" ? GROUPS : [f.type];
+    const want = f.type === "all" ? GROUPS : VIEWS.includes(f.type) ? ["posts"] : [f.type];
     const kinds = want.map(g => ({ people: "user", posts: "post", communities: "community" }[g])).filter(Boolean);
     const { engine, ids } = kinds.length ? await engineIds(q, kinds, f) : { engine: meili ? "meilisearch" : "builtin", ids: [] };
     const of = (k) => ids.filter(x => x.kind === k).map(x => x.id);
     const fetchRows = async (table, list) => { if (!list.length) return []; const rows = await db.read.all(`SELECT * FROM ${table} WHERE id IN (${list.map((_, i) => "$" + (i + 1)).join(",")})`, list); const m = new Map(rows.map(r => [r.id, r])); return list.map(i => m.get(i)).filter(Boolean); };
     const out = { engine, groups: {} };
     if (want.includes("people")) { const rows = (await fetchRows("users", of("user").slice(0, 100))).filter(u => u.status === "active" && !((viewer?.prefs?.blocked) || []).includes(u.id)); out.groups.people = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.users.pub) }; }
-    if (want.includes("posts")) { const rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; await attachAnswers(out.groups.posts.items, viewer); out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
+    if (want.includes("posts")) { let rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id);
+      if (f.media) rows = rows.filter(hasMedia);
+      if (f.sort === "latest") rows = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; await attachAnswers(out.groups.posts.items, viewer); out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
     if (want.includes("communities")) { const rows = (await fetchRows("communities", of("community").slice(0, 100))).filter(c => c.type !== "invite"); out.groups.communities = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.communities.toClient) }; }
     if (want.includes("hashtags")) { // tags are stored canonical but not normalised: compare in normalised space
       const toks = A.tokens(q);
