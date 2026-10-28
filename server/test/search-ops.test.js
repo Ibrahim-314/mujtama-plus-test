@@ -65,3 +65,8 @@ test("operators alone browse newest first; private hidden; no rewrite", async ()
   assert.equal(r.corrected, null); assert.equal(r.didYouMean, null); assert.deepEqual(r.ops.from, ["op_sara"]);
   assert.deepEqual((await find("from:nobody_here")).got, []);
 });
+
+test("v2.129 OR: each alternative found, AND words kept on every side", async () => {
+  const both = (await find("جافا OR بايثون")).got; assert.ok(both.includes("s1") && both.includes("s2"), JSON.stringify(both));
+  const scoped = (await find("دورة بايثون OR جافا")).got; assert.ok(scoped.includes("s1") && !scoped.includes("s2"), JSON.stringify(scoped));
+});
