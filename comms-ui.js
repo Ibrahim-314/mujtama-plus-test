@@ -260,6 +260,8 @@ body.cm-chat .topbar{display:none}
 .ai-btn{flex:1;min-height:46px;border-radius:14px;border:0;font:inherit;font-weight:600;font-size:var(--fs-md);background:var(--accent);color:var(--on-accent);cursor:pointer}
 .ai-btn.ghost{background:var(--bg-2);color:var(--text)}
 .ai-note{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin:10px 0 0}
+.ai-risk{display:flex;gap:6px;align-items:flex-start;margin-top:6px;padding:8px 10px;border-radius:12px;background:var(--danger-soft);color:var(--danger-ink);font-size:var(--fs-sm);line-height:1.5}.ai-risk .ei{flex:none;margin-top:2px}.ai-risk button{border:0;background:none;color:inherit;font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:0 2px}
+.ai-it{display:flex;gap:8px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--bg-2);margin-bottom:8px}.ai-it>div{flex:1;min-width:0}.ai-it small{display:block;color:var(--muted);font-size:var(--fs-xs)}.ai-it .ai-chip{flex:none}
 .ai-load{display:flex;flex-direction:column;gap:8px;margin:6px 0}.ai-load i{height:44px;border-radius:14px;background:var(--bg-2);animation:cmPulse 1.4s infinite}
 .ai-panel{display:flex;flex-direction:column;gap:8px;padding:2px 2px 8px}
 .ai-sugg{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -543,6 +545,7 @@ body.cm-chat .topbar{display:none}
     else if (m.kind === "image") { const ar = m.meta?.w && m.meta?.h ? `${m.meta.w}/${m.meta.h}` : "4/3"; body += `<img class="cm-img" data-img="${m.id}" alt="صورة${m.text ? ": " + h(m.text) : ""}" style="--ar:${ar}" loading="lazy">${m.text ? `<span dir="auto">${h(m.text)}</span>` : ""}`; }
     else if (m.kind === "voice") body += voiceEl(m);
     else body += `<span dir="auto">${h(m.text)}</span>`;
+    if (m.risk && !mine) body += `<span class="ai-risk" role="note"><svg class=ei aria-hidden=true><use href=#i-ban /></svg><span>قد تكون رسالة احتيال. لا تشارك رمز تحقق أو بيانات بطاقة أو كلمة مرور. <button data-risk="${h(m.id)}">ليش؟</button></span></span>`;
     let tick = "";
     if (mine) { const readers = Object.entries(reads).filter(([u, at]) => u !== DB.me && at && at >= m.at).length; const read = readers > 0;
       tick = `<span role="img" class="${read ? "rd" : ""}" title="${read ? (c.kind === "group" ? `قرأها ${readers}` : "قُرئت") : "أُرسلت"}" aria-label="${read ? "قُرئت" : "أُرسلت"}">${ic(read ? "cmCheck2" : "check")}</span>`; }
@@ -587,6 +590,7 @@ body.cm-chat .topbar{display:none}
       }
       el.querySelectorAll("[data-rx]").forEach(x => x.onclick = () => react(m, x.dataset.rx));
       const q = el.querySelector("[data-jump]"); if (q) q.onclick = () => jumpTo(q.dataset.jump);
+      const rk = el.querySelector("[data-risk]"); if (rk) rk.onclick = (e) => { e.stopPropagation(); aiRisk(m); };
       const img = el.querySelector("[data-img]"); if (img) blobSrc(m).then(u => { if (u) { img.src = u; img.onclick = () => lightbox(u, img.alt); } else img.alt = "تعذر تحميل الصورة"; });
       const pb = el.querySelector("[data-play]"); if (pb) bindVoice(el, m);
     });
@@ -633,15 +637,60 @@ body.cm-chat .topbar{display:none}
     box.querySelector("#ai-rp").onclick = () => { closeSheet(); aiOpen(); };
     box.querySelector("#ai-cl").onclick = () => closeSheet();
   }
+  /* v2.135 stage 2: the bubble's «ترجمة» button (ai-ui) uses this when the paid translate service is not available;
+   * a scam warning explains itself; dates/tasks are listed and added only on a tap (.ics download / copy) */
+  window.MPMsgAI = { ok: () => aiOk(ctx?.conv), translate: (mid) => aiCall({ tool: "translate", mid }) };
+  const RISK_TXT = { otp: "يطلب رمز تحقق", card: "يطلب بيانات بطاقة أو حساب بنكي", password: "يطلب كلمة مرور", suspended: "يدّعي تعليق حسابك", prize: "يدّعي أنك ربحت جائزة", urgent: "يستعجلك بمهلة قصيرة", transfer: "يطلب تحويل مبلغ أو رسوم", shortlink: "فيه رابط مختصر يخفي وجهته", fakeofficial: "ينتحل جهة رسمية أو دعماً فنياً" };
+  async function aiRisk(m) {
+    const local = (m.risk || []).map((k) => RISK_TXT[k]).filter(Boolean), smart = aiOk(ctx?.conv);
+    const s = sheet(`<h4 class="ai-h" id="ai-rh"><svg class=ei aria-hidden=true><use href=#i-ban /></svg> ليش هذي الرسالة مشبوهة؟</h4><div id="ai-rb" aria-live="polite">${local.map((t) => `<div class="ai-it"><div>${h(t)}</div></div>`).join("")}${smart ? `<div class="ai-load"><i></i></div>` : ""}</div>
+      <div class="ai-row"><button class="ai-btn ghost" id="ai-rc">تم</button></div><p class="ai-note">التطبيق وفريقه ما يطلبون منك رمز التحقق أبداً. إذا شكّيت، احظر المرسل وبلّغ عنه.</p>`);
+    s.querySelector("#ai-rc").onclick = () => closeSheet();
+    if (!smart) return;
+    try {
+      const r = await aiCall({ tool: "safety", mid: m.id }), box = s.querySelector("#ai-rb"); if (!box?.isConnected) return;
+      const lvl = { high: "خطر عالٍ", medium: "مشبوهة", low: "خطر منخفض" }[r.risk] || "";
+      box.innerHTML = `<p class="ai-sub">تقدير الذكاء: <b>${h(lvl)}</b></p>` + [...new Set([...local, ...(r.reasons || [])])].map((t) => `<div class="ai-it"><div>${h(t)}</div></div>`).join("") + (r.advice ? `<p class="ai-sub">${h(r.advice)}</p>` : "");
+    } catch (e) { s.querySelector(".ai-load")?.remove(); if (e?.code === "msg_ai_off") ST.aiOn = false; }
+  }
+  function icsFor(it) {
+    const d = it.date.replace(/-/g, ""), stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const esc = (t) => String(t).replace(/[\\;,]/g, (x) => "\\" + x).replace(/\n/g, " ");
+    let when;
+    if (it.time) { const [hh, mm] = it.time.split(":").map(Number), end = hh * 60 + mm + 60, eh = Math.floor(end / 60) % 24, em = end % 60;
+      when = `DTSTART;TZID=Asia/Riyadh:${d}T${it.time.replace(":", "")}00\r\nDTEND;TZID=Asia/Riyadh:${d}T${String(eh).padStart(2, "0")}${String(em).padStart(2, "0")}00`; }
+    else { const n = new Date(it.date + "T00:00:00Z"); n.setUTCDate(n.getUTCDate() + 1); when = `DTSTART;VALUE=DATE:${d}\r\nDTEND;VALUE=DATE:${n.toISOString().slice(0, 10).replace(/-/g, "")}`; }
+    return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Mujtama+//msgs//AR\r\nBEGIN:VEVENT\r\nUID:${Date.now()}-${Math.random().toString(36).slice(2)}@mujtama\r\nDTSTAMP:${stamp}\r\n${when}\r\nSUMMARY:${esc(it.title)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+  }
+  async function aiExtract() {
+    const s = sheet(`<h4 class="ai-h" id="ai-eh">${AI_SP} مواعيد ومهام من المحادثة</h4><div id="ai-eb" aria-live="polite"><div class="ai-load"><i></i><i></i></div></div>`);
+    const box = s.querySelector("#ai-eb");
+    let r; try { r = await aiCall({ tool: "extract", n: 50 }); } catch (e) { closeSheet(); return aiErr(e); }
+    if (!box.isConnected) return;
+    const items = r.items || [];
+    const fmt = (it) => it.date ? `${new Date(it.date + "T12:00:00Z").toLocaleDateString("ar-SA-u-ca-gregory-nu-latn", { weekday: "long", day: "numeric", month: "long" })}${it.time ? " · " + it.time : ""}` : "بدون تاريخ";
+    box.innerHTML = (items.length ? items.map((it, i) => `<div class="ai-it"><div><b>${h(it.title)}</b><small>${it.kind === "task" ? "مهمة" : "موعد"} · ${h(fmt(it))}${it.forMe ? " · يخصك" : ""}</small></div>
+        ${it.date && it.kind === "event" ? `<button class="ai-chip" data-ics="${i}">أضف للتقويم</button>` : `<button class="ai-chip" data-cp="${i}">نسخ</button>`}${it.cites?.[0] ? `<button class="ai-chip" data-aigo="${h(it.cites[0])}">الرسالة</button>` : ""}</div>`).join("")
+      : `<p class="ai-sub">ما لقيت مواعيد أو مهام واضحة في آخر الرسائل.</p>`) +
+      `<div class="ai-row"><button class="ai-btn ghost" id="ai-ec">تم</button></div><p class="ai-note">ما يُضاف شي إلا لما تضغط · راجع التاريخ قبل الحفظ</p>`;
+    box.querySelectorAll("[data-ics]").forEach((b) => b.onclick = () => {
+      const it = items[+b.dataset.ics], url = URL.createObjectURL(new Blob([icsFor(it)], { type: "text/calendar" })), a = document.createElement("a");
+      a.href = url; a.download = "موعد.ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); toast("جهّزت الموعد، افتحه لإضافته لتقويمك");
+    });
+    box.querySelectorAll("[data-cp]").forEach((b) => b.onclick = async () => { const it = items[+b.dataset.cp]; try { await navigator.clipboard.writeText(it.title + (it.date ? " — " + fmt(it) : "")); toast("نُسخت"); } catch { toast("تعذر النسخ"); } });
+    box.querySelectorAll("[data-aigo]").forEach((b) => b.onclick = () => { closeSheet(); setTimeout(() => jumpTo(b.dataset.aigo), 60); });
+    box.querySelector("#ai-ec").onclick = () => closeSheet();
+  }
   function aiClose() { ctx.aiOpen = false; $("#ai-panel")?.remove(); $("#cm-ai")?.setAttribute("aria-expanded", "false"); }
   async function aiOpen(keep) {
     const box = $("#cm-comp > div"), ta = $("#cm-ta"); if (!box || !ta || !ctx) return;
     ctx.aiOpen = true; $("#cm-ai")?.setAttribute("aria-expanded", "true"); $("#ai-panel")?.remove();
     box.insertAdjacentHTML("afterbegin", `<div class="ai-panel" id="ai-panel" role="group" aria-label="مساعد الذكاء"><div class="ai-sugg" id="ai-sg"><span class="lbl">${AI_SP} ردود مقترحة</span><button class="ai-chip sk" disabled>…</button><button class="ai-chip sk" disabled>…</button></div>
-      <div class="ai-sugg ai-tone" id="ai-tn">${AI_TONES.map(([k, l]) => `<button class="ai-chip" data-tone="${k}">${l}</button>`).join("")}<button class="ai-chip" id="ai-sum">لخّص المحادثة</button></div></div>`);
+      <div class="ai-sugg ai-tone" id="ai-tn">${AI_TONES.map(([k, l]) => `<button class="ai-chip" data-tone="${k}">${l}</button>`).join("")}<button class="ai-chip" id="ai-sum">لخّص المحادثة</button><button class="ai-chip" id="ai-ex">مواعيد ومهام</button></div></div>`);
     const tones = () => { const has = ta.value.trim().length > 1; box.querySelectorAll("[data-tone]").forEach((b) => { b.hidden = !has; }); };
     tones(); ta.addEventListener("input", tones);
     $("#ai-sum").onclick = () => aiSummary(40);
+    $("#ai-ex").onclick = () => aiExtract();
     box.querySelectorAll("[data-tone]").forEach((b) => b.onclick = async () => {
       const orig = ta.value; if (orig.trim().length < 2) return;
       box.querySelectorAll("#ai-tn .ai-chip").forEach((x) => { x.disabled = true; }); b.textContent = "…";
