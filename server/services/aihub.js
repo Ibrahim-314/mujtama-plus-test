@@ -414,6 +414,46 @@ module.exports = (ctx, opts = {}) => {
     const out = await run(user, [{ role: "user", content: T.ask(text.replace(/"""/g, "\"\"\""), lang, to) }], { feature: "studio", system: ST_SYS, maxTokens: T.max, freeMax: T.max });
     return { tool, result: shape(tool, parseJSON(out.text), out.text), provider: out.provider, via: out.via || null, model: out.model || null, free: out.free || null };
   }
+  /* ---------- v2.117 «نشرتك الذكية» in «فاتك اليوم» — a sectioned brief of the viewer's last 24 h, every point cites its source posts ---------- */
+  const BR_SYS = "أنت محرر نشرة يومية داخل «مجتمع بلس». تكتب بعربية بسيطة دافئة وموجزة. تلخّص فقط ما في المنشورات المعطاة، لا تخترع أخباراً أو أرقاماً أو أسماء، ولا تحكم على الأشخاص. أعد JSON صالحاً فقط.";
+  const BR_KINDS = ["top", "people", "communities", "topics"];
+  const briefCache = new Map(); // user → { hash, at, brief } (2 h)
+  async function briefFacts(user) {
+    const since = new Date(Date.now() - 24 * 3600e3).toISOString();
+    const rk = ctx.services.ranking; if (!rk) throw fail(503, "not_configured", "الخلاصة غير متاحة الآن");
+    const ids = (await rk.ranked(user, "for")).filter((x) => x.at > since).map((x) => x.id).slice(0, 40);
+    if (!ids.length) return { posts: [] };
+    const rows = await db.all(`SELECT p.id, p.author, p.title, p.text, p.community, u.name uname, c.name cname, (SELECT 1 FROM follows f WHERE f.src=$1 AND f.dst=p.author) fol FROM posts p JOIN users u ON u.id=p.author LEFT JOIN communities c ON c.id=p.community WHERE p.id IN (${ids.map((_, i) => "$" + (i + 2)).join(",")})`, [user.id, ...ids]);
+    const by = new Map(rows.map((r) => [r.id, r]));
+    const posts = ids.map((i) => by.get(i)).filter((p) => p && p.author !== user.id && String(p.text || p.title || "").trim().length > 8).slice(0, 24);
+    return { posts: posts.map((p) => ({ id: p.id, by: p.uname, followed: !!p.fol, community: p.cname || null, text: String((p.title ? p.title + " — " : "") + (p.text || "")).replace(/\s+/g, " ").slice(0, 350) })) };
+  }
+  function shapeBrief(j, facts) {
+    const ok = new Set(facts.posts.map((p) => p.id));
+    if (!j) throw fail(502, "bad_output", "لم يرجع النموذج نشرة مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
+    const sections = (Array.isArray(j.sections) ? j.sections : []).filter((x) => BR_KINDS.includes(x?.kind)).map((x) => ({ kind: x.kind,
+      items: (Array.isArray(x.items) ? x.items : []).map((it) => ({ text: str(it?.text, 320), cites: [...new Set((Array.isArray(it?.cites) ? it.cites : []).filter((c) => ok.has(c)))].slice(0, 3) })).filter((it) => it.text && it.cites.length).slice(0, 4) }))
+      .filter((x) => x.items.length);
+    const seen = new Set(); const uniq = sections.filter((x) => !seen.has(x.kind) && seen.add(x.kind));
+    if (!uniq.length) throw fail(502, "bad_output", "لم يرجع النموذج نشرة مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
+    const used = new Set(uniq.flatMap((x) => x.items.flatMap((i) => i.cites)));
+    return { headline: str(j.headline, 160), sections: uniq.sort((a, b) => BR_KINDS.indexOf(a.kind) - BR_KINDS.indexOf(b.kind)),
+      sources: Object.fromEntries(facts.posts.filter((p) => used.has(p.id)).map((p) => [p.id, { by: p.by, community: p.community }])), count: facts.posts.length };
+  }
+  async function brief(user, b, make) {
+    const facts = await briefFacts(user);
+    const hash = facts.posts.map((p) => p.id).join("|"), hit = briefCache.get(user.id);
+    const fresh = hit && hit.hash === hash && Date.now() - hit.at < 2 * 3600e3;
+    if (!make || (fresh && !b.refresh)) return { brief: fresh ? hit.brief : null, generatedAt: fresh ? new Date(hit.at).toISOString() : null, available: facts.posts.length, cached: !!fresh };
+    if (!facts.posts.length) return { brief: null, available: 0, empty: true, message: "لا جديد في آخر ٢٤ ساعة — أنت مطّلع على كل شيء" };
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const ask = `هذه منشورات آخر ٢٤ ساعة التي تهم القارئ (JSON؛ followed=true يعني أنه يتابع الكاتب، community اسم المجتمع إن وجد). اكتب له نشرة يومية:\n- headline: جملة افتتاحية واحدة تلخّص يومه\n- sections: أقسام بهذا الترتيب عند توفر مادة لها فقط:\n  top = الأبرز اليوم (1-3 نقاط)، people = من الناس الذين يتابعهم (followed=true فقط، اذكر الاسم)، communities = في مجتمعاته (اذكر اسم المجتمع)، topics = مواضيع أخرى قد تهمه\n- كل نقطة {"text":"جملة أو جملتان","cites":["معرّفات المنشورات المصدر"]}، ولا تكرر المنشور نفسه في أكثر من قسم\nأعد: {"headline":"...","sections":[{"kind":"top","items":[]}]}\n\nالمنشورات:\n${JSON.stringify(facts.posts)}`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 1600, freeMax: 1600 });
+    const out = shapeBrief(parseJSON(o.text), facts), at = Date.now();
+    if (briefCache.size > 2000) briefCache.delete(briefCache.keys().next().value);
+    briefCache.set(user.id, { hash, at, brief: out });
+    return { brief: out, generatedAt: new Date(at).toISOString(), available: facts.posts.length, cached: false, provider: o.provider, via: o.via || null, model: o.model || null, free: o.free || null };
+  }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
   async function providerFor(uid, feature) {
     const pr = await prefsOf(uid), pid = pr.features[feature];
@@ -450,8 +490,10 @@ module.exports = (ctx, opts = {}) => {
   R.put("/api/aihub/prefs", A(async (req) => savePrefs(req.user, req.body || {})));
   R.post("/api/aihub/chat", A(async (req) => chat(req.user, req.body || {})));
   R.post("/api/aihub/studio", A(async (req) => studio(req.user, req.body || {})));
+  R.get("/api/aihub/brief", A(async (req) => brief(req.user, {}, false)));
+  R.post("/api/aihub/brief", A(async (req) => brief(req.user, req.body || {}, true)));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
 
-  return { providerFor, overview, settings, chat, studio, MSG };
+  return { providerFor, overview, settings, chat, studio, brief, MSG };
 };
