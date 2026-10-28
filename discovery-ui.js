@@ -671,6 +671,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       ${sec("posts", "المنشورات", lim(g.posts?.items || [], 20).map((p) => card(p) + ansHtml(p)).join(""))}
       ${!r.total ? `<div class="empty">${ic("search", "lg")}<br>لا نتائج لـ «${h(q)}»<br><small class="muted">جرّب كلمات أقل أو أزل بعض الفلاتر</small></div>` : ""}`;
     smartBox(body, q, r);
+    // v2.133: a click on a result post teaches the ranking for this query (aggregated counts only, once per reader per day)
+    body._sq = q;
+    if (!body._clk) { body._clk = true; body.addEventListener("click", (e) => { const c = e.target.closest(".post-card, .s-ans"); if (!c || !body.contains(c) || !body._sq) return; const id = c.querySelector("[data-more]")?.dataset.more || (c.getAttribute("href") || "").split("#/post/")[1]; if (id) api("POST", "/api/search/click", { q: body._sq, id }).catch(() => { }); }); }
     body.querySelectorAll("[data-more-type]").forEach(b => b.onclick = () => { SR.type = b.dataset.moreType; view.querySelectorAll("[data-type]").forEach(x => { x.classList.toggle("on", x.dataset.type === SR.type); x.setAttribute("aria-pressed", x.dataset.type === SR.type); }); runSearch(); scrollTo({ top: 0 }); });
     $("#s-dym") && ($("#s-dym").onclick = () => { SR.q = r.didYouMean; $("#sq2").value = SR.q; runSearch(); });
     $("#s-orig") && ($("#s-orig").onclick = () => { SR.exact = true; runSearch(); });
