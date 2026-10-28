@@ -154,6 +154,11 @@ module.exports = (ctx) => {
       if (r.kind === "user") { const u = await db.get("SELECT id, name, handle, bio, location, created_at FROM users WHERE id=$1", [r.ref_id]); if (u) await indexUser(u).catch(() => { }); else await removeDoc("user", r.ref_id); }
       else { const c = await db.get("SELECT * FROM communities WHERE id=$1", [r.ref_id]); if (c) await indexCommunity(c).catch(() => { }); else await removeDoc("community", r.ref_id); }
     }
+    // v2.124: every other kind (listings, events, …) is re-indexed from its stored row, so no stale doc keeps the index «not ready»
+    for (const d of await db.all("SELECT * FROM search_docs WHERE kind NOT IN ('post','user','community') AND iv < $1 LIMIT " + batch, [IV])) {
+      await indexDoc({ kind: d.kind, id: d.ref_id, title: d.title, body: d.body, extra: d.extra, ptype: d.ptype, community: d.community, lang: d.lang, author: d.author, visibility: d.visibility, created_at: d.created_at, quality: d.quality }).catch(() => { });
+    }
+    READY.at = 0;
     const recent = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND created_at > $1 ORDER BY created_at DESC LIMIT 400", [new Date(Date.now() - 7 * 864e5).toISOString()]);
     for (const r of recent) { const x = await postExtras(r.ref_id); await db.run("UPDATE search_docs SET quality=$1 WHERE kind='post' AND ref_id=$2", [x.quality, r.ref_id]); }
     return { upgraded: old.length, refreshed: recent.length, ...rec };
@@ -329,7 +334,10 @@ module.exports = (ctx) => {
   async function postingsReady() {
     if (Date.now() - READY.at < 60e3) return READY.ok;
     let ok = false;
-    try { ok = !!(await db.read.get("SELECT 1 x FROM search_postings LIMIT 1")) && !(await db.read.get(`SELECT 1 x FROM search_docs WHERE iv < ${IV} LIMIT 1`)); } catch { ok = false; }
+    try { if (await db.read.get("SELECT 1 x FROM search_postings LIMIT 1")) { // v2.124: a handful of docs that failed to re-index must not keep the whole index off
+      const c = await db.read.get(`SELECT COUNT(*) n, SUM(CASE WHEN iv < ${IV} THEN 1 ELSE 0 END) s FROM search_docs`);
+      ok = Number(c?.s || 0) <= Math.max(5, Math.floor(Number(c?.n || 0) * 0.01));
+    } } catch { ok = false; }
     READY = { at: Date.now(), ok }; return ok;
   }
   async function postingsIds(q, kinds, f, limit = 200) {
@@ -422,7 +430,8 @@ module.exports = (ctx) => {
   async function search(viewer, qs) {
     const q = str(qs.q, 120, { required: true }), f = parseFilters(qs);
     let res = await run(viewer, q, f), corrected = null, didYouMean = null;
-    if (res.total < 3 && qs.exact !== "1") { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
+    // v2.124: when the index already matched (typos, sound keys, prefixes), the old word-by-word guess only adds noise («بايثن» → «باحثة»)
+    if (res.total < 3 && qs.exact !== "1" && !(res.engine === "index" && res.total > 0)) { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
       const c = await correct(q);
       if (c && A.normalize(c) !== A.normalize(q)) {
         if (res.total === 0) { const r2 = await run(viewer, c, f); if (r2.total) { res = r2; corrected = c; } else didYouMean = c; }
