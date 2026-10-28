@@ -23,6 +23,7 @@ const MAGIC = [
   ["audio/mp4", b => b.slice(4, 8).toString() === "ftyp"], ["audio/wav", b => b.slice(0, 4).toString() === "RIFF" && b.slice(8, 12).toString() === "WAVE"]
 ];
 
+const { scamSignals } = require("../lib/msg-safety");
 module.exports = (ctx) => {
   const { db, bus, rl, realtime } = ctx;
   const R = ctx.router, A = ctx.requireUser;
@@ -191,7 +192,11 @@ module.exports = (ctx) => {
     const replyIds = [...new Set(rows.map(r => r.reply_to).filter(Boolean))];
     const replies = replyIds.length ? await db.all(`SELECT id, sender, kind, text, payload, deleted_at FROM messages WHERE id IN (${inList(replyIds)})`, replyIds) : [];
     const ms = await members(cid);
-    return { messages: rows.map(r => ({ ...shapeMessage(r, c, reacts[r.id] || []), ...(r.reply_to && !r.deleted_at ? { reply: replyPreview(replies.find(x => x.id === r.reply_to)) || { id: r.reply_to, deleted: true } } : {}) })),
+    const risk = (r) => { // v2.135: local scam/phishing signals on other people's readable text messages (never e2ee payloads)
+      if (r.sender === user.id || r.payload || r.deleted_at || (r.kind && r.kind !== "text")) return null;
+      const x = scamSignals(r.text); return x.risky ? { risk: x.reasons } : null;
+    };
+    return { messages: rows.map(r => ({ ...shapeMessage(r, c, reacts[r.id] || []), ...(r.reply_to && !r.deleted_at ? { reply: replyPreview(replies.find(x => x.id === r.reply_to)) || { id: r.reply_to, deleted: true } } : {}), ...risk(r) })),
       reads: Object.fromEntries(ms.filter(m => m.state === "accepted" && m.user_id !== user.id).map(m => [m.user_id, m.last_read_at])), state: me.state, more: rows.length === limit };
   }
   function validEnvelope(env) {
