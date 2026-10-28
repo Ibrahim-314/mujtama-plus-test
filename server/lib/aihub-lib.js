@@ -50,7 +50,7 @@ const CATALOG = [
 const BY_ID = new Map(CATALOG.map((p) => [p.id, p]));
 const byId = (id) => BY_ID.get(String(id || "")) || null;
 /** features a member can point at one of their linked accounts */
-const FEATURES = { chat: "المحادثة في مركز الذكاء", assistant: "مساعد الكتابة واقتراح الردود", studio: "مساعد استوديو المنشئ (عناوين، ترجمة، فحص قبل النشر، شرح الأرقام والتعليقات، أفكار المحتوى، تحويل الصيغ)" };
+const FEATURES = { chat: "المحادثة في مركز الذكاء", assistant: "مساعد الكتابة واقتراح الردود", digest: "نشرتك الذكية في «فاتك اليوم»", studio: "مساعد استوديو المنشئ (عناوين، ترجمة، فحص قبل النشر، شرح الأرقام والتعليقات، أفكار المحتوى، تحويل الصيغ)" };
 
 const keyHint = (k) => { const s = String(k || ""); return s.length >= 8 ? "••••" + s.slice(-4) : "••••"; };
 const cleanKey = (k) => String(k || "").trim().replace(/^Bearer\s+/i, "").replace(/\s+/g, "");
