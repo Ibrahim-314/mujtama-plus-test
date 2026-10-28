@@ -3321,5 +3321,16 @@
 "وقت مقترح": "Suggested time",
 " — أنشط وقت لمتابعيك": " — when your followers are most active",
 " — حتى تتجمع بيانات متابعيك": " — until we learn your followers' habits",
-"نسخ الكل": "Copy all"
+"نسخ الكل": "Copy all",
+"الأبرز اليوم": "Top today",
+"من الناس اللي تتابعهم": "From people you follow",
+"في مجتمعاتك": "In your communities",
+"مواضيع قد تهمك": "Topics you may like",
+"نشرتك الذكية": "Your smart brief",
+"{name} حدّث": "{name} Refresh",
+"يقرأ الذكاء {name} ويكتب لك نشرة مرتبة: الأبرز، ومن تتابعهم، ومجتمعاتك — وكل نقطة مربوطة بمصدرها.": "AI reads {name} and writes you a tidy brief: the top stories, people you follow and your communities — every point linked to its source.",
+"{name} اصنع نشرتي": "{name} Make my brief",
+"يقرأ يومك ويكتب لك…": "Reading your day…",
+"افتح المصدر": "Open source",
+"لا جديد الآن": "Nothing new now"
 });
