@@ -16,6 +16,7 @@ const GROUPS = ["people", "posts", "communities", "hashtags"];
 const VIEWS = ["latest", "media"]; // v2.127: post views with their own ordering/filter (results come back in groups.posts)
 const hasMedia = (p) => { let d = p.data; try { d = typeof d === "string" ? JSON.parse(d) : d; } catch { d = null; } return !!(d && !d.paid && (d.media || (Array.isArray(d.images) && d.images.length) || d.video || d.audio)) || p.type === "video" || p.type === "audio"; };
 const RT = require("../../richtext.js");
+const OPS = require("../lib/search-ops");
 const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic"), EM = require("../lib/search-embed");
 const SV = 1, VEC_KINDS = new Set(["post", "community"]); // v2.125 meaning vectors (086): model version + which documents carry one
 const IV = 5, IV_READY = 4; // v2.126: 5 = answer field; docs at 4 are fully searchable (readiness needs ≥ 4) and are upgraded in the background.
@@ -538,16 +539,71 @@ module.exports = (ctx) => {
       if (a) { const u = authors.get(a.author); p.bestAnswer = { id: a.id, text: String(a.text || "").slice(0, 280), accepted: !!acc, likes: Number(a.likes) || 0, author: u ? ctx.services.users.pub(u) : null }; }
     }
   }
-  async function run(viewer, q, f, { limit = 20 } = {}) {
-    const want = f.type === "all" ? GROUPS : VIEWS.includes(f.type) ? ["posts"] : [f.type];
+  /* v2.128 stage 5: operators with no free text («from:sara since:2026-01-01») browse matching posts newest first */
+  async function browseIds(ops, f) {
+    const where = ["p.status='published'", "p.type<>'story'", "(p.sponsored IS NULL OR p.sponsored=0)"], p = [];
+    const add = (sql, ...v) => { let x = sql; for (const val of v) { p.push(val); x = x.replace("$?", "$" + p.length); } where.push(x); };
+    if (ops.from.length) add(`p.author IN (SELECT id FROM users WHERE LOWER(handle) IN (${ops.from.map(() => "$?").join(",")}))`, ...ops.from);
+    if (f.from) add("p.created_at >= $?", f.from);
+    if (f.to) add("p.created_at <= $?", f.to);
+    if (f.lang) add("p.lang = $?", f.lang);
+    if (f.community) add("p.community = $?", f.community);
+    if (f.ptype) add("p.type = $?", f.ptype);
+    if (ops.near) add("LOWER(COALESCE(p.location,'')) LIKE $?", "%" + ops.near.toLowerCase().replace(/[%_]/g, "") + "%");
+    for (const h of [...ops.to, ...ops.mention]) add("LOWER(p.text) LIKE $?", "%@" + h.replace(/[%_]/g, "") + "%");
+    for (const t of ops.tags) add("p.id IN (SELECT post_id FROM post_hashtags WHERE tag = $?)", canonTag(normalizeTag(t)));
+    const rows = await db.read.all(`SELECT p.id FROM posts p WHERE ${where.join(" AND ")} ORDER BY p.created_at DESC LIMIT 300`, p);
+    return rows.map((r) => ({ kind: "post", id: r.id }));
+  }
+  /* v2.128: every operator is checked on the candidate posts (≤ 200 after retrieval), after the visibility check */
+  async function applyOps(rows, ops) {
+    if (!rows.length) return rows;
+    const ids = rows.map((r) => r.id);
+    let authors = null; if (ops.from.length) authors = new Set((await db.read.all(`SELECT id FROM users WHERE LOWER(handle) IN (${inList(ops.from)})`, ops.from)).map((r) => r.id));
+    let tags = null; if (ops.tags.length) { tags = new Map(); for (const r of await db.read.all(`SELECT post_id, tag FROM post_hashtags WHERE post_id IN (${inList(ids)})`, ids)) (tags.get(r.post_id) || tags.set(r.post_id, new Set()).get(r.post_id)).add(r.tag); }
+    let faves = null; if (ops.minFaves) faves = new Map((await db.read.all(`SELECT target, COUNT(*) n FROM reactions WHERE target IN (${inList(ids)}) GROUP BY target`, ids)).map((r) => [r.target, Number(r.n)]));
+    let reps = null; if (ops.minReplies) reps = new Map((await db.read.all(`SELECT post, COUNT(*) n FROM comments WHERE status='published' AND post IN (${inList(ids)}) GROUP BY post`, ids)).map((r) => [r.post, Number(r.n)]));
+    const N = (t) => " " + A.normalize(String(t || "")).replace(/\s+/g, " ") + " ";
+    const wantTags = ops.tags.map((t) => canonTag(normalizeTag(t)));
+    const isF = (p, fl) => { let d = p.data; try { d = typeof d === "string" ? JSON.parse(d) : d; } catch { d = null; } d = d && !d.paid ? d : {};
+      return fl === "media" ? hasMedia(p) : fl === "images" ? Array.isArray(d.images) && d.images.length > 0 : fl === "videos" ? p.type === "video" || !!d.video
+        : fl === "links" ? /https?:\/\//i.test(p.text || "") : fl === "questions" ? p.type === "question" : fl === "polls" ? p.type === "poll" || !!d.poll
+          : fl === "articles" ? p.type === "article" || !!d.doc : fl === "quotes" ? !!p.quote_of : true; };
+    return rows.filter((p) => {
+      if (authors && !authors.has(p.author)) return false;
+      const txt = String(p.text || "").toLowerCase();
+      for (const h of [...ops.to, ...ops.mention]) if (!txt.includes("@" + h)) return false;
+      if (wantTags.length && !wantTags.every((t) => tags?.get(p.id)?.has(t) || N(p.text).includes(" " + A.normalize(t)))) return false;
+      const all = N(`${p.title || ""} ${bodyOf(p)}`);
+      for (const ph of ops.phrases) if (!all.includes(A.normalize(ph))) return false;
+      for (const ph of ops.excludePhrases) if (all.includes(A.normalize(ph))) return false;
+      for (const w of ops.exclude) { const n = A.normalize(w); if (n && (all.includes(" " + n + " ") || all.includes(" " + n) )) return false; }
+      const at = new Date(p.created_at).getTime();
+      if (ops.since && at < Date.parse(ops.since)) return false;
+      if (ops.until && at > Date.parse(ops.until)) return false;
+      if (ops.lang && p.lang && p.lang !== ops.lang) return false;
+      if (ops.near && !String(p.location || "").toLowerCase().includes(ops.near.toLowerCase())) return false;
+      if (faves && (faves.get(p.id) || 0) < ops.minFaves) return false;
+      if (reps && (reps.get(p.id) || 0) < ops.minReplies) return false;
+      for (const fl of ops.filters) if (!isF(p, fl)) return false;
+      for (const fl of ops.notFilters) if (isF(p, fl)) return false;
+      return true;
+    });
+  }
+  async function run(viewer, q0, f0, { limit = 20 } = {}) {
+    const P = OPS.parse(q0), q = P.active ? P.text : q0;
+    const f = P.active ? { ...f0, ops: P.ops, lang: f0.lang || P.ops.lang, from: [f0.from, P.ops.since].filter(Boolean).sort().pop() || null, to: [f0.to, P.ops.until].filter(Boolean).sort()[0] || null } : f0;
+    const browse = P.active && !q;
+    const want = browse ? ["posts"] : f.type === "all" ? GROUPS : VIEWS.includes(f.type) ? ["posts"] : [f.type];
     const kinds = want.map(g => ({ people: "user", posts: "post", communities: "community" }[g])).filter(Boolean);
-    const { engine, ids } = kinds.length ? await engineIds(q, kinds, f) : { engine: meili ? "meilisearch" : "builtin", ids: [] };
+    const { engine, ids } = browse ? { engine: "operators", ids: await browseIds(P.ops, f) } : kinds.length ? await engineIds(q, kinds, f) : { engine: meili ? "meilisearch" : "builtin", ids: [] };
     const of = (k) => ids.filter(x => x.kind === k).map(x => x.id);
     const fetchRows = async (table, list) => { if (!list.length) return []; const rows = await db.read.all(`SELECT * FROM ${table} WHERE id IN (${list.map((_, i) => "$" + (i + 1)).join(",")})`, list); const m = new Map(rows.map(r => [r.id, r])); return list.map(i => m.get(i)).filter(Boolean); };
     const out = { engine, groups: {} };
     if (want.includes("people")) { const rows = (await fetchRows("users", of("user").slice(0, 100))).filter(u => u.status === "active" && !((viewer?.prefs?.blocked) || []).includes(u.id)); out.groups.people = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.users.pub) }; }
     if (want.includes("posts")) { let rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id);
       if (f.media) rows = rows.filter(hasMedia);
+      if (f.ops) rows = await applyOps(rows, f.ops);
       if (f.sort === "latest") rows = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; await attachAnswers(out.groups.posts.items, viewer); out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
     if (want.includes("communities")) { const rows = (await fetchRows("communities", of("community").slice(0, 100))).filter(c => c.type !== "invite"); out.groups.communities = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.communities.toClient) }; }
     if (want.includes("hashtags")) { // tags are stored canonical but not normalised: compare in normalised space
@@ -561,24 +617,25 @@ module.exports = (ctx) => {
     return out;
   }
   async function search(viewer, qs) {
-    const q = str(qs.q, 120, { required: true }), f = parseFilters(qs);
+    const q = str(qs.q, 200, { required: true }), f = parseFilters(qs); // v2.128: room for operators
     let res = await run(viewer, q, f), corrected = null, didYouMean = null;
+    const P = OPS.parse(q); // v2.128: with operators the reader wrote an exact request — no spelling rewrite, no AI reinterpretation
     // v2.124: when the index already matched (typos, sound keys, prefixes), the old word-by-word guess only adds noise («بايثن» → «باحثة»)
     // v2.125: on the index the old word-by-word guesser is off entirely — typo neighbours (fuzziness AUTO), sound keys and meaning
     // vectors already ran; its guesses turned «محمول» into «محمصة». It stays for the builtin scan used while the index builds.
-    if (res.total < 3 && qs.exact !== "1" && !(res.engine === "index" || res.engine === "hybrid")) { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
+    if (!P.active && res.total < 3 && qs.exact !== "1" && !(res.engine === "index" || res.engine === "hybrid")) { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
       const c = await correct(q);
       if (c && A.normalize(c) !== A.normalize(q)) {
         if (res.total === 0) { const r2 = await run(viewer, c, f); if (r2.total) { res = r2; corrected = c; } else didYouMean = c; }
         else didYouMean = c;
       }
     }
-    if (!corrected && (res.engine === "index" || res.engine === "hybrid") && res.total > 0 && qs.exact !== "1") { // typo neighbours carried the match → say what we read
+    if (!P.active && !corrected && (res.engine === "index" || res.engine === "hybrid") && res.total > 0 && qs.exact !== "1") { // typo neighbours carried the match → say what we read
       const u = await understand(q), fixes = new Map(u.filter((c) => c.fix).map((c) => [c.w, c.fix]));
       if (fixes.size) { const words = q.trim().split(/\s+/).map((w) => { const t = AN.words(w)[0]; return t && fixes.has(t) ? fixes.get(t) : w; }); const c = words.join(" "); if (A.normalize(c) !== A.normalize(q)) corrected = c; }
     }
     let understood = null; // v2.124: nothing matched the words → the AI hub turns the question into concepts (cached 24 h per query)
-    if (res.total === 0 && viewer?.id && qs.ai !== "0" && ctx.services.aihub?.queryPlan) {
+    if (!P.active && res.total === 0 && viewer?.id && qs.ai !== "0" && ctx.services.aihub?.queryPlan) {
       const plan = await ctx.services.aihub.queryPlan(viewer, q).catch(() => null);
       if (plan) { const r3 = await run(viewer, q, { ...f, _plan: plan }); if (r3.total) { res = r3; understood = plan.rewritten || plan.concepts.map((c) => c[0]).join(" "); } }
     }
@@ -589,7 +646,7 @@ module.exports = (ctx) => {
       for (const o of old) await db.run("DELETE FROM search_history WHERE id=$1", [o.id]);
     }
     ctx.track(viewer?.id, "search_performed", { q, engine: res.engine });
-    return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ...res };
+    return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ops: P.active ? P.ops : null, ...res };
   }
 
   /* ---------- typeahead ---------- */
