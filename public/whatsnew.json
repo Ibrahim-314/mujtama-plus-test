@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.134.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "الذكاء في الرسائل",
+      "items": [
+        "زر ✨ في خانة الكتابة: ردود مقترحة، وتحسين رسالتك بنبرة تختارها (ألطف، أقصر، أرسمي، أو تصحيح إملائي فقط)",
+        "«لخّص لي اللي فاتني» يظهر لما يتراكم عندك 5 رسائل أو أكثر، وكل نقطة مربوطة برسالتها",
+        "لا شيء يُرسل تلقائياً: أنت تراجع وتعدّل وترسل بنفسك",
+        "المحادثات المشفّرة لا تصل للذكاء أبداً",
+        "مفتاح جديد في الإعدادات لإيقاف الذكاء في الرسائل"
+      ]
+    },
+    "en": {
+      "title": "AI in messages",
+      "items": [
+        "A ✨ button in the composer: suggested replies, and rewrite your message in the tone you pick (kinder, shorter, more formal, or spelling fix only)",
+        "«Catch me up» appears when 5+ messages pile up, every point linked to its message",
+        "Nothing is sent automatically: you review, edit and send yourself",
+        "Encrypted chats never reach the AI",
+        "A new Settings switch turns AI off in messages"
+      ]
+    }
+  },
+  {
     "v": "2.133.0",
     "date": "2026-10-28",
     "ar": {
