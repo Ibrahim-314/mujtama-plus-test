@@ -732,18 +732,55 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     view.innerHTML = `<div class="wrap"><header class="tp-head" style="background:linear-gradient(150deg,#4f22d1,#c04cf0)"><span class="x-emo" aria-hidden="true">${ic("sparkle", "lg")}</span><h2>فاتك اليوم</h2><p>خلاصة آخر ٢٤ ساعة ممن تتابعهم ومجتمعاتك ومواضيعك.</p>
       <div class="tp-stats"><span>${nf(d.counts.posts)} منشور</span><span>${nf(d.counts.people)} شخص</span>${d.counts.comments ? `<span>${nf(d.counts.comments)} تعليق عليك</span>` : ""}</div></header>
       <section class="card dbr" id="dbr" aria-live="polite"></section>
+      <section class="card dbr" id="dask" hidden><div class="dbr-h">${ic("comment", "sm")}<b>اسأل عن يومك</b></div>
+        <div class="dbr-c">${["وش أهم شي فاتني؟", "وش قالوا اللي أتابعهم؟", "فيه شي جديد في مجتمعاتي؟"].map(x => `<button data-ask="${h(x)}">${h(x)}</button>`).join("")}</div>
+        <form class="dask-f" id="dask-f"><input id="dask-q" maxlength="300" placeholder="اكتب سؤالك عن يومك…" aria-label="سؤالك عن يومك" autocomplete="off"><button class="btn" aria-label="اسأل">${ic("arrowUp", "xs")}</button></form>
+        <div id="dask-out" aria-live="polite"></div></section>
       ${d.summary?.points?.length ? `<section class="card d-sum"><div class="d-sum-h"><b>${ic("sparkle", "sm")} أبرز ما دار</b>${aiLabel(d.summary)}</div>${points(d.summary)}<p class="u-t-xs u-m0 u-mt8 muted">${h(d.summary.label)}</p></section>` : `<div class="empty">${ic("check", "lg")}<br>أنت مطّلع على كل شيء — لا جديد يستحق التلخيص الآن.</div>`}
-      ${d.trends.length ? `<div class="x-h"><h2>رائج اليوم</h2></div><div class="s-chips">${d.trends.map(t => `<a class="s-chip" href="#/tag/${enc(t.tag)}"><bdi>#${h(t.tag)}</bdi></a>`).join("")}</div>` : ""}
+      ${d.trends.length ? `<div class="x-h"><h2>رائج اليوم</h2></div><div class="s-chips">${d.trends.map(t => `<a class="s-chip" href="#/tag/${enc(t.tag)}"><bdi>#${h(t.tag)}</bdi></a>`).join("")}</div>
+        <section class="card dbr dwhy" id="dwhy"><div class="dbr-h">${ic("sparkle", "sm")}<b>ليش رائج؟</b></div><p class="muted u-m0 u-mt6">اختر وسماً ويشرح لك الذكاء سبب رواجه والآراء حوله من المنشورات نفسها.</p><div class="dbr-c">${d.trends.map(t => `<button data-why="${h(t.tag)}"><bdi>#${h(t.tag)}</bdi></button>`).join("")}</div><div id="dwhy-out" aria-live="polite"></div></section>` : ""}
       ${d.posts.length ? `<div class="x-h"><h2>المنشورات المصدر</h2></div>${d.posts.map(card).join("")}` : ""}
       <a href="#/feedprefs" class="u-dflex u-mt12 card row">${ic("mail")}<div class="grow"><b>النشرة البريدية الأسبوعية</b><div class="muted">ملخص اختياري يصلك كل أسبوع</div></div><span class="muted">←</span></a></div>`;
     painted(re);
     view.querySelectorAll("[data-cite]").forEach(b => b.onclick = () => (location.hash = "#/post/" + b.dataset.cite));
-    smartBrief($("#dbr"));
+    smartBrief($("#dbr")); dayAsk(); trendWhy();
+  }
+  /* v2.118 «اسأل عن يومك» + «ليش رائج؟» — answers only from the posts the reader can see; every point opens its source */
+  const chips = (ids, src) => (ids || []).map((id) => src[id] ? `<button data-cite="${h(id)}" aria-label="افتح المصدر">${ic("link", "xs")} <bdi>${h(src[id].community || src[id].by || "المصدر")}</bdi></button>` : "").join("");
+  const aiErr = (e) => { const link = /اربط|غير مفعّل|مجاناً اليوم/.test(e.message || "") || e.status === 503 || e.status === 429; return `<p>${h(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}`; };
+  const openCites = (el) => el.querySelectorAll("[data-cite]").forEach((b) => b.onclick = () => (location.hash = "#/post/" + b.dataset.cite));
+  const askLog = [];
+  function dayAsk() {
+    const box = $("#dask"); if (!box) return;
+    api("GET", "/api/aihub/brief").then((r) => { if (r.available && box.isConnected) box.hidden = false; }).catch(() => {});
+    const out = $("#dask-out"), inp = $("#dask-q");
+    const paint = () => { out.innerHTML = askLog.map((x) => `<div class="dbr-it dask-a"><b class="u-t-xs muted"><bdi>${h(x.q)}</bdi></b><div>${x.wait ? `<span class="muted">يبحث في يومك…</span><div class="skel"></div>` : x.err ? x.err : `<bdi>${h(x.answer)}</bdi>`}</div>${x.cites ? `<div class="dbr-c">${chips(x.cites, x.sources || {})}</div>` : ""}</div>`).join(""); openCites(out); };
+    const ask = async (q) => {
+      q = String(q || "").trim(); if (q.length < 2) { inp.focus(); return; }
+      const item = { q, wait: true }; askLog.unshift(item); if (askLog.length > 5) askLog.pop(); inp.value = ""; paint();
+      try { Object.assign(item, await api("POST", "/api/aihub/brief/ask", { q }), { wait: false }); } catch (e) { Object.assign(item, { wait: false, err: aiErr(e) }); }
+      if (out.isConnected) paint();
+    };
+    box.querySelectorAll("[data-ask]").forEach((b) => b.onclick = () => ask(b.dataset.ask));
+    $("#dask-f").onsubmit = (e) => { e.preventDefault(); ask(inp.value); };
+    if (askLog.length) paint();
+  }
+  function trendWhy() {
+    const box = $("#dwhy"); if (!box) return; const out = $("#dwhy-out");
+    box.querySelectorAll("[data-why]").forEach((b) => b.onclick = async () => {
+      box.querySelectorAll("[data-why]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      out.innerHTML = `<p class="muted">يقرأ منشورات #${h(b.dataset.why)}…</p><div class="skel"></div><div class="skel"></div>`;
+      try {
+        const r = await api("POST", "/api/aihub/trend", { tag: b.dataset.why }); if (!out.isConnected) return;
+        out.innerHTML = r.why ? `<p class="dbr-lead"><bdi>${h(r.why)}</bdi></p>${r.angles.map((a) => `<div class="dbr-it"><bdi>${h(a.text)}</bdi><div class="dbr-c">${chips(a.cites, r.sources)}</div></div>`).join("")}<p class="muted u-t-xs">مولّد بالذكاء من ${nf(r.count)} منشوراً — افتح المصادر للتفاصيل · <a href="#/tag/${enc(r.tag)}">كل منشورات الوسم</a></p>` : `<p class="muted">${h(r.message || "")}</p>`;
+        openCites(out);
+      } catch (e) { if (out.isConnected) out.innerHTML = aiErr(e); }
+    });
   }
   /* v2.117 «نشرتك الذكية» — AI from «مركز الذكاء» (member's linked account for «digest», else the free daily allowance).
    * Made on request (saves the allowance), kept 2 h server-side; every point links to the posts it came from. */
   const BR_T = { top: ["sparkle", "الأبرز اليوم"], people: ["users", "من الناس اللي تتابعهم"], communities: ["home", "في مجتمعاتك"], topics: ["hash", "مواضيع قد تهمك"] };
-  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}"; document.head.appendChild(st); }
+  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}.dask-f{display:flex;gap:8px;margin-top:10px}.dask-f input{flex:1;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit}.dask-a b{display:block;margin-bottom:4px}.dwhy{margin-top:12px}.dbr-c button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}"; document.head.appendChild(st); }
   function briefHTML(r) {
     const b = r.brief, src = b.sources || {};
     const cite = (id) => { const m = src[id]; return m ? `<button data-cite="${h(id)}" aria-label="افتح المصدر">${ic("link", "xs")} <bdi>${h(m.community || m.by || "المصدر")}</bdi></button>` : ""; };
