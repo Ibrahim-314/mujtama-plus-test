@@ -85,3 +85,20 @@ test("AI search: thin retrieval → query plan (synonyms) → found; nothing at 
   assert.equal(none.found, false); assert.deepEqual(none.sources, {});
   assert.equal((await new H.Client().req("POST", "/api/aihub/search", { q: "x" })).status, 401);
 });
+
+test("v2.124 a stale non-post doc (old listing) is re-indexed and never keeps the posting index off", async () => {
+  const S = H.app.ctx.services.search;
+  await S.indexDoc({ kind: "listing", id: "l_stale", title: "لابتوب مستعمل", body: "جهاز ممتاز", visibility: "public", created_at: new Date().toISOString() });
+  await db.run("UPDATE search_docs SET iv=1 WHERE kind='listing' AND ref_id='l_stale'");
+  await S.upgradeIndex();
+  const r = await db.get("SELECT iv FROM search_docs WHERE kind='listing' AND ref_id='l_stale'");
+  assert.equal(Number(r.iv), S.IV);
+  assert.equal(await S.postingsReady(), true);
+});
+
+test("v2.124 no noisy «did you mean» when the index already found the post", async () => {
+  await seed(A.id, "أفضل طريقة لتعلم بايثون من الصفر: ابدأ بالأساسيات ثم مشروع صغير");
+  const r = await A.req("GET", "/api/search/full?q=" + encodeURIComponent("بايثن"));
+  assert.ok(ids(r).length > 0);
+  assert.equal(r.didYouMean, null);
+});
