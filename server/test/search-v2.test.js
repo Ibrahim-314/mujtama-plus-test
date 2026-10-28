@@ -11,7 +11,8 @@ const free = { label: "مجتمع بلس", async chat(msgs) {
   const q = msgs[msgs.length - 1].content; calls.push(q);
   if (q.startsWith("حوّل سؤال البحث") && !q.includes("كوفي")) return { text: JSON.stringify({ concepts: [] }), model: "m" };
   if (q.startsWith("حوّل سؤال البحث")) return { text: JSON.stringify({ concepts: [["كوفي", "مقهى", "قهوه"], ["الرياض"]], date: null, type: null, rewritten: "مقهى الرياض" }), model: "m" };
-  const ids = [...q.matchAll(/"id":"(p_[a-z0-9]+)"/g)].map((m) => m[1]);
+  // cite the post that actually carries the answer (retrieval order is the ranker's business, not this mock's)
+  const seg = q.split('{"id":"').slice(1).find((x) => x.includes("النخبة")), ids = seg ? [seg.slice(0, seg.indexOf('"'))] : [...q.matchAll(/"id":"(p_[a-z0-9]+)"/g)].map((m) => m[1]);
   return { text: JSON.stringify({ found: true, answer: "الأغلب ينصحون بمحمصة النخبة.", points: [{ text: "محمصة النخبة في الروضة", cites: [ids[0], "p_fake"] }, { text: "بلا مصدر", cites: [] }], followups: ["وش أفضل وقت للزيارة؟"] }), model: "m" };
 } };
 const mk = async (handle) => { H.app.ctx.rl.w.clear(); const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: "عضو " + handle, handle, password: "secret123" }); c.id = r.user.id; return c; };
