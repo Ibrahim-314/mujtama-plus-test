@@ -588,7 +588,9 @@ module.exports = (ctx, opts = {}) => {
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
     const viewer = await db.get("SELECT * FROM users WHERE id=$1", [user.id]) || user;
     const res = await S.run(viewer, q, f, { limit: 14 }); let ids = (res.groups.posts?.items || []).map((p) => p.id), plan = null;
-    if (ids.length < 2) { // thin retrieval → let the model rewrite the question (synonyms, dialect, time hint)
+    // v2.129: search operators narrow retrieval (run() applies them); the model reads only the reader's words, never the operators
+    const OP = require("../lib/search-ops").parse(q), qText = OP.active ? (OP.text || q) : q;
+    if (ids.length < 2 && !OP.active) { // thin retrieval → let the model rewrite the question (synonyms, dialect, time hint)
       plan = await queryPlan(user, q).catch(() => null);
       if (plan) {
         const f2 = { ...f, _plan: plan }; if (plan.date && !f.from) f2.from = new Date(Date.now() - { day: 1, week: 7, month: 30, year: 365 }[plan.date] * 864e5).toISOString();
@@ -606,7 +608,7 @@ module.exports = (ctx, opts = {}) => {
       const cm = (await db.all("SELECT c.text, u.name FROM comments c JOIN users u ON u.id=c.author WHERE c.post=$1 AND c.status='published' ORDER BY LENGTH(c.text) DESC LIMIT 3", [id])).map((c) => ({ by: c.name, text: String(c.text || "").replace(/\s+/g, " ").slice(0, 220) }));
       posts.push({ id, by: r.uname, community: r.cname || null, date: String(r.created_at || "").slice(0, 10), text: String((r.title ? r.title + " — " : "") + (r.text || "")).replace(/\s+/g, " ").slice(0, 400), comments: cm });
     }
-    const ask = `سؤال القارئ: «${q}»\nالمنشورات (مع تعليقاتها) التي وجدها البحث، JSON: ${JSON.stringify(posts)}\nأجب من هذه المنشورات فقط. أعد: {"found":true|false,"answer":"جواب مباشر مختصر (1-3 جمل)","points":[{"text":"نقطة أو رأي أو توصية","cites":["معرّفات المنشورات"]}],"followups":["سؤال متابعة قصير"]}\n(2-5 نقاط؛ إن لم تكف المنشورات للإجابة فاجعل found=false وقل ذلك بلطف في answer)`;
+    const ask = `سؤال القارئ: «${qText}»\nالمنشورات (مع تعليقاتها) التي وجدها البحث، JSON: ${JSON.stringify(posts)}\nأجب من هذه المنشورات فقط. أعد: {"found":true|false,"answer":"جواب مباشر مختصر (1-3 جمل)","points":[{"text":"نقطة أو رأي أو توصية","cites":["معرّفات المنشورات"]}],"followups":["سؤال متابعة قصير"]}\n(2-5 نقاط؛ إن لم تكف المنشورات للإجابة فاجعل found=false وقل ذلك بلطف في answer)`;
     const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 900, freeMax: 900 });
     const j = parseJSON(o.text), ok = new Set(posts.map((p) => p.id));
     const answer = str(j?.answer, 600); if (!answer) throw fail(502, "bad_output", "لم يرجع النموذج جواباً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
