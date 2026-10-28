@@ -161,6 +161,27 @@ module.exports = (ctx) => {
   }
 
   /* ---- messages ---- */
+  /* v2.130 search stage 7 — search inside the reader's own messages. Only conversations the reader is a member of; never encrypted
+   * conversations (the server holds ciphertext only); deleted and expired messages are skipped. Arabic-aware: the same normalisation
+   * and word forms as the main search (clitics, plurals, typos-free prefix matching), every query word must match. Newest first. */
+  async function searchMessages(user, q) {
+    const AR = require("../lib/arabic"), AN = require("../lib/search-analyzer");
+    q = String(q || "").trim().slice(0, 100); const words = AN.words(q).filter((w) => !AR.STOP.has(w)); if (!words.length) return { results: [] };
+    const forms = words.map((w) => [...new Set([w, AN.base(w), ...[...AN.forms(w)].map(([f]) => f)])].filter((x) => x && x.length > 1));
+    const convs = await db.all(`SELECT c.id, c.kind, c.title FROM conversations c JOIN conversation_members m ON m.conv=c.id AND m.user_id=$1 WHERE (c.e2ee IS NULL OR c.e2ee=0)`, [user.id]);
+    if (!convs.length) return { results: [] };
+    const ids = convs.map((c) => c.id), t = now(), out = [];
+    const rows = await db.all(`SELECT id, conv, sender, text, created_at FROM messages WHERE conv IN (${inList(ids)}) AND deleted_at IS NULL AND (expires_at IS NULL OR expires_at > $${ids.length + 1}) AND kind='text' AND text <> '' ORDER BY created_at DESC LIMIT 5000`, [...ids, t]);
+    for (const r of rows) {
+      const toks = AN.words(r.text || ""); if (!toks.length) continue;
+      const set = new Set(toks.flatMap((x) => [x, AN.base(x)]));
+      if (forms.every((fs) => fs.some((f) => set.has(f) || toks.some((x) => f.length >= 3 && x.startsWith(f))))) out.push(r);
+      if (out.length >= 50) break;
+    }
+    const byConv = new Map(convs.map((c) => [c.id, c]));
+    const ppl = await people([...new Set(out.map((r) => r.sender))]);
+    return { results: out.map((r) => ({ id: r.id, conv: r.conv, kind: byConv.get(r.conv)?.kind, title: byConv.get(r.conv)?.title || null, sender: ppl.find((u) => u.id === r.sender) || { id: r.sender }, text: String(r.text).slice(0, 240), createdAt: r.created_at })) };
+  }
   async function history(user, cid, q) {
     const c = await conv(cid); const me = await need(cid, user.id);
     const limit = Math.min(Math.max(+q.limit || 50, 1), 100), t = now();
@@ -320,6 +341,7 @@ module.exports = (ctx) => {
   ctx.ws.on("read", (user, m) => typeof m.conv === "string" && markRead(user, m.conv));
 
   R.get("/api/chat/conversations", A(req => list(req.user)));
+  R.get("/api/chat/search", A(req => searchMessages(req.user, req.query.q))); // v2.130 search stage 7
   R.post("/api/chat/groups", A(req => createGroup(req.user, req.body)));
   R.get("/api/chat/conversations/:id", A(req => info(req.user, req.params.id)));
   R.patch("/api/chat/conversations/:id", A(req => updateConv(req.user, req.params.id, req.body)));
