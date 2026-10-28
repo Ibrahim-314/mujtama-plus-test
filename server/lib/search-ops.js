@@ -2,14 +2,15 @@
  *   from:@handle  to:@handle (mentions)  @handle  #وسم  "عبارة دقيقة"  -كلمة  -"عبارة"  word OR word (kept for the engine)
  *   since:2026-01-31  until:2026-02-28  min_faves:10  min_replies:3  lang:ar|en  near:جدة
  *   filter:media|images|videos|links|questions|polls|articles|quotes   (-filter:… excludes)
- * Arabic aliases: من: ، إلى: ، منذ: ، حتى: ، قرب: . Unknown «x:y» stays as text. Returns the free text left for the engine. */
+ *   in:<community id> (search inside a community), filter:saved (only posts in the reader's collections)   — v2.130
+ * Arabic aliases: من: ، إلى: ، منذ: ، حتى: ، قرب: ، في: . Unknown «x:y» stays as text. Returns the free text left for the engine. */
 const OPS = { from: "from", "من": "from", to: "to", "إلى": "to", "الى": "to", since: "since", "منذ": "since", until: "until", "حتى": "until",
-  min_faves: "minFaves", min_likes: "minFaves", min_replies: "minReplies", min_comments: "minReplies", lang: "lang", near: "near", "قرب": "near", filter: "filter" };
-const FILTERS = ["media", "images", "videos", "links", "questions", "polls", "articles", "quotes"];
+  min_faves: "minFaves", min_likes: "minFaves", min_replies: "minReplies", min_comments: "minReplies", lang: "lang", near: "near", "قرب": "near", filter: "filter", in: "in", "في": "in" };
+const FILTERS = ["media", "images", "videos", "links", "questions", "polls", "articles", "quotes", "saved"]; // v2.130: saved = the reader's own collections
 const day = (s) => { const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(s).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))); if (!m) return null; const t = Date.UTC(+m[1], +m[2] - 1, +m[3]); return isNaN(t) ? null : t; };
 const handle = (s) => String(s || "").replace(/^@/, "").toLowerCase().replace(/[^\w.]/g, "").slice(0, 40);
 function parse(raw) {
-  const ops = { from: [], to: [], mention: [], tags: [], phrases: [], exclude: [], excludePhrases: [], filters: [], notFilters: [], since: null, until: null, minFaves: 0, minReplies: 0, lang: null, near: null };
+  const ops = { from: [], to: [], mention: [], tags: [], phrases: [], exclude: [], excludePhrases: [], filters: [], notFilters: [], since: null, until: null, minFaves: 0, minReplies: 0, lang: null, near: null, in: null };
   let s = String(raw || "");
   s = s.replace(/(^|\s)(-?)"([^"]{1,80})"/g, (_, sp, neg, ph) => { (neg ? ops.excludePhrases : ops.phrases).push(ph.trim()); return sp + (neg ? "" : ph); }); // the phrase's words still feed retrieval
   s = s.replace(/[«»]/g, '"');
@@ -25,6 +26,7 @@ function parse(raw) {
       else if (k === "minFaves" || k === "minReplies") ops[k] = Math.max(0, Math.min(1e6, parseInt(v, 10) || 0));
       else if (k === "lang") { if (["ar", "en"].includes(v.toLowerCase())) ops.lang = v.toLowerCase(); }
       else if (k === "near") ops.near = v.replace(/_/g, " ").slice(0, 60);
+      else if (k === "in") { const c = String(v).replace(/[^\w-]/g, "").slice(0, 80); if (c) ops.in = c; } // v2.130: in:<community id> — search inside one community
       else if (k === "filter") { const fl = v.toLowerCase(); if (FILTERS.includes(fl)) (neg ? ops.notFilters : ops.filters).push(fl); }
       continue;
     }
@@ -34,7 +36,7 @@ function parse(raw) {
     text.push(w);
   }
   const active = !!(ops.from.length || ops.to.length || ops.mention.length || ops.tags.length || ops.phrases.length || ops.exclude.length || ops.excludePhrases.length ||
-    ops.filters.length || ops.notFilters.length || ops.since || ops.until || ops.minFaves || ops.minReplies || ops.lang || ops.near);
+    ops.filters.length || ops.notFilters.length || ops.since || ops.until || ops.minFaves || ops.minReplies || ops.lang || ops.near || ops.in);
   return { text: text.join(" ").replace(/\s+/g, " ").trim(), ops, active };
 }
 module.exports = { parse, FILTERS };
