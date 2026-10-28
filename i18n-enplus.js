@@ -3332,5 +3332,20 @@
 "{name} اصنع نشرتي": "{name} Make my brief",
 "يقرأ يومك ويكتب لك…": "Reading your day…",
 "افتح المصدر": "Open source",
-"لا جديد الآن": "Nothing new now"
+"لا جديد الآن": "Nothing new now",
+"ليش رائج؟": "Why is it trending?",
+"اختر وسماً ويشرح لك الذكاء سبب رواجه والآراء حوله من المنشورات نفسها.": "Pick a hashtag and AI explains why it trends and the views around it, from the posts themselves.",
+"اسأل عن يومك": "Ask about your day",
+"وش أهم شي فاتني؟": "What's the most important thing I missed?",
+"وش قالوا اللي أتابعهم؟": "What did people I follow say?",
+"فيه شي جديد في مجتمعاتي؟": "Anything new in my communities?",
+"اكتب سؤالك عن يومك…": "Ask about your day…",
+"سؤالك عن يومك": "Your question about your day",
+"اسأل": "Ask",
+"يبحث في يومك…": "Searching your day…",
+"اربط حسابك في مركز الذكاء": "Link your account in AI Hub",
+"كل منشورات الوسم": "All posts with this tag",
+"تعذّر الطلب": "Request failed",
+"يقرأ منشورات #{name}…": "Reading #{name} posts…",
+"مولّد بالذكاء من {n} منشوراً — افتح المصادر للتفاصيل ·": "AI-generated from {n} posts — open the sources for details ·"
 });
