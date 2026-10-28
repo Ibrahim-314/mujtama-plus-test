@@ -3400,5 +3400,20 @@
 /* v2.126 search stage 3: best answer under questions */
 "الإجابة المعتمدة": "Accepted answer",
 /* v2.127 search tabs */
-"الأبرز": "Top"
+"الأبرز": "Top",
+/* v2.128 search operators */
+"روابط": "Links",
+"تصويتات": "Polls",
+"اقتباسات": "Quotes",
+"من @{name}": "from @{name}",
+"إلى @{name}": "to @{name}",
+"يذكر @{name}": "mentions @{name}",
+"بدون {name}": "without {name}",
+"بدون «{name}»": "without «{name}»",
+"منذ {name}": "since {name}",
+"إعجابات ≥ {name}": "likes ≥ {name}",
+"ردود ≥ {name}": "replies ≥ {name}",
+"قرب {name}": "near {name}",
+"حتى {name}": "until {name}",
+"أوامر البحث": "Search operators"
 });
