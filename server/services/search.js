@@ -13,7 +13,8 @@ const A = require("../lib/arabic");
 const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
-const IV = 2; // search_docs index version (083_search_v2)
+const RT = require("../../richtext.js");
+const IV = 3; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
 module.exports = (ctx) => {
@@ -43,7 +44,20 @@ module.exports = (ctx) => {
     await db.run("DELETE FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); await bumpTerms(old.body, "");
     if (meili) meili.remove(kind, ref).catch(() => { });
   }
-  const postDoc = (p, x = {}) => ({ kind: "post", id: p.id, title: p.title, body: p.text || "", ptype: p.type, community: p.community, lang: p.lang, author: p.author, visibility: p.visibility, created_at: p.created_at, ...x });
+  /* v2.122: the searchable text of a post = its text + the article body (data.doc, rich text) + poll options, de-duplicated.
+   * A paid post's body is hidden from non-buyers, so only its public text is indexed. */
+  function bodyOf(p) {
+    const parts = [p.text || ""];
+    let d = null; try { d = typeof p.data === "string" ? JSON.parse(p.data) : (p.data || null); } catch { d = null; }
+    if (d && !d.paid) {
+      try { if (d.doc) parts.push(RT.toText(d.doc)); } catch { /* malformed doc */ }
+      for (const o of (d.poll && Array.isArray(d.poll.options) ? d.poll.options : [])) parts.push(typeof o === "string" ? o : (o?.text || o?.label || ""));
+    }
+    const seen = new Set(), out = [];
+    for (const t of parts.map((x) => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean)) if (!seen.has(t)) { seen.add(t); out.push(t); }
+    return out.join(" \n ").slice(0, 20000);
+  }
+  const postDoc = (p, x = {}) => ({ kind: "post", id: p.id, title: p.title, body: bodyOf(p), ptype: p.type, community: p.community, lang: p.lang, author: p.author, visibility: p.visibility, created_at: p.created_at, ...x });
   /* v2.121: a post's document also carries its published comments (answers to a question live there; matched at half weight)
    * and an engagement score log(1 + reactions + 2·comments) used as a small ranking signal. */
   async function postExtras(pid) {
@@ -83,14 +97,35 @@ module.exports = (ctx) => {
   });
   /* v2.121 background upgrade: rows indexed before v2 (iv < 2) are re-indexed in small batches — no blocking reindex on boot.
    * The same job refreshes the engagement score of last week's posts. */
+  /* v2.122 coverage reconciler — the root cause of «no answer» on Render: posts written without an event (demo seed, imports,
+   * restores, direct SQL) never entered the index, and reindexAll() only ran on an EMPTY index. Every run now indexes published
+   * posts that have no document and drops documents whose post is gone or no longer published. Batched, idempotent. */
+  async function reconcile(batch = 500) {
+    const missing = await db.all(`SELECT p.id FROM posts p LEFT JOIN search_docs d ON d.kind='post' AND d.ref_id=p.id
+      WHERE d.ref_id IS NULL AND p.status='published' AND p.type<>'story' AND (p.sponsored IS NULL OR p.sponsored=0) ORDER BY p.created_at DESC LIMIT ${batch}`);
+    for (const r of missing) await indexPost(r.id).catch(() => { });
+    const orphans = await db.all(`SELECT d.ref_id FROM search_docs d LEFT JOIN posts p ON p.id=d.ref_id
+      WHERE d.kind='post' AND (p.id IS NULL OR p.status<>'published' OR p.type='story') LIMIT ${batch}`);
+    for (const r of orphans) await removeDoc("post", r.ref_id).catch(() => { });
+    return { added: missing.length, removed: orphans.length };
+  }
+  async function coverage() {
+    const n = async (sql) => Number((await db.get(sql))?.n) || 0;
+    const posts = await n("SELECT COUNT(*) n FROM posts WHERE status='published' AND type<>'story' AND (sponsored IS NULL OR sponsored=0)");
+    const docs = await n("SELECT COUNT(*) n FROM search_docs WHERE kind='post'");
+    const current = await n(`SELECT COUNT(*) n FROM search_docs WHERE kind='post' AND iv >= ${IV}`);
+    return { posts, docs, current, iv: IV, ratio: posts ? Math.round((Math.min(docs, posts) / posts) * 1000) / 1000 : 1 };
+  }
   async function upgradeIndex(batch = 300) {
+    const rec = await reconcile();
     const old = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND iv < $1 LIMIT " + batch, [IV]);
     for (const r of old) await indexPost(r.ref_id).catch(() => { });
     const recent = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND created_at > $1 ORDER BY created_at DESC LIMIT 400", [new Date(Date.now() - 7 * 864e5).toISOString()]);
     for (const r of recent) { const x = await postExtras(r.ref_id); await db.run("UPDATE search_docs SET quality=$1 WHERE kind='post' AND ref_id=$2", [x.quality, r.ref_id]); }
-    return { upgraded: old.length, refreshed: recent.length };
+    return { upgraded: old.length, refreshed: recent.length, ...rec };
   }
   ctx.scheduler.every("searchUpgrade", 5 * 60e3, () => upgradeIndex());
+  if (!process.env.NODE_TEST_CONTEXT) setTimeout(() => upgradeIndex().catch(() => { }), 20e3).unref?.(); // first pass shortly after boot
 
   /* ---------- spelling correction ---------- */
   async function correctToken(t) {
@@ -295,6 +330,7 @@ module.exports = (ctx) => {
   r.patch("/api/search/saved/:id", AU(async (req) => { await db.run("UPDATE saved_searches SET alert=$1 WHERE id=$2 AND user_id=$3", [req.body.alert ? 1 : 0, req.params.id, req.user.id]); return { ok: true }; }));
   r.post("/api/search/saved/:id/seen", AU(async (req) => { await db.run("UPDATE saved_searches SET new_count=0 WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
+  r.get("/api/admin/search/coverage", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return coverage(); }));
   r.post("/api/admin/search/reindex", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return { indexed: await reindexAll() }; }));
-  return { search, run, parseFilters, concepts, variants, upgradeIndex, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
+  return { IV, search, run, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
 };
