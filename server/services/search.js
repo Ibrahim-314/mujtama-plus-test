@@ -14,7 +14,8 @@ const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
 const RT = require("../../richtext.js");
-const IV = 3; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
+const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon");
+const IV = 4; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
 module.exports = (ctx) => {
@@ -29,6 +30,31 @@ module.exports = (ctx) => {
     for (const t of n) if (!o.has(t) && t.length > 1 && t.length <= 40) await db.run("INSERT INTO search_terms(term, df, display) VALUES($1, 1, $2) ON CONFLICT (term) DO UPDATE SET df = search_terms.df + 1, display = COALESCE(search_terms.display, $2)", [t, (surf.get(t) || t).slice(0, 60)]);
     for (const t of o) if (!n.has(t)) await db.run("UPDATE search_terms SET df = df - 1 WHERE term=$1", [t]);
   }
+  /* ---------- v2.123 inverted index (search_postings / search_vocab) ---------- */
+  async function vocabDelta(add, del) {
+    for (const t of add) await db.run("INSERT INTO search_vocab(term, df, len) VALUES($1, 1, $2) ON CONFLICT (term) DO UPDATE SET df = search_vocab.df + 1", [t, t.length]);
+    for (const t of del) await db.run("UPDATE search_vocab SET df = df - 1 WHERE term=$1 AND df > 0", [t]);
+  }
+  async function dropPostings(kind, ref) {
+    const old = (await db.all("SELECT DISTINCT term FROM search_postings WHERE kind=$1 AND ref_id=$2", [kind, ref])).map((r) => r.term);
+    if (!old.length) return;
+    await db.run("DELETE FROM search_postings WHERE kind=$1 AND ref_id=$2", [kind, ref]);
+    await vocabDelta([], old);
+  }
+  async function writePostings(doc) {
+    const fields = [AN.analyze(doc.title || ""), AN.analyze(doc.body || ""), AN.analyze(doc.extra || "", { max: 3000 })];
+    const rows = []; const terms = new Set();
+    fields.forEach((fa, f) => { for (const [t, e] of fa.terms) { rows.push([t, f, e.tf]); terms.add(t); } });
+    const old = new Set((await db.all("SELECT DISTINCT term FROM search_postings WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id])).map((r) => r.term));
+    await db.run("DELETE FROM search_postings WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id]);
+    for (let i = 0; i < rows.length; i += 150) {
+      const part = rows.slice(i, i + 150), p = [doc.kind, doc.id];
+      const vals = part.map(([t, f, tf]) => { p.push(t, f, tf); return `($${p.length - 2},$1,$2,$${p.length - 1},$${p.length})`; });
+      await db.run(`INSERT INTO search_postings(term,kind,ref_id,f,tf) VALUES ${vals.join(",")} ON CONFLICT (term,kind,ref_id,f) DO UPDATE SET tf=excluded.tf`, p);
+    }
+    await vocabDelta([...terms].filter((t) => !old.has(t)), [...old].filter((t) => !terms.has(t)));
+    await db.run("UPDATE search_docs SET len=$1 WHERE kind=$2 AND ref_id=$3", [fields[0].len + fields[1].len, doc.kind, doc.id]);
+  }
   async function indexDoc(doc) {
     const body = A.indexText(`${doc.title || ""} ${doc.body || ""}`);
     const old = await db.get("SELECT body FROM search_docs WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id]);
@@ -37,11 +63,13 @@ module.exports = (ctx) => {
       ON CONFLICT (kind, ref_id) DO UPDATE SET title=$3, body=$4, ptype=$5, community=$6, lang=$7, author=$8, visibility=$9, extra=$11, quality=$12, iv=$13`,
     [doc.kind, doc.id, doc.title || null, body, doc.ptype || null, doc.community || null, doc.lang || A.detectLang(doc.body || doc.title || "") || null, doc.author || null, doc.visibility || "public", doc.created_at || now(), extra, Number(doc.quality) || 0, IV]);
     await bumpTerms(old?.body, body, `${doc.title || ""} ${doc.body || ""}`);
+    await writePostings(doc);
     if (meili) meili.index(doc).catch(e => ctx.jobsState && (ctx.jobsState.meili = { ok: false, error: e.message }));
   }
   async function removeDoc(kind, ref) {
     const old = await db.get("SELECT body FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); if (!old) return;
     await db.run("DELETE FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); await bumpTerms(old.body, "");
+    await dropPostings(kind, ref);
     if (meili) meili.remove(kind, ref).catch(() => { });
   }
   /* v2.122: the searchable text of a post = its text + the article body (data.doc, rich text) + poll options, de-duplicated.
@@ -120,6 +148,10 @@ module.exports = (ctx) => {
     const rec = await reconcile();
     const old = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND iv < $1 LIMIT " + batch, [IV]);
     for (const r of old) await indexPost(r.ref_id).catch(() => { });
+    for (const r of await db.all("SELECT kind, ref_id FROM search_docs WHERE kind IN ('user','community') AND iv < $1 LIMIT " + batch, [IV])) {
+      if (r.kind === "user") { const u = await db.get("SELECT id, name, handle, bio, location, created_at FROM users WHERE id=$1", [r.ref_id]); if (u) await indexUser(u).catch(() => { }); else await removeDoc("user", r.ref_id); }
+      else { const c = await db.get("SELECT * FROM communities WHERE id=$1", [r.ref_id]); if (c) await indexCommunity(c).catch(() => { }); else await removeDoc("community", r.ref_id); }
+    }
     const recent = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND created_at > $1 ORDER BY created_at DESC LIMIT 400", [new Date(Date.now() - 7 * 864e5).toISOString()]);
     for (const r of recent) { const x = await postExtras(r.ref_id); await db.run("UPDATE search_docs SET quality=$1 WHERE kind='post' AND ref_id=$2", [x.quality, r.ref_id]); }
     return { upgraded: old.length, refreshed: recent.length, ...rec };
