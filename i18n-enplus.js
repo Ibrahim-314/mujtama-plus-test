@@ -3347,5 +3347,14 @@
 "كل منشورات الوسم": "All posts with this tag",
 "تعذّر الطلب": "Request failed",
 "يقرأ منشورات #{name}…": "Reading #{name} posts…",
-"مولّد بالذكاء من {n} منشوراً — افتح المصادر للتفاصيل ·": "AI-generated from {n} posts — open the sources for details ·"
+"مولّد بالذكاء من {n} منشوراً — افتح المصادر للتفاصيل ·": "AI-generated from {n} posts — open the sources for details ·",
+"مختصرة": "Short",
+"مفصّلة": "Detailed",
+"ودّية": "Friendly",
+"محايدة": "Neutral",
+"رسمية": "Formal",
+"طول النشرة": "Brief length",
+"نبرة النشرة": "Brief tone",
+"استمع": "Listen",
+"إيقاف": "Stop"
 });
