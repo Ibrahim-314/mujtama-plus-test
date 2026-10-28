@@ -16,6 +16,7 @@ const { E, HttpError } = require("../lib/core");
 const crypto = require("node:crypto");
 const P = require("../lib/providers");
 const L = require("../lib/aihub-lib");
+const AR = require("../lib/arabic");
 const { secret } = require("../lib/secrets");
 
 const OFF_FREE = "الاستخدام المجاني غير مفعّل بعد — اربط حسابك لتبدأ";
@@ -559,6 +560,65 @@ module.exports = (ctx, opts = {}) => {
     if (b._key) { if (cmCache.size > 2000) cmCache.delete(cmCache.keys().next().value); cmCache.set(b._key, { at: Date.now(), out }); }
     return out;
   }
+  /* ---------- v2.121 «البحث الذكي»: ask the search in plain words; the answer is written ONLY from real posts the reader can see
+   * (and their comments, where answers to questions live), each point linked to its posts.
+   *   1. retrieval through search v2 (concepts + BM25 + comments); when it finds little, an AI QUERY PLAN rewrites the question
+   *      into concepts with synonyms/dialect forms (+ a time/type hint) and retrieval runs again — plans are cached 24 h per query
+   *   2. the top posts (+ up to 3 comments each) go to the model; invented ids are dropped; no support → found:false, no sources
+   *   cached 30 min per reader + query + filters. ---------- */
+  const SR_SYS = "أنت محرك بحث ذكي داخل «مجتمع بلس». تفهم العربية الفصحى واللهجات (الخليجية والشامية والمصرية وغيرها) والأخطاء الإملائية والإنجليزية. تجيب فقط مما في المنشورات والتعليقات المرسلة، وتذكر الآراء المختلفة إن وجدت، ولا تخترع معلومة أو مكاناً أو رقماً. أعد JSON صالحاً فقط.";
+  const planCache = new Map(), srCache = new Map();
+  async function queryPlan(user, q) {
+    const key = AR.normalize(q), hit = planCache.get(key);
+    if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.plan;
+    const ask = `حوّل سؤال البحث هذا إلى خطة بحث في منشورات شبكة اجتماعية عربية.\nالسؤال: «${q}»\nأعد: {"concepts":[["الكلمة الأساسية","مرادف","صيغة لهجية أو جمع أو إنجليزي"]],"date":"day|week|month|year|null","type":"question|article|event|null","rewritten":"الكلمات المهمة فقط"}\n(2-5 مفاهيم، كل مفهوم 1-5 صيغ قصيرة كما يكتبها الناس فعلاً؛ تجاهل كلمات السؤال مثل وش/كيف/أبي/تنصحوني)`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 350, freeMax: 350 });
+    const j = parseJSON(o.text) || {};
+    const concepts = (Array.isArray(j.concepts) ? j.concepts : []).map((c) => [...new Set((Array.isArray(c) ? c : [c]).flatMap((w) => AR.tokens(String(w || "")).slice(0, 2)))].slice(0, 6)).filter((c) => c.length).slice(0, 5);
+    const plan = concepts.length ? { concepts, date: ["day", "week", "month", "year"].includes(j.date) ? j.date : null, ptype: ["question", "article", "event"].includes(j.type) ? j.type : null, rewritten: str(j.rewritten, 120) } : null;
+    if (planCache.size > 5000) planCache.delete(planCache.keys().next().value);
+    planCache.set(key, { at: Date.now(), plan });
+    return plan;
+  }
+  async function smartSearch(user, b) {
+    const S = ctx.services.search; if (!S?.run) throw fail(503, "not_configured", "البحث غير متاح الآن");
+    const q = str(b.q, 200).trim(); if (AR.tokens(q).length < 1) throw E.bad("اكتب سؤالك");
+    const f = S.parseFilters({ ...b, type: "posts" }), fkey = [f.date, f.lang, f.community].join(","), ck = user.id + "|" + AR.normalize(q) + "|" + fkey, hit = srCache.get(ck);
+    if (hit && Date.now() - hit.at < 30 * 60e3 && !b.refresh) return { ...hit.out, cached: true };
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const viewer = await db.get("SELECT * FROM users WHERE id=$1", [user.id]) || user;
+    const res = await S.run(viewer, q, f, { limit: 14 }); let ids = (res.groups.posts?.items || []).map((p) => p.id), plan = null;
+    if (ids.length < 2) { // thin retrieval → let the model rewrite the question (synonyms, dialect, time hint)
+      plan = await queryPlan(user, q).catch(() => null);
+      if (plan) {
+        const f2 = { ...f, _plan: plan }; if (plan.date && !f.from) f2.from = new Date(Date.now() - { day: 1, week: 7, month: 30, year: 365 }[plan.date] * 864e5).toISOString();
+        let r2 = await S.run(viewer, q, f2, { limit: 14 });
+        if (!(r2.groups.posts?.items || []).length && f2.from && !f.from) r2 = await S.run(viewer, q, { ...f, _plan: plan }, { limit: 14 }); // the time hint was too strict
+        ids = [...new Set([...ids, ...(r2.groups.posts?.items || []).map((p) => p.id)])].slice(0, 14);
+      }
+    }
+    const base = { q, plan: plan ? { rewritten: plan.rewritten || plan.concepts.map((c) => c[0]).join(" ") } : null };
+    if (!ids.length) { const out = { ...base, found: false, answer: "", points: [], sources: {}, related: [], message: "ما لقينا منشورات تجاوب على سؤالك. جرّب كلمات أخرى أو اسأل المجتمع بمنشور." }; srCache.set(ck, { at: Date.now(), out }); return out; }
+    const rows = await db.all(`SELECT p.id, p.title, p.text, p.created_at, p.author, u.name uname, c.name cname FROM posts p JOIN users u ON u.id=p.author LEFT JOIN communities c ON c.id=p.community WHERE p.id IN (${ids.map((_, i) => "$" + (i + 1)).join(",")})`, ids);
+    const byId = new Map(rows.map((r) => [r.id, r])), posts = [];
+    for (const id of ids.slice(0, 12)) {
+      const r = byId.get(id); if (!r) continue;
+      const cm = (await db.all("SELECT c.text, u.name FROM comments c JOIN users u ON u.id=c.author WHERE c.post=$1 AND c.status='published' ORDER BY LENGTH(c.text) DESC LIMIT 3", [id])).map((c) => ({ by: c.name, text: String(c.text || "").replace(/\s+/g, " ").slice(0, 220) }));
+      posts.push({ id, by: r.uname, community: r.cname || null, date: String(r.created_at || "").slice(0, 10), text: String((r.title ? r.title + " — " : "") + (r.text || "")).replace(/\s+/g, " ").slice(0, 400), comments: cm });
+    }
+    const ask = `سؤال القارئ: «${q}»\nالمنشورات (مع تعليقاتها) التي وجدها البحث، JSON: ${JSON.stringify(posts)}\nأجب من هذه المنشورات فقط. أعد: {"found":true|false,"answer":"جواب مباشر مختصر (1-3 جمل)","points":[{"text":"نقطة أو رأي أو توصية","cites":["معرّفات المنشورات"]}],"followups":["سؤال متابعة قصير"]}\n(2-5 نقاط؛ إن لم تكف المنشورات للإجابة فاجعل found=false وقل ذلك بلطف في answer)`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 900, freeMax: 900 });
+    const j = parseJSON(o.text), ok = new Set(posts.map((p) => p.id));
+    const answer = str(j?.answer, 600); if (!answer) throw fail(502, "bad_output", "لم يرجع النموذج جواباً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    const points = (Array.isArray(j.points) ? j.points : []).map((x) => ({ text: str(x?.text, 280), cites: cites(x?.cites, ok) })).filter((x) => x.text && x.cites.length).slice(0, 5);
+    const found = j.found !== false && points.length > 0;
+    const srcPosts = posts.map((p) => ({ id: p.id, by: p.by, community: p.community }));
+    const out = { ...base, found, answer, points: found ? points : [], followups: (Array.isArray(j.followups) ? j.followups : []).map((x) => str(x, 90)).filter(Boolean).slice(0, 3),
+      sources: found ? srcMap(srcPosts, new Set(points.flatMap((x) => x.cites))) : {}, related: ids.slice(0, 12), count: posts.length, free: o.free || null };
+    if (srCache.size > 4000) srCache.delete(srCache.keys().next().value);
+    srCache.set(ck, { at: Date.now(), out });
+    return out;
+  }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
   async function providerFor(uid, feature) {
     const pr = await prefsOf(uid), pid = pr.features[feature];
@@ -599,6 +659,7 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/aihub/brief", A(async (req) => brief(req.user, req.body || {}, true)));
   R.post("/api/aihub/brief/ask", A(async (req) => askDay(req.user, req.body || {})));
   R.post("/api/aihub/trend", A(async (req) => whyTrend(req.user, req.body || {})));
+  R.post("/api/aihub/search", A(async (req) => smartSearch(req.user, req.body || {})));
   R.post("/api/aihub/community", A(async (req) => community(req.user, { ...(req.body || {}), _key: undefined })));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
