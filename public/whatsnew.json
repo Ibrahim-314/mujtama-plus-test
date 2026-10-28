@@ -1,5 +1,213 @@
 [
   {
+    "v": "2.124.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "بحث يفهم المعنى لا الكلمة فقط",
+      "items": [
+        "محرك بحث جديد على فهرس حقيقي يتحمل ملايين المنشورات بسرعة",
+        "يربط أي كلمة معرّبة بأصلها الإنجليزي من نطقها (كوبرنيتس = Kubernetes) بدون قوائم",
+        "يفهم الأخطاء الإملائية وصيغ الأفعال مثل «اتعلم» و«يتعلم»",
+        "لو ما وجد شيئاً يستعين بالذكاء الاصطناعي ليفهم سؤالك ثم يبحث من جديد",
+        "تصحيح أرقام الإصدارات وملاحظات «الجديد في التحديث»"
+      ]
+    },
+    "en": {
+      "title": "Search that understands meaning, not just words",
+      "items": [
+        "New search engine on a real index built for millions of posts",
+        "Matches any Arabic-written loanword to its English original by sound (no word lists)",
+        "Understands typos and verb forms",
+        "When nothing matches, AI reads your question and searches again",
+        "Fixed version numbers and update notes"
+      ]
+    }
+  },
+  {
+    "v": "2.123.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "أساس البحث الجديد",
+      "items": [
+        "فهرس بحث مقلوب جديد مع محلل عربي للبادئات واللواحق والجمع",
+        "دعم «أو» في البحث ونتائج أدق للأسئلة الطبيعية"
+      ]
+    },
+    "en": {
+      "title": "New search foundation",
+      "items": [
+        "New inverted search index with an Arabic analyzer",
+        "OR in search and better natural-question results"
+      ]
+    }
+  },
+  {
+    "v": "2.122.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "كل المنشورات صارت قابلة للبحث",
+      "items": [
+        "إصلاح منشورات لم تكن تظهر في البحث",
+        "البحث داخل نص المقالات وخيارات التصويت"
+      ]
+    },
+    "en": {
+      "title": "Every post is now searchable",
+      "items": [
+        "Fixed posts that never appeared in search",
+        "Search inside article bodies and poll options"
+      ]
+    }
+  },
+  {
+    "v": "2.121.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "البحث الذكي «اسأل الذكاء»",
+      "items": [
+        "اسأل البحث بكلامك ويجيبك من منشورات حقيقية مع مصادرها",
+        "فهم اللهجات وكلمات السؤال والتعليقات"
+      ]
+    },
+    "en": {
+      "title": "Smart search «Ask AI»",
+      "items": [
+        "Ask in your own words; answers come from real posts with sources",
+        "Understands dialects, question words and comments"
+      ]
+    }
+  },
+  {
+    "v": "2.120.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "ذكاء اصطناعي في لوحة المجتمع",
+      "items": [
+        "تقرير أسبوعي عن صحة المجتمع مع منشورات مرجعية",
+        "رأي الذكاء في البلاغات والمحتوى المعلّق والقرار للمشرف",
+        "مسودات القواعد ورسالة الترحيب"
+      ]
+    },
+    "en": {
+      "title": "AI in the community dashboard",
+      "items": [
+        "Weekly community health report with cited posts",
+        "AI opinion on reports and pending items; moderators decide",
+        "Drafts for rules and welcome message"
+      ]
+    }
+  },
+  {
+    "v": "2.119.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "«فاتك اليوم»: الطول والنبرة والاستماع",
+      "items": [
+        "اختر طول النشرة ونبرتها",
+        "زر «استمع» يقرأ النشرة بصوت عالٍ"
+      ]
+    },
+    "en": {
+      "title": "Daily brief: length, tone and listen",
+      "items": [
+        "Choose brief length and tone",
+        "«Listen» reads the brief aloud"
+      ]
+    }
+  },
+  {
+    "v": "2.118.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "«اسأل عن يومك» و«ليش رائج؟»",
+      "items": [
+        "اسأل عن آخر 24 ساعة ويجيبك من المنشورات فقط",
+        "شرح سبب رواج أي وسم مع أمثلة"
+      ]
+    },
+    "en": {
+      "title": "Ask about your day and why it's trending",
+      "items": [
+        "Ask about the last 24 hours, answered from posts only",
+        "Why a hashtag is trending, with examples"
+      ]
+    }
+  },
+  {
+    "v": "2.117.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "«نشرتك الذكية» في فاتك اليوم",
+      "items": [
+        "نشرة مقسمة: الأبرز، من تتابعهم، مجتمعاتك",
+        "كل نقطة مرتبطة بمنشورها الأصلي"
+      ]
+    },
+    "en": {
+      "title": "Your smart daily brief",
+      "items": [
+        "Sectioned brief: top, people you follow, your communities",
+        "Every point links to its source post"
+      ]
+    }
+  },
+  {
+    "v": "2.116.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "استوديو المبدع: خطّط لأسبوعك",
+      "items": [
+        "أفكار أسبوعية من أفضل منشوراتك",
+        "أفضل وقت للنشر وجدولة بتأكيدك",
+        "تحويل المنشور إلى سلسلة أو قصة أو ملخص"
+      ]
+    },
+    "en": {
+      "title": "Creator Studio: plan your week",
+      "items": [
+        "Weekly ideas from your best posts",
+        "Best time to post, scheduled only when you confirm",
+        "Repurpose a post into a thread, story or summary"
+      ]
+    }
+  },
+  {
+    "v": "2.115.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "استوديو المبدع: بعد النشر",
+      "items": [
+        "«اشرح أرقامي» بلغة بسيطة",
+        "ملخص التعليقات وردود مقترحة تعدّلها وترسلها بنفسك"
+      ]
+    },
+    "en": {
+      "title": "Creator Studio: after publishing",
+      "items": [
+        "«Explain my numbers» in plain words",
+        "Comment summary and suggested replies you edit and send"
+      ]
+    }
+  },
+  {
+    "v": "2.114.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "استوديو المبدع: مساعد الكتابة",
+      "items": [
+        "عناوين ووصف ووسوم بضغطة",
+        "فحص قبل النشر وترجمة عربي/إنجليزي"
+      ]
+    },
+    "en": {
+      "title": "Creator Studio: writing helper",
+      "items": [
+        "Titles, descriptions and hashtags in one tap",
+        "Pre-publish check and Arabic/English translation"
+      ]
+    }
+  },
+  {
     "v": "2.113.0",
     "date": "2026-10-27",
     "ar": {
