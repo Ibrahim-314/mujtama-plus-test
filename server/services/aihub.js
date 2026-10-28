@@ -313,6 +313,12 @@ module.exports = (ctx, opts = {}) => {
   const ST_TOOLS = {
     meta: { max: 900, ask: (t, lang) => `اقرأ مسودة المنشور التالية واقترح لها (${lang === "en" ? "بالإنجليزية" : "بلغة المسودة"}):\n- titles: 3 عناوين جذابة صادقة (كل عنوان ≤ 70 حرفاً، بلا مبالغة أو طُعم نقرات)\n- description: وصف قصير واضح (≤ 220 حرفاً)\n- hashtags: 5 إلى 8 هاشتاقات مناسبة تبدأ بـ # بلا مسافات\nأعد: {"titles":[...],"description":"...","hashtags":[...]}\n\nالمسودة:\n"""${t}"""` },
     translate: { max: 1400, ask: (t, lang) => `ترجم النص التالي إلى ${lang === "en" ? "الإنجليزية" : "العربية"} ترجمة طبيعية تحافظ على المعنى والنبرة والهاشتاقات والروابط كما هي.\nأعد: {"text":"..."}\n\nالنص:\n"""${t}"""` },
+    repurpose: { max: 1400, ask: (t, lang, to) => ({
+      thread: `حوّل المنشور التالي إلى سلسلة من 3 إلى 6 أجزاء قصيرة متتابعة (كل جزء ≤ 280 حرفاً)، الأول يشد الانتباه والأخير يختم بسؤال أو دعوة للتفاعل. حافظ على المعنى ولا تضف معلومات جديدة.\nأعد: {"parts":["...","..."]}`,
+      story: `حوّل المنشور التالي إلى نص قصة قصيرة تُعرض على الشاشة (≤ 120 حرفاً) مع سطر دعوة قصير.\nأعد: {"text":"..."}`,
+      clip: `حوّل المنشور التالي إلى نص مقطع قصير مدته 30 ثانية تقريباً: افتتاحية قوية، ثلاث نقاط، خاتمة. اكتبه كنص يُقرأ بصوت.\nأعد: {"text":"..."}`,
+      summary: `لخّص المنشور التالي في منشور قصير واضح (≤ 280 حرفاً) يحافظ على الفكرة الأساسية.\nأعد: {"text":"..."}`
+    }[to] + `\n\nالمنشور:\n"""${t}"""`) },
     check: { max: 900, ask: (t) => `راجع مسودة المنشور التالية قبل النشر وأعد ملاحظات عملية:\n- score: من 0 إلى 100 لجاهزية النشر\n- issues: قائمة {"kind":"spelling|clarity|tone|sensitive|privacy|length","note":"...","fix":"..."} (فقط المشكلات الحقيقية، بحد أقصى 6)\n- safe: false إذا فيه إساءة أو تحريض أو معلومات شخصية حساسة (رقم جوال، عنوان، هوية) أو ادعاءات طبية/مالية مضللة\n- improved: نسخة محسّنة من النص بنفس المعنى\nأعد: {"score":0,"safe":true,"issues":[],"improved":"..."}\n\nالمسودة:\n"""${t}"""` }
   };
   /* v2.115 Stage 2 «بعد النشر»: the server gathers the creator's own numbers/comments (never trusts the client), the model only explains them */
@@ -320,6 +326,11 @@ module.exports = (ctx, opts = {}) => {
     insights: { max: 900, ask: (facts) => `هذه أرقام منشئ محتوى خلال آخر ${facts.days} يوماً (JSON). اشرحها له بكلام بسيط كصديق خبير، واستخدم هذه الأرقام فقط ولا تخترع غيرها.\n- headline: جملة واحدة تلخّص وضعه\n- points: من 2 إلى 4 ملاحظات {"title":"...","detail":"..."} تربط الأرقام بسببها المحتمل\n- actions: من 1 إلى 3 خطوات عملية قصيرة للأسبوع القادم\nأعد: {"headline":"...","points":[],"actions":[]}\n\nالأرقام:\n${JSON.stringify(facts)}` },
     comments: { max: 1400, ask: (facts) => `هذه تعليقات الجمهور على منشور «${facts.title}» (JSON، لكل تعليق id ونص). حلّلها لصاحب المنشور:\n- summary: جملة أو جملتان\n- mood: positive أو mixed أو negative\n- liked: حتى 3 أشياء أعجبت الناس\n- criticized: حتى 3 انتقادات (فارغة إن لم توجد)\n- questions: حتى 3 أسئلة تكررت أو تستحق رداً\n- replies: حتى 5 ردود مقترحة مهذبة وقصيرة باسم صاحب المنشور على التعليقات التي تستحق رداً (الأسئلة والانتقادات أولاً) {"id":"معرّف التعليق","reply":"..."}؛ لا تعد بشيء لا تعرفه ولا تطلب معلومات شخصية\nأعد: {"summary":"...","mood":"mixed","liked":[],"criticized":[],"questions":[],"replies":[]}\n\nالتعليقات:\n${JSON.stringify(facts.comments)}` }
   };
+  ST2.ideas = { max: 1300, ask: (facts) => `اقترح على منشئ المحتوى 5 أفكار منشورات لهذا الأسبوع مبنية على ما نجح عنده (JSON أدناه). إن لم يكن له منشورات سابقة فاقترح أفكار بداية عامة مناسبة لمجتمع عربي.\n- ideas: [{"title":"عنوان الفكرة","hook":"أول جملة مقترحة","format":"post|story|clip|thread|poll","why":"سبب قصير مرتبط بأرقامه"}]\nلا تخترع أرقاماً.\nأعد: {"ideas":[]}\n\nبياناته:\n${JSON.stringify(facts)}` };
+  async function ideaFacts(user) {
+    const o = await ctx.services.studio.overview(user, 90);
+    return { topPosts: o.top.slice(0, 8).map((x) => ({ title: String(x.title || "").slice(0, 80), type: x.type, views: x.views, reactions: x.reactions, comments: x.comments })), engagementRatePct: o.engagementRate, followers: o.totals.followersTotal };
+  }
   async function insightFacts(user) {
     const st = ctx.services.studio; if (!st) throw fail(503, "not_configured", "إحصائيات الاستوديو غير متاحة الآن");
     const o = await st.overview(user, 28);
@@ -342,6 +353,12 @@ module.exports = (ctx, opts = {}) => {
   const list = (a, n, m) => (Array.isArray(a) ? a : []).map((x) => str(x, m)).filter(Boolean).slice(0, n);
   function shape2(tool, j, facts) {
     if (!j) throw fail(502, "bad_output", "لم يرجع النموذج تحليلاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+    if (tool === "ideas") {
+      const F = ["post", "story", "clip", "thread", "poll"];
+      const ideas = (Array.isArray(j.ideas) ? j.ideas : []).slice(0, 5).map((x) => ({ title: str(x?.title, 100), hook: str(x?.hook, 280), format: F.includes(x?.format) ? x.format : "post", why: str(x?.why, 200) })).filter((x) => x.title);
+      if (!ideas.length) throw fail(502, "bad_output", "لم يرجع النموذج تحليلاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
+      return { ideas };
+    }
     if (tool === "insights") {
       const points = (Array.isArray(j.points) ? j.points : []).slice(0, 4).map((x) => ({ title: str(x?.title, 90), detail: str(x?.detail, 300) })).filter((x) => x.title || x.detail);
       const out = { headline: str(j.headline, 200), points, actions: list(j.actions, 3, 200) };
@@ -364,6 +381,11 @@ module.exports = (ctx, opts = {}) => {
       if (!titles.length && !description) throw fail(502, "bad_output", "لم يرجع النموذج اقتراحات مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
       return { titles, description, hashtags };
     }
+    if (tool === "repurpose") {
+      const parts = list(j?.parts, 6, 400), text = str(j?.text, 3000);
+      if (!parts.length && !text) throw fail(502, "bad_output", "لم يرجع النموذج نتيجة مفهومة. أعد المحاولة.");
+      return parts.length ? { parts } : { text };
+    }
     if (tool === "translate") { const text = str(j?.text, 9000) || (j ? "" : str(raw, 9000)); if (!text) throw fail(502, "bad_output", "لم تصل الترجمة. أعد المحاولة."); return { text }; }
     const KINDS = ["spelling", "clarity", "tone", "sensitive", "privacy", "length"];
     if (!j) throw fail(502, "bad_output", "لم يرجع النموذج مراجعة مفهومة. أعد المحاولة.");
@@ -375,7 +397,8 @@ module.exports = (ctx, opts = {}) => {
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
     const tool = String(b.tool || "");
     if (ST2[tool]) {
-      const facts = tool === "insights" ? await insightFacts(user) : await commentFacts(user, b.post);
+      if (!ctx.services.studio) throw fail(503, "not_configured", "إحصائيات الاستوديو غير متاحة الآن");
+      const facts = tool === "insights" ? await insightFacts(user) : tool === "ideas" ? await ideaFacts(user) : await commentFacts(user, b.post);
       if (tool === "insights" && !facts.totals.views && !facts.topPosts.length) return { tool, empty: true, result: null, message: "انشر أول منشوراتك ثم عُد هنا لنشرح أرقامك" };
       if (tool === "comments" && !facts.comments.length) return { tool, empty: true, result: null, message: "لا تعليقات من الجمهور على هذا المنشور بعد" };
       const T2 = ST2[tool];
@@ -387,7 +410,8 @@ module.exports = (ctx, opts = {}) => {
     if (text.length < 3) throw fail(400, "too_short", "اكتب نص المنشور أولاً (بضع كلمات على الأقل)");
     if (text.length > 6000) throw fail(413, "too_long", "النص طويل جداً لهذه الأداة (الحد 6000 حرف)");
     const lang = b.lang === "en" ? "en" : "ar";
-    const out = await run(user, [{ role: "user", content: T.ask(text.replace(/"""/g, "\"\"\""), lang) }], { feature: "studio", system: ST_SYS, maxTokens: T.max, freeMax: T.max });
+    const to = ["thread", "story", "clip", "summary"].includes(b.to) ? b.to : "thread";
+    const out = await run(user, [{ role: "user", content: T.ask(text.replace(/"""/g, "\"\"\""), lang, to) }], { feature: "studio", system: ST_SYS, maxTokens: T.max, freeMax: T.max });
     return { tool, result: shape(tool, parseJSON(out.text), out.text), provider: out.provider, via: out.via || null, model: out.model || null, free: out.free || null };
   }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
