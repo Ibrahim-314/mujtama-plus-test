@@ -68,8 +68,16 @@
     const k = btn.dataset.aitr, s = state.get(k);
     if (s) return show(btn, !s.showing);
     await loadMe();
-    if (!subscribed()) return auto ? null : upsell();
     const it = itemOf(btn);
+    // v2.135: chat messages use the free «الذكاء في الرسائل» translator (AI Hub) when the paid service is not available
+    if (it.kind === "message" && !auto && (!subscribed() || !cfg?.features?.translate?.available || !cfg?.features?.translate?.private) && window.MPMsgAI?.ok()) {
+      btn.setAttribute("aria-busy", "true"); trLabel(btn, MPT("جارٍ الترجمة…"));
+      try { const r = await window.MPMsgAI.translate(it.id); state.set(k, { text: r.text, source: r.from || (r.to === "ar" ? "en" : "ar"), target: r.to, showing: true }); show(btn, true); }
+      catch (e) { trLabel(btn, MPT("ترجمة")); toast(e?.message || MPT("تعذرت الترجمة")); }
+      finally { btn.removeAttribute("aria-busy"); }
+      return;
+    }
+    if (!subscribed()) return auto ? null : upsell();
     btn.setAttribute("aria-busy", "true"); trLabel(btn, MPT("جارٍ الترجمة…"));
     try {
       let r;
