@@ -246,6 +246,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 
   /* ---------- shared helpers ---------- */
   function ensureUsers(users) { for (const u of users || []) if (u && !S.user(u.id)) DB.users.push({ topics: [], ...u }); }
+  /* v2.128 search stage 5: the operators the reader typed, shown as chips so the request is readable at a glance */
+  function opsHtml(o) {
+    if (!o) return "";
+    const fl = { media: "وسائط", images: "صور", videos: "فيديو", links: "روابط", questions: "أسئلة", polls: "تصويتات", articles: "مقالات", quotes: "اقتباسات" };
+    const d = (x) => { try { return new Date(x).toLocaleDateString("ar-SA-u-ca-gregory", { year: "numeric", month: "short", day: "numeric" }); } catch { return x; } };
+    const c = [...o.from.map((x) => `من @${x}`), ...o.to.map((x) => `إلى @${x}`), ...o.mention.map((x) => `يذكر @${x}`), ...o.tags.map((x) => `#${x}`),
+      ...o.phrases.map((x) => `«${x}»`), ...o.exclude.map((x) => `بدون ${x}`), ...o.excludePhrases.map((x) => `بدون «${x}»`),
+      ...(o.since ? [`منذ ${d(o.since)}`] : []), ...(o.until ? [`حتى ${d(o.until)}`] : []), ...(o.minFaves ? [`إعجابات ≥ ${nf(o.minFaves)}`] : []),
+      ...(o.minReplies ? [`ردود ≥ ${nf(o.minReplies)}`] : []), ...(o.lang ? [o.lang === "ar" ? "العربية" : "English"] : []), ...(o.near ? [`قرب ${o.near}`] : []),
+      ...o.filters.map((x) => fl[x] || x), ...o.notFilters.map((x) => `بدون ${fl[x] || x}`)];
+    return c.length ? `<div class="s-chips s-ops" role="note" aria-label="أوامر البحث">${c.map((x) => `<span class="s-chip"><bdi>${h(x)}</bdi></span>`).join("")}</div>` : "";
+  }
   /* v2.126 search stage 3: under a question in the results, its best answer (accepted ✓, else most liked) — tap opens the post */
   function ansHtml(p) {
     const a = p && p.bestAnswer; if (!a || !card.last) return "";
@@ -608,6 +620,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     const savedList = (await api("GET", "/api/search/saved").catch(() => ({ saved: [] }))).saved, isSaved = savedList.find(s => s.q === q);
     body.innerHTML = `${r.corrected ? `<div class="s-note" role="status">عرضنا نتائج «${h(r.corrected)}». <button id="s-orig">ابحث عن «${h(q)}» بدلاً من ذلك</button></div>` : ""}
       ${r.didYouMean ? `<div class="s-note" role="status">هل تقصد: <button id="s-dym">${h(r.didYouMean)}</button>؟</div>` : ""}
+      ${opsHtml(r.ops)}
       <div class="s-save"><span class="muted" style="font-size:13px;font-weight:650">${nf(r.total)} نتيجة${r.engine === "meilisearch" ? " · Meilisearch" : ""}</span>
       <button class="btn ghost" id="s-savebtn" aria-pressed="${!!isSaved}" style="padding:8px 14px;font-size:13.5px">${ic(isSaved ? "bell" : "bellPlus", "sm")} ${isSaved ? "محفوظ مع تنبيه" : "احفظ البحث ونبّهني"}</button></div>
       ${sec("people", "الأشخاص", lim(g.people?.items || [], 3).map(userRow).join(""))}
