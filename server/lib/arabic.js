@@ -42,6 +42,15 @@ function tokens(s, { keepStop = false } = {}) {
     .map(stem)
     .filter(w => w.length > 1 || /\d/.test(w));
 }
+/* v2.121 query-side filler words: question words and Gulf/Levantine/Egyptian fillers that people type in a natural question
+ * («وش أفضل محمصة بجدة؟») but that never carry the meaning. Used on the QUERY only — the index keeps every word. */
+const QSTOP = new Set(["وش", "ويش", "ايش", "اش", "شو", "شنو", "شنهو", "ايه", "ليش", "ليه", "لماذا", "كيف", "كيفيه", "شلون", "وين", "فين", "اين", "مين", "منو", "من", "متى", "امتى", "كم", "ماذا", "هل",
+  "ابي", "ابغي", "ابغا", "ابغى", "ودي", "اريد", "بدي", "عايز", "عاوز", "احتاج", "حد", "احد", "يعرف", "تعرفون", "تعرف", "تنصحوني", "تنصحون", "تنصح", "انصحوني", "نصيحه", "ممكن", "لو", "سمحت", "سمحتو", "سمحتم", "تكفى", "تكفون", "ياجماعه", "جماعه", "الحين", "الان", "طيب", "يعني", "فيه", "في", "بس", "مره", "شي", "شيء", "اللي", "الي", "عن", "على", "عشان", "علشان", "حق", "تبع", "بتاع"]);
+/** tokens of a search query with fillers removed; falls back to the plain tokens when everything was a filler */
+function queryTokens(s) {
+  const all = tokens(s), keep = all.filter(w => !QSTOP.has(w));
+  return keep.length ? keep : all;
+}
 /** text as stored in the index: normalised tokens joined by spaces with sentinels, so LIKE '% tok%' is a prefix match */
 const indexText = s => " " + tokens(s, { keepStop: true }).join(" ") + " ";
 
@@ -88,4 +97,4 @@ function sentences(s) {
     .map(x => x.trim())
     .filter(x => x.length > 0);
 }
-module.exports = { normalize, tokens, stem, indexText, surfaces, distance, detectLang, sentences, STOP };
+module.exports = { normalize, tokens, queryTokens, QSTOP, stem, indexText, surfaces, distance, detectLang, sentences, STOP };
