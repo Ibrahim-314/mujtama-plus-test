@@ -780,23 +780,40 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   /* v2.117 «نشرتك الذكية» — AI from «مركز الذكاء» (member's linked account for «digest», else the free daily allowance).
    * Made on request (saves the allowance), kept 2 h server-side; every point links to the posts it came from. */
   const BR_T = { top: ["sparkle", "الأبرز اليوم"], people: ["users", "من الناس اللي تتابعهم"], communities: ["home", "في مجتمعاتك"], topics: ["hash", "مواضيع قد تهمك"] };
-  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}.dask-f{display:flex;gap:8px;margin-top:10px}.dask-f input{flex:1;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit}.dask-a b{display:block;margin-bottom:4px}.dwhy{margin-top:12px}.dbr-c button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}"; document.head.appendChild(st); }
+  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}.dask-f{display:flex;gap:8px;margin-top:10px}.dask-f input{flex:1;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit}.dask-a b{display:block;margin-bottom:4px}.dwhy{margin-top:12px}.dbr-o{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}.dbr-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}.dbr-seg button{font:inherit;font-size:.8em;min-height:36px;padding:4px 12px;border:0;background:transparent;color:inherit}.dbr-seg button[aria-pressed=true]{background:var(--accent);color:#fff}.dbr [data-say][aria-pressed=true]{color:var(--accent);border-color:var(--accent)}.dbr-c button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}"; document.head.appendChild(st); }
   function briefHTML(r) {
     const b = r.brief, src = b.sources || {};
     const cite = (id) => { const m = src[id]; return m ? `<button data-cite="${h(id)}" aria-label="افتح المصدر">${ic("link", "xs")} <bdi>${h(m.community || m.by || "المصدر")}</bdi></button>` : ""; };
     return `<div class="dbr-h">${ic("sparkle", "sm")}<b>نشرتك الذكية</b><a class="btn ghost sm" href="#/aihub">مركز الذكاء</a></div>
       ${b.headline ? `<p class="dbr-lead"><bdi>${h(b.headline)}</bdi></p>` : ""}
       ${b.sections.map((sec) => `<div class="dbr-sec"><h3>${ic(BR_T[sec.kind][0], "xs")} ${BR_T[sec.kind][1]}</h3>${sec.items.map((it) => `<div class="dbr-it"><bdi>${h(it.text)}</bdi><div class="dbr-c">${it.cites.map(cite).join("")}</div></div>`).join("")}</div>`).join("")}
+      <div class="dbr-o">${briefOpts()}${"speechSynthesis" in window ? `<button class="btn ghost sm" data-say aria-pressed="false">${ic("volume", "xs")} <span>استمع</span></button>` : ""}</div>
       <div class="dbr-f muted u-t-xs"><span>مولّدة بالذكاء من ${nf(b.count)} منشوراً — قد تغفل تفاصيل، افتح المصادر${r.free ? ` · باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم` : ""}</span><button class="btn ghost sm" data-br="refresh">${ic("refresh", "xs")} حدّث</button></div>`;
   }
   let lastBrief = null;
+  /* v2.119 Stage 3 — length + tone (kept on this device) and a listen-aloud version (browser speech, nothing sent anywhere) */
+  const BR_O = { len: [["short", "مختصرة"], ["normal", "متوسطة"], ["long", "مفصّلة"]], tone: [["friendly", "ودّية"], ["neutral", "محايدة"], ["formal", "رسمية"]] };
+  const brPref = () => { try { return { len: "normal", tone: "friendly", ...JSON.parse(localStorage.getItem("mp_brief") || "{}") }; } catch { return { len: "normal", tone: "friendly" }; } };
+  const briefOpts = () => { const pr = brPref(); return Object.entries(BR_O).map(([k, opts]) => `<div class="dbr-seg" role="group" aria-label="${k === "len" ? "طول النشرة" : "نبرة النشرة"}">${opts.map(([v, l]) => `<button data-opt="${k}" data-v="${v}" aria-pressed="${pr[k] === v}">${l}</button>`).join("")}</div>`).join(""); };
+  function sayBrief(btn, b) {
+    const ss = window.speechSynthesis; if (!ss) return;
+    if (ss.speaking) { ss.cancel(); return; }
+    const txt = [b.headline, ...b.sections.map((x) => BR_T[x.kind][1] + ". " + x.items.map((i) => i.text).join(". "))].filter(Boolean).join(".\n");
+    const u = new SpeechSynthesisUtterance(txt); u.lang = "ar-SA"; u.rate = 0.95;
+    const v = ss.getVoices().find((x) => /^ar/i.test(x.lang)); if (v) u.voice = v;
+    const set = (on) => { if (!btn.isConnected) return; btn.setAttribute("aria-pressed", String(on)); btn.querySelector("span").textContent = on ? "إيقاف" : "استمع"; };
+    u.onend = u.onerror = () => set(false); set(true); ss.speak(u);
+  }
   async function smartBrief(box, refresh) {
     if (!box) return;
     const wire = () => {
       box.querySelectorAll("[data-cite]").forEach((b) => b.onclick = () => (location.hash = "#/post/" + b.dataset.cite));
       box.querySelectorAll("[data-br]").forEach((b) => b.onclick = () => smartBrief(box, b.dataset.br === "refresh"));
+      box.querySelectorAll("[data-opt]").forEach((b) => b.onclick = () => { localStorage.setItem("mp_brief", JSON.stringify({ ...brPref(), [b.dataset.opt]: b.dataset.v })); window.speechSynthesis?.cancel();
+        if (box.querySelector("[data-say], .dbr-lead")) smartBrief(box, true); else box.querySelectorAll(`[data-opt="${b.dataset.opt}"]`).forEach((x) => x.setAttribute("aria-pressed", String(x === b))); });
+      const sb = box.querySelector("[data-say]"); if (sb && lastBrief?.r?.brief) sb.onclick = () => sayBrief(sb, lastBrief.r.brief);
     };
-    const intro = (avail) => `<div class="dbr-h">${ic("sparkle", "sm")}<b>نشرتك الذكية</b></div><p class="muted u-m0 u-mt6">يقرأ الذكاء ${avail ? nf(avail) + " منشوراً" : "منشورات يومك"} ويكتب لك نشرة مرتبة: الأبرز، ومن تتابعهم، ومجتمعاتك — وكل نقطة مربوطة بمصدرها.</p><button class="btn dbr-go" data-br="make">${ic("sparkle", "xs")} اصنع نشرتي</button>`;
+    const intro = (avail) => `<div class="dbr-h">${ic("sparkle", "sm")}<b>نشرتك الذكية</b></div><p class="muted u-m0 u-mt6">يقرأ الذكاء ${avail ? nf(avail) + " منشوراً" : "منشورات يومك"} ويكتب لك نشرة مرتبة: الأبرز، ومن تتابعهم، ومجتمعاتك — وكل نقطة مربوطة بمصدرها.</p><div class="dbr-o">${briefOpts()}</div><button class="btn dbr-go" data-br="make">${ic("sparkle", "xs")} اصنع نشرتي</button>`;
     try {
       if (refresh === undefined) {
         if (lastBrief && Date.now() - lastBrief.t < 2 * 3600e3) { box.innerHTML = lastBrief.r.brief ? briefHTML(lastBrief.r) : intro(lastBrief.r.available); wire(); } // the page re-renders on sync: paint at once, then confirm
@@ -808,7 +825,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       }
       box.setAttribute("aria-busy", "true");
       box.innerHTML = `<div class="dbr-h">${ic("sparkle", "sm")}<b>نشرتك الذكية</b></div><p class="muted">يقرأ يومك ويكتب لك…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
-      const r = await api("POST", "/api/aihub/brief", { refresh: !!refresh });
+      window.speechSynthesis?.cancel();
+      const r = await api("POST", "/api/aihub/brief", { refresh: !!refresh, ...brPref() });
       if (r.brief) lastBrief = { r, t: Date.now() };
       if (!box.isConnected) { box = document.getElementById("dbr"); if (!box) return; }
       box.innerHTML = r.brief ? briefHTML(r) : `<p class="muted">${h(r.message || "لا جديد الآن")}</p>`; wire();
