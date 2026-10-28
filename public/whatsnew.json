@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.129.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "البحث المتقدم",
+      "items": [
+        "زر «بحث متقدم»: اكتب الكلمات والعبارة والحساب والتاريخ والنوع، ويكتب لك أوامر البحث تلقائياً",
+        "ترى قبل البحث بالضبط ما سيُبحث عنه",
+        "«أو» حقيقية: react OR vue تجيب منشورات أي منهما",
+        "الذكاء يقرأ كلماتك فقط وليس الأوامر"
+      ]
+    },
+    "en": {
+      "title": "Advanced search",
+      "items": [
+        "«Advanced search»: fill in words, phrase, account, dates and type — the operators are written for you",
+        "See exactly what will be searched before you search",
+        "Real OR: react OR vue finds posts about either",
+        "AI reads your words only, not the operators"
+      ]
+    }
+  },
+  {
     "v": "2.128.0",
     "date": "2026-10-28",
     "ar": {
