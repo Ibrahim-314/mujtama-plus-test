@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.124.2",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "البحث يقرأ كلمتك صح",
+      "items": [
+        "لا يعرض «بحثنا عن…» بكلمة خاطئة عندما تكون كلمتك معرّبة مثل «لابتوب»"
+      ]
+    },
+    "en": {
+      "title": "Search reads your word right",
+      "items": [
+        "No wrong «searched for…» note when you type an Arabic-written loanword like «لابتوب»"
+      ]
+    }
+  },
+  {
     "v": "2.124.1",
     "date": "2026-10-28",
     "ar": {
