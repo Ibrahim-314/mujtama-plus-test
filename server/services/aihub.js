@@ -442,14 +442,17 @@ module.exports = (ctx, opts = {}) => {
   }
   async function brief(user, b, make) {
     const facts = await briefFacts(user);
-    const hash = facts.posts.map((p) => p.id).join("|"), hit = briefCache.get(user.id);
-    const fresh = hit && hit.hash === hash && Date.now() - hit.at < 2 * 3600e3;
+    const len = ["short", "normal", "long"].includes(b.len) ? b.len : "normal", tone = ["friendly", "neutral", "formal"].includes(b.tone) ? b.tone : "friendly";
+    const hash = facts.posts.map((p) => p.id).join("|") + (make ? `#${len}.${tone}` : ""), hit = briefCache.get(user.id);
+    const fresh = hit && (make ? hit.hash === hash : hit.hash.split("#")[0] === hash) && Date.now() - hit.at < 2 * 3600e3;
     if (!make || (fresh && !b.refresh)) return { brief: fresh ? hit.brief : null, generatedAt: fresh ? new Date(hit.at).toISOString() : null, available: facts.posts.length, cached: !!fresh };
     if (!facts.posts.length) return { brief: null, available: 0, empty: true, message: "لا جديد في آخر ٢٤ ساعة — أنت مطّلع على كل شيء" };
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
-    const ask = `هذه منشورات آخر ٢٤ ساعة التي تهم القارئ (JSON؛ followed=true يعني أنه يتابع الكاتب، community اسم المجتمع إن وجد). اكتب له نشرة يومية:\n- headline: جملة افتتاحية واحدة تلخّص يومه\n- sections: أقسام بهذا الترتيب عند توفر مادة لها فقط:\n  top = الأبرز اليوم (1-3 نقاط)، people = من الناس الذين يتابعهم (followed=true فقط، اذكر الاسم)، communities = في مجتمعاته (اذكر اسم المجتمع)، topics = مواضيع أخرى قد تهمه\n- كل نقطة {"text":"جملة أو جملتان","cites":["معرّفات المنشورات المصدر"]}، ولا تكرر المنشور نفسه في أكثر من قسم\nأعد: {"headline":"...","sections":[{"kind":"top","items":[]}]}\n\nالمنشورات:\n${JSON.stringify(facts.posts)}`;
+    const LEN = { short: "مختصرة جداً: قسمان على الأكثر، ونقطة أو نقطتان في كل قسم، وكل نقطة جملة واحدة قصيرة", normal: "متوسطة الطول", long: "مفصّلة: حتى 4 نقاط في كل قسم، وكل نقطة جملتان أو ثلاث فيها السياق" };
+    const TONE = { friendly: "بنبرة ودّية خفيفة كأنك صديق يحكي له", neutral: "بنبرة محايدة إخبارية", formal: "بنبرة رسمية مهذبة" };
+    const ask = `اجعل النشرة ${LEN[len]}، ${TONE[tone]}.\nهذه منشورات آخر ٢٤ ساعة التي تهم القارئ (JSON؛ followed=true يعني أنه يتابع الكاتب، community اسم المجتمع إن وجد). اكتب له نشرة يومية:\n- headline: جملة افتتاحية واحدة تلخّص يومه\n- sections: أقسام بهذا الترتيب عند توفر مادة لها فقط:\n  top = الأبرز اليوم (1-3 نقاط)، people = من الناس الذين يتابعهم (followed=true فقط، اذكر الاسم)، communities = في مجتمعاته (اذكر اسم المجتمع)، topics = مواضيع أخرى قد تهمه\n- كل نقطة {"text":"جملة أو جملتان","cites":["معرّفات المنشورات المصدر"]}، ولا تكرر المنشور نفسه في أكثر من قسم\nأعد: {"headline":"...","sections":[{"kind":"top","items":[]}]}\n\nالمنشورات:\n${JSON.stringify(facts.posts)}`;
     const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 1600, freeMax: 1600 });
-    const out = shapeBrief(parseJSON(o.text), facts), at = Date.now();
+    const out = { ...shapeBrief(parseJSON(o.text), facts), len, tone }, at = Date.now();
     if (briefCache.size > 2000) briefCache.delete(briefCache.keys().next().value);
     briefCache.set(user.id, { hash, at, brief: out });
     return { brief: out, generatedAt: new Date(at).toISOString(), available: facts.posts.length, cached: false, provider: o.provider, via: o.via || null, model: o.model || null, free: o.free || null };
