@@ -3438,5 +3438,13 @@
 "ابحث": "Search",
 "مسح": "Clear",
 "سيُبحث عن:": "Will search for:",
-"املأ حقلاً واحداً على الأقل": "Fill in at least one field"
+"املأ حقلاً واحداً على الأقل": "Fill in at least one field",
+/* v2.130 search inside */
+"في الرسائل": "In messages",
+"محفوظاتي": "My saves",
+"في مجتمع {n}": "in community {n}",
+"ابحث في المجتمع": "Search this community",
+"ابحث في منشوراتك": "Search your posts",
+"ابحث في منشوراته": "Search their posts",
+"ابحث في محفوظاتك": "Search your saves"
 });
