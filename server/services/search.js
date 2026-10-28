@@ -14,7 +14,7 @@ const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
 const RT = require("../../richtext.js");
-const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon");
+const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic");
 const IV = 4; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
@@ -32,7 +32,7 @@ module.exports = (ctx) => {
   }
   /* ---------- v2.123 inverted index (search_postings / search_vocab) ---------- */
   async function vocabDelta(add, del) {
-    for (const t of add) await db.run("INSERT INTO search_vocab(term, df, len) VALUES($1, 1, $2) ON CONFLICT (term) DO UPDATE SET df = search_vocab.df + 1", [t, t.length]);
+    for (const t of add) await db.run("INSERT INTO search_vocab(term, df, len, pk) VALUES($1, 1, $2, $3) ON CONFLICT (term) DO UPDATE SET df = search_vocab.df + 1", [t, t.length, PH.key(t)]);
     for (const t of del) await db.run("UPDATE search_vocab SET df = df - 1 WHERE term=$1 AND df > 0", [t]);
   }
   async function dropPostings(kind, ref) {
@@ -146,6 +146,8 @@ module.exports = (ctx) => {
   }
   async function upgradeIndex(batch = 300) {
     const rec = await reconcile();
+    // v2.124: sound keys for words indexed before 085
+    for (const v of await db.all("SELECT term FROM search_vocab WHERE pk IS NULL LIMIT 3000").catch(() => [])) await db.run("UPDATE search_vocab SET pk=$1 WHERE term=$2", [PH.key(v.term) || "", v.term]);
     const old = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND iv < $1 LIMIT " + batch, [IV]);
     for (const r of old) await indexPost(r.ref_id).catch(() => { });
     for (const r of await db.all("SELECT kind, ref_id FROM search_docs WHERE kind IN ('user','community') AND iv < $1 LIMIT " + batch, [IV])) {
@@ -254,12 +256,148 @@ module.exports = (ctx) => {
     }
     return out.sort((a, b2) => b2.s - a.s).slice(0, limit);
   }
+  /* ---------- v2.124 query understanding + retrieval on the inverted index ----------
+   * No per-word rules: every query word becomes a CONCEPT — its analyzer forms (clitics, plurals, verb prefixes), and, only when
+   * they are real words in the index, its spelling neighbours (unknown words) and its cross-script twins by sound key (any
+   * loanword: «بايثون» ↔ python). The small lexicon is a seed for true synonyms; the AI query plan adds meaning when the words
+   * alone find nothing. Concepts are weighted by idf, so a common word («طريقة», «أفضل») barely counts and a word nobody wrote is
+   * ignored; a document must cover most of the query's idf mass. Scoring is BM25F over title (×2.2), body and comments (×0.5).
+   * Candidate generation starts from the rarest concepts, so the cost follows the rare words, not the corpus size. */
+  /* qualifiers that rank but rarely decide WHAT is asked («أفضل محمصة» = محمصة): they score, but weigh little in coverage.
+   * Grammar-level words, not topics — topical meaning stays with idf, forms, sound keys and the AI plan. */
+  const QSOFT = new Set(["افضل", "احسن", "اقوي", "اجمل", "اروع", "انسب", "اسهل", "ارخص", "طريقه", "طرق", "زين", "زينه", "حلو", "حلوه", "جيد", "ممتاز", "best", "top", "good", "great", "way", "ways", "how"].map((w) => A.normalize(w)));
+  const FW = [2.2, 1, 0.5], K1 = 1.2, BB = 0.6, isArw = (w) => /[\u0600-\u06FF]/.test(w);
+  const inList = (a, off = 0) => a.map((_, i) => "$" + (i + 1 + off)).join(",");
+  function queryForms(w) {
+    const m = new Map(AN.forms(w));
+    for (const [f, wt] of [...m]) if (isArw(f) && /^[اينت]/.test(f) && f.length >= 5 && !m.has(f.slice(1))) m.set(f.slice(1), wt * 0.8); // اتعلم/يتعلم/نتعلم → تعلم
+    if (isArw(w) && /^[وفبكل]/.test(w) && w.length === 4 && !m.has(w.slice(1))) m.set(w.slice(1), 0.85); // «بجده» → جده (kept only if it is a real indexed word)
+    return m;
+  }
+  async function vocabDf(terms) {
+    const out = {};
+    for (let i = 0; i < terms.length; i += 200) { const part = terms.slice(i, i + 200); for (const r of await db.read.all(`SELECT term, df FROM search_vocab WHERE df > 0 AND term IN (${inList(part)})`, part)) out[r.term] = Number(r.df) || 0; }
+    return out;
+  }
+  async function neighbours(w) { // spelling neighbours of an unknown word that ARE in the index
+    if (w.length < 3 || /\d/.test(w)) return [];
+    const max = w.length <= 4 ? 1 : 2;
+    const rows = await db.read.all("SELECT term, df FROM search_vocab WHERE df > 0 AND len BETWEEN $1 AND $2 AND (SUBSTR(term,1,1)=$3 OR SUBSTR(term,2,1)=$4 OR SUBSTR(term,LENGTH(term),1)=$5) ORDER BY df DESC LIMIT 4000",
+      [w.length - max, w.length + max, w[0], w[1], w[w.length - 1]]);
+    return rows.map((r) => ({ t: r.term, d: A.distance(w, r.term, max), df: Number(r.df) })).filter((x) => x.d <= max).sort((a, b) => a.d - b.d || b.df - a.df).slice(0, 4);
+  }
+  async function prefixed(t) { // edge match: «كوفي» → «كوفيه», «كوفيهات» (index-friendly range scan, a little longer only)
+    if (t.length < 4 || /\d/.test(t)) return [];
+    const rows = await db.read.all("SELECT term, df FROM search_vocab WHERE term > $1 AND term < $2 AND len <= $3 AND df > 0 ORDER BY df DESC LIMIT 6", [t, t + "\uffff", t.length + 3]);
+    return rows.map((r) => r.term);
+  }
+  async function twins(w) { // the same word in the other script, by sound key, only if people wrote it
+    const k = PH.key(w), sc = PH.script(w); if (k.length < 3 || !sc) return [];
+    const rows = await db.read.all("SELECT term, df FROM search_vocab WHERE pk=$1 AND df > 0 ORDER BY df DESC LIMIT 12", [k]);
+    return rows.filter((r) => PH.script(r.term) && PH.script(r.term) !== sc && Math.abs(r.term.length - w.length) <= 3).slice(0, 4).map((r) => r.term);
+  }
+  async function understand(q, plan) {
+    let ws = AN.words(q).filter((w) => !A.QSTOP.has(w) && !A.STOP.has(w));
+    if (!ws.length) ws = AN.words(q);
+    const cs = [...new Set(ws)].slice(0, 8).map((w) => ({ w, terms: new Map(), via: [] }));
+    const add = (c, t, wt) => { if (t && t.length > 1 && t.length <= 40 && (c.terms.get(t) || 0) < wt) c.terms.set(t, wt); };
+    for (const c of cs) {
+      for (const [f, wt] of queryForms(c.w)) add(c, f, wt);
+      for (const r of LEX.related(c.w).concat(LEX.related(AN.base(c.w)))) if (!r.includes(" ")) for (const [f, wt] of AN.forms(r)) add(c, f, 0.7 * wt);
+    }
+    let df = await vocabDf([...new Set(cs.flatMap((c) => [...c.terms.keys()]))]);
+    for (const c of cs) {
+      const b = AN.base(c.w);
+      const own = [...c.terms.keys()].some((t) => df[t]);
+      for (const t of await prefixed(b)) add(c, t, 0.6);
+      if (!own && !df[c.w] && !df[b]) { const ns = await neighbours(b); for (const n of ns) { for (const [f, wt] of queryForms(n.t)) add(c, f, (n.d === 1 ? 0.7 : 0.55) * wt); c.via.push("typo:" + n.t); } if (ns.length) c.fix = ns[0].t; }
+      for (const t of new Set([...(await twins(c.w)), ...(b !== c.w ? await twins(b) : [])])) { /* raw word too: «كوبرنيتس» is not ك+وبرنيتس */ for (const [f, wt] of AN.forms(t)) add(c, f, 0.75 * wt); c.via.push("sound:" + t); }
+    }
+    if (plan?.concepts?.length) for (const pc of plan.concepts.slice(0, 5)) { // AI plan: meaning-level forms, below the reader's own words
+      const c = { w: pc[0], terms: new Map(), via: ["ai"] }; for (const x of pc) for (const [f, wt] of queryForms(x)) add(c, f, 0.6 * wt); cs.push(c);
+    }
+    df = await vocabDf([...new Set(cs.flatMap((c) => [...c.terms.keys()]))]);
+    return cs.map((c) => ({ ...c, live: new Map([...c.terms].filter(([t]) => df[t])) })).filter((c) => c.live.size).map((c) => ({ ...c, df }));
+  }
+  let PCACHE = { at: 0, n: 1, avg: 30 };
+  async function corpusP() {
+    if (Date.now() - PCACHE.at < 5 * 60e3) return PCACHE;
+    const r = await db.read.get("SELECT COUNT(*) n, AVG(len) l FROM search_docs");
+    return (PCACHE = { at: Date.now(), n: Math.max(1, Number(r?.n) || 1), avg: Math.max(1, Number(r?.l) || 30) });
+  }
+  let READY = { at: 0, ok: false };
+  async function postingsReady() {
+    if (Date.now() - READY.at < 60e3) return READY.ok;
+    let ok = false;
+    try { ok = !!(await db.read.get("SELECT 1 x FROM search_postings LIMIT 1")) && !(await db.read.get(`SELECT 1 x FROM search_docs WHERE iv < ${IV} LIMIT 1`)); } catch { ok = false; }
+    READY = { at: Date.now(), ok }; return ok;
+  }
+  async function postingsIds(q, kinds, f, limit = 200) {
+    const cs = await understand(q, f._plan); if (!cs.length) return [];
+    const { n: N, avg } = await corpusP();
+    const idf = (t) => { const d = Math.min(N, cs[0].df[t] || 1); return Math.log(1 + (N - d + 0.5) / (d + 0.5)); };
+    for (const c of cs) c.idf = Math.max(...[...c.live].map(([t, wt]) => idf(t) * wt)) * (QSOFT.has(c.w) ? 0.3 : 1);
+    const order = [...cs].sort((a, b) => b.idf - a.idf), mass = cs.reduce((a, c) => a + c.idf, 0);
+    const hits = new Map(); // kind|ref → Map(concept index → Map(term → Σ field-weighted tf))
+    const kk = kinds.map(String);
+    for (let ci = 0; ci < order.length; ci++) {
+      const c = order[ci], terms = [...c.live.keys()], p = [...terms, ...kk];
+      const sql = `SELECT term, kind, ref_id, f, tf FROM search_postings WHERE term IN (${inList(terms)}) AND kind IN (${inList(kk, terms.length)})`;
+      if (ci >= 2 && hits.size) { // later (commoner) concepts only score documents the rare ones already found
+        const ids = [...new Set([...hits.keys()].map((x) => x.split("|")[1]))].slice(0, 5000);
+        const rows = [];
+        for (let i = 0; i < ids.length; i += 400) { const part = ids.slice(i, i + 400); rows.push(...await db.read.all(sql + ` AND ref_id IN (${inList(part, p.length)})`, [...p, ...part])); }
+        collect(rows, cs.indexOf(c));
+      } else collect(await db.read.all(sql + " LIMIT 40000", p), cs.indexOf(c));
+    }
+    function collect(rows, ci) {
+      for (const r of rows) {
+        const key = r.kind + "|" + r.ref_id; let m = hits.get(key); if (!m) hits.set(key, (m = new Map()));
+        let cm = m.get(ci); if (!cm) m.set(ci, (cm = new Map()));
+        cm.set(r.term, (cm.get(r.term) || 0) + FW[r.f] * Number(r.tf));
+      }
+    }
+    if (!hits.size) return [];
+    const need = (cs.length <= 2 ? 0.75 : 0.6) * mass;
+    const pre = [];
+    for (const [key, m] of hits) { let got = 0; for (const ci of m.keys()) got += cs[ci].idf; if (got >= need - 1e-9) pre.push(key); }
+    if (!pre.length) return [];
+    const docs = new Map();
+    const where = [], fp = [];
+    if (f.ptype) { fp.push(f.ptype); where.push(`(kind<>'post' OR ptype=$X)`); }
+    if (f.community) { fp.push(f.community); where.push(`(kind='user' OR community=$X)`); }
+    if (f.lang) { fp.push(f.lang); where.push(`(kind<>'post' OR lang=$X)`); }
+    if (f.from) { fp.push(f.from); where.push(`(kind<>'post' OR created_at >= $X)`); }
+    if (f.to) { fp.push(f.to); where.push(`(kind<>'post' OR created_at <= $X)`); }
+    for (const kind of kk) {
+      const ids = pre.filter((x) => x.startsWith(kind + "|")).map((x) => x.slice(kind.length + 1));
+      for (let i = 0; i < ids.length; i += 400) {
+        const part = ids.slice(i, i + 400); let n = 0;
+        const w = where.map((x) => x.replace("$X", "$" + (2 + part.length + n++)));
+        for (const r of await db.read.all(`SELECT kind, ref_id, len, quality, created_at FROM search_docs WHERE kind=$1 AND ref_id IN (${inList(part, 1)})${w.length ? " AND " + w.join(" AND ") : ""}`, [kind, ...part, ...fp])) docs.set(kind + "|" + r.ref_id, r);
+      }
+    }
+    const out = [];
+    for (const [key, r] of docs) {
+      const m = hits.get(key), dl = Math.max(1, Number(r.len) || avg); let s = 0, got = 0;
+      for (const [ci, tm] of m) {
+        const c = cs[ci]; let best = 0;
+        for (const [t, x] of tm) { const v = idf(t) * (c.live.get(t) || 0) * (x * (K1 + 1)) / (x + K1 * (1 - BB + BB * dl / avg)); if (v > best) best = v; }
+        s += best; got += c.idf;
+      }
+      s *= got / mass;
+      if (r.kind === "post") s += 1.2 / (1 + (Date.now() - Date.parse(r.created_at)) / (14 * 864e5)) + 0.3 * (Number(r.quality) || 0);
+      out.push({ kind: r.kind, id: r.ref_id, s });
+    }
+    return out.sort((a, b) => b.s - a.s).slice(0, limit);
+  }
   async function engineIds(q, kinds, f) {
     if (meili && !f._plan) {
       try { return { engine: "meilisearch", ids: await meili.search(q, { kinds, ptype: f.ptype, community: f.community, lang: f.lang, from: f.from, to: f.to, limit: 200 }) }; }
       catch (e) { ctx.jobsState.meili = { ok: false, error: e.message, lastRun: now() }; }
     }
-    return { engine: "builtin", ids: await builtinIds(q, kinds, f) };
+    if (await postingsReady()) return { engine: "index", ids: await postingsIds(q, kinds, f) };
+    return { engine: "builtin", ids: await builtinIds(q, kinds, f) }; // index still being (re)built: the v2.121 scan keeps working
   }
   async function run(viewer, q, f, { limit = 20 } = {}) {
     const want = f.type === "all" ? GROUPS : [f.type];
@@ -291,6 +429,15 @@ module.exports = (ctx) => {
         else didYouMean = c;
       }
     }
+    if (!corrected && res.engine === "index" && res.total > 0 && qs.exact !== "1") { // typo neighbours carried the match → say what we read
+      const u = await understand(q), fixes = new Map(u.filter((c) => c.fix).map((c) => [c.w, c.fix]));
+      if (fixes.size) { const words = q.trim().split(/\s+/).map((w) => { const t = AN.words(w)[0]; return t && fixes.has(t) ? fixes.get(t) : w; }); const c = words.join(" "); if (A.normalize(c) !== A.normalize(q)) corrected = c; }
+    }
+    let understood = null; // v2.124: nothing matched the words → the AI hub turns the question into concepts (cached 24 h per query)
+    if (res.total === 0 && viewer?.id && qs.ai !== "0" && ctx.services.aihub?.queryPlan) {
+      const plan = await ctx.services.aihub.queryPlan(viewer, q).catch(() => null);
+      if (plan) { const r3 = await run(viewer, q, { ...f, _plan: plan }); if (r3.total) { res = r3; understood = plan.rewritten || plan.concepts.map((c) => c[0]).join(" "); } }
+    }
     if (viewer) {
       await db.run("DELETE FROM search_history WHERE user_id=$1 AND q=$2", [viewer.id, q]);
       await db.run("INSERT INTO search_history(id,user_id,q,at) VALUES($1,$2,$3,$4)", [id("sh"), viewer.id, q, now()]);
@@ -298,7 +445,7 @@ module.exports = (ctx) => {
       for (const o of old) await db.run("DELETE FROM search_history WHERE id=$1", [o.id]);
     }
     ctx.track(viewer?.id, "search_performed", { q, engine: res.engine });
-    return { q, normalized: A.normalize(q), corrected, didYouMean, filters: f, ...res };
+    return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ...res };
   }
 
   /* ---------- typeahead ---------- */
@@ -364,5 +511,5 @@ module.exports = (ctx) => {
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.get("/api/admin/search/coverage", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return coverage(); }));
   r.post("/api/admin/search/reindex", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return { indexed: await reindexAll() }; }));
-  return { IV, search, run, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
+  return { IV, search, run, understand, postingsReady, postingsIds, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
 };
