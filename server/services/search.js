@@ -709,16 +709,33 @@ module.exports = (ctx) => {
     return { checked: due.length, notified };
   }
   ctx.scheduler.every("savedSearchAlerts", 10 * 60e3, checkAlerts);
-  async function trending(viewer) {
-    const tr = ctx.services.trends ? await ctx.services.trends.list({ scope: "global" }) : { trends: [] };
+  /* v2.131 search stage 8: «رائج الآن» by region (العالم العربي / your country / your city, from your profile location) and topics
+   * ranked by this week's activity. A reader can switch region; the default is the most local scope that has trends. */
+  async function trending(viewer, qs = {}) {
+    const geo = require("../lib/geo");
+    const me = viewer?.id ? await db.read.get("SELECT location, country FROM users WHERE id=$1", [viewer.id]).catch(() => null) : null;
+    const loc = me ? geo.resolve(me.location, me.country) : {};
+    const scopes = [{ scope: "global", key: "", label: "العالم العربي" }];
+    if (loc.country) scopes.push({ scope: "country", key: loc.country, label: geo.COUNTRY_AR[loc.country] || loc.country });
+    if (loc.city) scopes.push({ scope: "city", key: loc.city, label: loc.city });
+    let tr = { trends: [] }, chosen = scopes[0];
+    if (ctx.services.trends) {
+      const asked = scopes.find((x) => x.scope === qs.scope && (x.scope === "global" || x.key === qs.key)) || (["country", "city"].includes(qs.scope) && qs.key ? { scope: qs.scope, key: String(qs.key).slice(0, 60), label: String(qs.key).slice(0, 60) } : null);
+      const order = asked ? [asked] : [...scopes].reverse(); // default: the most local scope with trends
+      for (const sc of order) { const r = await ctx.services.trends.list({ scope: sc.scope, key: sc.key }).catch(() => ({ trends: [] })); if (r.trends?.length || asked) { tr = r; chosen = { ...sc, label: r.label || sc.label }; break; } }
+      if (!tr.trends?.length && !asked) tr = await ctx.services.trends.list({ scope: "global" }).catch(() => ({ trends: [] }));
+    }
+    const week = new Date(Date.now() - 7 * 864e5).toISOString();
+    const act = new Map((await db.read.all("SELECT topic, COUNT(*) n FROM posts WHERE status='published' AND visibility='public' AND created_at > $1 AND topic IS NOT NULL GROUP BY topic", [week]).catch(() => [])).map((r) => [r.topic, Number(r.n)]));
+    const topics = TOPICS.map((t) => ({ ...t, posts: act.get(t.slug) || 0 })).sort((a, b) => b.posts - a.posts);
     const popular = await db.read.all("SELECT q, COUNT(DISTINCT user_id) n FROM search_history WHERE at > $1 GROUP BY q ORDER BY n DESC, q LIMIT 8", [new Date(Date.now() - 7 * 864e5).toISOString()]);
-    return { trends: tr.trends.slice(0, 8).map(t => ({ tag: t.tag, posts: t.posts, unique: t.unique })), popular: popular.map(p => p.q), topics: TOPICS, history: viewer ? (await history(viewer.id)).slice(0, 8) : [] };
+    return { trends: tr.trends.slice(0, 8).map(t => ({ tag: t.tag, posts: t.posts, unique: t.unique })), popular: popular.map(p => p.q), topics, scope: chosen, scopes, history: viewer ? (await history(viewer.id)).slice(0, 8) : [] };
   }
 
   const r = ctx.router, AU = ctx.requireUser;
   r.get("/api/search/full", async (req) => search(req.user, req.query));
   r.get("/api/search/suggest", async (req) => suggest(req.user, req.query.q));
-  r.get("/api/search/trending", async (req) => trending(req.user));
+  r.get("/api/search/trending", async (req) => trending(req.user, req.query));
   r.get("/api/search/history", AU(async (req) => ({ history: await history(req.user.id) })));
   r.del("/api/search/history", AU(async (req) => { await db.run("DELETE FROM search_history WHERE user_id=$1", [req.user.id]); return { ok: true }; }));
   r.del("/api/search/history/:id", AU(async (req) => { await db.run("DELETE FROM search_history WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
