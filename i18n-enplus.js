@@ -3396,5 +3396,7 @@
 "أسئلة متابعة": "Follow-up questions",
 "بحثنا عن:": "We searched for:",
 "مولّد بالذكاء من منشورات حقيقية — تحقّق من المصادر": "AI-generated from real posts — check the sources",
-"البحث الذكي": "Smart search"
+"البحث الذكي": "Smart search",
+/* v2.126 search stage 3: best answer under questions */
+"الإجابة المعتمدة": "Accepted answer"
 });
