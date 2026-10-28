@@ -537,7 +537,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 
   /* =================== Phase 22 — search screen =================== */
   const SR = { q: "", type: "all", date: "", lang: "", community: "", res: null, exact: false, autoAsk: false };
-  const TYPES = [["all", "الكل"], ["posts", "منشورات"], ["people", "أشخاص"], ["communities", "مجتمعات"], ["hashtags", "وسوم"]];
+  // v2.127 X-style tabs: «الأبرز» (the mixed best-first view), «الأحدث» (relevant posts newest first), «وسائط» (with images/video)
+  const TYPES = [["all", "الأبرز"], ["latest", "الأحدث"], ["posts", "منشورات"], ["people", "أشخاص"], ["media", "وسائط"], ["communities", "مجتمعات"], ["hashtags", "وسوم"]];
   const mark = (text, q) => { const t = h(text); const n = (q || "").trim(); if (!n) return t; const i = String(text).indexOf(n); return i < 0 ? t : h(String(text).slice(0, i)) + "<mark>" + h(n) + "</mark>" + h(String(text).slice(i + n.length)); };
   async function searchView(q0) {
     if (!online()) { location.replace("#/explore"); return; }
