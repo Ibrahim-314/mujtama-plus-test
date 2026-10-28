@@ -3385,6 +3385,16 @@
 "نسخ": "Copy",
 "القاعدة:": "Rule:",
 "اكتب التقرير": "Write the report",
-"يكتب…": "Writing…",
-"حدّث": "Refresh"
+"حدّث": "Refresh",
+"اسأل الذكاء": "Ask AI",
+"يقرأ المنشورات وتعليقاتها ويجاوبك باختصار مع المصادر.": "Reads posts and their comments and answers briefly, with sources.",
+"{name} جاوبني": "{name} Answer me",
+"جاوبني": "Answer me",
+"{name} اسأل الذكاء عن «{name}»": "{name} Ask AI about “{name}”",
+"سجّل دخولك لتسأل الذكاء.": "Sign in to ask AI.",
+"يقرأ المنشورات وتعليقاتها…": "Reading posts and comments…",
+"أسئلة متابعة": "Follow-up questions",
+"بحثنا عن:": "We searched for:",
+"مولّد بالذكاء من منشورات حقيقية — تحقّق من المصادر": "AI-generated from real posts — check the sources",
+"البحث الذكي": "Smart search"
 });
