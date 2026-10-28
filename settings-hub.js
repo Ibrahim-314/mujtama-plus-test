@@ -24,8 +24,22 @@ window.MPSettingsV2 = function () {
   view.querySelectorAll("[data-cl]").forEach(c => c.onchange = () => { S2.languages = c.checked ? [...new Set([...S2.languages, c.dataset.cl])] : S2.languages.filter(x => x !== c.dataset.cl); save(); });
   view.querySelectorAll("[data-ct2]").forEach(c => c.onchange = () => { S2.contentTypes[c.dataset.ct2] = c.checked; save(); });
   $("#sens2").onchange = e => { S2.sensitive = e.target.value; save(); };
+  msgAiSetting();
   orgSettings();
 };
+/* v2.134: Settings switch for «الذكاء في الرسائل» (stored per account: user_prefs ai.messages; the server enforces it too) */
+function msgAiSetting() {
+  if (typeof Remote === "undefined" || !Remote.on || !DB.me || document.getElementById("msgai-set")) return;
+  const first = view.querySelector(".wrap .card"); if (!first) return;
+  first.insertAdjacentHTML("beforebegin", `<div class="card row" id="msgai-set"><b>الذكاء الاصطناعي في الرسائل</b><p class="muted">تلخيص ما فاتك واقتراح الردود. لا يعمل في المحادثات المشفرة</p><input type="checkbox" id="msgai-sw" checked></div>`);
+  const sw = document.getElementById("msgai-sw");
+  Remote.api("GET", "/api/aihub/messages/state").then((r) => { sw.checked = r.on !== false; }).catch(() => { });
+  sw.addEventListener("change", async () => {
+    const on = sw.checked;
+    try { await Remote.api("PUT", "/api/prefs", { ns: "ai", values: { messages: on } }); window.dispatchEvent(new Event("mp:msgai")); toast(on ? "شُغّل الذكاء الاصطناعي في الرسائل" : "أُوقف الذكاء الاصطناعي في الرسائل"); }
+    catch (e) { sw.checked = !on; toast(e.message); }
+  });
+}
 /* v2.38 Settings: a hub of a few clear sections + one sub-page per section (#/settings?s=<key>) + search.
  * Feature modules (many lazy) still add their own entry cards to #/settings whenever they load; every entry becomes a row
  * filed into its section (ids, hrefs and listeners kept), duplicates (same link twice) are dropped, and rows keep one fixed
@@ -37,7 +51,7 @@ const SET_SECS = [["acct", "الحساب", "user", "التوثيق، الحسا�
   ["family", "الأسرة والحماية", "users", "العمر والمحتوى الحساس، ربط وليّ الأمر"], ["help", "المساعدة والقانوني", "help", "المساعدة والدعم، السياسات والشروط، عن التطبيق"],
   ["admin", "الإدارة", "shield", "لوحة الإدارة وأدوات المشرفين"]];
 /* row key (href or id) → section, [title, helper] (empty keeps the module's own text); order inside a section = order here */
-const SET_ROWS = [["#/verify", "acct"], ["#/integrity", "acct"], ["#/orgs", "acct"], ["#/studio", "acct"], ["#/cv", "acct", "الملف المهني والسيرة الذاتية", "خبراتك ومهاراتك وأعمالك ومن يراها"], ["#/jobs", "acct", "الوظائف والعمل الحر", "فرص العمل والمشاريع، إعلاناتك وطلباتك"], ["#/contracts", "acct", "العقود", "مراحل العمل والتسليم والضمان"], ["#/teams", "acct", "الفرق والمشاريع", "مهام وملفات ونقاشات مع فريقك"], ["#/reviews", "acct", "التقييمات المهنية", "قيّم من عملت معهم وتابع سمعتك"], ["#/points", "acct", "نقاط المساهمة", "مستواك وسجل نقاطك"], ["#/leaderboard", "acct", "لوحة الصدارة", "أكثر الأعضاء مساهمة"],
+const SET_ROWS = [["msgai-set", "privacy", "الذكاء الاصطناعي في الرسائل", "تلخيص ما فاتك واقتراح الردود. لا يعمل في المحادثات المشفرة"], ["#/verify", "acct"], ["#/integrity", "acct"], ["#/orgs", "acct"], ["#/studio", "acct"], ["#/cv", "acct", "الملف المهني والسيرة الذاتية", "خبراتك ومهاراتك وأعمالك ومن يراها"], ["#/jobs", "acct", "الوظائف والعمل الحر", "فرص العمل والمشاريع، إعلاناتك وطلباتك"], ["#/contracts", "acct", "العقود", "مراحل العمل والتسليم والضمان"], ["#/teams", "acct", "الفرق والمشاريع", "مهام وملفات ونقاشات مع فريقك"], ["#/reviews", "acct", "التقييمات المهنية", "قيّم من عملت معهم وتابع سمعتك"], ["#/points", "acct", "نقاط المساهمة", "مستواك وسجل نقاطك"], ["#/leaderboard", "acct", "لوحة الصدارة", "أكثر الأعضاء مساهمة"],
   ["#/security", "privacy"], ["#/privacy", "privacy"], ["#/protection", "privacy", "الحظر والكتم ووضع الحماية", "من تحظره وتكتمه، والحماية من الإزعاج"], ["#/mydata", "privacy"], ["#/decisions", "privacy", "القرارات على حسابي", "البلاغات والاستئناف"],
   ["#/notifsettings", "notif"], ["#/wellbeing", "notif"],
   ["#/feedprefs", "content"], ["#/settings/translate", "content", "تفضيلات الترجمة", "لغة الترجمة والترجمة التلقائية"], ["#/settings/ads", "content", "تفضيلات الإعلانات", "اهتمامات الإعلانات وما تخفيه منها"],
@@ -50,7 +64,7 @@ const SET_ROWS = [["#/verify", "acct"], ["#/integrity", "acct"], ["#/orgs", "acc
   ["#/legal", "help"], ["#/developers", "help", "بوابة المطورين", "التطبيقات ومفاتيح API"], ["#/developers/docs", "help", "وثائق المطورين", "REST وOAuth والويب هوك"], ["#/about", "help", "عن مجتمع بلس", "الإصدار والقيم وفريق العمل"],
   ["#/admin", "admin", "لوحة الإدارة", "للمشرفين"], ["#/safety-cases", "admin"], ["#/admin/beta", "admin", "إدارة التجربة"], ["#/admin/points", "admin", "إدارة النقاط"]];
 const SET_CARDS = [[/^(pi-set$|Pi Network|π)/, "money"], [/^اللغة والمظهر/, "display", "اللغة والسمة"], [/^التحكم بالمحتوى/, "content"], [/^إدارة ما تراه/, "content"], [/^سجل القرارات والبلاغات/, "privacy"], [/^أخرى/, "help", "متقدّم"]];
-const SET_ICO = { "#/cv": "building", "#/jobs": "bag", "#/contracts": "shield", "#/teams": "users", "#/reviews": "star", "#/security": "lock", "#/privacy": "eye", "#/integrity": "verified", "#/verify": "verified", "#/age": "user", "#/family": "users", "#/orgs": "building", "#/mydata": "download", "#/safety-cases": "flag", "#/legal": "flag", "#/settings/display": "access", "#/settings/appearance": "palette", "#/settings/language": "globe", "#/settings/translate": "globe", "#/settings/ads": "target", "#/notifsettings": "bell", "#/feedprefs": "target", "#/wellbeing": "heart", "#/app": "download", "#/studio": "chart", "#/me/purchases": "bag", "#/purchases": "bag", "#/me/paid-posts": "star", "#/ads": "chart", "#/ai": "sparkle", "#/creator": "award", "#/developers": "link", "#/developers/docs": "copy", "#/beta": "feedback", "#/points": "trophy", "#/leaderboard": "trophy", "#/faq": "help", "#/help": "help", "#/tickets": "mail", "#/about": "community", "#/ambassadors": "users", "#/protection": "shield", "#/policies": "flag", "#/wallet": "wallet", "#/mjt": "wallet", "#/decisions": "flag", "#/admin": "shield" };
+const SET_ICO = { "msgai-set": "sparkle", "#/cv": "building", "#/jobs": "bag", "#/contracts": "shield", "#/teams": "users", "#/reviews": "star", "#/security": "lock", "#/privacy": "eye", "#/integrity": "verified", "#/verify": "verified", "#/age": "user", "#/family": "users", "#/orgs": "building", "#/mydata": "download", "#/safety-cases": "flag", "#/legal": "flag", "#/settings/display": "access", "#/settings/appearance": "palette", "#/settings/language": "globe", "#/settings/translate": "globe", "#/settings/ads": "target", "#/notifsettings": "bell", "#/feedprefs": "target", "#/wellbeing": "heart", "#/app": "download", "#/studio": "chart", "#/me/purchases": "bag", "#/purchases": "bag", "#/me/paid-posts": "star", "#/ads": "chart", "#/ai": "sparkle", "#/creator": "award", "#/developers": "link", "#/developers/docs": "copy", "#/beta": "feedback", "#/points": "trophy", "#/leaderboard": "trophy", "#/faq": "help", "#/help": "help", "#/tickets": "mail", "#/about": "community", "#/ambassadors": "users", "#/protection": "shield", "#/policies": "flag", "#/wallet": "wallet", "#/mjt": "wallet", "#/decisions": "flag", "#/admin": "shield" };
 const setNorm = (s) => String(s || "").toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
 let setObs = null;
 function orgSettings() {
