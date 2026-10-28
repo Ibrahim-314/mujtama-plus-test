@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.130.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "ابحث داخل أي مكان",
+      "items": [
+        "زر بحث في ملف أي شخص يبحث في منشوراته فقط",
+        "زر بحث في المجتمع يبحث داخله فقط (الأمر in:)",
+        "مربع بحث في المحفوظات يبحث فيما حفظته أنت فقط (filter:saved)",
+        "البحث في الرسائل يجد الكلمات داخل محادثاتك، ولا يقرأ المحادثات المشفّرة أبداً"
+      ]
+    },
+    "en": {
+      "title": "Search inside anything",
+      "items": [
+        "A search button on any profile searches only their posts",
+        "A search button in a community searches only inside it (in:)",
+        "A search box in Saved searches only what you saved (filter:saved)",
+        "Message search finds words inside your chats — encrypted chats are never read"
+      ]
+    }
+  },
+  {
     "v": "2.129.0",
     "date": "2026-10-28",
     "ar": {
