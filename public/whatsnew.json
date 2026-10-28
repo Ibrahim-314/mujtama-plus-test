@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.127.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "تبويبات البحث مثل X",
+      "items": [
+        "«الأبرز» لأفضل النتائج و«الأحدث» لنفس النتائج من الأجدد",
+        "تبويب «وسائط» للمنشورات التي فيها صور أو فيديو",
+        "التبويبات تنزلق أفقياً على الجوال"
+      ]
+    },
+    "en": {
+      "title": "X-style search tabs",
+      "items": [
+        "«Top» for the best results and «Latest» for the same results newest first",
+        "A «Media» tab for posts with photos or video",
+        "Tabs scroll sideways on phones"
+      ]
+    }
+  },
+  {
     "v": "2.126.0",
     "date": "2026-10-28",
     "ar": {
