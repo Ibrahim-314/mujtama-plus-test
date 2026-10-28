@@ -69,6 +69,7 @@
 .cm-tab{flex:1;min-height:44px;border-radius:var(--r-pill,999px);border:0;background:none;color:var(--text-2);font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
 .cm-tab[aria-selected=true]{background:var(--card);color:var(--accent-ink);font-weight:700;box-shadow:var(--sh-1)}
 .cm-tab .n{display:inline-block;min-width:20px;padding:0 6px;margin-inline-start:6px;border-radius:10px;background:var(--like);color:#fff;font-size:12px;line-height:20px}
+.cm-msr{margin-top:14px}.cm-msr-h{font-size:14px;margin:0 0 6px;display:flex;gap:6px;align-items:center}.cm-msr .cm-prev b{font-weight:700}
 .cm-search{width:100%;min-height:44px;border-radius:14px;border:1px solid var(--line-2);background:var(--card);color:var(--text);padding:0 14px;font:inherit;margin-bottom:8px}
 .cm-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:16px;color:inherit;text-decoration:none;min-height:64px}
 .cm-row:hover{background:var(--bg-2)}
@@ -383,6 +384,15 @@ body.cm-chat .topbar{display:none}
     const qi = $("#cm-q"); qi.oninput = () => { view._cmq = qi.value.trim(); clearTimeout(qi._t); qi._t = setTimeout(() => { const pos = qi.selectionStart; listView(true).then(() => { const n = $("#cm-q"); if (n) { n.focus(); n.setSelectionRange(pos, pos); } }); }, 200); };
     view.querySelectorAll("[data-tab]").forEach(b => { b.onclick = () => { location.hash = "#/messages" + (b.dataset.tab === "requests" ? "?tab=requests" : ""); }; b.onkeydown = (e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { const o = view.querySelector(`[data-tab]:not([data-tab="${b.dataset.tab}"])`); o.focus(); o.click(); } }; });
     $("#cm-new").onclick = newDm; const n2 = $("#cm-new2"); if (n2) n2.onclick = newDm;
+    // v2.130 search stage 7: words inside your messages (server searches only your own non-encrypted conversations)
+    if (q.length >= 2 && tab !== "requests") api("GET", "/api/chat/search?q=" + encodeURIComponent(q)).then((r) => {
+      const box = $("#cm-body"); if (!box || view._cmq !== q || !r.results?.length) return;
+      const empty = box.querySelector(".cm-empty"); if (empty) empty.remove();
+      box.insertAdjacentHTML("beforeend", `<section class="cm-msr" aria-label="في الرسائل"><h3 class="cm-msr-h">في الرسائل <span class="muted">${UI.num(r.results.length)}</span></h3>${r.results.map((m) => {
+        const c = ST.convs.find((x) => x.id === m.conv), t = c ? convTitle(c) : (m.title || m.sender?.name || "");
+        return `<a class="cm-row" href="#/chat/${h(m.conv)}"><span class="cm-mid"><span class="cm-name"><span>${h(t)}</span></span><span class="cm-prev" dir="auto"><b>${h(m.sender?.name || "")}:</b> ${h(m.text)}</span></span><span class="cm-side"><time datetime="${h(m.createdAt)}">${h(listTime(m.createdAt))}</time></span></a>`;
+      }).join("")}</section>`);
+    }).catch(() => { });
     view.querySelectorAll("[data-acc]").forEach(b => b.onclick = async () => { try { await api("POST", `/api/conversations/${b.dataset.acc}/accept`); toast("قُبل الطلب"); location.hash = "#/chat/" + b.dataset.acc; } catch (e) { errToast(e); } });
     view.querySelectorAll("[data-dec]").forEach(b => b.onclick = async () => { if (!confirm("حذف طلب المراسلة؟ لن يُبلَّغ المرسل.")) return; try { await api("POST", `/api/conversations/${b.dataset.dec}/decline`); ST.convs = ST.convs.filter(c => c.id !== b.dataset.dec); live("حُذف الطلب"); listView(true); } catch (e) { errToast(e); } });
   }
