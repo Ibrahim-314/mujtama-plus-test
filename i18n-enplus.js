@@ -3448,5 +3448,10 @@
 "ابحث في منشوراته": "Search their posts",
 "ابحث في محفوظاتك": "Search your saves",
 /* v2.131 trends by region */
-"المنطقة": "Region"
+"المنطقة": "Region",
+/* v2.132 ask AI v2 */
+"فهمت سؤالك:": "I understood your question as:",
+"بحثت على خطوات:": "I searched in steps:",
+"اسأل متابعة… مثل: وللمبتدئين؟": "Ask a follow-up… e.g. and for beginners?",
+"سؤال متابعة": "Follow-up question"
 });
