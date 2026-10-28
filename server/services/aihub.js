@@ -495,6 +495,70 @@ module.exports = (ctx, opts = {}) => {
     whyCache.set(key, { hash, at: Date.now(), out });
     return out;
   }
+  /* ---------- v2.120 community dashboard AI (#/cadmin): weekly health report, review helper for queue items, rules + welcome drafts.
+   * Advice only: nothing is applied — the moderator decides, edits and saves. Each tool checks the same permission as its section. ---------- */
+  const CM_SYS = "أنت مساعد لفريق إشراف مجتمع داخل «مجتمع بلس». تكتب بعربية بسيطة ومهذبة، منصفاً للأعضاء، وتعتمد فقط على المعطيات والنصوص المرسلة، لا تخترع أرقاماً أو أحداثاً، ولا تحكم على نوايا الناس. القرار النهائي دائماً للمشرف. أعد JSON صالحاً فقط.";
+  const cmCache = new Map(); // cid|tool|hash → { at, out } (6 h)
+  const SEVS = ["info", "warn", "serious"], VERDICTS = ["ok", "unclear", "violation"], SUGG = ["approve", "reject", "remove", "dismiss", "warn", "none"];
+  async function community(user, b) {
+    const cid = str(b.cid, 80), tool = str(b.tool, 20), P = ctx.cperm;
+    if (!cid || !P) throw E.bad("مجتمع غير معروف");
+    const c = await db.get("SELECT id, name, descr, topic FROM communities WHERE id=$1", [cid]); if (!c) throw E.nf();
+    const need = { report: "view_health", review: "queue_review", rules: "edit_rules", welcome: "edit_identity" }[tool];
+    if (!need) throw E.bad("أداة غير معروفة");
+    await P.need(cid, user.id, need, "هذه الأداة لفريق إشراف المجتمع");
+    const rules = ctx.services.cchannels ? (await ctx.services.cchannels.rulesOf(cid)).map((r) => ({ title: r.title, body: r.body || "", severity: r.severity })) : [];
+    const about = { name: c.name, descr: String(c.descr || "").slice(0, 300), topic: c.topic || null };
+    let ask, max = 900, facts = null;
+    if (tool === "report") {
+      const hl = ctx.services.cspace ? await ctx.services.cspace.health(cid).catch(() => null) : null;
+      const since = new Date(Date.now() - 7 * 864e5).toISOString();
+      const posts = (await db.all("SELECT p.id, p.title, p.text, u.name uname, (SELECT COUNT(*) FROM comments c WHERE c.post=p.id) nc FROM posts p JOIN users u ON u.id=p.author WHERE p.community=$1 AND p.status='published' AND p.created_at > $2 ORDER BY p.created_at DESC LIMIT 60", [cid, since]))
+        .sort((a, b2) => Number(b2.nc) - Number(a.nc)).slice(0, 15).map((p) => ({ id: p.id, by: p.uname, comments: Number(p.nc) || 0, text: String((p.title ? p.title + " — " : "") + (p.text || "")).replace(/\s+/g, " ").slice(0, 260) }));
+      facts = { posts };
+      const key = cid + "|report|" + posts.map((p) => p.id + ":" + p.comments).join(","), hit = cmCache.get(key);
+      if (hit && Date.now() - hit.at < 6 * 3600e3 && !b.refresh) return { ...hit.out, cached: true };
+      b._key = key;
+      ask = `اكتب تقريراً أسبوعياً مختصراً لفريق إشراف المجتمع.\nالمجتمع: ${JSON.stringify(about)}\nمؤشرات الصحة (آخر 30 يوماً): ${JSON.stringify(hl || {})}\nأكثر منشورات الأسبوع تفاعلاً (JSON): ${JSON.stringify(posts)}\nأعد: {"headline":"جملة تلخّص حال المجتمع هذا الأسبوع","good":[{"text":"شيء إيجابي","cites":["معرّفات منشورات إن وجدت"]}],"watch":[{"text":"شيء يحتاج انتباه","cites":[]}],"actions":["خطوة عملية مقترحة للمشرفين"]} (2-3 في كل قائمة، بلا أرقام لم تُعطَ)`;
+    } else if (tool === "review") {
+      const kind = str(b.kind, 20), id = str(b.id, 80);
+      const it = ((await ctx.services.cmod.queue(cid)).items || []).find((x) => x.kind === kind && String(x.id) === id);
+      if (!it) throw fail(404, "gone", "هذا العنصر لم يعد في الطابور");
+      if (kind === "join") throw E.bad("طلبات الانضمام لا تحتاج رأي الذكاء");
+      const item = { kind, text: String(it.text || "").slice(0, 1500), reason: String(it.reason || "").slice(0, 300), toxicity: typeof it.toxicity === "number" ? it.toxicity : null, priorWarnings: it.user?.warnings || 0 };
+      ask = `عنصر في طابور الإشراف (${kind === "report" ? "بلاغ على محتوى" : "محتوى معلّق ينتظر القبول"}). قارن النص بقواعد المجتمع واقترح بإنصاف.\nالمجتمع: ${JSON.stringify(about)}\nالقواعد: ${JSON.stringify(rules)}\nالعنصر: ${JSON.stringify(item)}\nأعد: {"verdict":"ok|unclear|violation","rule":"عنوان القاعدة المخالفة إن وجدت أو فارغ","why":"سبب مختصر (1-2 جمل)","suggest":"${kind === "report" ? "remove|dismiss|warn" : "approve|reject"}|none","note":"رسالة قصيرة مهذبة للعضو يمكن للمشرف إرسالها إن قرر، أو فارغ"}`;
+      max = 600;
+    } else if (tool === "rules") {
+      ask = `اقترح قواعد واضحة ومختصرة لهذا المجتمع تناسب موضوعه، مع مراعاة القواعد الحالية (حسّنها أو أكملها ولا تكررها).${b.hint ? `\nطلب المشرف: «${str(b.hint, 200)}»` : ""}\nالمجتمع: ${JSON.stringify(about)}\nالقواعد الحالية: ${JSON.stringify(rules)}\nأعد: {"rules":[{"title":"عنوان قصير","body":"شرح جملة واحدة","severity":"info|warn|serious"}]} (4-8 قواعد، القائمة كاملة بعد التحسين)`;
+    } else {
+      ask = `اكتب رسالة ترحيب دافئة قصيرة للأعضاء الجدد وخطوات بداية عملية.${b.hint ? `\nطلب المشرف: «${str(b.hint, 200)}»` : ""}\nالمجتمع: ${JSON.stringify(about)}\nأهم القواعد: ${JSON.stringify(rules.slice(0, 5).map((r) => r.title))}\nأعد: {"message":"رسالة 2-4 جمل","steps":["خطوة قصيرة"]} (3-5 خطوات؛ استعمل عبارات مثل «عرّف بنفسك في منشور» و«أكمل ملفك» حيث تناسب)`;
+    }
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "community", system: CM_SYS, maxTokens: max, freeMax: max });
+    const j = parseJSON(o.text), bad = () => fail(502, "bad_output", "لم يرجع النموذج نتيجة مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
+    if (!j) throw bad();
+    let out;
+    if (tool === "report") {
+      const ok = new Set(facts.posts.map((p) => p.id)), lst = (a) => (Array.isArray(a) ? a : []).map((x) => ({ text: str(typeof x === "string" ? x : x?.text, 260), cites: cites(x?.cites, ok) })).filter((x) => x.text).slice(0, 4);
+      out = { headline: str(j.headline, 200), good: lst(j.good), watch: lst(j.watch), actions: (Array.isArray(j.actions) ? j.actions : []).map((x) => str(x, 200)).filter(Boolean).slice(0, 4) };
+      if (!out.headline && !out.good.length && !out.watch.length) throw bad();
+      out.sources = srcMap(facts.posts, new Set([...out.good, ...out.watch].flatMap((x) => x.cites)));
+      out.count = facts.posts.length;
+    } else if (tool === "review") {
+      out = { verdict: VERDICTS.includes(j.verdict) ? j.verdict : "unclear", rule: str(j.rule, 200), why: str(j.why, 400), suggest: SUGG.includes(j.suggest) ? j.suggest : "none", note: str(j.note, 500) };
+      if (!out.why) throw bad();
+      if (out.rule && !rules.some((r) => r.title === out.rule)) out.rule = "";
+    } else if (tool === "rules") {
+      out = { rules: (Array.isArray(j.rules) ? j.rules : []).map((r) => ({ title: str(r?.title, 200), body: str(r?.body, 500), severity: SEVS.includes(r?.severity) ? r.severity : "info" })).filter((r) => r.title).slice(0, 20) };
+      if (!out.rules.length) throw bad();
+    } else {
+      out = { message: str(j.message, 1000), steps: (Array.isArray(j.steps) ? j.steps : []).map((x) => str(x, 200)).filter(Boolean).slice(0, 6) };
+      if (!out.message) throw bad();
+    }
+    out = { tool, ...out, free: o.free || null };
+    if (b._key) { if (cmCache.size > 2000) cmCache.delete(cmCache.keys().next().value); cmCache.set(b._key, { at: Date.now(), out }); }
+    return out;
+  }
   /** for services/assistant.js: the member's own provider for a feature, or null (then the app's plan + provider apply) */
   async function providerFor(uid, feature) {
     const pr = await prefsOf(uid), pid = pr.features[feature];
@@ -535,6 +599,7 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/aihub/brief", A(async (req) => brief(req.user, req.body || {}, true)));
   R.post("/api/aihub/brief/ask", A(async (req) => askDay(req.user, req.body || {})));
   R.post("/api/aihub/trend", A(async (req) => whyTrend(req.user, req.body || {})));
+  R.post("/api/aihub/community", A(async (req) => community(req.user, { ...(req.body || {}), _key: undefined })));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
 
