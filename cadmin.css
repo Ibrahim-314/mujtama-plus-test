@@ -469,3 +469,27 @@ html:root[data-theme=dark] .ca .btn.danger { background: color-mix(in srgb, var(
 .ca-form [aria-invalid="true"] { border-color: var(--danger); }
 .ca-ferr { display: block; margin-top: 4px; color: var(--danger); font-size: var(--fs-xs); font-weight: 600; }
 .ca-ferr[hidden] { display: none; }
+
+/* v2.120 community AI helper — same look as «نشرتك الذكية» */
+.cai { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.cai::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #4f22d1, #c04cf0, #22c3e6); }
+.cai-h { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.cai-go { width: 100%; min-height: 44px; margin-top: 8px; background: linear-gradient(135deg, #4f22d1, #c04cf0); border: 0; color: #fff; }
+.cai-lead { font-weight: 650; line-height: 1.6; margin: 8px 0; }
+.cai-sec { margin-top: 12px; }
+.cai-sec h4 { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; font-size: .92em; }
+.cai-sec.good h4 { color: var(--ok); } .cai-sec.watch h4 { color: var(--warn, #b7791f); } .cai-sec.act h4 { color: var(--accent); }
+.cai-sec ul, .cai-sec ol { margin: 0; padding-inline-start: 20px; line-height: 1.65; }
+.cai-sec li { margin: 4px 0; }
+.cai-cs { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-inline-start: 6px; vertical-align: middle; }
+.cai-src { display: inline-flex; gap: 4px; align-items: center; font-size: .78em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); text-decoration: none; color: inherit; }
+.cai-f { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: .78em; }
+.cai-f span { flex: 1; }
+.cai-rv { margin-top: var(--s3); padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 7%, var(--bg-2)); border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line)); line-height: 1.6; }
+.cai-rv p { margin: 6px 0; }
+.cai-v { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cai-v.v-ok { color: var(--ok); } .cai-v.v-warn { color: var(--warn, #b7791f); } .cai-v.v-danger { color: var(--danger); }
+.cai-sg { font-weight: 650; display: flex; gap: 6px; align-items: center; }
+.cai-note { border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 6px; }
+.cai-dr { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s3); }
+.cai-dr .btn, .cai-b { min-height: 44px; }
