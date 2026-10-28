@@ -3446,5 +3446,7 @@
 "ابحث في المجتمع": "Search this community",
 "ابحث في منشوراتك": "Search your posts",
 "ابحث في منشوراته": "Search their posts",
-"ابحث في محفوظاتك": "Search your saves"
+"ابحث في محفوظاتك": "Search your saves",
+/* v2.131 trends by region */
+"المنطقة": "Region"
 });
