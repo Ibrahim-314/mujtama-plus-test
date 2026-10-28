@@ -722,6 +722,10 @@
     const get = () => [...ol.children].map((li) => ({ id: li.dataset.id || undefined, title: li.querySelector(".ca-rt").value.trim(), body: li.querySelector(".ca-rb").value.trim(), severity: li.querySelector("input[type=radio]:checked")?.value || "info" }));
     const set = (arr) => { ol.innerHTML = arr.map(rowR).join("") || `<li class="muted ca-rnone">لا قواعد بعد.</li>`; const add = rbox.querySelector(".ca-radd"); if (add) add.disabled = arr.length >= 20; };
     rbox._get = () => get().filter((r) => r.title); rbox._set = set; set(rr.rules);
+    const aiBtns = (own || idEd) ? `<div class="cai-dr">${own ? `<button type="button" class="btn ghost sm" data-aid="rules">${ic("sparkle", "xs")} اقترح قواعد بالذكاء</button>` : ""}${idEd ? `<button type="button" class="btn ghost sm" data-aid="welcome">${ic("sparkle", "xs")} اكتب الترحيب بالذكاء</button>` : ""}</div>` : "";
+    root.insertAdjacentHTML("afterbegin", aiBtns);
+    root.querySelector('[data-aid="rules"]')?.addEventListener("click", (e) => aiDraft("rules", e.currentTarget, (r) => { set(r.rules); root.dispatchEvent(new Event("change")); }));
+    root.querySelector('[data-aid="welcome"]')?.addEventListener("click", (e) => aiDraft("welcome", e.currentTarget, (r) => { const ta = root.querySelector('[data-k="welcome"]'); ta.value = r.message; ta.dispatchEvent(new Event("input", { bubbles: true })); root.querySelector('[data-list="steps"]')?._set(r.steps); root.dispatchEvent(new Event("change")); }));
     rbox.addEventListener("click", (e) => {
       const b = e.target.closest("button"); if (!b || !own) return; const v = get(), li = b.closest(".ca-ru"), i = li ? [...ol.children].indexOf(li) : -1;
       if (b.classList.contains("ca-radd")) { v.push({ title: "", body: "", severity: "info" }); set(v.filter((r, k) => r.title || k === v.length - 1)); ol.lastElementChild?.querySelector(".ca-rt")?.focus(); }
@@ -770,9 +774,57 @@
     const series = h.series.map(s => s.active_users), max = Math.max(1, ...series);
     root.innerHTML = wrap(`${host ? "" : UI.pageHead({ back: [`#/cadmin/${cid}`, "لوحة الإدارة"], title: "تقرير صحة المجتمع", icon: "chart" })}
       <div class="card h-top">${ring(h.score)}<div><b class="u-t-2xl">${esc(h.grade)}</b><div class="muted">${h.members} عضو · ${h.wau} نشِط هذا الأسبوع</div></div></div>
+      <section class="card cai" id="cai-rep" aria-live="polite"></section>
       <div class="kpi-grid">${[["نشطون يومياً", h.dau], ["نشطون أسبوعياً", h.wau + ` (${h.activeShare}%)`], ["الالتصاق DAU/MAU", h.stickiness + "%"], ["بقاء الجدد 30 يوماً", h.retention30 + "%"], ["أسئلة مُجابة", h.answerRate + "%"], ["أول رد (وسيط)", h.medianReplyMin === null ? "—" : h.medianReplyMin < 60 ? h.medianReplyMin + " د" : Math.round(h.medianReplyMin / 60) + " س"], ["طابور المراجعة", h.backlog], ["إجراءات إشراف 30 يوماً", h.modActions30]].map(([l, v]) => `<div class="kpi-card"><span class="muted">${l}</span><b>${v}</b></div>`).join("")}</div>
       ${series.length ? `<div class="card"><b>الأعضاء النشطون يومياً</b><div class="h-bars">${h.series.map(s => `<i style="height:${Math.max(4, s.active_users / max * 100)}%" title="${s.day}: ${s.active_users}"></i>`).join("")}</div></div>` : ""}
       <div class="card"><b>${ic("sparkle", "sm")} توصيات</b><ul class="h-tips">${h.tips.map(t => `<li>${esc(t)}</li>`).join("")}</ul></div>`);
+    aiReport(cid, root.querySelector("#cai-rep"));
+  }
+  /* v2.120 «مساعد الذكاء» for the community team — advice from «مركز الذكاء» (the moderator's linked account for «community», else the
+   * free daily allowance). Nothing is applied by itself: the report is read-only, a review only suggests, drafts fill the form unsaved. */
+  const aiCM = (cid, tool, extra) => api("POST", "/api/aihub/community", { cid, tool, ...extra });
+  const aiErr = (e) => { const link = /اربط|غير مفعّل|مجاناً اليوم/.test(e.message || "") || e.status === 503 || e.status === 429; return `<p class="cai-err">${esc(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}`; };
+  const aiHead = (t) => `<div class="cai-h">${ic("sparkle", "sm")}<b>${t}</b></div>`;
+  async function aiReport(cid, box, refresh) {
+    if (!box) return;
+    const intro = () => { box.innerHTML = `${aiHead("تقرير الذكاء الأسبوعي")}<p class="muted">يقرأ مؤشرات الصحة وأكثر منشورات الأسبوع تفاعلاً، ويكتب لك: ما يسير جيداً، وما يحتاج انتباهك، وخطوات مقترحة.</p><button type="button" class="btn cai-go" data-rep>${ic("sparkle", "xs")} اكتب التقرير</button>`; box.querySelector("[data-rep]").onclick = () => aiReport(cid, box, false); };
+    if (refresh === undefined) return intro();
+    box.setAttribute("aria-busy", "true"); box.innerHTML = `${aiHead("تقرير الذكاء الأسبوعي")}<p class="muted">يقرأ أسبوع المجتمع…</p><div class="skel"></div><div class="skel"></div>`;
+    try {
+      const r = await aiCM(cid, "report", { refresh: !!refresh }); if (!box.isConnected) return;
+      const src = r.sources || {}, chip = (id) => src[id] ? `<a class="cai-src" href="#/post/${encodeURIComponent(id)}">${ic("link", "xs")} <bdi>${esc(src[id].by || "المصدر")}</bdi></a>` : "";
+      const list = (cls, icon, t, arr) => arr.length ? `<div class="cai-sec ${cls}"><h4>${ic(icon, "xs")} ${t}</h4><ul>${arr.map((x) => `<li><bdi>${esc(x.text)}</bdi>${x.cites?.length ? `<span class="cai-cs">${x.cites.map(chip).join("")}</span>` : ""}</li>`).join("")}</ul></div>` : "";
+      box.innerHTML = `${aiHead("تقرير الذكاء الأسبوعي")}${r.headline ? `<p class="cai-lead"><bdi>${esc(r.headline)}</bdi></p>` : ""}
+        ${list("good", "check", "يسير جيداً", r.good)}${list("watch", "alert", "يحتاج انتباهك", r.watch)}
+        ${r.actions.length ? `<div class="cai-sec act"><h4>${ic("target", "xs")} خطوات مقترحة</h4><ol>${r.actions.map((x) => `<li><bdi>${esc(x)}</bdi></li>`).join("")}</ol></div>` : ""}
+        <div class="cai-f muted"><span>مولّد بالذكاء — اقتراحات فقط، راجع الأرقام والمنشورات${r.free ? ` · باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم` : ""}</span><button type="button" class="btn ghost sm" data-rep>${ic("refresh", "xs")} حدّث</button></div>`;
+      box.querySelector("[data-rep]").onclick = () => aiReport(cid, box, true);
+    } catch (e) { if (box.isConnected) { box.innerHTML = aiHead("تقرير الذكاء الأسبوعي") + aiErr(e) + `<button type="button" class="btn ghost sm" data-rep>أعد المحاولة</button>`; box.querySelector("[data-rep]").onclick = () => aiReport(cid, box, false); } }
+    finally { box.removeAttribute("aria-busy"); }
+  }
+  const VERD = { ok: ["ok", "check", "يبدو سليماً"], unclear: ["warn", "help", "غير واضح — يحتاج حكمك"], violation: ["danger", "alert", "يبدو مخالفاً"] };
+  const SUGT = { approve: "اقتراح: القبول", reject: "اقتراح: الرفض", remove: "اقتراح: حذف المحتوى", dismiss: "اقتراح: تجاهل البلاغ", warn: "اقتراح: إنذار العضو", none: "" };
+  async function aiReview(it, out, btn) {
+    if (!out) return;
+    if (!out.hidden && out.dataset.done) { out.hidden = true; btn.setAttribute("aria-expanded", "false"); return; }
+    out.hidden = false; btn.setAttribute("aria-expanded", "true");
+    if (out.dataset.done) return;
+    out.innerHTML = `<p class="muted">يقارن النص بقواعد المجتمع…</p><div class="skel"></div>`; btn.disabled = true;
+    try {
+      const r = await aiCM(st.cid, "review", { kind: it.kind, id: it.id }); const [cls, icon, lbl] = VERD[r.verdict] || VERD.unclear;
+      out.innerHTML = `<div class="cai-v v-${cls}">${ic(icon, "xs")} <b>${lbl}</b>${r.rule ? ` · <span>القاعدة: <bdi>${esc(r.rule)}</bdi></span>` : ""}</div><p><bdi>${esc(r.why)}</bdi></p>${SUGT[r.suggest] ? `<p class="cai-sg">${ic("bulb", "xs")} ${SUGT[r.suggest]}</p>` : ""}
+        ${r.note ? `<div class="cai-note"><span class="muted u-t-xs">رسالة مقترحة للعضو (إن قررت):</span><p><bdi>${esc(r.note)}</bdi></p><button type="button" class="btn ghost sm" data-copy>${ic("copy", "xs")} نسخ</button></div>` : ""}
+        <p class="muted u-t-xs">رأي آلي للمساعدة فقط — القرار لك.</p>`;
+      out.dataset.done = "1";
+      const cp = out.querySelector("[data-copy]"); if (cp) cp.onclick = (e) => { e.stopPropagation(); navigator.clipboard?.writeText(r.note).then(() => toast("✓ نُسخت الرسالة"), () => {}); };
+    } catch (e) { out.innerHTML = aiErr(e); }
+    finally { btn.disabled = false; }
+  }
+  async function aiDraft(tool, btn, apply) {
+    const lbl = btn.innerHTML; btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.innerHTML = `${ic("sparkle", "xs")} يكتب…`;
+    try { const r = await aiCM(st.cid, tool, {}); apply(r); toast(tool === "rules" ? "✓ وضعنا القواعد المقترحة — راجعها ثم احفظ" : "✓ وضعنا رسالة مقترحة — راجعها ثم احفظ"); }
+    catch (e) { toast(e.message || "تعذّر الطلب"); }
+    finally { if (btn.isConnected) { btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = lbl; } }
   }
 
   MPCommunities.growthPanel = growthPanel; MPCommunities.healthView = healthView; // the names other code may still call
@@ -848,7 +900,7 @@
       ${it.user ? `<div class="mq-user mq2-u">${avatar(it.user)}<span class="mq2-un"><b>${h(it.user.name)}</b><small class="muted">@${h(it.user.handle)}</small></span>${it.user.warnings ? badge(num(it.user.warnings) + " إنذار", "warn") : ""}${it.user.notes ? badge(num(it.user.notes) + " ملاحظة") : ""}</div>` : ""}
       ${it.text ? `<p class="mq-text mq2-t">${h(it.text)}</p>` : ""}${it.answers?.length ? `<dl class="mq-ans mq2-ans">${it.answers.map((a) => `<dt>${h(a.q)}</dt><dd>${h(a.a || "—")}</dd>`).join("")}</dl>` : ""}
       <p class="mq2-why">${ic("flag", "xs")}<span>${h(it.reason)}</span></p>
-      <div class="mq2-acts">${prim}${other ? "" : `<button type="button" class="btn ghost sm" data-act="${cl?.mine ? "release" : "claim"}" aria-pressed="${!!cl?.mine}">${ic("ucheck", "xs")} ${cl?.mine ? "إلغاء التولّي" : "سأتولاها"}</button>`}</div></article>`;
+      <div class="mq2-acts">${prim}${other ? "" : `<button type="button" class="btn ghost sm" data-act="${cl?.mine ? "release" : "claim"}" aria-pressed="${!!cl?.mine}">${ic("ucheck", "xs")} ${cl?.mine ? "إلغاء التولّي" : "سأتولاها"}</button>`}${it.kind !== "join" && it.text ? `<button type="button" class="btn ghost sm cai-b" data-act="ai">${ic("sparkle", "xs")} رأي الذكاء</button>` : ""}</div><div class="cai-rv" data-ai-out aria-live="polite" hidden></div></article>`;
   }
   async function modQueue2(mb) {
     const [q] = await Promise.all([api("GET", `/api/communities/${st.cid}/modqueue/v2?kind=${mst.kind}&sort=${mst.sort}`), loadMacros()]);
@@ -913,6 +965,7 @@
     async function act(i, a, btn) {
       const it = q.items[i]; if (!it) return; focus(i, false);
       if (a === "claim" || a === "release") { busy(btn, true); try { await api("POST", `/api/communities/${st.cid}/modqueue/${a}`, { kind: it.kind, id: it.id }); toast(a === "claim" ? "✓ العنصر معك الآن لمدة 15 دقيقة" : "أُلغي التولّي"); reload(); } catch (e) { toast(e.message); busy(btn, false); } return; }
+      if (a === "ai") return aiReview(it, btn.closest(".mq-item").querySelector("[data-ai-out]"), btn);
       if (a === "more") return more(it, i);
       if (a === "notes") return it.user && has("view_notes") ? MPCommunities.memberSheet(st.cid, it.user.id) : null;
       if (["warn", "mute", "ban"].includes(a)) return it.kind === "join" ? null : penalize(it, a);
