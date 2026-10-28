@@ -314,9 +314,11 @@ module.exports = (ctx) => {
     for (const c of cs) {
       const b = AN.base(c.w);
       const own = [...c.terms.keys()].some((t) => df[t]);
-      for (const t of await prefixed(b)) add(c, t, 0.6);
-      if (!own && !df[c.w] && !df[b]) { const ns = await neighbours(b); for (const n of ns) { for (const [f, wt] of queryForms(n.t)) add(c, f, (n.d === 1 ? 0.7 : 0.55) * wt); c.via.push("typo:" + n.t); } if (ns.length) c.fix = ns[0].t; }
-      for (const t of new Set([...(await twins(c.w)), ...(b !== c.w ? await twins(b) : [])])) { /* raw word too: «كوبرنيتس» is not ك+وبرنيتس */ for (const [f, wt] of AN.forms(t)) add(c, f, 0.75 * wt); c.via.push("sound:" + t); }
+      const pre = await prefixed(b); for (const t of pre) add(c, t, 0.6);
+      const tw = new Set([...(await twins(c.w)), ...(b !== c.w ? await twins(b) : [])]);
+      // v2.124.2: a prefix or cross-script sound match is the real reading, not a typo («لابتوب» ≠ «اكتب»)
+      if (!own && !pre.length && !tw.size && !df[c.w] && !df[b]) { const ns = await neighbours(b); for (const n of ns) { for (const [f, wt] of queryForms(n.t)) add(c, f, (n.d === 1 ? 0.7 : 0.55) * wt); c.via.push("typo:" + n.t); } if (ns.length) c.fix = ns[0].t; }
+      for (const t of tw) { /* raw word too: «كوبرنيتس» is not ك+وبرنيتس */ for (const [f, wt] of AN.forms(t)) add(c, f, 0.75 * wt); c.via.push("sound:" + t); }
     }
     if (plan?.concepts?.length) for (const pc of plan.concepts.slice(0, 5)) { // AI plan: meaning-level forms, below the reader's own words
       const c = { w: pc[0], terms: new Map(), via: ["ai"] }; for (const x of pc) for (const [f, wt] of queryForms(x)) add(c, f, 0.6 * wt); cs.push(c);
