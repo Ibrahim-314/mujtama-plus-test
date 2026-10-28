@@ -13,6 +13,7 @@ const A = require("../lib/arabic");
 const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
+const IV = 2; // search_docs index version (083_search_v2)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
 module.exports = (ctx) => {
@@ -30,9 +31,10 @@ module.exports = (ctx) => {
   async function indexDoc(doc) {
     const body = A.indexText(`${doc.title || ""} ${doc.body || ""}`);
     const old = await db.get("SELECT body FROM search_docs WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id]);
-    await db.run(`INSERT INTO search_docs(kind,ref_id,title,body,ptype,community,lang,author,visibility,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-      ON CONFLICT (kind, ref_id) DO UPDATE SET title=$3, body=$4, ptype=$5, community=$6, lang=$7, author=$8, visibility=$9`,
-    [doc.kind, doc.id, doc.title || null, body, doc.ptype || null, doc.community || null, doc.lang || A.detectLang(doc.body || doc.title || "") || null, doc.author || null, doc.visibility || "public", doc.created_at || now()]);
+    const extra = doc.extra ? A.indexText(doc.extra) : null;
+    await db.run(`INSERT INTO search_docs(kind,ref_id,title,body,ptype,community,lang,author,visibility,created_at,extra,quality,iv) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      ON CONFLICT (kind, ref_id) DO UPDATE SET title=$3, body=$4, ptype=$5, community=$6, lang=$7, author=$8, visibility=$9, extra=$11, quality=$12, iv=$13`,
+    [doc.kind, doc.id, doc.title || null, body, doc.ptype || null, doc.community || null, doc.lang || A.detectLang(doc.body || doc.title || "") || null, doc.author || null, doc.visibility || "public", doc.created_at || now(), extra, Number(doc.quality) || 0, IV]);
     await bumpTerms(old?.body, body, `${doc.title || ""} ${doc.body || ""}`);
     if (meili) meili.index(doc).catch(e => ctx.jobsState && (ctx.jobsState.meili = { ok: false, error: e.message }));
   }
@@ -41,11 +43,18 @@ module.exports = (ctx) => {
     await db.run("DELETE FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); await bumpTerms(old.body, "");
     if (meili) meili.remove(kind, ref).catch(() => { });
   }
-  const postDoc = (p) => ({ kind: "post", id: p.id, title: p.title, body: p.text || "", ptype: p.type, community: p.community, lang: p.lang, author: p.author, visibility: p.visibility, created_at: p.created_at });
+  const postDoc = (p, x = {}) => ({ kind: "post", id: p.id, title: p.title, body: p.text || "", ptype: p.type, community: p.community, lang: p.lang, author: p.author, visibility: p.visibility, created_at: p.created_at, ...x });
+  /* v2.121: a post's document also carries its published comments (answers to a question live there; matched at half weight)
+   * and an engagement score log(1 + reactions + 2·comments) used as a small ranking signal. */
+  async function postExtras(pid) {
+    const cs = await db.all("SELECT text FROM comments WHERE post=$1 AND status='published' ORDER BY created_at DESC LIMIT 40", [pid]);
+    const rx = Number((await db.get("SELECT COUNT(*) n FROM reactions WHERE target=$1", [pid]))?.n) || 0;
+    return { extra: cs.map(c => c.text || "").join(" ").slice(0, 4000) || null, quality: Math.round(Math.log1p(rx + 2 * cs.length) * 100) / 100 };
+  }
   async function indexPost(pid) {
     const p = await db.get("SELECT * FROM posts WHERE id=$1", [pid]);
     if (!p || p.status !== "published" || p.type === "story" || p.sponsored) return removeDoc("post", pid);
-    return indexDoc(postDoc(p));
+    return indexDoc(postDoc(p, await postExtras(pid)));
   }
   const indexUser = (u) => indexDoc({ kind: "user", id: u.id, title: u.name, body: `${u.handle} ${u.bio || ""} ${u.location || ""}`, created_at: u.created_at });
   const indexCommunity = (c) => indexDoc({ kind: "community", id: c.id, title: c.name, body: `${c.descr || ""} ${c.location || ""}`, community: c.id, visibility: c.type, created_at: c.created_at });
@@ -53,7 +62,7 @@ module.exports = (ctx) => {
     let n = 0;
     for (const u of await db.all("SELECT id, name, handle, bio, location, created_at FROM users WHERE status='active'")) { await indexUser(u); n++; }
     for (const c of await db.all("SELECT * FROM communities")) { await indexCommunity(c); n++; }
-    for (const p of await db.all("SELECT * FROM posts WHERE status='published' AND type<>'story' AND sponsored=0 ORDER BY created_at DESC LIMIT 20000")) { await indexDoc(postDoc(p)); n++; }
+    for (const p of await db.all("SELECT * FROM posts WHERE status='published' AND type<>'story' AND sponsored=0 ORDER BY created_at DESC LIMIT 20000")) { await indexDoc(postDoc(p, await postExtras(p.id))); n++; }
     return n;
   }
   bus.on("POST_CREATED", e => indexPost(e.post.id).catch(() => { }));
@@ -61,6 +70,7 @@ module.exports = (ctx) => {
   bus.on("POST_UPDATED", e => indexPost(e.post).catch(() => { }));
   bus.on("POST_APPROVED", e => indexPost(e.post).catch(() => { }));
   bus.on("POST_DELETED", e => removeDoc("post", e.post).catch(() => { }));
+  bus.on("COMMENT_CREATED", e => e.post && indexPost(e.post).catch(() => { }));
   bus.on("CONTENT_REMOVED", e => e.post && removeDoc("post", e.post).catch(() => { }));
   bus.on("USER_REGISTERED", async e => { const u = await db.get("SELECT * FROM users WHERE id=$1", [e.user]); if (u) await indexUser(u); });
   bus.on("COMMUNITY_CREATED", async e => { const c = await db.get("SELECT * FROM communities WHERE id=$1", [e.community]); if (c) await indexCommunity(c); });
@@ -71,6 +81,16 @@ module.exports = (ctx) => {
     for (const u of await db.all("SELECT id, name, handle, bio, location, created_at FROM users WHERE status='active'")) await indexUser(u);
     for (const c of await db.all("SELECT * FROM communities")) await indexCommunity(c);
   });
+  /* v2.121 background upgrade: rows indexed before v2 (iv < 2) are re-indexed in small batches — no blocking reindex on boot.
+   * The same job refreshes the engagement score of last week's posts. */
+  async function upgradeIndex(batch = 300) {
+    const old = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND iv < $1 LIMIT " + batch, [IV]);
+    for (const r of old) await indexPost(r.ref_id).catch(() => { });
+    const recent = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND created_at > $1 ORDER BY created_at DESC LIMIT 400", [new Date(Date.now() - 7 * 864e5).toISOString()]);
+    for (const r of recent) { const x = await postExtras(r.ref_id); await db.run("UPDATE search_docs SET quality=$1 WHERE kind='post' AND ref_id=$2", [x.quality, r.ref_id]); }
+    return { upgraded: old.length, refreshed: recent.length };
+  }
+  ctx.scheduler.every("searchUpgrade", 5 * 60e3, () => upgradeIndex());
 
   /* ---------- spelling correction ---------- */
   async function correctToken(t) {
@@ -84,8 +104,16 @@ module.exports = (ctx) => {
     return best?.term || null;
   }
   async function correct(q) {
-    const toks = A.tokens(q); let changed = false; const out = [];
-    for (const t of toks) { const c = await correctToken(t); if (c) { changed = true; out.push(c); } else out.push(t); }
+    // v2.121: keep the reader's own words; only a word that is unknown in every variant («بجده» is fine: جده is known) is replaced
+    let changed = false; const out = [];
+    for (const w of String(q).trim().split(/\s+/).slice(0, 12)) {
+      const t = A.tokens(w)[0];
+      if (!t || A.QSTOP.has(t)) { out.push(w); continue; }
+      const vs = variants(t).filter(v => v !== t);
+      const known = vs.length && await db.get(`SELECT 1 x FROM search_terms WHERE df > 0 AND term IN (${vs.map((_, i) => "$" + (i + 1)).join(",")})`, vs);
+      const c = known ? null : await correctToken(t);
+      if (c) { changed = true; out.push(c); } else out.push(w);
+    }
     return changed ? out.join(" ") : null;
   }
 
@@ -97,22 +125,70 @@ module.exports = (ctx) => {
     if (qs.to && !isNaN(Date.parse(qs.to))) f.to = new Date(qs.to).toISOString();
     return f;
   }
+  /* v2.121 ranking. A query becomes CONCEPTS (a word and its variants: «بجده» → جده, «محمصات» → محمص; the AI query plan can add
+   * synonyms). Candidates match any variant in the post (body) or its comments (extra); each concept is scored BM25-style with
+   * idf from search_terms, comment hits at half weight, title hits boosted, plus freshness and engagement. Coverage: with one or
+   * two concepts every concept must match (the old AND behaviour); with three or more, 60% of them — natural questions carry
+   * words nobody wrote. */
+  function concepts(q, plan) {
+    if (plan?.concepts?.length) return plan.concepts.slice(0, 6);
+    return A.queryTokens(q).slice(0, 6).map(variants);
+  }
+  function variants(t) {
+    const v = new Set([t]);
+    if (/^[وبلكف]/.test(t) && t.length >= 4) v.add(A.stem(t.slice(1)));
+    if (/^(وب|ول|فب|فل|وك)/.test(t) && t.length >= 5) v.add(A.stem(t.slice(2)));
+    for (const w of [...v]) { // plural / feminine endings → the stem, as a prefix («محمصات», «محمصه» → محمص); never below 3 letters
+      if (/(ات|ين|ون|يه)$/.test(w) && w.length >= 5) v.add(w.slice(0, -2));
+      else if (/[هي]$/.test(w) && w.length >= 5) v.add(w.slice(0, -1));
+    }
+    return [...v].filter(x => x.length > 1);
+  }
+  let NCACHE = { at: 0, n: 1, avg: 12 };
+  async function corpus() {
+    if (Date.now() - NCACHE.at < 10 * 60e3) return NCACHE;
+    const r = await db.read.get("SELECT COUNT(*) n, AVG(LENGTH(body)) l FROM search_docs");
+    return (NCACHE = { at: Date.now(), n: Math.max(1, Number(r?.n) || 1), avg: Math.max(1, (Number(r?.l) || 60) / 6) });
+  }
+  const count = (hay, needle) => { if (!hay) return 0; let n = 0, i = 0; while ((i = hay.indexOf(needle, i)) !== -1) { n++; i += needle.length; } return n; };
   async function builtinIds(q, kinds, f, limit = 200) {
-    const toks = A.tokens(q).slice(0, 6); if (!toks.length) return [];
-    const where = ["kind IN (" + kinds.map((_, i) => "$" + (i + 1)).join(",") + ")"], p = [...kinds];
-    for (const t of toks) { p.push("% " + like(t) + "%"); where.push(`body LIKE $${p.length}`); }
+    const cs = concepts(q, f._plan); if (!cs.length) return [];
+    const all = [...new Set(cs.flat())].slice(0, 16);
+    const where = ["kind IN (" + kinds.map((_, i) => "$" + (i + 1)).join(",") + ")"], p = [...kinds], ors = [];
+    for (const t of all) { p.push("% " + like(t) + "%"); ors.push(`body LIKE $${p.length} OR extra LIKE $${p.length}`); }
+    where.push("(" + ors.join(" OR ") + ")");
     if (f.ptype) { p.push(f.ptype); where.push(`(kind<>'post' OR ptype=$${p.length})`); }
     if (f.community) { p.push(f.community); where.push(`(kind='user' OR community=$${p.length})`); }
     if (f.lang) { p.push(f.lang); where.push(`(kind<>'post' OR lang=$${p.length})`); }
     if (f.from) { p.push(f.from); where.push(`(kind<>'post' OR created_at >= $${p.length})`); }
     if (f.to) { p.push(f.to); where.push(`(kind<>'post' OR created_at <= $${p.length})`); }
-    const rows = await db.read.all(`SELECT kind, ref_id, title, body, created_at FROM search_docs WHERE ${where.join(" AND ")} ORDER BY created_at DESC LIMIT ${limit}`, p);
-    const nt = toks.map(t => " " + t + " "), title = (r) => A.indexText(r.title || "");
-    const rank = (r) => nt.reduce((s, t, i) => s + (r.body.includes(t) ? 2 : 1) + (title(r).includes(" " + toks[i]) ? 2 : 0), 0) + (r.kind === "post" ? 2 / (1 + (Date.now() - Date.parse(r.created_at)) / (7 * 864e5)) : 0);
-    return rows.map(r => ({ kind: r.kind, id: r.ref_id, s: rank(r) })).sort((a, b) => b.s - a.s);
+    const rows = await db.read.all(`SELECT kind, ref_id, title, body, extra, quality, created_at FROM search_docs WHERE ${where.join(" AND ")} ORDER BY created_at DESC LIMIT ${Math.max(limit, 600)}`, p);
+    if (!rows.length) return [];
+    const { n: N, avg } = await corpus();
+    const dfs = Object.fromEntries((await db.read.all(`SELECT term, df FROM search_terms WHERE term IN (${all.map((_, i) => "$" + (i + 1)).join(",")})`, all)).map(r => [r.term, Number(r.df) || 0]));
+    const idf = (t) => { const df = Math.min(N, dfs[t] || 1); return Math.log(1 + (N - df + 0.5) / (df + 0.5)); };
+    const need = cs.length <= 2 ? cs.length : Math.ceil(cs.length * 0.6), k1 = 1.2, b = 0.6;
+    const out = [];
+    for (const r of rows) {
+      const len = r.body.length / 6, ti = r.title ? A.indexText(r.title) : "";
+      let s = 0, cov = 0;
+      for (const c of cs) {
+        let best = 0;
+        for (const t of c) {
+          const nd = " " + t, tf = count(r.body, nd) + 0.5 * count(r.extra, nd); if (!tf) continue;
+          const w = idf(t) * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * len / avg)) * (t === c[0] ? 1 : 0.8) + (ti.includes(nd) ? idf(t) * 0.8 : 0) + (count(r.body, nd + " ") ? 0.15 : 0);
+          if (w > best) best = w;
+        }
+        if (best) { s += best; cov++; }
+      }
+      if (cov < need) continue;
+      if (r.kind === "post") s += 1.5 / (1 + (Date.now() - Date.parse(r.created_at)) / (7 * 864e5)) + 0.3 * (Number(r.quality) || 0);
+      out.push({ kind: r.kind, id: r.ref_id, s: s * (cov / cs.length) });
+    }
+    return out.sort((a, b2) => b2.s - a.s).slice(0, limit);
   }
   async function engineIds(q, kinds, f) {
-    if (meili) {
+    if (meili && !f._plan) {
       try { return { engine: "meilisearch", ids: await meili.search(q, { kinds, ptype: f.ptype, community: f.community, lang: f.lang, from: f.from, to: f.to, limit: 200 }) }; }
       catch (e) { ctx.jobsState.meili = { ok: false, error: e.message, lastRun: now() }; }
     }
@@ -220,5 +296,5 @@ module.exports = (ctx) => {
   r.post("/api/search/saved/:id/seen", AU(async (req) => { await db.run("UPDATE saved_searches SET new_count=0 WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.post("/api/admin/search/reindex", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return { indexed: await reindexAll() }; }));
-  return { search, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
+  return { search, run, parseFilters, concepts, variants, upgradeIndex, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
 };
