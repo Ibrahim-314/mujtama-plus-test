@@ -238,6 +238,39 @@ body.cm-chat .topbar{display:none}
 .cm-day{box-shadow:none;border:1px solid var(--card-bd,var(--line));border-radius:var(--r-pill,999px);color:var(--muted)}
 .cm-ta{border-color:var(--card-bd,var(--line-2));background:var(--bg-2)}
 .cm-comp .cm-ib:not(.cm-sendb){color:var(--accent-ink)}
+/* v2.134 «الذكاء في الرسائل» */
+.ai-sp{width:22px;height:22px;flex:none}
+.cm-comp .cm-ib.ai-ib{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));color:var(--on-accent);box-shadow:var(--sh-1)}
+.cm-comp .cm-ib.ai-ib[aria-expanded=true]{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
+.ai-pill{position:fixed;inset-inline:0;z-index:31;display:flex;justify-content:center;pointer-events:none;bottom:calc(76px + env(safe-area-inset-bottom))}
+.ai-pill>div{pointer-events:auto;display:inline-flex;align-items:center;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);background:var(--card);box-shadow:var(--sh-1)}
+.ai-pill button{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 6px 0 14px;border:0;background:none;color:var(--accent-ink);font:600 14px/1.2 inherit;cursor:pointer}
+.ai-pill .ai-x{padding:0 12px;color:var(--muted);font-weight:400;font-size:var(--fs-lg)}
+.ai-pill .ai-sp{width:18px;height:18px;color:var(--accent)}
+.ai-pill small{color:var(--muted);font-weight:500}
+.ai-h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:var(--fs-lg);margin:0 0 4px}
+.ai-h .ai-sp{color:var(--accent)}
+.ai-sub{color:var(--muted);font-size:var(--fs-sm);margin:0 0 12px}
+.ai-pt{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:start;padding:11px 12px;border-radius:14px;background:var(--bg-2);border:0;color:var(--text);margin-bottom:8px;font:inherit;font-size:var(--fs-md);line-height:1.6;cursor:pointer}
+.ai-pt.todo,.ai-pt.question{background:color-mix(in srgb,var(--accent) 12%,var(--bg-2))}
+.ai-pt b{color:var(--accent-ink)}
+.ai-pt .go{margin-inline-start:auto;color:var(--muted);font-size:var(--fs-xs);white-space:nowrap;padding-top:3px}
+.ai-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:9px;flex:none}
+.ai-row{display:flex;gap:8px;margin-top:12px}
+.ai-btn{flex:1;min-height:46px;border-radius:14px;border:0;font:inherit;font-weight:600;font-size:var(--fs-md);background:var(--accent);color:var(--on-accent);cursor:pointer}
+.ai-btn.ghost{background:var(--bg-2);color:var(--text)}
+.ai-note{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin:10px 0 0}
+.ai-load{display:flex;flex-direction:column;gap:8px;margin:6px 0}.ai-load i{height:44px;border-radius:14px;background:var(--bg-2);animation:cmPulse 1.4s infinite}
+.ai-panel{display:flex;flex-direction:column;gap:8px;padding:2px 2px 8px}
+.ai-sugg{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ai-sugg .lbl{display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-size:var(--fs-sm);font-weight:600;white-space:nowrap}
+.ai-sugg .lbl .ai-sp{width:16px;height:16px}
+.ai-chip{white-space:nowrap;min-height:36px;padding:6px 14px;border-radius:999px;border:1px solid var(--line-2);background:var(--card);color:var(--text);font:500 14px inherit;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.ai-chip:disabled{opacity:.55}
+.ai-tone .ai-chip{min-height:32px;padding:4px 12px;font-size:var(--fs-sm);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 30%,transparent);background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+.ai-chip.sk{width:150px;color:transparent;animation:cmPulse 1.4s infinite;background:var(--bg-2);border-color:transparent}
+.ai-ib:focus-visible,.ai-chip:focus-visible,.ai-pt:focus-visible,.ai-pill button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.ai-load i,.ai-chip.sk{animation:none}}
 @media (min-width:760px){body.cm-chat .topbar{display:flex}.cm-comp{inset-inline-start:var(--rail-w,0)}}
 @media (prefers-reduced-motion:reduce){.cm-typing i,.cm-rec .dot{animation:none}.cm-m.gone{transition:none}.cm-flash{animation:none;outline:2px solid var(--accent)}.cm-pick button{transition:none}}
 @media (forced-colors:active){.cm-b{border:1px solid CanvasText}.cm-tab[aria-selected=true]{outline:2px solid Highlight}}
@@ -434,7 +467,11 @@ body.cm-chat .topbar{display:none}
     if (ctx !== mine) return; // a newer render of this route took over
     ctx.conv = ST.info[cid];
     view.insertAdjacentHTML("beforeend", `<div class="cm-comp" id="cm-comp"><div></div></div>`);
+    const unread = ST.convs?.find(x => x.id === cid)?.unread || 0;
+    await aiState();
+    if (ctx !== mine) return;
     paintHead(); paintThread(true); paintComposer(); bindDrop();
+    if (unread >= 5 && aiOk(ctx.conv)) aiPill(unread);
     markRead(cid);
     ctx.tick = setInterval(tickExpiry, 1000);
     const th = $("#cm-thread"); window.addEventListener("scroll", onScrollTop, { passive: true });
@@ -559,6 +596,69 @@ body.cm-chat .topbar{display:none}
     if (e.key === "Enter" || e.key === " " || (e.shiftKey && e.key === "F10") || e.key === "ContextMenu") { if (e.target !== b) return; e.preventDefault(); const id = b.closest(".cm-m").dataset.id; const m = (ST.msgs[ctx.cid] || []).find(x => x.id === id); if (m && !m.deleted) msgMenu({ ...m, ...(ST.plain[m.id] || {}) }); }
     if (e.key === "ArrowUp" || e.key === "ArrowDown") { const list = [...document.querySelectorAll("#cm-thread .cm-b")], i = list.indexOf(b); const n = list[i + (e.key === "ArrowUp" ? -1 : 1)]; if (n) { e.preventDefault(); n.focus(); } }
   }
+  /* =========================== v2.134 «الذكاء في الرسائل» ===========================
+   * Only on a tap: ✨ in the composer (suggested replies, improve my draft, summarise) and a «لخّص لي اللي فاتني» pill when 5+ unread.
+   * Never sends anything; off in encrypted chats and when the member turns it off in Settings (server checks too). */
+  const AI_SP = `<svg class="ai-sp" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9z"/><path d="M19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1-2.1-.9 2.1-.9z" opacity=".75"/></svg>`;
+  const AI_TONES = [["kind", "ألطف"], ["short", "أقصر"], ["formal", "أرسمي"], ["fix", "صحّح الإملاء"]];
+  async function aiState(force) {
+    if (!force && ST.aiAt && Date.now() - ST.aiAt < 60e3) return ST.aiOn;
+    try { ST.aiOn = (await api("GET", "/api/aihub/messages/state")).on !== false; } catch { ST.aiOn = false; }
+    ST.aiAt = Date.now(); return ST.aiOn;
+  }
+  window.addEventListener("mp:msgai", () => { ST.aiAt = 0; });
+  const aiOk = (c) => !!(ST.aiOn && c && !c.e2ee && c.members?.find(x => (x.user || x) === DB.me)?.state !== "request");
+  const aiCall = (b) => api("POST", "/api/aihub/messages", { cid: ctx?.cid, ...b });
+  function aiErr(e) { if (e?.code === "msg_ai_off") { ST.aiOn = false; paintComposer(); } errToast(e); }
+  function aiPill(n) {
+    document.getElementById("ai-pill")?.remove();
+    view.insertAdjacentHTML("beforeend", `<div class="ai-pill" id="ai-pill"><div><button id="ai-pb">${AI_SP} لخّص لي اللي فاتني <small>· ${n} ${n >= 3 && n <= 10 ? "رسائل" : "رسالة"}</small></button><button class="ai-x" id="ai-px" aria-label="إخفاء">×</button></div></div>`);
+    const comp = $("#cm-comp"), pill = $("#ai-pill"); if (comp && pill) pill.style.bottom = (comp.offsetHeight + 10) + "px";
+    $("#ai-pb").onclick = () => { $("#ai-pill")?.remove(); aiSummary(Math.max(n, 10)); };
+    $("#ai-px").onclick = () => $("#ai-pill")?.remove();
+  }
+  async function aiSummary(n) {
+    const c = ctx?.conv; if (!c) return;
+    const title = c.kind === "group" ? `اللي فاتك في «${h(convTitle({ ...c, peer: peerOf(c) }))}»` : "اللي فاتك في المحادثة";
+    const s = sheet(`<h4 class="ai-h" id="ai-sh">${AI_SP} ${title}</h4><div id="ai-sb" aria-live="polite"><div class="ai-load"><i></i><i></i><i></i></div></div>`);
+    const box = s.querySelector("#ai-sb"); s.querySelector(".panel")?.setAttribute("aria-labelledby", "ai-sh");
+    let r; try { r = await aiCall({ tool: "catchup", n }); } catch (e) { closeSheet(); return aiErr(e); }
+    if (!box.isConnected) return;
+    const lbl = { decision: "اتفاق", todo: "مطلوب منك", question: "سؤال", info: "" };
+    box.innerHTML = `<p class="ai-sub">${h(r.headline || "")}${r.count ? ` · ${r.count} ${r.count >= 3 && r.count <= 10 ? "رسائل" : "رسالة"}` : ""}</p>
+      ${(r.points || []).map((p) => `<button class="ai-pt ${p.kind}" ${p.cites?.[0] ? `data-aigo="${h(p.cites[0])}"` : "disabled"}><span class="ai-dot"></span><span>${lbl[p.kind] ? `<b>${lbl[p.kind]}:</b> ` : ""}${h(p.text)}</span>${p.cites?.[0] ? `<span class="go">الرسالة ←</span>` : ""}</button>`).join("")}
+      <div class="ai-row"><button class="ai-btn" id="ai-rp">اقترح لي رد</button><button class="ai-btn ghost" id="ai-cl">تم</button></div>
+      <p class="ai-note">يعمل فقط لما تضغط · ما ينحفظ شي من المحادثة${r.free ? ` · بقي لك ${r.free.left} اليوم` : ""}</p>`;
+    box.querySelectorAll("[data-aigo]").forEach((b) => b.onclick = () => { closeSheet(); setTimeout(() => jumpTo(b.dataset.aigo), 60); });
+    box.querySelector("#ai-rp").onclick = () => { closeSheet(); aiOpen(); };
+    box.querySelector("#ai-cl").onclick = () => closeSheet();
+  }
+  function aiClose() { ctx.aiOpen = false; $("#ai-panel")?.remove(); $("#cm-ai")?.setAttribute("aria-expanded", "false"); }
+  async function aiOpen(keep) {
+    const box = $("#cm-comp > div"), ta = $("#cm-ta"); if (!box || !ta || !ctx) return;
+    ctx.aiOpen = true; $("#cm-ai")?.setAttribute("aria-expanded", "true"); $("#ai-panel")?.remove();
+    box.insertAdjacentHTML("afterbegin", `<div class="ai-panel" id="ai-panel" role="group" aria-label="مساعد الذكاء"><div class="ai-sugg" id="ai-sg"><span class="lbl">${AI_SP} ردود مقترحة</span><button class="ai-chip sk" disabled>…</button><button class="ai-chip sk" disabled>…</button></div>
+      <div class="ai-sugg ai-tone" id="ai-tn">${AI_TONES.map(([k, l]) => `<button class="ai-chip" data-tone="${k}">${l}</button>`).join("")}<button class="ai-chip" id="ai-sum">لخّص المحادثة</button></div></div>`);
+    const tones = () => { const has = ta.value.trim().length > 1; box.querySelectorAll("[data-tone]").forEach((b) => { b.hidden = !has; }); };
+    tones(); ta.addEventListener("input", tones);
+    $("#ai-sum").onclick = () => aiSummary(40);
+    box.querySelectorAll("[data-tone]").forEach((b) => b.onclick = async () => {
+      const orig = ta.value; if (orig.trim().length < 2) return;
+      box.querySelectorAll("#ai-tn .ai-chip").forEach((x) => { x.disabled = true; }); b.textContent = "…";
+      try { const r = await aiCall({ tool: "rewrite", text: orig, tone: b.dataset.tone }); if (!ctx) return; ta.value = r.text; ctx.draft = r.text; ta.dispatchEvent(new Event("input")); live("تم تحسين رسالتك، راجعها قبل الإرسال");
+        if (!$("#ai-undo")) { $("#ai-tn")?.insertAdjacentHTML("beforeend", `<button class="ai-chip" id="ai-undo">رجوع للأصل</button>`); $("#ai-undo").onclick = () => { ta.value = orig; ctx.draft = orig; ta.dispatchEvent(new Event("input")); $("#ai-undo")?.remove(); ta.focus(); }; } }
+      catch (e) { aiErr(e); }
+      finally { box.querySelectorAll("#ai-tn .ai-chip").forEach((x) => { x.disabled = false; }); const t = AI_TONES.find(([k]) => k === b.dataset.tone); if (t) b.textContent = t[1]; }
+    });
+    if (keep && ctx.aiReplies) return paintReplies(ctx.aiReplies);
+    try { const r = await aiCall({ tool: "replies", draft: ta.value.trim() }); if (!ctx?.aiOpen) return; ctx.aiReplies = r.replies; paintReplies(r.replies); }
+    catch (e) { const sg = $("#ai-sg"); if (sg) sg.innerHTML = `<span class="lbl">${AI_SP} تعذّرت الاقتراحات</span>`; aiErr(e); }
+    function paintReplies(list) {
+      const sg = $("#ai-sg"); if (!sg) return;
+      sg.innerHTML = `<span class="lbl">${AI_SP} ردود مقترحة</span>` + list.map((t) => `<button class="ai-chip" data-rp>${h(t)}</button>`).join("");
+      sg.querySelectorAll("[data-rp]").forEach((b) => b.onclick = () => { ta.value = b.textContent; ctx.draft = ta.value; ta.dispatchEvent(new Event("input")); ta.focus(); live("وُضع الرد في مربع الكتابة، عدّله وأرسله"); });
+    }
+  }
   function jumpTo(id) { const el = document.querySelector(`#cm-thread [data-id="${CSS.escape(id)}"] .cm-b`); if (!el) return toast("الرسالة الأصلية لم تعد متاحة"); el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); el.classList.remove("cm-flash"); void el.offsetWidth; el.classList.add("cm-flash"); el.focus({ preventScroll: true }); }
   function lightbox(src, alt) { const d = document.createElement("div"); d.className = "lightbox"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "عرض الصورة"); d.style.cssText = "position:fixed;inset:0;z-index:90;background:#000e;display:grid;place-items:center;padding:16px"; d.innerHTML = `<img src="${h(src)}" alt="${h(alt)}" style="max-width:100%;max-height:100%;border-radius:12px"><button class="cm-ib" aria-label="إغلاق" style="position:absolute;top:12px;inset-inline-end:12px;color:#fff">${ic("x")}</button>`; const close = () => { d.remove(); removeEventListener("keydown", k); }; const k = (e) => { if (e.key === "Escape") close(); }; d.onclick = close; addEventListener("keydown", k); document.body.appendChild(d); d.querySelector("button").focus(); }
 
@@ -619,7 +719,7 @@ body.cm-chat .topbar{display:none}
     box.innerHTML = `${r ? `<div class="cm-pre" role="status"><span class="cm-mid"><b>رد على ${h(r.from === DB.me ? "نفسك" : person(r.from).name)}</b><div class="cm-prev">${h(r.kind === "voice" ? "رسالة صوتية" : r.kind === "image" ? "صورة" : ST.plain[r.id]?.text ?? r.text ?? "")}</div></span><button class="cm-ib" id="cm-xr" aria-label="إلغاء الرد">${ic("x")}</button></div>` : ""}
       ${img ? `<div class="cm-pre" role="status"><img src="${img.url}" alt=""><span class="cm-mid"><b>صورة جاهزة للإرسال</b><div class="cm-prev">${h(img.file.name || "صورة")} · ${(img.file.size / 1024 / 1024).toFixed(1)} م.ب — أضف تعليقاً إن شئت</div></span><button class="cm-ib" id="cm-xi" aria-label="إزالة الصورة">${ic("x")}</button></div>` : ""}
       <div class="cm-row2"><input type="file" id="cm-file" accept="image/*" hidden>
-        <button class="cm-ib" id="cm-att" aria-label="إرفاق صورة" title="إرفاق صورة (أو اسحبها وأفلتها، أو الصقها)">${ic("cmImg")}</button>
+        <button class="cm-ib" id="cm-att" aria-label="إرفاق صورة" title="إرفاق صورة (أو اسحبها وأفلتها، أو الصقها)">${ic("cmImg")}</button>${aiOk(c) ? `<button class="cm-ib ai-ib" id="cm-ai" aria-label="مساعد الذكاء: ردود مقترحة وتحسين رسالتك" title="مساعد الذكاء" aria-expanded="false" aria-controls="ai-panel">${AI_SP}</button>` : ""}
         <textarea class="cm-ta" id="cm-ta" rows="1" placeholder="${img ? "أضف تعليقاً…" : c.e2ee ? "رسالة مشفرة…" : "اكتب رسالة…"}" aria-label="نص الرسالة" maxlength="4000" dir="auto">${h(prevTxt)}</textarea>
         <button class="cm-ib cm-sendb" id="cm-send" aria-label="${prevTxt || img ? "إرسال" : "تسجيل رسالة صوتية"}" title="${prevTxt || img ? "إرسال" : "تسجيل رسالة صوتية"}">${ic(prevTxt || img ? "cmSend" : "mic")}</button></div>`;
     const ta = $("#cm-ta"), send = $("#cm-send"), grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(140, ta.scrollHeight) + "px"; };
@@ -630,6 +730,8 @@ body.cm-chat .topbar{display:none}
     ta.onpaste = (e) => { const f = [...(e.clipboardData?.files || [])].find(x => x.type.startsWith("image/")); if (f) { e.preventDefault(); pickImage(f); } };
     send.onclick = () => (ta.value.trim() || ctx.img ? submit() : startRec());
     $("#cm-att").onclick = () => $("#cm-file").click();
+    const aib = $("#cm-ai"); if (aib) aib.onclick = () => (ctx.aiOpen ? aiClose() : aiOpen());
+    if (ctx.aiOpen && aib) aiOpen(true);
     $("#cm-file").onchange = (e) => { const f = e.target.files[0]; if (f) pickImage(f); };
     const xr = $("#cm-xr"); if (xr) xr.onclick = () => { ctx.reply = null; paintComposer(); $("#cm-ta").focus(); };
     const xi = $("#cm-xi"); if (xi) xi.onclick = () => { URL.revokeObjectURL(ctx.img.url); ctx.img = null; paintComposer(); $("#cm-ta").focus(); };
@@ -662,7 +764,7 @@ body.cm-chat .topbar{display:none}
       const body = { id: uid("ms"), kind: "text", text, replyTo: ctx.reply?.id || undefined };
       if (img) { const dims = await new Promise(r => { const i = new Image(); i.onload = () => r({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => r({}); i.src = img.url; }); Object.assign(body, { kind: "image", file: img.file, meta: dims }); }
       await deliver(body);
-      ctx.draft = ""; ctx.reply = null; if (img) { URL.revokeObjectURL(img.url); ctx.img = null; }
+      ctx.draft = ""; ctx.reply = null; ctx.aiOpen = false; ctx.aiReplies = null; if (img) { URL.revokeObjectURL(img.url); ctx.img = null; }
       if (ctx.typingOn) { ctx.typingOn = false; emitTyping(c.id, false); }
       paintComposer(); $("#cm-ta")?.focus();
     } catch (e) { errToast(e); if (btn) btn.disabled = false; }
