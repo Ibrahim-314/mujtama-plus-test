@@ -290,9 +290,9 @@ module.exports = (ctx, opts = {}) => {
       const st = await settings();
       if (!freeP || st.freeDaily <= 0) throw fail(503, "not_configured", OFF_FREE);
       const used = await usedToday(user.id, "free");
-      if (used >= st.freeDaily) throw fail(429, "free_limit", `استخدمت ${st.freeDaily} من ${st.freeDaily} مجاناً اليوم. اربط حسابك لتكمل بلا حد من التطبيق، أو عُد غداً.`, { daily: st.freeDaily, resetsAt: nextReset() });
+      if (used >= st.freeDaily && !o.uncounted) throw fail(429, "free_limit", `استخدمت ${st.freeDaily} من ${st.freeDaily} مجاناً اليوم. اربط حسابك لتكمل بلا حد من التطبيق، أو عُد غداً.`, { daily: st.freeDaily, resetsAt: nextReset() });
       let out; try { out = await freeP.chat([sys, ...messages], { maxTokens: o.freeMax || 700 }); } catch (e) { throw mapErr(e); }
-      await count(user.id, "free");
+      if (!o.uncounted) await count(user.id, "free"); // v2.132: a search step (planner) rides on the question's own allowance
       return { text: out.text, provider: "free", via: freeName(), model: out.model || null, free: { used: used + 1, left: Math.max(0, st.freeDaily - used - 1), daily: st.freeDaily } };
     }
     const model = typeof b.model === "string" && /^[\w./:@+-]{1,200}$/.test(b.model) ? b.model : r.model;
@@ -575,7 +575,7 @@ module.exports = (ctx, opts = {}) => {
     const key = "mp|" + AR.normalize(q) + "|" + hist.map((x) => AR.normalize(x.q)).join("/"), hit = planCache.get(key);
     if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.plan;
     const ask = `${hist.length ? `المحادثة السابقة: ${JSON.stringify(hist.map((x) => x.q))}\n` : ""}السؤال الحالي: «${q}»\nأعد JSON فقط: {"standalone":"السؤال الحالي مكتوباً كاملاً مستقلاً بلا ضمائر تحيل للسابق (أو نفسه إن كان مستقلاً)","subqueries":["عبارة بحث قصيرة",…]} — subqueries فارغة إلا إذا كان السؤال مركّباً (مقارنة أو أكثر من طلب)، وبحد أقصى 3، كل واحدة 2-5 كلمات بلغة المنشورات.`;
-    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 220, freeMax: 220 });
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 220, freeMax: 220, uncounted: true });
     const j = parseJSON(o.text) || {};
     const plan = { standalone: str(j.standalone, 200) || null, subqueries: (Array.isArray(j.subqueries) ? j.subqueries : []).map((x) => str(x, 60)).filter((x) => x && AR.tokens(x).length).slice(0, 3) };
     if (plan.standalone && AR.normalize(plan.standalone) === AR.normalize(q)) plan.standalone = null;
@@ -583,11 +583,11 @@ module.exports = (ctx, opts = {}) => {
     planCache.set(key, { at: Date.now(), plan });
     return plan;
   }
-  async function queryPlan(user, q) {
+  async function queryPlan(user, q, { uncounted = false } = {}) {
     const key = AR.normalize(q), hit = planCache.get(key);
     if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.plan;
     const ask = `حوّل سؤال البحث هذا إلى خطة بحث في منشورات شبكة اجتماعية عربية.\nالسؤال: «${q}»\nأعد: {"concepts":[["الكلمة الأساسية","مرادف","صيغة لهجية أو جمع أو إنجليزي"]],"date":"day|week|month|year|null","type":"question|article|event|null","rewritten":"الكلمات المهمة فقط"}\n(2-5 مفاهيم، كل مفهوم 1-5 صيغ قصيرة كما يكتبها الناس فعلاً؛ تجاهل كلمات السؤال مثل وش/كيف/أبي/تنصحوني)`;
-    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 350, freeMax: 350 });
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 350, freeMax: 350, uncounted });
     const j = parseJSON(o.text) || {};
     const concepts = (Array.isArray(j.concepts) ? j.concepts : []).map((c) => [...new Set((Array.isArray(c) ? c : [c]).flatMap((w) => AR.tokens(String(w || "")).slice(0, 2)))].slice(0, 6)).filter((c) => c.length).slice(0, 5);
     const plan = concepts.length ? { concepts, date: ["day", "week", "month", "year"].includes(j.date) ? j.date : null, ptype: ["question", "article", "event"].includes(j.type) ? j.type : null, rewritten: str(j.rewritten, 120) } : null;
@@ -623,7 +623,7 @@ module.exports = (ctx, opts = {}) => {
       ids = merged.slice(0, 14);
     }
     if (ids.length < 2 && !OP.active) { // thin retrieval → let the model rewrite the question (synonyms, dialect, time hint)
-      plan = await queryPlan(user, qText).catch(() => null);
+      plan = await queryPlan(user, qText, { uncounted: true }).catch(() => null); // v2.133: one question = one counted call
       if (plan) {
         const f2 = { ...f, _plan: plan }; if (plan.date && !f.from) f2.from = new Date(Date.now() - { day: 1, week: 7, month: 30, year: 365 }[plan.date] * 864e5).toISOString();
         let r2 = await S.run(viewer, q, f2, { limit: 14 });
