@@ -174,6 +174,8 @@ async function createApp(overrides = {}) {
   await Scale.wireScale(ctx);                                               // Phase 48: realtime fan-out via Redis + /api/admin/scale
   ctx.services.minors = require("./services/minors")(ctx, config.minorsOpts);     // Phase 35 (must stay last: wraps content/search routes)
   if (config.seedDemo && !Scale.isWorker(scale.role)) await require("./services/seed")(ctx, process.env.SEED_ROOT || config.webRoot);
+  ctx.services.demoMessages = require("./services/demo-messages")(ctx);              // v2.134: demo DMs/groups for messages-AI testing (DEMO_MESSAGES=1 on Render test only; removed when off)
+  if (!Scale.isWorker(scale.role)) await ctx.services.demoMessages.boot();
 
   // v2.68: top-level safety net — nothing thrown while handling a request may take the process down
   function handle(req, res) {
