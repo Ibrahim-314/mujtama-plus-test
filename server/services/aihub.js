@@ -568,6 +568,21 @@ module.exports = (ctx, opts = {}) => {
    *   cached 30 min per reader + query + filters. ---------- */
   const SR_SYS = "أنت محرك بحث ذكي داخل «مجتمع بلس». تفهم العربية الفصحى واللهجات (الخليجية والشامية والمصرية وغيرها) والأخطاء الإملائية والإنجليزية. تجيب فقط مما في المنشورات والتعليقات المرسلة، وتذكر الآراء المختلفة إن وجدت، ولا تخترع معلومة أو مكاناً أو رقماً. أعد JSON صالحاً فقط.";
   const planCache = new Map(), srCache = new Map();
+  const COMPOUND = /(قارن|مقارن|الفرق بين|أيهما|ايهما|افضل من|أفضل من|\bvs\b|\bversus\b|compare|difference between|[؟?].+[؟?])/i;
+  /* v2.132: one call → {standalone, subqueries}. standalone resolves a follow-up against the thread; subqueries split a compound
+   * question into short searchable phrases. Cached per (thread, question) for a day. */
+  async function multiPlan(user, q, hist) {
+    const key = "mp|" + AR.normalize(q) + "|" + hist.map((x) => AR.normalize(x.q)).join("/"), hit = planCache.get(key);
+    if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.plan;
+    const ask = `${hist.length ? `المحادثة السابقة: ${JSON.stringify(hist.map((x) => x.q))}\n` : ""}السؤال الحالي: «${q}»\nأعد JSON فقط: {"standalone":"السؤال الحالي مكتوباً كاملاً مستقلاً بلا ضمائر تحيل للسابق (أو نفسه إن كان مستقلاً)","subqueries":["عبارة بحث قصيرة",…]} — subqueries فارغة إلا إذا كان السؤال مركّباً (مقارنة أو أكثر من طلب)، وبحد أقصى 3، كل واحدة 2-5 كلمات بلغة المنشورات.`;
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 220, freeMax: 220 });
+    const j = parseJSON(o.text) || {};
+    const plan = { standalone: str(j.standalone, 200) || null, subqueries: (Array.isArray(j.subqueries) ? j.subqueries : []).map((x) => str(x, 60)).filter((x) => x && AR.tokens(x).length).slice(0, 3) };
+    if (plan.standalone && AR.normalize(plan.standalone) === AR.normalize(q)) plan.standalone = null;
+    if (planCache.size > 5000) planCache.delete(planCache.keys().next().value);
+    planCache.set(key, { at: Date.now(), plan });
+    return plan;
+  }
   async function queryPlan(user, q) {
     const key = AR.normalize(q), hit = planCache.get(key);
     if (hit && Date.now() - hit.at < 24 * 3600e3) return hit.plan;
@@ -583,15 +598,32 @@ module.exports = (ctx, opts = {}) => {
   async function smartSearch(user, b) {
     const S = ctx.services.search; if (!S?.run) throw fail(503, "not_configured", "البحث غير متاح الآن");
     const q = str(b.q, 200).trim(); if (AR.tokens(q).length < 1) throw E.bad("اكتب سؤالك");
-    const f = S.parseFilters({ ...b, type: "posts" }), fkey = [f.date, f.lang, f.community].join(","), ck = user.id + "|" + AR.normalize(q) + "|" + fkey, hit = srCache.get(ck);
+    // v2.132 stage 9: a conversation — up to 3 earlier turns of this thread (question + short answer) come with a follow-up
+    const hist = (Array.isArray(b.history) ? b.history : []).slice(-3).map((x) => ({ q: str(x?.q, 200), a: str(x?.a, 300) })).filter((x) => x.q);
+    const f = S.parseFilters({ ...b, type: "posts" }), fkey = [f.date, f.lang, f.community].join(","), ck = user.id + "|" + AR.normalize(q) + "|" + fkey + "|" + hist.map((x) => AR.normalize(x.q)).join("/"), hit = srCache.get(ck);
     if (hit && Date.now() - hit.at < 30 * 60e3 && !b.refresh) return { ...hit.out, cached: true };
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
     const viewer = await db.get("SELECT * FROM users WHERE id=$1", [user.id]) || user;
-    const res = await S.run(viewer, q, f, { limit: 14 }); let ids = (res.groups.posts?.items || []).map((p) => p.id), plan = null;
     // v2.129: search operators narrow retrieval (run() applies them); the model reads only the reader's words, never the operators
-    const OP = require("../lib/search-ops").parse(q), qText = OP.active ? (OP.text || q) : q;
+    const OP = require("../lib/search-ops").parse(q); let qText = OP.active ? (OP.text || q) : q;
+    /* v2.132 multi-step: a follow-up («وللمبتدئين؟») is first made standalone from the thread, and a compound question («قارن…»,
+     * «الفرق بين…», several asks) is split into ≤ 3 sub-searches; one small model call does both, only when needed. Retrieval of every
+     * step stays our own engine over visible posts; their hits are interleaved so each step is represented. */
+    let steps = null, standalone = null;
+    if (!OP.active && (hist.length || COMPOUND.test(qText) || AR.tokens(qText).length >= 12)) {
+      const pl = await multiPlan(user, qText, hist).catch(() => null);
+      if (pl) { standalone = pl.standalone || null; steps = pl.subqueries.length ? pl.subqueries : null; if (standalone) qText = standalone; }
+    }
+    const res = await S.run(viewer, standalone || q, f, { limit: 14 }); let ids = (res.groups.posts?.items || []).map((p) => p.id), plan = null;
+    let stepInfo = null;
+    if (steps) {
+      const lists = [ids]; stepInfo = [];
+      for (const sq of steps) { const r = await S.run(viewer, sq, f, { limit: 8 }); const l = (r.groups.posts?.items || []).map((p) => p.id); lists.push(l); stepInfo.push({ q: sq, n: l.length }); }
+      const merged = []; for (let i = 0; merged.length < 14 && i < 14; i++) for (const l of lists) if (l[i] && !merged.includes(l[i])) merged.push(l[i]);
+      ids = merged.slice(0, 14);
+    }
     if (ids.length < 2 && !OP.active) { // thin retrieval → let the model rewrite the question (synonyms, dialect, time hint)
-      plan = await queryPlan(user, q).catch(() => null);
+      plan = await queryPlan(user, qText).catch(() => null);
       if (plan) {
         const f2 = { ...f, _plan: plan }; if (plan.date && !f.from) f2.from = new Date(Date.now() - { day: 1, week: 7, month: 30, year: 365 }[plan.date] * 864e5).toISOString();
         let r2 = await S.run(viewer, q, f2, { limit: 14 });
@@ -599,7 +631,7 @@ module.exports = (ctx, opts = {}) => {
         ids = [...new Set([...ids, ...(r2.groups.posts?.items || []).map((p) => p.id)])].slice(0, 14);
       }
     }
-    const base = { q, plan: plan ? { rewritten: plan.rewritten || plan.concepts.map((c) => c[0]).join(" ") } : null };
+    const base = { q, plan: plan ? { rewritten: plan.rewritten || plan.concepts.map((c) => c[0]).join(" ") } : null, standalone, steps: stepInfo };
     if (!ids.length) { const out = { ...base, found: false, answer: "", points: [], sources: {}, related: [], message: "ما لقينا منشورات تجاوب على سؤالك. جرّب كلمات أخرى أو اسأل المجتمع بمنشور." }; srCache.set(ck, { at: Date.now(), out }); return out; }
     const rows = await db.all(`SELECT p.id, p.title, p.text, p.created_at, p.author, u.name uname, c.name cname FROM posts p JOIN users u ON u.id=p.author LEFT JOIN communities c ON c.id=p.community WHERE p.id IN (${ids.map((_, i) => "$" + (i + 1)).join(",")})`, ids);
     const byId = new Map(rows.map((r) => [r.id, r])), posts = [];
@@ -608,7 +640,7 @@ module.exports = (ctx, opts = {}) => {
       const cm = (await db.all("SELECT c.text, u.name FROM comments c JOIN users u ON u.id=c.author WHERE c.post=$1 AND c.status='published' ORDER BY LENGTH(c.text) DESC LIMIT 3", [id])).map((c) => ({ by: c.name, text: String(c.text || "").replace(/\s+/g, " ").slice(0, 220) }));
       posts.push({ id, by: r.uname, community: r.cname || null, date: String(r.created_at || "").slice(0, 10), text: String((r.title ? r.title + " — " : "") + (r.text || "")).replace(/\s+/g, " ").slice(0, 400), comments: cm });
     }
-    const ask = `سؤال القارئ: «${qText}»\nالمنشورات (مع تعليقاتها) التي وجدها البحث، JSON: ${JSON.stringify(posts)}\nأجب من هذه المنشورات فقط. أعد: {"found":true|false,"answer":"جواب مباشر مختصر (1-3 جمل)","points":[{"text":"نقطة أو رأي أو توصية","cites":["معرّفات المنشورات"]}],"followups":["سؤال متابعة قصير"]}\n(2-5 نقاط؛ إن لم تكف المنشورات للإجابة فاجعل found=false وقل ذلك بلطف في answer)`;
+    const ask = `${hist.length ? `سياق المحادثة السابقة (للفهم فقط، لا تستشهد به): ${JSON.stringify(hist)}\n` : ""}سؤال القارئ: «${qText}»\nالمنشورات (مع تعليقاتها) التي وجدها البحث، JSON: ${JSON.stringify(posts)}\nأجب من هذه المنشورات فقط. أعد: {"found":true|false,"answer":"جواب مباشر مختصر (1-3 جمل)","points":[{"text":"نقطة أو رأي أو توصية","cites":["معرّفات المنشورات"]}],"followups":["سؤال متابعة قصير"]}\n(2-5 نقاط؛ إن لم تكف المنشورات للإجابة فاجعل found=false وقل ذلك بلطف في answer)`;
     const o = await run(user, [{ role: "user", content: ask }], { feature: "search", system: SR_SYS, maxTokens: 900, freeMax: 900 });
     const j = parseJSON(o.text), ok = new Set(posts.map((p) => p.id));
     const answer = str(j?.answer, 600); if (!answer) throw fail(502, "bad_output", "لم يرجع النموذج جواباً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
