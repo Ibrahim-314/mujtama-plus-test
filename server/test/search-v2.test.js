@@ -109,3 +109,9 @@ test("v2.124.2 a cross-script sound match is not reported as a spelling fix", as
   assert.ok(ids(r).length > 0);
   assert.equal(r.corrected, null);
 });
+
+test("v2.124.2 a far word is not 'corrected' into an unrelated one (fuzziness AUTO)", async () => {
+  await seed(A.id, "نصيحة لكل مطور مبتدئ: اكتب كودك بوضوح #برمجة");
+  const r = await A.req("GET", "/api/search/full?q=" + encodeURIComponent("لابتوب للبرمجة"));
+  assert.notEqual(r.corrected, "اكتب للبرمجة");
+});
