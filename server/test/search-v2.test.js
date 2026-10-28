@@ -51,12 +51,12 @@ test("background upgrade re-indexes rows of the old index version; migration 083
   const u = await H.app.ctx.services.search.upgradeIndex();
   assert.ok(u.upgraded >= 1);
   const row = await db.get("SELECT iv, extra, quality FROM search_docs WHERE ref_id=$1", [p1]);
-  assert.equal(Number(row.iv), 2); assert.match(row.extra, /نخبه/); assert.ok(Number(row.quality) > 0);
+  assert.equal(Number(row.iv), H.app.ctx.services.search.IV); assert.match(row.extra, /نخبه/); assert.ok(Number(row.quality) > 0);
   const m = require("../migrations/083_search_v2");
   const exec = (sql) => db.exec ? db.exec(sql) : db.run(sql);
   await m.down(db, exec); await m.up(db, exec); await m.up(db, exec); // idempotent
   await H.app.ctx.services.search.indexPost(p1);
-  assert.equal(Number((await db.get("SELECT iv FROM search_docs WHERE ref_id=$1", [p1])).iv), 2);
+  assert.equal(Number((await db.get("SELECT iv FROM search_docs WHERE ref_id=$1", [p1])).iv), H.app.ctx.services.search.IV);
 });
 
 test("AI search: answers from visible posts, drops invented/uncited points, plan only when thin, cached", async () => {
