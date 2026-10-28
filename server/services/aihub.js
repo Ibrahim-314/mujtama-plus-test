@@ -560,6 +560,80 @@ module.exports = (ctx, opts = {}) => {
     if (b._key) { if (cmCache.size > 2000) cmCache.delete(cmCache.keys().next().value); cmCache.set(b._key, { at: Date.now(), out }); }
     return out;
   }
+  /* ---------- v2.134 «الذكاء في الرسائل» — only on the reader's tap, never in the background, never sends anything:
+   *   catchup  summary of what the reader missed in one conversation (points cite real message ids, invented ids dropped)
+   *   replies  3 short suggested replies the reader edits/sends himself
+   *   rewrite  the reader's own draft → kinder / shorter / formal / spelling fixed
+   * Off in end-to-end encrypted chats (the server never sees their text) and when the member turns it off in Settings
+   * (user_prefs ai.messages = false). Nothing from the conversation is stored; summaries are cached in memory for 30 min. ---------- */
+  const MS_SYS = "أنت مساعد رسائل داخل «مجتمع بلس». تقرأ محادثة خاصة أو قروباً بطلب صاحبها فقط. تفهم الفصحى واللهجات الخليجية وغيرها. لا تخترع ما لم يُكتب، ولا تحكم على الأشخاص، ولا تكشف معلومات حساسة. أعد JSON صالحاً فقط.";
+  const MS_TONES = { kind: "ألطف وأكثر دفئاً", short: "أقصر وأوضح", formal: "أرسمي ومهذب", fix: "صحّح الإملاء والنحو فقط دون تغيير الأسلوب" };
+  const MS_KINDS = ["decision", "todo", "question", "info"];
+  const msCache = new Map();
+  async function msgAiOn(uid) {
+    const r = await db.get("SELECT value FROM user_prefs WHERE user_id=$1 AND ns='ai' AND key='messages'", [uid]).catch(() => null);
+    return !r || parse(r.value, true) !== false;
+  }
+  async function messagesAi(user, b) {
+    const tool = str(b.tool, 20); if (!["catchup", "replies", "rewrite"].includes(tool)) throw E.bad("أداة غير معروفة");
+    if (!(await msgAiOn(user.id))) throw fail(403, "msg_ai_off", "الذكاء الاصطناعي في الرسائل موقوف من إعداداتك");
+    const cid = str(b.cid, 80);
+    let conv = null, mem = null;
+    if (cid) {
+      conv = await db.get("SELECT id, kind, title, e2ee FROM conversations WHERE id=$1", [cid]);
+      mem = conv && await db.get("SELECT state FROM conversation_members WHERE conv=$1 AND user_id=$2", [cid, user.id]);
+      if (!conv || !mem) throw fail(403, "not_member", "لست عضواً في هذه المحادثة");
+      if (Number(conv.e2ee)) throw fail(403, "e2ee", "المحادثات المشفرة لا يقرؤها الذكاء الاصطناعي حفاظاً على خصوصيتك");
+    } else if (tool !== "rewrite") throw E.bad("محادثة غير معروفة");
+    const now = nowIso();
+    const load = async (n) => (await db.all(`SELECT m.id, m.sender, m.text, m.kind, m.created_at, u.name FROM messages m LEFT JOIN users u ON u.id=m.sender
+        WHERE m.conv=$1 AND m.deleted_at IS NULL AND (m.expires_at IS NULL OR m.expires_at > $2) AND m.kind IN ('text','image','voice') ORDER BY m.created_at DESC LIMIT $3`, [cid, now, n])).reverse()
+      .map((m) => ({ id: m.id, by: m.sender === user.id ? "أنا" : (m.name || "عضو"), text: m.kind === "voice" ? "[رسالة صوتية]" : (m.kind === "image" ? "[صورة] " : "") + String(m.text || "").replace(/\s+/g, " ").slice(0, 400) }))
+      .filter((m) => m.text.trim());
+    const fit = (list, cap) => { let t = 0; const out = []; for (let i = list.length - 1; i >= 0; i--) { t += list[i].text.length + 30; if (t > cap) break; out.unshift(list[i]); } return out; };
+    let ask, max = 700;
+    if (tool === "catchup") {
+      const n = Math.max(5, Math.min(150, Math.floor(Number(b.n) || 30)));
+      const msgs = fit(await load(n), 14000);
+      if (msgs.length < 2) return { tool, headline: "ما فيه رسائل كافية للتلخيص.", points: [], count: msgs.length, empty: true };
+      const key = user.id + "|" + cid + "|" + msgs[msgs.length - 1].id + "|" + msgs.length, hit = msCache.get(key);
+      if (hit && Date.now() - hit.at < 30 * 60e3 && !b.refresh) return { ...hit.out, cached: true };
+      b._key = key; b._msgs = msgs;
+      ask = `لخّص لصاحب الطلب («أنا» في الرسائل) ما فاته في ${conv.kind === "group" ? `القروب «${str(conv.title, 80) || "قروب"}»` : "هذه المحادثة الخاصة"}.\n- headline: جملة واحدة\n- points: من 2 إلى 5 نقاط {"kind":"decision|todo|question|info","text":"...","cites":["معرّفات الرسائل"]}؛ todo = شيء مطلوب منه هو، question = سؤال موجّه له أو لم يُجب، decision = اتفاق أو موعد\n- forMe: true إذا فيه شيء ينتظره منه\nاستخدم الأسماء كما هي، ولا تذكر شيئاً غير موجود في الرسائل.\nأعد: {"headline":"...","points":[],"forMe":false}\n\nالرسائل (JSON، الأقدم أولاً):\n${JSON.stringify(msgs)}`;
+      max = 800;
+    } else if (tool === "replies") {
+      const msgs = fit(await load(20), 6000);
+      if (!msgs.length) return { tool, replies: ["السلام عليكم", "هلا والله", "كيف الحال؟"] };
+      const draft = str(b.draft, 500);
+      ask = `اقترح 3 ردود قصيرة مختلفة (كل رد ≤ 90 حرفاً) يرسلها «أنا» على آخر الرسائل، بنفس لهجة المحادثة ونبرتها: واحد موافق/إيجابي، واحد يطلب توضيحاً أو يؤجل بلطف، وواحد مختصر جداً.${draft ? `\nبدأ يكتب: «${draft}» — اجعل الردود تكمل فكرته.` : ""} لا تعد بشيء غير مذكور ولا تضف معلومات شخصية.\nأعد: {"replies":["...","...","..."]}\n\nآخر الرسائل (JSON):\n${JSON.stringify(msgs)}`;
+      max = 400;
+    } else {
+      const text = str(b.text, 2000), tone = str(b.tone, 10);
+      if (text.length < 2) throw E.bad("اكتب رسالتك أولاً"); if (!MS_TONES[tone]) throw E.bad("نبرة غير معروفة");
+      const msgs = cid ? fit(await load(6), 1500) : [];
+      ask = `أعد كتابة رسالة المستخدم: ${MS_TONES[tone]}. حافظ على المعنى واللغة واللهجة${tone === "formal" ? " (يمكن التحول للفصحى المبسطة)" : ""}، ولا تضف معلومات جديدة.${msgs.length ? `\nسياق آخر الرسائل: ${JSON.stringify(msgs)}` : ""}\nأعد: {"text":"..."}\n\nالرسالة:\n"""${text}"""`;
+      max = 500;
+    }
+    if (!rl.hit("ai_hub", user.id)) throw E.rate();
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "messages", system: MS_SYS, maxTokens: max, freeMax: max });
+    const j = parseJSON(o.text), bad = () => fail(502, "bad_output", "لم يرجع النموذج نتيجة مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
+    if (!j) throw bad();
+    let out;
+    if (tool === "catchup") {
+      const ok = new Set(b._msgs.map((m) => m.id));
+      const points = (Array.isArray(j.points) ? j.points : []).map((x) => ({ kind: MS_KINDS.includes(x?.kind) ? x.kind : "info", text: str(typeof x === "string" ? x : x?.text, 300), cites: cites(x?.cites, ok) })).filter((x) => x.text).slice(0, 6);
+      out = { tool, headline: str(j.headline, 220), points, forMe: !!j.forMe, count: b._msgs.length };
+      if (!out.headline && !points.length) throw bad();
+    } else if (tool === "replies") {
+      out = { tool, replies: [...new Set((Array.isArray(j.replies) ? j.replies : []).map((x) => str(x, 160)).filter(Boolean))].slice(0, 3) };
+      if (!out.replies.length) throw bad();
+    } else {
+      out = { tool, text: str(j.text, 2400) }; if (!out.text) throw bad();
+    }
+    out.free = o.free || null;
+    if (b._key) { if (msCache.size > 2000) msCache.delete(msCache.keys().next().value); msCache.set(b._key, { at: Date.now(), out }); }
+    return out;
+  }
   /* ---------- v2.121 «البحث الذكي»: ask the search in plain words; the answer is written ONLY from real posts the reader can see
    * (and their comments, where answers to questions live), each point linked to its posts.
    *   1. retrieval through search v2 (concepts + BM25 + comments); when it finds little, an AI QUERY PLAN rewrites the question
@@ -694,6 +768,8 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/aihub/brief/ask", A(async (req) => askDay(req.user, req.body || {})));
   R.post("/api/aihub/trend", A(async (req) => whyTrend(req.user, req.body || {})));
   R.post("/api/aihub/search", A(async (req) => smartSearch(req.user, req.body || {})));
+  R.post("/api/aihub/messages", A(async (req) => messagesAi(req.user, { ...(req.body || {}), _key: undefined, _msgs: undefined })));
+  R.get("/api/aihub/messages/state", A(async (req) => ({ on: await msgAiOn(req.user.id) })));
   R.post("/api/aihub/community", A(async (req) => community(req.user, { ...(req.body || {}), _key: undefined })));
   R.get("/api/admin/aihub", admin(async () => adminView()));
   R.put("/api/admin/aihub", admin(async (req) => ({ settings: await saveSettings(req.user, req.body || {}) })));
