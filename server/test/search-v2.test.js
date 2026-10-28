@@ -102,3 +102,10 @@ test("v2.124 no noisy «did you mean» when the index already found the post", a
   assert.ok(ids(r).length > 0);
   assert.equal(r.didYouMean, null);
 });
+
+test("v2.124.2 a cross-script sound match is not reported as a spelling fix", async () => {
+  await seed(A.id, "أفضل laptop للبرمجة بميزانية متوسطة");
+  const r = await A.req("GET", "/api/search/full?q=" + encodeURIComponent("لابتوب للبرمجة"));
+  assert.ok(ids(r).length > 0);
+  assert.equal(r.corrected, null);
+});
