@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.125.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "البحث بالمعنى",
+      "items": [
+        "البحث يفهم معنى سؤالك: «رجيم وتخسيس» يلقى منشور «كيف أنزل وزني» حتى بدون كلمات مشتركة",
+        "يفهم العربي والإنجليزي معاً في نفس البحث",
+        "نموذج فهم محلي داخل التطبيق، بدون إرسال بحثك لأي خدمة خارجية",
+        "يعرض النتائج القريبة فعلاً فقط بدل نتائج عشوائية",
+        "يبقى سريعاً حتى مع ملايين المنشورات"
+      ]
+    },
+    "en": {
+      "title": "Search by meaning",
+      "items": [
+        "Search understands what you mean: «diet and weight loss» finds «how do I lose weight» with no shared words",
+        "Arabic and English understood together in one search",
+        "A local understanding model inside the app — your searches go to no outside service",
+        "Shows only genuinely close results instead of random ones",
+        "Stays fast even with millions of posts"
+      ]
+    }
+  },
+  {
     "v": "2.124.3",
     "date": "2026-10-28",
     "ar": {
