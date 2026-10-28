@@ -14,7 +14,8 @@ const { createMeili } = require("../lib/meili");
 const PTYPES = ["post", "article", "question", "poll", "discussion", "video", "audio", "event"];
 const GROUPS = ["people", "posts", "communities", "hashtags"];
 const RT = require("../../richtext.js");
-const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic");
+const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic"), EM = require("../lib/search-embed");
+const SV = 1, VEC_KINDS = new Set(["post", "community"]); // v2.125 meaning vectors (086): model version + which documents carry one
 const IV = 4; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
@@ -55,6 +56,18 @@ module.exports = (ctx) => {
     await vocabDelta([...terms].filter((t) => !old.has(t)), [...old].filter((t) => !terms.has(t)));
     await db.run("UPDATE search_docs SET len=$1 WHERE kind=$2 AND ref_id=$3", [fields[0].len + fields[1].len, doc.kind, doc.id]);
   }
+  /* v2.125 stage 2: the document's meaning vector (raw title + text, not the analysed form — the model reads natural language) */
+  async function writeVector(kind, ref, text, extra) {
+    if (!VEC_KINDS.has(kind) || !EM.available()) return;
+    let v = EM.embed(String(text || "").slice(0, 4000));
+    const xv = extra ? EM.embed(String(extra).slice(0, 2000)) : null; // the answers in the comments add meaning at a quarter weight
+    if (v && xv) { const m = new Float32Array(EM.DIM); let n = 0; for (let d = 0; d < EM.DIM; d++) { m[d] = v[d] + 0.25 * xv[d]; n += m[d] * m[d]; } n = Math.sqrt(n) || 1; for (let d = 0; d < EM.DIM; d++) m[d] /= n; v = m; }
+    await db.run("DELETE FROM search_vec_lsh WHERE kind=$1 AND ref_id=$2", [kind, ref]);
+    if (!v) { await db.run("DELETE FROM search_vec WHERE kind=$1 AND ref_id=$2", [kind, ref]); return; }
+    await db.run("INSERT INTO search_vec(kind,ref_id,v,sv) VALUES($1,$2,$3,$4) ON CONFLICT (kind, ref_id) DO UPDATE SET v=$3, sv=$4", [kind, ref, EM.pack(v), SV]);
+    const bk = EM.bands(v).map((k, b) => b * 256 + k), p = [kind, ref, ...bk];
+    await db.run(`INSERT INTO search_vec_lsh(bk,kind,ref_id) VALUES ${bk.map((_, i) => `($${i + 3},$1,$2)`).join(",")} ON CONFLICT DO NOTHING`, p);
+  }
   async function indexDoc(doc) {
     const body = A.indexText(`${doc.title || ""} ${doc.body || ""}`);
     const old = await db.get("SELECT body FROM search_docs WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id]);
@@ -64,12 +77,14 @@ module.exports = (ctx) => {
     [doc.kind, doc.id, doc.title || null, body, doc.ptype || null, doc.community || null, doc.lang || A.detectLang(doc.body || doc.title || "") || null, doc.author || null, doc.visibility || "public", doc.created_at || now(), extra, Number(doc.quality) || 0, IV]);
     await bumpTerms(old?.body, body, `${doc.title || ""} ${doc.body || ""}`);
     await writePostings(doc);
+    if (!doc._noVec) await writeVector(doc.kind, doc.id, `${doc.title || ""} ${doc.body || ""}`, doc.extra).catch(() => { });
     if (meili) meili.index(doc).catch(e => ctx.jobsState && (ctx.jobsState.meili = { ok: false, error: e.message }));
   }
   async function removeDoc(kind, ref) {
     const old = await db.get("SELECT body FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); if (!old) return;
     await db.run("DELETE FROM search_docs WHERE kind=$1 AND ref_id=$2", [kind, ref]); await bumpTerms(old.body, "");
     await dropPostings(kind, ref);
+    if (VEC_KINDS.has(kind)) { await db.run("DELETE FROM search_vec_lsh WHERE kind=$1 AND ref_id=$2", [kind, ref]).catch(() => { }); await db.run("DELETE FROM search_vec WHERE kind=$1 AND ref_id=$2", [kind, ref]).catch(() => { }); }
     if (meili) meili.remove(kind, ref).catch(() => { });
   }
   /* v2.122: the searchable text of a post = its text + the article body (data.doc, rich text) + poll options, de-duplicated.
@@ -159,6 +174,16 @@ module.exports = (ctx) => {
       await indexDoc({ kind: d.kind, id: d.ref_id, title: d.title, body: d.body, extra: d.extra, ptype: d.ptype, community: d.community, lang: d.lang, author: d.author, visibility: d.visibility, created_at: d.created_at, quality: d.quality }).catch(() => { });
     }
     READY.at = 0;
+    // v2.125: meaning vectors for documents indexed before 086 (or by an older model), 1000 per pass (~0.2 ms each)
+    if (EM.available()) {
+      const miss = await db.all(`SELECT d.kind, d.ref_id FROM search_docs d LEFT JOIN search_vec v ON v.kind=d.kind AND v.ref_id=d.ref_id
+        WHERE d.kind IN ('post','community') AND (v.ref_id IS NULL OR v.sv < ${SV}) LIMIT 1000`).catch(() => []);
+      for (const r of miss) {
+        if (r.kind === "post") { const p = await db.get("SELECT id, title, text, data FROM posts WHERE id=$1", [r.ref_id]); if (p) await writeVector("post", p.id, `${p.title || ""} ${bodyOf(p)}`, (await postExtras(p.id)).extra).catch(() => { }); }
+        else { const c = await db.get("SELECT name, descr FROM communities WHERE id=$1", [r.ref_id]); if (c) await writeVector("community", r.ref_id, `${c.name || ""} ${c.descr || ""}`).catch(() => { }); }
+      }
+      VCOUNT.at = 0;
+    }
     const recent = await db.all("SELECT ref_id FROM search_docs WHERE kind='post' AND created_at > $1 ORDER BY created_at DESC LIMIT 400", [new Date(Date.now() - 7 * 864e5).toISOString()]);
     for (const r of recent) { const x = await postExtras(r.ref_id); await db.run("UPDATE search_docs SET quality=$1 WHERE kind='post' AND ref_id=$2", [x.quality, r.ref_id]); }
     return { upgraded: old.length, refreshed: recent.length, ...rec };
@@ -344,6 +369,9 @@ module.exports = (ctx) => {
   }
   async function postingsIds(q, kinds, f, limit = 200) {
     const cs = await understand(q, f._plan); if (!cs.length) return [];
+    // words of the question the index has never seen (no form, typo, prefix or sound match) still count as unmatched meaning
+    const asked = new Set(AN.words(q).filter((w) => !A.QSTOP.has(w) && !A.STOP.has(w))).size, known = cs.filter((c) => !c.via.includes("ai")).length;
+    const share = f._plan || !asked ? 1 : Math.min(1, known / asked);
     const { n: N, avg } = await corpusP();
     const idf = (t) => { const d = Math.min(N, cs[0].df[t] || 1); return Math.log(1 + (N - d + 0.5) / (d + 0.5)); };
     for (const c of cs) c.idf = Math.max(...[...c.live].map(([t, wt]) => idf(t) * wt)) * (QSOFT.has(c.w) ? 0.3 : 1);
@@ -367,11 +395,11 @@ module.exports = (ctx) => {
         cm.set(r.term, (cm.get(r.term) || 0) + FW[r.f] * Number(r.tf));
       }
     }
-    if (!hits.size) return [];
+    if (!hits.size) return Object.assign([], { share });
     const need = (cs.length <= 2 ? 0.75 : 0.6) * mass;
     const pre = [];
     for (const [key, m] of hits) { let got = 0; for (const ci of m.keys()) got += cs[ci].idf; if (got >= need - 1e-9) pre.push(key); }
-    if (!pre.length) return [];
+    if (!pre.length) return Object.assign([], { share });
     const docs = new Map();
     const where = [], fp = [];
     if (f.ptype) { fp.push(f.ptype); where.push(`(kind<>'post' OR ptype=$X)`); }
@@ -397,16 +425,68 @@ module.exports = (ctx) => {
       }
       s *= got / mass;
       if (r.kind === "post") s += 1.2 / (1 + (Date.now() - Date.parse(r.created_at)) / (14 * 864e5)) + 0.3 * (Number(r.quality) || 0);
-      out.push({ kind: r.kind, id: r.ref_id, s });
+      out.push({ kind: r.kind, id: r.ref_id, s, cov: (got / mass) * share }); // cov: share of the query's (idf-weighted) concepts this document matched
     }
-    return out.sort((a, b) => b.s - a.s).slice(0, limit);
+    return Object.assign(out.sort((a, b) => b.s - a.s).slice(0, limit), { share });
+  }
+  /* v2.125 stage 2 — semantic retrieval: the query's meaning vector against document vectors. Up to ~30k vectors an exact scan
+   * (best quality); beyond that LSH multi-probe candidates (8 bands × 9 probes) then exact cosine on those — stays fast at millions.
+   * The same filters as lexical retrieval apply; visibility is enforced later by run() exactly as for lexical hits. */
+  let VCOUNT = { at: 0, n: 0 };
+  const bruteMax = () => Number(process.env.SEARCH_SEM_BRUTE_MAX ?? 30000); // exact scan up to here, LSH candidates beyond
+  async function semIds(q, kinds, f, limit = 100) {
+    const vk = kinds.map(String).filter((k) => VEC_KINDS.has(k)); if (!vk.length || !EM.available()) return [];
+    const qv = EM.embed(q); if (!qv) return [];
+    if (Date.now() - VCOUNT.at > 60e3) VCOUNT = { at: Date.now(), n: Number((await db.read.get("SELECT COUNT(*) n FROM search_vec").catch(() => null))?.n || 0) };
+    if (!VCOUNT.n) return [];
+    const p = [...vk], where = [];
+    const add = (sql, v) => { p.push(v); where.push(sql.replace("$X", "$" + p.length)); };
+    if (f.ptype) add("(d.kind<>'post' OR d.ptype=$X)", f.ptype);
+    if (f.community) add("d.community=$X", f.community);
+    if (f.lang) add("(d.kind<>'post' OR d.lang=$X)", f.lang);
+    if (f.from) add("(d.kind<>'post' OR d.created_at >= $X)", f.from);
+    if (f.to) add("(d.kind<>'post' OR d.created_at <= $X)", f.to);
+    const kin = `v.kind IN (${vk.map((_, i) => "$" + (i + 1)).join(",")})`, fw = where.length ? " AND " + where.join(" AND ") : "";
+    let rows;
+    if (VCOUNT.n <= bruteMax()) rows = await db.read.all(`SELECT v.kind, v.ref_id, v.v FROM search_vec v JOIN search_docs d ON d.kind=v.kind AND d.ref_id=v.ref_id WHERE ${kin}${fw}`, p);
+    else {
+      const bks = EM.probes(qv).map(([b, k]) => b * 256 + k), o = p.length;
+      rows = await db.read.all(`SELECT DISTINCT v.kind, v.ref_id, v.v FROM search_vec_lsh l JOIN search_vec v ON v.kind=l.kind AND v.ref_id=l.ref_id JOIN search_docs d ON d.kind=v.kind AND d.ref_id=v.ref_id
+        WHERE l.bk IN (${bks.map((_, i) => "$" + (o + i + 1)).join(",")}) AND ${kin.replace(/v\.kind/, "l.kind")}${fw} LIMIT 20000`, [...p, ...bks]);
+    }
+    // static-embedding similarities live in a narrow band that shifts with the query, so each match also gets its z-score against
+    // everything scanned: a real meaning match stands out from the crowd; a uniformly «somewhat similar» field is noise
+    const all = [], out = []; for (const r of rows) { const c = EM.cos(qv, EM.unpack(r.v)); all.push(c); if (c > 0.1) out.push({ kind: r.kind, id: r.ref_id, c }); }
+    const n = all.length, mu = all.reduce((a, b) => a + b, 0) / (n || 1), sd = Math.sqrt(all.reduce((a, b) => a + (b - mu) * (b - mu), 0) / (n || 1)) || 1;
+    for (const x of out) { x.z = (x.c - mu) / sd; x.n = n; }
+    return out.sort((a, b) => b.c - a.c).slice(0, limit);
+  }
+  /* hybrid: Reciprocal Rank Fusion of the lexical (BM25F) and semantic lists. The semantic floor is independent of the lexical one:
+   * a meaning match must be strong in absolute terms AND close to the best meaning match — stricter when words already matched. */
+  const RRF_K = 60;
+  function fuse(lex, sem) {
+    if (!sem.length) return lex;
+    const top = sem[0].c, small = (sem[0].n || 0) < 15; // tiny corpora: z-scores mean little, use a strict absolute floor instead
+    const zMin = lex.length ? 2.2 : 2, floor = small ? Math.max(lex.length ? 0.45 : lex.share === 1 ? 0.5 : 0.35, top * 0.85) : Math.max(lex.length ? 0.12 : lex.share === 1 ? 0.5 : 0.25, top * 0.7); // alone (no document matched the words) a meaning match must be strong in absolute terms — and very strong when every word IS
+    // known to the index (the reader asked for those words together, «رحلة جدة»; semantics must not water that down)
+    const ok = sem.filter((x) => x.c >= floor && (small || x.z >= zMin)).slice(0, 50); if (!ok.length) return lex;
+    const m = new Map();
+    // a lexical hit that matched only part of the question (cov < 1) yields to a strong meaning match; a full match keeps the lead
+    lex.forEach((x, i) => m.set(x.kind + "|" + x.id, { kind: x.kind, id: x.id, s: Math.pow(x.cov ?? 1, 2) / (RRF_K + i + 1), lex: true }));
+    ok.forEach((x, i) => { const k = x.kind + "|" + x.id, e = m.get(k), add = 0.8 / (RRF_K + i + 1); if (e) e.s += add; else m.set(k, { kind: x.kind, id: x.id, s: add, sem: true }); });
+    return [...m.values()].sort((a, b) => b.s - a.s);
   }
   async function engineIds(q, kinds, f) {
     if (meili && !f._plan) {
       try { return { engine: "meilisearch", ids: await meili.search(q, { kinds, ptype: f.ptype, community: f.community, lang: f.lang, from: f.from, to: f.to, limit: 200 }) }; }
       catch (e) { ctx.jobsState.meili = { ok: false, error: e.message, lastRun: now() }; }
     }
-    if (await postingsReady()) return { engine: "index", ids: await postingsIds(q, kinds, f) };
+    if (await postingsReady()) {
+      // with an AI plan, the meaning vector is taken from the AI's rewrite of the question (its expansions sharpen the vector)
+      const sq = f._plan ? [f._plan.rewritten, ...(f._plan.concepts || []).map((c) => c.join(" "))].filter(Boolean).join(" ") : q;
+      const lex = await postingsIds(q, kinds, f), sem = sq ? await semIds(sq, kinds, f).catch(() => []) : [];
+      return { engine: sem.length ? "hybrid" : "index", ids: fuse(lex, sem) };
+    }
     return { engine: "builtin", ids: await builtinIds(q, kinds, f) }; // index still being (re)built: the v2.121 scan keeps working
   }
   async function run(viewer, q, f, { limit = 20 } = {}) {
@@ -433,14 +513,16 @@ module.exports = (ctx) => {
     const q = str(qs.q, 120, { required: true }), f = parseFilters(qs);
     let res = await run(viewer, q, f), corrected = null, didYouMean = null;
     // v2.124: when the index already matched (typos, sound keys, prefixes), the old word-by-word guess only adds noise («بايثن» → «باحثة»)
-    if (res.total < 3 && qs.exact !== "1" && !(res.engine === "index" && res.total > 0)) { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
+    // v2.125: on the index the old word-by-word guesser is off entirely — typo neighbours (fuzziness AUTO), sound keys and meaning
+    // vectors already ran; its guesses turned «محمول» into «محمصة». It stays for the builtin scan used while the index builds.
+    if (res.total < 3 && qs.exact !== "1" && !(res.engine === "index" || res.engine === "hybrid")) { // spelling correction: auto-apply when nothing matched, otherwise suggest (exact=1 opts out)
       const c = await correct(q);
       if (c && A.normalize(c) !== A.normalize(q)) {
         if (res.total === 0) { const r2 = await run(viewer, c, f); if (r2.total) { res = r2; corrected = c; } else didYouMean = c; }
         else didYouMean = c;
       }
     }
-    if (!corrected && res.engine === "index" && res.total > 0 && qs.exact !== "1") { // typo neighbours carried the match → say what we read
+    if (!corrected && (res.engine === "index" || res.engine === "hybrid") && res.total > 0 && qs.exact !== "1") { // typo neighbours carried the match → say what we read
       const u = await understand(q), fixes = new Map(u.filter((c) => c.fix).map((c) => [c.w, c.fix]));
       if (fixes.size) { const words = q.trim().split(/\s+/).map((w) => { const t = AN.words(w)[0]; return t && fixes.has(t) ? fixes.get(t) : w; }); const c = words.join(" "); if (A.normalize(c) !== A.normalize(q)) corrected = c; }
     }
@@ -522,5 +604,5 @@ module.exports = (ctx) => {
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.get("/api/admin/search/coverage", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return coverage(); }));
   r.post("/api/admin/search/reindex", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return { indexed: await reindexAll() }; }));
-  return { IV, search, run, understand, postingsReady, postingsIds, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
+  return { IV, semIds, fuse, writeVector, search, run, understand, postingsReady, postingsIds, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
 };
