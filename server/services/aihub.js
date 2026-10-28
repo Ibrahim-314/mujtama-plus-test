@@ -17,6 +17,7 @@ const crypto = require("node:crypto");
 const P = require("../lib/providers");
 const L = require("../lib/aihub-lib");
 const AR = require("../lib/arabic");
+const MSG_SAFETY = require("../lib/msg-safety");
 const { secret } = require("../lib/secrets");
 
 const OFF_FREE = "الاستخدام المجاني غير مفعّل بعد — اربط حسابك لتبدأ";
@@ -575,7 +576,7 @@ module.exports = (ctx, opts = {}) => {
     return !r || parse(r.value, true) !== false;
   }
   async function messagesAi(user, b) {
-    const tool = str(b.tool, 20); if (!["catchup", "replies", "rewrite"].includes(tool)) throw E.bad("أداة غير معروفة");
+    const tool = str(b.tool, 20); if (!["catchup", "replies", "rewrite", "translate", "extract", "safety"].includes(tool)) throw E.bad("أداة غير معروفة");
     if (!(await msgAiOn(user.id))) throw fail(403, "msg_ai_off", "الذكاء الاصطناعي في الرسائل موقوف من إعداداتك");
     const cid = str(b.cid, 80);
     let conv = null, mem = null;
@@ -591,8 +592,32 @@ module.exports = (ctx, opts = {}) => {
       .map((m) => ({ id: m.id, by: m.sender === user.id ? "أنا" : (m.name || "عضو"), text: m.kind === "voice" ? "[رسالة صوتية]" : (m.kind === "image" ? "[صورة] " : "") + String(m.text || "").replace(/\s+/g, " ").slice(0, 400) }))
       .filter((m) => m.text.trim());
     const fit = (list, cap) => { let t = 0; const out = []; for (let i = list.length - 1; i >= 0; i--) { t += list[i].text.length + 30; if (t > cap) break; out.unshift(list[i]); } return out; };
-    let ask, max = 700;
-    if (tool === "catchup") {
+    let ask, max = 700, one = null;
+    if (tool === "translate" || tool === "safety") { // v2.135: one message the reader can see
+      const mid = str(b.mid, 80);
+      one = mid && await db.get("SELECT id, sender, text, kind, payload, deleted_at, expires_at FROM messages WHERE id=$1 AND conv=$2", [mid, cid]);
+      if (!one || one.deleted_at || one.payload || (one.expires_at && one.expires_at <= now) || !String(one.text || "").trim()) throw E.nf();
+    }
+    if (tool === "translate") {
+      const text = String(one.text).slice(0, 1500), arish = (text.match(/[\u0600-\u06FF]/g) || []).length > text.replace(/\s/g, "").length * 0.3;
+      const to = ["ar", "en"].includes(b.to) ? b.to : (arish ? "en" : "ar");
+      const key = "tr|" + one.id + "|" + to, hit = msCache.get(key);
+      if (hit && Date.now() - hit.at < 6 * 3600e3) return { ...hit.out, cached: true };
+      b._key = key; b._to = to;
+      ask = `ترجم الرسالة التالية إلى ${to === "ar" ? "العربية (فصحى مبسطة قريبة من الكلام اليومي)" : "English (natural, conversational)"}. حافظ على المعنى والأسماء والأرقام والروابط كما هي، ولا تضف شرحاً.\nأعد: {"text":"...","from":"رمز لغة المصدر مثل en أو ar"}\n\nالرسالة:\n"""${text}"""`;
+      max = 600;
+    } else if (tool === "safety") {
+      const x = MSG_SAFETY.scamSignals(one.text);
+      ask = `هل الرسالة التالية في محادثة خاصة على الأرجح احتيال أو تصيّد (طلب رمز تحقق، بيانات بطاقة، كلمة مرور، روابط مختصرة، جوائز وهمية، تحويل أموال، انتحال جهة رسمية)؟ إشارات محلية: ${JSON.stringify(x.reasons)}.\n- risk: high | medium | low\n- reasons: من 1 إلى 3 أسباب قصيرة بالعربية\n- advice: نصيحة عملية واحدة قصيرة\nأعد: {"risk":"...","reasons":[],"advice":"..."}\n\nالرسالة:\n"""${String(one.text).slice(0, 1200)}"""`;
+      max = 350;
+    } else if (tool === "extract") {
+      const msgs = fit(await load(Math.max(10, Math.min(80, Math.floor(Number(b.n) || 40)))), 9000);
+      if (msgs.length < 1) return { tool, items: [], empty: true };
+      const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" }), wd = new Date().toLocaleDateString("ar-SA-u-ca-gregory", { timeZone: "Asia/Riyadh", weekday: "long" });
+      b._msgs = msgs;
+      ask = `استخرج من الرسائل التالية المواعيد والمهام المذكورة صراحة فقط (لا تخترع). اليوم ${wd} ${today} بتوقيت الرياض؛ حوّل «بكرة» و«الأحد» و«الساعة 4 العصر» إلى تاريخ ووقت فعلي بعد اليوم.\n- items: حتى 8 عناصر {"kind":"event|task","title":"عنوان قصير","date":"YYYY-MM-DD أو null","time":"HH:MM بنظام 24 أو null","forMe":true إذا المطلوب من «أنا» أو الموعد يخصه,"cites":["معرّف الرسالة"]}\nأعد: {"items":[]}\n\nالرسائل (JSON):\n${JSON.stringify(msgs)}`;
+      max = 700;
+    } else if (tool === "catchup") {
       const n = Math.max(5, Math.min(150, Math.floor(Number(b.n) || 30)));
       const msgs = fit(await load(n), 14000);
       if (msgs.length < 2) return { tool, headline: "ما فيه رسائل كافية للتلخيص.", points: [], count: msgs.length, empty: true };
@@ -619,7 +644,15 @@ module.exports = (ctx, opts = {}) => {
     const j = parseJSON(o.text), bad = () => fail(502, "bad_output", "لم يرجع النموذج نتيجة مفهومة. أعد المحاولة أو جرّب نموذجاً آخر.");
     if (!j) throw bad();
     let out;
-    if (tool === "catchup") {
+    if (tool === "translate") {
+      out = { tool, text: str(j.text, 3000), to: b._to, from: str(j.from, 8) || null }; if (!out.text) throw bad();
+    } else if (tool === "safety") {
+      out = { tool, risk: ["high", "medium", "low"].includes(j.risk) ? j.risk : "medium", reasons: (Array.isArray(j.reasons) ? j.reasons : []).map((x) => str(x, 160)).filter(Boolean).slice(0, 3), advice: str(j.advice, 220) };
+    } else if (tool === "extract") {
+      const ok = new Set(b._msgs.map((m) => m.id)), D = /^\d{4}-\d{2}-\d{2}$/, T = /^([01]\d|2[0-3]):[0-5]\d$/;
+      out = { tool, items: (Array.isArray(j.items) ? j.items : []).map((x) => ({ kind: x?.kind === "task" ? "task" : "event", title: str(x?.title, 120), date: D.test(x?.date) ? x.date : null, time: T.test(x?.time) ? x.time : null, forMe: !!x?.forMe, cites: cites(x?.cites, ok) }))
+        .filter((x) => x.title && x.cites.length).slice(0, 8) };
+    } else if (tool === "catchup") {
       const ok = new Set(b._msgs.map((m) => m.id));
       const points = (Array.isArray(j.points) ? j.points : []).map((x) => ({ kind: MS_KINDS.includes(x?.kind) ? x.kind : "info", text: str(typeof x === "string" ? x : x?.text, 300), cites: cites(x?.cites, ok) })).filter((x) => x.text).slice(0, 6);
       out = { tool, headline: str(j.headline, 220), points, forMe: !!j.forMe, count: b._msgs.length };
@@ -768,7 +801,7 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/aihub/brief/ask", A(async (req) => askDay(req.user, req.body || {})));
   R.post("/api/aihub/trend", A(async (req) => whyTrend(req.user, req.body || {})));
   R.post("/api/aihub/search", A(async (req) => smartSearch(req.user, req.body || {})));
-  R.post("/api/aihub/messages", A(async (req) => messagesAi(req.user, { ...(req.body || {}), _key: undefined, _msgs: undefined })));
+  R.post("/api/aihub/messages", A(async (req) => messagesAi(req.user, { ...(req.body || {}), _key: undefined, _msgs: undefined, _to: undefined })));
   R.get("/api/aihub/messages/state", A(async (req) => ({ on: await msgAiOn(req.user.id) })));
   R.post("/api/aihub/community", A(async (req) => community(req.user, { ...(req.body || {}), _key: undefined })));
   R.get("/api/admin/aihub", admin(async () => adminView()));
