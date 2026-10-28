@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.131.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "الرائج حسب منطقتك",
+      "items": [
+        "شاشة البحث تعرض الرائج في مدينتك ثم دولتك ثم العالم العربي (من موقع ملفك)",
+        "تقدر تبدّل المنطقة بضغطة",
+        "المواضيع مرتبة حسب نشاط هذا الأسبوع مع عدد المنشورات"
+      ]
+    },
+    "en": {
+      "title": "Trending in your region",
+      "items": [
+        "The search screen shows what's trending in your city, then country, then the Arab world (from your profile location)",
+        "Switch region with one tap",
+        "Topics ranked by this week's activity with post counts"
+      ]
+    }
+  },
+  {
     "v": "2.130.0",
     "date": "2026-10-28",
     "ar": {
