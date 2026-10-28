@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.133.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "بحث أنظف وأذكى",
+      "items": [
+        "البحث يخفي من حظرتهم ومن حظروك والمكتومين والكلمات المكتومة",
+        "المحتوى الحساس أو قيد مراجعة البلاغات ينزل لآخر النتائج",
+        "المنشورات المكررة (سبام) تظهر مرة واحدة، ولا يسيطر حساب واحد على أول النتائج",
+        "البحث يتعلّم من المنشورات التي يفتحها الناس من النتائج (أعداد فقط بلا هوية)",
+        "لوحة «جودة البحث» للإدارة: نسبة البحث بلا نتائج ونسبة النقر والزمن"
+      ]
+    },
+    "en": {
+      "title": "Cleaner, smarter search",
+      "items": [
+        "Search hides people you blocked, who blocked you, muted accounts and muted words",
+        "Sensitive or under-review posts sink to the end",
+        "Duplicate spam shows once, and no single account floods the top",
+        "Search learns from posts people open from results (counts only, no identities)",
+        "An admin «Search quality» panel: zero-result rate, click-through and latency"
+      ]
+    }
+  },
+  {
     "v": "2.132.0",
     "date": "2026-10-28",
     "ar": {
