@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.126.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "البحث يجيب من التعليقات",
+      "items": [
+        "تحت كل سؤال في نتائج البحث تظهر أفضل إجابة: المعتمدة ✓ أو الأكثر إعجاباً",
+        "تلقى السؤال حتى لو بحثت بكلمات من إجابته",
+        "الأسئلة المُجابة تظهر قبل غير المُجابة"
+      ]
+    },
+    "en": {
+      "title": "Search answers from comments",
+      "items": [
+        "Under each question in search results you see its best answer: accepted ✓ or most liked",
+        "Find a question even by words from its answer",
+        "Answered questions show before unanswered ones"
+      ]
+    }
+  },
+  {
     "v": "2.125.0",
     "date": "2026-10-28",
     "ar": {
