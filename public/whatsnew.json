@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.124.3",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "تصحيح إملائي أذكى",
+      "items": [
+        "التصحيح الإملائي ما عاد يبدّل كلمتك بكلمة بعيدة عنها"
+      ]
+    },
+    "en": {
+      "title": "Smarter spelling fixes",
+      "items": [
+        "Spelling correction no longer swaps your word for an unrelated one"
+      ]
+    }
+  },
+  {
     "v": "2.124.2",
     "date": "2026-10-28",
     "ar": {
