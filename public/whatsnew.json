@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.135.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "الذكاء في الرسائل: المرحلة الثانية",
+      "items": [
+        "زر «ترجمة» تحت الرسائل بلغة ثانية صار يشتغل مجاناً بالذكاء، وتقدر ترجع للأصل بضغطة",
+        "«مواعيد ومهام» من زر ✨: يطلع لك المواعيد والمطلوب منك من المحادثة، وتضيف الموعد لتقويمك بضغطة",
+        "تنبيه أحمر على الرسائل اللي شكلها احتيال (طلب رمز تحقق، بيانات بطاقة، روابط مختصرة) مع «ليش؟» يشرح السبب",
+        "ما يُضاف أو يُرسل شي إلا لما تضغط أنت، والمحادثات المشفّرة ما تصل للذكاء"
+      ]
+    },
+    "en": {
+      "title": "AI in messages: stage 2",
+      "items": [
+        "The «Translate» button under messages in another language now works free with AI, and one tap shows the original again",
+        "«Dates & tasks» from the ✨ button lists appointments and what's asked of you, and adds an appointment to your calendar with one tap",
+        "A red warning on messages that look like scams (asking for a verification code, card details, short links), with «Why?» explaining it",
+        "Nothing is added or sent unless you tap, and encrypted chats never reach the AI"
+      ]
+    }
+  },
+  {
     "v": "2.134.0",
     "date": "2026-10-29",
     "ar": {
