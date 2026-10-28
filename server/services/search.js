@@ -445,6 +445,21 @@ module.exports = (ctx) => {
     }
     return Object.assign(out.sort((a, b) => b.s - a.s).slice(0, limit), { share });
   }
+  /* v2.129: X's «word OR word» (uppercase OR): each alternative is retrieved on its own and the lists are merged — a post that matches
+   * several sides adds their scores and ranks first. Without OR this is plain postingsIds. */
+  async function lexIds(q, kinds, f) {
+    // OR binds the words on each side of it (X precedence): «تعلم react OR vue» → «تعلم react» + «تعلم vue»
+    const toks = q.split(/\s+/).filter(Boolean), groups = [];
+    for (let i = 0; i < toks.length; i++) { if (toks[i] === "OR" && groups.length && toks[i + 1] && toks[i + 1] !== "OR") { groups[groups.length - 1].push(toks[++i]); continue; } if (toks[i] !== "OR") groups.push([toks[i]]); }
+    let sides = [""]; for (const g of groups) { sides = sides.flatMap((x) => g.map((w) => (x + " " + w).trim())); if (sides.length > 8) break; }
+    if (sides.length < 2) return postingsIds(q, kinds, f);
+    const m = new Map(); let share = 1;
+    for (const part of sides.slice(0, 8)) {
+      const r = await postingsIds(part, kinds, f); share = Math.min(share, r.share ?? 1);
+      for (const x of r) { const k = x.kind + "|" + x.id, e = m.get(k); if (e) { e.s += x.s; e.cov = Math.max(e.cov ?? 1, x.cov ?? 1); } else m.set(k, { ...x }); }
+    }
+    return Object.assign([...m.values()].sort((a, b) => b.s - a.s).slice(0, 200), { share });
+  }
   /* v2.125 stage 2 — semantic retrieval: the query's meaning vector against document vectors. Up to ~30k vectors an exact scan
    * (best quality); beyond that LSH multi-probe candidates (8 bands × 9 probes) then exact cosine on those — stays fast at millions.
    * The same filters as lexical retrieval apply; visibility is enforced later by run() exactly as for lexical hits. */
@@ -515,7 +530,7 @@ module.exports = (ctx) => {
     if (await postingsReady()) {
       // with an AI plan, the meaning vector is taken from the AI's rewrite of the question (its expansions sharpen the vector)
       const sq = f._plan ? [f._plan.rewritten, ...(f._plan.concepts || []).map((c) => c.join(" "))].filter(Boolean).join(" ") : q;
-      const lex = await postingsIds(q, kinds, f), sem = sq ? await semIds(sq, kinds, f).catch(() => []) : [];
+      const lex = await lexIds(q, kinds, f), sem = sq ? await semIds(sq.replace(/\sOR\s/g, " "), kinds, f).catch(() => []) : [];
       return { engine: sem.length ? "hybrid" : "index", ids: await answeredFirst(fuse(lex, sem)) };
     }
     return { engine: "builtin", ids: await builtinIds(q, kinds, f) }; // index still being (re)built: the v2.121 scan keeps working
@@ -646,7 +661,7 @@ module.exports = (ctx) => {
       for (const o of old) await db.run("DELETE FROM search_history WHERE id=$1", [o.id]);
     }
     ctx.track(viewer?.id, "search_performed", { q, engine: res.engine });
-    return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ops: P.active ? P.ops : null, ...res };
+    return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ops: P.active ? P.ops : null, text: P.active ? P.text : undefined, ...res };
   }
 
   /* ---------- typeahead ---------- */
