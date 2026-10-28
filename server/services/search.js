@@ -517,10 +517,23 @@ module.exports = (ctx) => {
     // a third RRF list: the answered posts in their current order (lexical-only lists are first turned into RRF scores by rank)
     const rrf = !!list.rrf;
     let k = 0;
-    return list.map((x, i) => {
+    const out = list.map((x, i) => {
       const base = rrf ? x.s : 1 / (RRF_K + i + 1), a = x.kind === "post" && ans.has(x.id);
       return { ...x, s: base + (a ? 0.8 / (RRF_K + ++k) : 0), ans: a || undefined };
     }).sort((a, b) => b.s - a.s);
+    return Object.assign(out, { rrf: true });
+  }
+  /* v2.133: learned from clicks — for this exact (normalised) query, posts that readers opened from the results (≥ 2 distinct
+   * reader-days) get a fourth, small RRF list. Counts only; no reader is stored. */
+  async function clickBoost(list, q) {
+    const qn = A.normalize(String(q || "")).replace(/\s+/g, " ").trim().slice(0, 120); if (!qn || !list.length) return list;
+    const top = list.slice(0, 200).filter((x) => x.kind === "post"); if (!top.length) return list;
+    const ids = top.map((x) => x.id);
+    const rows = await db.read.all(`SELECT ref_id, n FROM search_clicks WHERE qn=$1 AND n >= 2 AND ref_id IN (${inList(ids, 1)}) ORDER BY n DESC`, [qn, ...ids]).catch(() => []);
+    if (!rows.length) return list;
+    const rank = new Map(rows.map((r, i) => [r.ref_id, i]));
+    const rrf = !!list.rrf;
+    return Object.assign(list.map((x, i) => ({ ...x, s: (rrf ? x.s : 1 / (RRF_K + i + 1)) + (rank.has(x.id) ? 0.6 / (RRF_K + rank.get(x.id) + 1) : 0) })).sort((a, b) => b.s - a.s), { rrf: true });
   }
   async function engineIds(q, kinds, f) {
     if (meili && !f._plan) {
@@ -531,7 +544,7 @@ module.exports = (ctx) => {
       // with an AI plan, the meaning vector is taken from the AI's rewrite of the question (its expansions sharpen the vector)
       const sq = f._plan ? [f._plan.rewritten, ...(f._plan.concepts || []).map((c) => c.join(" "))].filter(Boolean).join(" ") : q;
       const lex = await lexIds(q, kinds, f), sem = sq ? await semIds(sq.replace(/\sOR\s/g, " "), kinds, f).catch(() => []) : [];
-      return { engine: sem.length ? "hybrid" : "index", ids: await answeredFirst(fuse(lex, sem)) };
+      return { engine: sem.length ? "hybrid" : "index", ids: await clickBoost(await answeredFirst(fuse(lex, sem)), q) };
     }
     return { engine: "builtin", ids: await builtinIds(q, kinds, f) }; // index still being (re)built: the v2.121 scan keeps working
   }
@@ -570,6 +583,34 @@ module.exports = (ctx) => {
     for (const t of ops.tags) add("p.id IN (SELECT post_id FROM post_hashtags WHERE tag = $?)", canonTag(normalizeTag(t)));
     const rows = await db.read.all(`SELECT p.id FROM posts p WHERE ${where.join(" AND ")} ORDER BY p.created_at DESC LIMIT 300`, p);
     return rows.map((r) => ({ kind: "post", id: r.id }));
+  }
+  /* v2.133 stage 10 — safety & quality on the visible candidates:
+   *  • hidden: authors the reader blocked, authors who blocked the reader, muted members/communities, posts hitting muted words
+   *    (the reader's own posts always stay);
+   *  • demoted to the end: posts flagged sensitive or under report review;
+   *  • anti-spam: copies of the same text keep only the first; in «الأبرز» at most 3 posts per author in the top 20. */
+  async function safety(rows, viewer, f) {
+    if (!rows.length) return rows;
+    const me = viewer?.id, pr = viewer?.prefs || {}, mu = pr.muted || {};
+    const blocked = new Set(pr.blocked || []), mutedU = new Set(mu.users || []), mutedC = new Set(mu.communities || []);
+    const blockedMe = new Set();
+    if (me) { const aid = [...new Set(rows.map((r) => r.author))]; for (const u of await db.read.all(`SELECT id, prefs FROM users WHERE id IN (${inList(aid)})`, aid)) { let p = u.prefs; try { p = typeof p === "string" ? JSON.parse(p) : p; } catch { p = null; } if ((p?.blocked || []).includes(me)) blockedMe.add(u.id); } }
+    const seen = new Set();
+    let out = rows.filter((p) => {
+      if (p.author === me) return true;
+      if (blocked.has(p.author) || blockedMe.has(p.author) || mutedU.has(p.author) || (p.community && mutedC.has(p.community))) return false;
+      if (pr.mutedWords?.length && ctx.policy?.mutedWordHit && ctx.policy.mutedWordHit(`${p.title || ""} ${p.text || ""}`, pr.mutedWords)) return false;
+      const sig = A.normalize(`${p.title || ""} ${p.text || ""}`).replace(/\s+/g, " ").trim().slice(0, 200);
+      if (sig.length >= 20) { if (seen.has(sig)) return false; seen.add(sig); }
+      return true;
+    });
+    if (f.sort !== "latest") {
+      const head = [], tail = [], per = new Map();
+      for (const p of out) { const n = per.get(p.author) || 0; if (head.length < 20 && n >= 3) tail.push(p); else { head.push(p); per.set(p.author, n + 1); } }
+      out = [...head, ...tail];
+    }
+    const bad = (p) => !!Number(p.sensitive) || p.moderation === "reported";
+    return [...out.filter((p) => !bad(p)), ...out.filter(bad)];
   }
   /* v2.128: every operator is checked on the candidate posts (≤ 200 after retrieval), after the visibility check */
   async function applyOps(rows, ops, viewer) {
@@ -621,6 +662,7 @@ module.exports = (ctx) => {
     if (want.includes("posts")) { let rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id);
       if (f.media) rows = rows.filter(hasMedia);
       if (f.ops) rows = await applyOps(rows, f.ops, viewer);
+      rows = await safety(rows, viewer, f);
       if (f.sort === "latest") rows = rows.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; await attachAnswers(out.groups.posts.items, viewer); out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
     if (want.includes("communities")) { const rows = (await fetchRows("communities", of("community").slice(0, 100))).filter(c => c.type !== "invite"); out.groups.communities = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.communities.toClient) }; }
     if (want.includes("hashtags")) { // tags are stored canonical but not normalised: compare in normalised space
@@ -634,6 +676,7 @@ module.exports = (ctx) => {
     return out;
   }
   async function search(viewer, qs) {
+    const t0 = Date.now(); // v2.133 metrics
     const q = str(qs.q, 200, { required: true }), f = parseFilters(qs); // v2.128: room for operators
     let res = await run(viewer, q, f), corrected = null, didYouMean = null;
     const P = OPS.parse(q); // v2.128: with operators the reader wrote an exact request — no spelling rewrite, no AI reinterpretation
@@ -663,6 +706,7 @@ module.exports = (ctx) => {
       for (const o of old) await db.run("DELETE FROM search_history WHERE id=$1", [o.id]);
     }
     ctx.track(viewer?.id, "search_performed", { q, engine: res.engine });
+    recordSearch(q, res.total, Date.now() - t0).catch(() => { });
     return { q, normalized: A.normalize(q), corrected, didYouMean, understood, filters: f, ops: P.active ? P.ops : null, text: P.active ? P.text : undefined, ...res };
   }
 
@@ -732,6 +776,34 @@ module.exports = (ctx) => {
     return { trends: tr.trends.slice(0, 8).map(t => ({ tag: t.tag, posts: t.posts, unique: t.unique })), popular: popular.map(p => p.q), topics, scope: chosen, scopes, history: viewer ? (await history(viewer.id)).slice(0, 8) : [] };
   }
 
+  /* v2.133 stage 10 — quality metrics (aggregates only): per-day searches / zero results / clicks / latency, zero-result queries,
+   * and result clicks per query (deduplicated per reader per day in memory; no reader id is written). */
+  const day = () => new Date().toISOString().slice(0, 10);
+  const qnorm = (q) => A.normalize(String(q || "")).replace(/\s+/g, " ").trim().slice(0, 120);
+  async function recordSearch(q, total, ms) {
+    const d = day();
+    await db.run(`INSERT INTO search_metrics(day,searches,zero,clicks,ms) VALUES($1,1,$2,0,$3) ON CONFLICT (day) DO UPDATE SET searches=search_metrics.searches+1, zero=search_metrics.zero+$2, ms=search_metrics.ms+$3`, [d, total ? 0 : 1, Math.min(60000, Math.max(0, Math.round(ms)))]);
+    if (!total) { const qn = qnorm(q); if (qn) await db.run(`INSERT INTO search_zero(qn,q,n,last_at) VALUES($1,$2,1,$3) ON CONFLICT (qn) DO UPDATE SET n=search_zero.n+1, q=$2, last_at=$3`, [qn, String(q).slice(0, 120), now()]); }
+  }
+  const clickSeen = new Map();
+  async function recordClick(viewer, b) {
+    const qn = qnorm(b?.q), pid = str(b?.id, 40); if (!qn || !pid || !/^p_?[\w-]+$/.test(pid)) return { ok: true };
+    const who = viewer?.id || "anon", key = `${day()}|${who}|${qn}|${pid}`;
+    if (clickSeen.has(key)) return { ok: true }; clickSeen.set(key, 1); if (clickSeen.size > 50000) clickSeen.delete(clickSeen.keys().next().value);
+    if (!(await db.read.get("SELECT 1 x FROM posts WHERE id=$1 AND status='published'", [pid]))) return { ok: true };
+    await db.run(`INSERT INTO search_clicks(qn,ref_id,n,last_at) VALUES($1,$2,1,$3) ON CONFLICT (qn, ref_id) DO UPDATE SET n=search_clicks.n+1, last_at=$3`, [qn, pid, now()]);
+    await db.run(`INSERT INTO search_metrics(day,searches,zero,clicks,ms) VALUES($1,0,0,1,0) ON CONFLICT (day) DO UPDATE SET clicks=search_metrics.clicks+1`, [day()]);
+    return { ok: true };
+  }
+  async function metrics(days = 7) {
+    days = Math.min(90, Math.max(1, +days || 7));
+    const since = new Date(Date.now() - (days - 1) * 864e5).toISOString().slice(0, 10);
+    const perDay = (await db.read.all("SELECT day, searches, zero, clicks, ms FROM search_metrics WHERE day >= $1 ORDER BY day", [since])).map((r) => ({ day: r.day, searches: +r.searches, zero: +r.zero, clicks: +r.clicks, avgMs: +r.searches ? Math.round(+r.ms / +r.searches) : null }));
+    const t = perDay.reduce((a, r) => ({ searches: a.searches + r.searches, zero: a.zero + r.zero, clicks: a.clicks + r.clicks, ms: a.ms + (r.avgMs || 0) * r.searches }), { searches: 0, zero: 0, clicks: 0, ms: 0 });
+    const zeroQ = await db.read.all("SELECT q, n, last_at FROM search_zero WHERE last_at >= $1 ORDER BY n DESC, last_at DESC LIMIT 15", [new Date(Date.now() - days * 864e5).toISOString()]);
+    return { days, searches: t.searches, zeroRate: t.searches ? Math.round((t.zero / t.searches) * 1000) / 10 : null, ctr: t.searches ? Math.round((t.clicks / t.searches) * 1000) / 10 : null,
+      avgMs: t.searches ? Math.round(t.ms / t.searches) : null, perDay, zeroQueries: zeroQ.map((r) => ({ q: r.q, n: +r.n, lastAt: r.last_at })), coverage: await coverage(), engine: (await postingsReady()) ? (EM.available() ? "hybrid" : "index") : "builtin" };
+  }
   const r = ctx.router, AU = ctx.requireUser;
   r.get("/api/search/full", async (req) => search(req.user, req.query));
   r.get("/api/search/suggest", async (req) => suggest(req.user, req.query.q));
@@ -744,6 +816,8 @@ module.exports = (ctx) => {
   r.patch("/api/search/saved/:id", AU(async (req) => { await db.run("UPDATE saved_searches SET alert=$1 WHERE id=$2 AND user_id=$3", [req.body.alert ? 1 : 0, req.params.id, req.user.id]); return { ok: true }; }));
   r.post("/api/search/saved/:id/seen", AU(async (req) => { await db.run("UPDATE saved_searches SET new_count=0 WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
+  r.post("/api/search/click", async (req) => recordClick(req.user, req.body || {}));
+  r.get("/api/admin/search/metrics", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return metrics(req.query.days); }));
   r.get("/api/admin/search/coverage", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return coverage(); }));
   r.post("/api/admin/search/reindex", AU(async (req) => { if (req.user.role !== "admin") throw E.forbid(); return { indexed: await reindexAll() }; }));
   return { IV, semIds, fuse, writeVector, search, run, understand, postingsReady, postingsIds, parseFilters, concepts, variants, upgradeIndex, reconcile, coverage, bodyOf, suggest, correct, checkAlerts, reindexAll, indexPost, indexDoc, removeDoc, engineIds, engine: meili ? "meilisearch" : "builtin" };
