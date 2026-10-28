@@ -7,7 +7,8 @@ const { boot } = require("./helpers");
 const { id } = require("../lib/core");
 const { posts, queries } = require("./fixtures/search-eval");
 // Floors ratchet up stage by stage (baseline v2.122 stage 0: ALL recall 0.813, semantic 0.167).
-const FLOOR = { exact: 1, natural: 1, dialect: 1, typo: 0.8, morph: 0.8, comment: 1, article: 1, english: 0.8, mixed: 0.5, semantic: 0.15 };
+// v2.124 (generic understanding on the inverted index): every lexical category at 1; «sound» = loanwords in no list.
+const FLOOR = { exact: 1, natural: 1, dialect: 1, typo: 1, morph: 1, comment: 1, article: 1, english: 1, mixed: 1, sound: 1, semantic: 0.3 };
 let H, db, C; const K = {};
 test.before(async () => {
   H = await boot({ aiOpts: { jobs: false }, assistantOpts: { jobs: false, env: {} } });
