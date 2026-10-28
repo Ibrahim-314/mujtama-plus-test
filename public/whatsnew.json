@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.124.1",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "تحسينات على البحث",
+      "items": [
+        "إخفاء اقتراحات «هل تقصد» الخاطئة عندما يجد البحث النتيجة",
+        "البحث الجديد يعمل حتى لو بقيت عناصر قديمة قيد التحديث"
+      ]
+    },
+    "en": {
+      "title": "Search refinements",
+      "items": [
+        "No misleading «did you mean» when search already found results",
+        "The new search engine stays on while old items are being refreshed"
+      ]
+    }
+  },
+  {
     "v": "2.124.0",
     "date": "2026-10-28",
     "ar": {
