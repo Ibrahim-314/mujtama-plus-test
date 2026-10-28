@@ -3398,5 +3398,7 @@
 "مولّد بالذكاء من منشورات حقيقية — تحقّق من المصادر": "AI-generated from real posts — check the sources",
 "البحث الذكي": "Smart search",
 /* v2.126 search stage 3: best answer under questions */
-"الإجابة المعتمدة": "Accepted answer"
+"الإجابة المعتمدة": "Accepted answer",
+/* v2.127 search tabs */
+"الأبرز": "Top"
 });
