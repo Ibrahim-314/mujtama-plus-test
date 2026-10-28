@@ -84,7 +84,7 @@ body.mp-offline .mp-off{opacity:1;transform:none}
   const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
   const fmtVer = (v) => { v = String(v || "").replace(/^mp-/, "").replace(/^v/i, ""); return isEn() ? v : v.replace(/\d/g, (d) => AR_DIGITS[d]).replace(/\./g, "٫"); };
   const notesFetch = () => fetch("/whatsnew.json?t=" + Date.now(), { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-  const notesOf = (list, v) => { v = String(v || "").replace(/^mp-/, ""); const n = (Array.isArray(list) ? list : []).find((x) => x && x.v === v) || (Array.isArray(list) ? list[0] : null); return n ? { v: n.v, ...(isEn() ? n.en : n.ar) } : null; };
+  const notesOf = (list, v) => { v = String(v || "").replace(/^mp-/, ""); const n = (Array.isArray(list) ? list : []).find((x) => x && x.v === v) || null; return n ? { v: n.v, ...(isEn() ? n.en : n.ar) } : null; };
   const swVersion = (w) => new Promise((res) => { if (!w) return res(null); try { const ch = new MessageChannel(); ch.port1.onmessage = (e) => res(/^\d+\.\d+/.test(String(e.data || "")) ? e.data : null); w.postMessage("mp-app-version", [ch.port2]); } catch { return res(null); } setTimeout(() => res(null), 800); });
   const listHtml = (items, max) => `<ul>${(items || []).slice(0, max).map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
   async function offerUpdate(reg) {
