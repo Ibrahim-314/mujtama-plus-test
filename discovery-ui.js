@@ -561,8 +561,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       <div class="s-filters" role="group" aria-label="نوع النتائج">${TYPES.map(([k, l]) => `<button class="tab ${SR.type === k ? "on" : ""}" data-type="${k}" aria-pressed="${SR.type === k}">${l}</button>`).join("")}
       <select id="s-date" aria-label="التاريخ"><option value="">أي وقت</option><option value="day">آخر يوم</option><option value="week">آخر أسبوع</option><option value="month">آخر شهر</option><option value="year">آخر سنة</option></select>
       <select id="s-lang" aria-label="اللغة"><option value="">كل اللغات</option><option value="ar">العربية</option><option value="en">English</option></select>
-      <select id="s-comm" aria-label="المجتمع"><option value="">كل المجتمعات</option>${DB.communities.filter(c => S.membership(c.id)).map(c => `<option value="${h(c.id)}">${h(c.name)}</option>`).join("")}</select></div></div>
+      <select id="s-comm" aria-label="المجتمع"><option value="">كل المجتمعات</option>${DB.communities.filter(c => S.membership(c.id)).map(c => `<option value="${h(c.id)}">${h(c.name)}</option>`).join("")}</select><button class="tab" id="s-adv-btn" aria-expanded="false" aria-controls="s-adv">${ic("list", "sm")}<span>بحث متقدم</span></button></div></div>
+      <div id="s-adv" hidden></div>
       <div id="s-body" aria-live="polite"></div></div>`;
+    $("#s-adv-btn").onclick = () => advToggle();
     for (const [id, k] of [["#s-date", "date"], ["#s-lang", "lang"], ["#s-comm", "community"]]) { const el = $(id); el.value = SR[k]; el.onchange = () => { SR[k] = el.value; if (SR.q) runSearch(); }; }
     view.querySelectorAll("[data-type]").forEach(b => b.onclick = () => { SR.type = b.dataset.type; view.querySelectorAll("[data-type]").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); }); if (SR.q) runSearch(); });
     const inp = $("#sq2"), sugg = $("#s-sugg"), combo = inp; // ARIA 1.2: the input itself is the combobox
@@ -605,6 +607,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     body.querySelectorAll("[data-hdel]").forEach(b => b.onclick = async () => { await api("DELETE", "/api/search/history/" + b.dataset.hdel); b.closest(".s-hist").remove(); live("حُذف من السجل"); });
     body.querySelectorAll("[data-ss]").forEach(a => a.addEventListener("click", () => api("POST", `/api/search/saved/${a.dataset.ss}/seen`).catch(() => { })));
   }
+  /* v2.129 search stage 6 — «بحث متقدم»: a form that writes the operators for you (the query box shows exactly what will run) */
+  const ADV = [["all", "كل هذه الكلمات", "مثال: تعلم بايثون"], ["phrase", "هذه العبارة بالضبط", "مثال: من الصفر"], ["any", "أي من هذه الكلمات", "مثال: react vue"],
+    ["none", "بدون هذه الكلمات", "مثال: جافا"], ["from", "من الحساب", "@اسم_المستخدم"], ["mention", "يذكر الحساب", "@اسم_المستخدم"], ["tag", "الوسم", "#وسم"],
+    ["near", "قرب مكان", "مثال: جدة"]];
+  function advBuild(fd) {
+    const g = (k) => String(fd.get(k) || "").trim(), parts = [];
+    if (g("all")) parts.push(g("all"));
+    if (g("phrase")) parts.push(`"${g("phrase").replace(/"/g, "")}"`);
+    if (g("any")) parts.push(g("any").split(/\s+/).join(" OR "));
+    for (const w of g("none").split(/\s+/).filter(Boolean)) parts.push("-" + w.replace(/^-/, ""));
+    for (const h of g("from").split(/[\s,]+/).filter(Boolean)) parts.push("from:" + h.replace(/^@/, ""));
+    for (const h of g("mention").split(/[\s,]+/).filter(Boolean)) parts.push("@" + h.replace(/^@/, ""));
+    for (const t of g("tag").split(/[\s,]+/).filter(Boolean)) parts.push("#" + t.replace(/^#/, ""));
+    if (g("near")) parts.push("near:" + g("near").replace(/\s+/g, "_"));
+    if (g("since")) parts.push("since:" + g("since")); if (g("until")) parts.push("until:" + g("until"));
+    if (+g("faves") > 0) parts.push("min_faves:" + (+g("faves"))); if (+g("replies") > 0) parts.push("min_replies:" + (+g("replies")));
+    if (g("kind")) parts.push("filter:" + g("kind")); if (g("lang")) parts.push("lang:" + g("lang"));
+    return parts.join(" ").slice(0, 200);
+  }
+  function advToggle(force) {
+    const box = $("#s-adv"), btn = $("#s-adv-btn"); if (!box || !btn) return;
+    const open = force ?? box.hidden; btn.setAttribute("aria-expanded", String(open)); box.hidden = !open;
+    if (!open) { box.innerHTML = ""; return; }
+    box.innerHTML = `<form class="card s-adv" id="s-adv-f" aria-label="بحث متقدم"><div class="s-adv-g">${ADV.map(([k, l, ph]) => `<label><span>${l}</span><input name="${k}" placeholder="${h(ph)}" autocomplete="off"></label>`).join("")}
+      <label><span>من تاريخ</span><input type="date" name="since"></label><label><span>إلى تاريخ</span><input type="date" name="until"></label>
+      <label><span>أقل عدد إعجابات</span><input type="number" min="0" inputmode="numeric" name="faves"></label><label><span>أقل عدد ردود</span><input type="number" min="0" inputmode="numeric" name="replies"></label>
+      <label><span>النوع</span><select name="kind"><option value="">الكل</option><option value="media">وسائط</option><option value="images">صور</option><option value="videos">فيديو</option><option value="links">روابط</option><option value="questions">أسئلة</option><option value="polls">تصويتات</option><option value="articles">مقالات</option></select></label>
+      <label><span>اللغة</span><select name="lang"><option value="">كل اللغات</option><option value="ar">العربية</option><option value="en">English</option></select></label></div>
+      <p class="muted s-adv-prev" id="s-adv-prev" aria-live="polite"></p>
+      <div class="s-adv-a"><button class="btn" type="submit">${ic("search", "sm")}<span>ابحث</span></button><button class="btn ghost" type="reset">مسح</button><button class="btn ghost" type="button" id="s-adv-x">إغلاق</button></div></form>`;
+    const f = $("#s-adv-f"), prev = $("#s-adv-prev"), upd = () => { const q = advBuild(new FormData(f)); prev.innerHTML = q ? `سيُبحث عن: <bdi dir="auto">${h(q)}</bdi>` : "املأ حقلاً واحداً على الأقل"; };
+    f.oninput = upd; f.onreset = () => setTimeout(upd); upd();
+    $("#s-adv-x").onclick = () => advToggle(false);
+    f.onsubmit = (e) => { e.preventDefault(); const q = advBuild(new FormData(f)); if (!q) return; const inp = $("#sq2"); if (inp) inp.value = q; SR.q = q; advToggle(false); runSearch(); };
+    f.querySelector("input")?.focus();
+  }
   async function runSearch(qOverride) {
     const q = qOverride || SR.q; const body = $("#s-body"); if (!body || !q) return;
     if (location.hash !== "#/search/" + enc(q)) history.replaceState(null, "", "#/search/" + enc(q));
@@ -646,11 +684,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
    * every point linked to its posts. Offered on top for a question-like query or an empty result, as a small button otherwise;
    * made on request (saves the AI allowance). Follow-up chips search and ask again. */
   const QW = /(^|\s)(وش|ايش|شو|شنو|ليش|ليه|كيف|شلون|وين|فين|مين|منو|متى|كم|هل|ابي|ابغى|ابغا|تنصحوني|احد|حد|what|how|where|who|why|which|best)(\s|$)/i;
-  function smartBox(body, q, r) {
+  function smartBox(body, q0, r) {
+    // v2.129: with operators the card talks about the reader's words only; operators alone (from:x) offer no AI card
+    if (r.ops && !r.text) return; const q = r.ops ? r.text : q0;
     const big = /[؟?]/.test(q) || QW.test(q) || q.trim().split(/\s+/).length >= 4 || !r.total;
     body.insertAdjacentHTML("afterbegin", big ? `<section class="card dbr s-ai" id="s-ai" aria-label="البحث الذكي"><div class="dbr-h">${ic("sparkle", "sm")}<b>اسأل الذكاء</b></div><div id="s-ai-o"><p class="muted u-m0 u-mt6">يقرأ المنشورات وتعليقاتها ويجاوبك باختصار مع المصادر.</p><button class="btn dbr-go" id="s-ai-go">${ic("sparkle", "xs")} جاوبني</button></div></section>`
       : `<div class="s-ai-mini" id="s-ai"><button class="btn ghost sm" id="s-ai-go">${ic("sparkle", "xs")} اسأل الذكاء عن «${h(q)}»</button><div id="s-ai-o"></div></div>`);
-    const go = $("#s-ai-go"); go.onclick = () => smartAsk(q); if (SR.autoAsk) { SR.autoAsk = false; smartAsk(q); }
+    const go = $("#s-ai-go"); go.onclick = () => smartAsk(q0); if (SR.autoAsk) { SR.autoAsk = false; smartAsk(q0); }
   }
   async function smartAsk(q, refresh) {
     const box = $("#s-ai"), out = $("#s-ai-o"); if (!box || !out) return;
@@ -830,7 +870,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   /* v2.117 «نشرتك الذكية» — AI from «مركز الذكاء» (member's linked account for «digest», else the free daily allowance).
    * Made on request (saves the allowance), kept 2 h server-side; every point links to the posts it came from. */
   const BR_T = { top: ["sparkle", "الأبرز اليوم"], people: ["users", "من الناس اللي تتابعهم"], communities: ["home", "في مجتمعاتك"], topics: ["hash", "مواضيع قد تهمك"] };
-  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}.dask-f{display:flex;gap:8px;margin-top:10px}.dask-f input{flex:1;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit}.dask-a b{display:block;margin-bottom:4px}.dwhy{margin-top:12px}.dbr-o{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}.s-ai{margin-bottom:12px}.s-ai-mini{margin:4px 0 10px}.s-ai-mini .btn{min-height:44px}.dbr-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}.dbr-seg button{font:inherit;font-size:.8em;min-height:36px;padding:4px 12px;border:0;background:transparent;color:inherit}.dbr-seg button[aria-pressed=true]{background:var(--accent);color:#fff}.dbr [data-say][aria-pressed=true]{color:var(--accent);border-color:var(--accent)}.dbr-c button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}.s-ans{display:block;margin:-6px 0 12px;padding:10px 12px;border-inline-start:3px solid var(--accent);text-decoration:none;color:inherit}.s-ans-ok{border-inline-start-color:var(--ok,#1a9e5c)}.s-ans-h{display:flex;gap:6px;align-items:center;font-size:.85em}.s-ans-ok .s-ans-h b{color:var(--ok,#1a9e5c)}.s-ans-l{margin-inline-start:auto;display:inline-flex;gap:3px;align-items:center}.s-ans-t{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;line-height:1.6}.s-ans-m{display:block;font-size:.8em;margin-top:4px}"; document.head.appendChild(st); }
+  if (!document.getElementById("dbr-css")) { const st = document.createElement("style"); st.id = "dbr-css"; st.textContent = ".dbr{position:relative;overflow:hidden;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line))}.dbr:before{content:'';position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#4f22d1,#c04cf0,#22c3e6)}.dbr-h{display:flex;gap:8px;align-items:center}.dbr-h b{flex:1}.dbr-lead{font-size:1.05em;font-weight:600;margin:10px 0 4px;line-height:1.6}.dbr-sec{margin-top:14px}.dbr-sec>h3{display:flex;gap:6px;align-items:center;font-size:.95em;margin:0 0 6px;color:var(--accent)}.dbr-it{padding:8px 0;border-top:1px solid var(--line);line-height:1.6}.dbr-it:first-of-type{border-top:0}.dbr-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.dbr-c button{font:inherit;font-size:.8em;min-height:32px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:inherit}.dbr .btn{min-height:44px}.dbr-go{margin-top:10px;width:100%;background:linear-gradient(135deg,#4f22d1,#c04cf0);border:0;color:#fff}.dbr-f{display:flex;gap:8px;align-items:center;margin-top:12px}.dbr-f span{flex:1}.dask-f{display:flex;gap:8px;margin-top:10px}.dask-f input{flex:1;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit}.dask-a b{display:block;margin-bottom:4px}.dwhy{margin-top:12px}.dbr-o{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}.s-ai{margin-bottom:12px}.s-ai-mini{margin:4px 0 10px}.s-ai-mini .btn{min-height:44px}.dbr-seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}.dbr-seg button{font:inherit;font-size:.8em;min-height:36px;padding:4px 12px;border:0;background:transparent;color:inherit}.dbr-seg button[aria-pressed=true]{background:var(--accent);color:#fff}.dbr [data-say][aria-pressed=true]{color:var(--accent);border-color:var(--accent)}.dbr-c button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}.s-ans{display:block;margin:-6px 0 12px;padding:10px 12px;border-inline-start:3px solid var(--accent);text-decoration:none;color:inherit}.s-ans-ok{border-inline-start-color:var(--ok,#1a9e5c)}.s-ans-h{display:flex;gap:6px;align-items:center;font-size:.85em}.s-ans-ok .s-ans-h b{color:var(--ok,#1a9e5c)}.s-ans-l{margin-inline-start:auto;display:inline-flex;gap:3px;align-items:center}.s-ans-t{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;line-height:1.6}.s-ans-m{display:block;font-size:.8em;margin-top:4px}.s-adv{margin:10px 0}.s-adv-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}.s-adv label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:650}.s-adv input,.s-adv select{min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2);color:inherit;font:inherit;font-weight:400}.s-adv-prev{margin:12px 0 0;font-size:13px;word-break:break-word}.s-adv-a{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.s-adv-a .btn{min-height:44px}"; document.head.appendChild(st); }
   function briefHTML(r) {
     const b = r.brief, src = b.sources || {};
     const cite = (id) => { const m = src[id]; return m ? `<button data-cite="${h(id)}" aria-label="افتح المصدر">${ic("link", "xs")} <bdi>${h(m.community || m.by || "المصدر")}</bdi></button>` : ""; };
