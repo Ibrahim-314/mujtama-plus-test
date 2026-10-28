@@ -286,7 +286,7 @@ module.exports = (ctx) => {
   }
   async function neighbours(w) { // spelling neighbours of an unknown word that ARE in the index
     if (w.length < 3 || /\d/.test(w)) return [];
-    const max = w.length <= 4 ? 1 : 2;
+    const max = w.length <= 5 ? 1 : 2; // v2.124.2: fuzziness AUTO (Lucene): 1 edit up to 5 letters, 2 beyond — «ابتوب» must not become «اكتب»
     const rows = await db.read.all("SELECT term, df FROM search_vocab WHERE df > 0 AND len BETWEEN $1 AND $2 AND (SUBSTR(term,1,1)=$3 OR SUBSTR(term,2,1)=$4 OR SUBSTR(term,LENGTH(term),1)=$5) ORDER BY df DESC LIMIT 4000",
       [w.length - max, w.length + max, w[0], w[1], w[w.length - 1]]);
     return rows.map((r) => ({ t: r.term, d: A.distance(w, r.term, max), df: Number(r.df) })).filter((x) => x.d <= max).sort((a, b) => a.d - b.d || b.df - a.df).slice(0, 4);
