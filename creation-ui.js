@@ -238,7 +238,7 @@
    * «studio» feature, else the app's free daily allowance. POST /api/aihub/studio {tool: meta|translate|check, text, lang}. Text is not stored. */
   const AI_KIND = { spelling: "إملاء", clarity: "وضوح", tone: "نبرة", sensitive: "حساس", privacy: "خصوصية", length: "طول" };
   /* AI-tab styles load with the tab (keeps the main stylesheet under its 16 KB budget) */
-  const SAI_CSS = ".sai .sai-in{width:100%;margin:10px 0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2,transparent);color:inherit;font:inherit;resize:vertical;min-height:120px}.sai-acts{display:flex;flex-wrap:wrap;gap:8px}.sai-acts .btn{min-height:44px}.sai-res b{display:block;margin:12px 0 6px}.sai-res b:first-child{margin-top:0}.sai-row{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.sai-row:last-child{border-bottom:0}.sai-row .btn,.sai-res .row .btn,.sai-err .btn{min-height:40px}.sai-pre{white-space:pre-wrap}.sai-score{font-weight:700;padding:4px 10px;border-radius:999px;background:var(--bg-2)}.sai-score.ok{color:var(--ok-ink)}.sai-score.mid{color:var(--warn)}.sai-score.low{color:var(--danger-ink)}.sai-issue{display:flex;gap:8px;align-items:flex-start;padding:8px 0}.sai-warn{color:var(--danger-ink);font-weight:600}.sai-tip p{margin:6px 0 0}.sai-free{margin:6px 4px}.sai-main{background:linear-gradient(135deg,var(--accent),var(--brand-2));border:0;color:var(--on-accent,white)}.sai2 .sai-sub{display:block;margin:14px 0 6px}.sai-posts{display:flex;flex-direction:column;gap:6px}.sai-post{display:flex;gap:8px;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2);color:inherit;font:inherit;text-align:start}.sai-post:disabled{opacity:.55}.sai-head{font-weight:600;margin:0 0 6px}.sai-ul{margin:4px 0 8px;padding-inline-start:20px}.sai-reply{padding:10px 0;border-top:1px solid var(--line)}.sai-reply .sai-in{margin:6px 0;min-height:64px}";
+  const SAI_CSS = ".sai-sub{display:block;margin:14px 0 6px}.sai-idea{padding:10px 0;border-top:1px solid var(--line)}.sai-idea .btn{margin-top:6px;min-height:40px}.sai-time{margin-top:10px}.sai-time .btn{min-height:40px}.sai .sai-in{width:100%;margin:10px 0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg-2,transparent);color:inherit;font:inherit;resize:vertical;min-height:120px}.sai-acts{display:flex;flex-wrap:wrap;gap:8px}.sai-acts .btn{min-height:44px}.sai-res b{display:block;margin:12px 0 6px}.sai-res b:first-child{margin-top:0}.sai-row{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.sai-row:last-child{border-bottom:0}.sai-row .btn,.sai-res .row .btn,.sai-err .btn{min-height:40px}.sai-pre{white-space:pre-wrap}.sai-score{font-weight:700;padding:4px 10px;border-radius:999px;background:var(--bg-2)}.sai-score.ok{color:var(--ok-ink)}.sai-score.mid{color:var(--warn)}.sai-score.low{color:var(--danger-ink)}.sai-issue{display:flex;gap:8px;align-items:flex-start;padding:8px 0}.sai-warn{color:var(--danger-ink);font-weight:600}.sai-tip p{margin:6px 0 0}.sai-free{margin:6px 4px}.sai-main{background:linear-gradient(135deg,var(--accent),var(--brand-2));border:0;color:var(--on-accent,white)}.sai2 .sai-sub{display:block;margin:14px 0 6px}.sai-posts{display:flex;flex-direction:column;gap:6px}.sai-post{display:flex;gap:8px;align-items:center;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2);color:inherit;font:inherit;text-align:start}.sai-post:disabled{opacity:.55}.sai-head{font-weight:600;margin:0 0 6px}.sai-ul{margin:4px 0 8px;padding-inline-start:20px}.sai-reply{padding:10px 0;border-top:1px solid var(--line)}.sai-reply .sai-in{margin:6px 0;min-height:64px}";
   async function stAI(body) {
     if (!document.getElementById("sai-css")) { const st = document.createElement("style"); st.id = "sai-css"; st.textContent = SAI_CSS; document.head.appendChild(st); }
     const draft = view._aiText || "";
@@ -251,6 +251,10 @@
         <button class="btn outline" data-sai="translate" data-lang="en">ترجم إلى English</button>
         <button class="btn outline" data-sai="translate" data-lang="ar">ترجم إلى العربية</button>
       </div>
+      <b class="sai-sub">حوّل منشورك إلى</b><div class="sai-acts">
+        <button class="btn outline" data-sai="repurpose" data-to="thread">سلسلة</button><button class="btn outline" data-sai="repurpose" data-to="story">قصة</button>
+        <button class="btn outline" data-sai="repurpose" data-to="clip">نص مقطع قصير</button><button class="btn outline" data-sai="repurpose" data-to="summary">ملخص قصير</button>
+      </div>
       <p class="muted u-t-xs sai-note">يعمل بحسابك المرتبط في «مركز الذكاء» أو بالرصيد المجاني اليومي. لا نخزّن نصك.</p>
     </div><div id="sai-out" aria-live="polite"></div>
     <div class="card sai2"><div class="row"><b class="grow">${ic("chart", "sm")} بعد النشر</b></div>
@@ -258,12 +262,21 @@
       <div class="sai-acts"><button class="btn sai-main" data-sai2="insights">${ic("sparkle", "xs")} اشرح أرقامي</button></div>
       <b class="sai-sub">لخّص تعليقات منشور</b><div id="sai2-posts" class="sai-posts"><div class="skel"></div></div>
     </div><div id="sai2-out" aria-live="polite"></div>
+    <div class="card sai3"><b>${ic("calendar", "sm")} خطّط لأسبوعك</b>
+      <p class="muted u-t-xs">أفكار منشورات مبنية على ما نجح عندك، وأفضل وقت تنشر فيه حسب نشاط متابعيك.</p>
+      <div class="sai-acts"><button class="btn sai-main" data-sai2="ideas">${ic("sparkle", "xs")} أفكار لهذا الأسبوع</button></div>
+      <div id="sai3-time" class="sai-time"></div>
+    </div><div id="sai3-out" aria-live="polite"></div>
     <div class="card sai-tip"><b>نصيحة</b><p class="muted">اكتب فكرتك بكلماتك أولاً، ثم اطلب العناوين والهاشتاقات. افحص المنشور قبل النشر لتتجنّب الأخطاء ومشاركة معلومات شخصية.</p></div>`;
     const inp = body.querySelector("#sai-in"), out = body.querySelector("#sai-out");
     inp.addEventListener("input", () => { view._aiText = inp.value; });
-    body.querySelectorAll("[data-sai]").forEach((b) => b.onclick = () => runAI(b.dataset.sai, b.dataset.lang, inp, out, b));
+    body.querySelectorAll("[data-sai]").forEach((b) => b.onclick = () => runAI(b.dataset.sai, b.dataset.lang, inp, out, b, b.dataset.to));
     const out2 = body.querySelector("#sai2-out"), posts = body.querySelector("#sai2-posts");
     if (view._ai2) { out2.innerHTML = view._ai2; wire2(out2); }
+    const out3 = body.querySelector("#sai3-out");
+    if (view._ai3) { out3.innerHTML = view._ai3; wire3(out3); }
+    body.querySelector('[data-sai2="ideas"]').onclick = () => runAI2({ tool: "ideas" }, out3, body, "sai3-out");
+    bestSlot(body.querySelector("#sai3-time"), inp);
     if (view._ai1) { out.innerHTML = view._ai1; wireAI(out, inp); }
     body.querySelector('[data-sai2="insights"]').onclick = () => runAI2({ tool: "insights" }, out2, body);
     try {
@@ -285,9 +298,30 @@
       catch (e) { b.disabled = false; toast(e.message); }
     });
   }
-  async function runAI2(req, out, root) {
+  const FMT = { post: "منشور", story: "قصة", clip: "مقطع", thread: "سلسلة", poll: "استطلاع" };
+  function wire3(out) {
+    out.querySelectorAll("[data-idea]").forEach((b) => b.onclick = () => {
+      const inp = document.getElementById("sai-in"); if (!inp) return;
+      inp.value = b.dataset.idea; view._aiText = inp.value; inp.scrollIntoView({ block: "center", behavior: "smooth" }); inp.focus(); toast("✓ وُضعت الفكرة في المسودة");
+    });
+  }
+  /* smart scheduling: the next occurrence of the audience's best slot (or a sensible default); scheduling happens in the composer, only when the creator presses «جدولة» */
+  async function bestSlot(box, inp) {
+    try {
+      const r = await api("GET", "/api/studio/best-time?tz=" + (-new Date().getTimezoneOffset()));
+      const s0 = (r.enough ? r.best : r.fallback)?.[0]; if (!s0 || !box.isConnected) return;
+      const now = new Date(), at = new Date(now); at.setHours(s0.hour, 0, 0, 0);
+      at.setDate(at.getDate() + ((s0.day - now.getDay() + 7) % 7)); if (at <= new Date(now.getTime() + 15 * 60e3)) at.setDate(at.getDate() + 7);
+      const local = `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}T${String(at.getHours()).padStart(2, "0")}:00`;
+      box.innerHTML = `<div class="sai-row"><div class="grow"><b>${r.enough ? "أفضل وقت قادم" : "وقت مقترح"}</b><div class="muted u-t-xs">${DAYS[at.getDay()]} ${s0.hour}:00${r.enough ? " — أنشط وقت لمتابعيك" : " — حتى تتجمع بيانات متابعيك"}</div></div>
+        <button class="btn outline sm" data-sched="${local}">${ic("calendar", "xs")} جدول مسودتك</button></div>`;
+      box.querySelector("[data-sched]").onclick = (e) => composer({ data: { markdown: (document.getElementById("sai-in") || inp).value.trim(), publishAt: e.currentTarget.dataset.sched } });
+    } catch { /* optional hint */ }
+  }
+  async function runAI2(req, out, root, oid = "sai2-out") {
     /* the studio can re-render while the model thinks: write into the panel that is on screen now */
-    const put = (h) => { view._ai2 = h; const o = out.isConnected ? out : document.getElementById("sai2-out"); if (o) { o.innerHTML = h; out = o; wire2(o); } };
+    const three = oid === "sai3-out";
+    const put = (h) => { view[three ? "_ai3" : "_ai2"] = h; const o = out.isConnected ? out : document.getElementById(oid); if (o) { o.innerHTML = h; out = o; (three ? wire3 : wire2)(o); } };
     const all = root.querySelectorAll("[data-sai2]"), was = [...all].map((x) => x.disabled); all.forEach((x) => x.disabled = true);
     out.innerHTML = `<div class="card"><div class="skel"></div><div class="skel"></div></div>`; out.setAttribute("aria-busy", "true");
     try {
@@ -295,7 +329,10 @@
       if (r.empty) { put(`<div class="card sai-res"><p class="muted">${esc(r.message || "لا بيانات كافية بعد")}</p></div>`); return; }
       const x = r.result || {}, free = r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "";
       const ul = (h, a) => a?.length ? `<b>${h}</b><ul class="sai-ul">${a.map((t) => `<li><bdi>${esc(t)}</bdi></li>`).join("")}</ul>` : "";
-      if (r.tool === "insights") put(`<div class="card sai-res">${x.headline ? `<p class="sai-head"><bdi>${esc(x.headline)}</bdi></p>` : ""}
+      if (r.tool === "ideas") put(`<div class="card sai-res"><b>أفكار لهذا الأسبوع</b>${(x.ideas || []).map((d) => `<div class="sai-idea"><div class="row"><b class="grow"><bdi>${esc(d.title)}</bdi></b><span class="chip">${FMT[d.format] || FMT.post}</span></div>
+        ${d.hook ? `<div><bdi>${esc(d.hook)}</bdi></div>` : ""}${d.why ? `<div class="muted u-t-xs"><bdi>${esc(d.why)}</bdi></div>` : ""}
+        <button class="btn ghost sm" data-idea="${esc(d.hook || d.title)}">${ic("pen", "xs")} اكتبها</button></div>`).join("")}</div>${free}`);
+      else if (r.tool === "insights") put(`<div class="card sai-res">${x.headline ? `<p class="sai-head"><bdi>${esc(x.headline)}</bdi></p>` : ""}
         ${(x.points || []).map((pt) => `<div class="sai-issue"><div class="grow"><b><bdi>${esc(pt.title)}</bdi></b><div class="muted"><bdi>${esc(pt.detail)}</bdi></div></div></div>`).join("")}
         ${ul("جرّب هذا الأسبوع", x.actions)}</div>${free}`);
       else {
@@ -312,13 +349,13 @@
       put(`<div class="card sai-err"><p>${esc(e.message || "تعذّر الطلب")}</p>${link ? `<a class="btn sm" href="#/aihub">اربط حسابك في مركز الذكاء</a>` : ""}</div>`);
     } finally { all.forEach((x, i) => x.disabled = was[i]); out.removeAttribute("aria-busy"); }
   }
-  async function runAI(tool, lang, inp, out, btn) {
+  async function runAI(tool, lang, inp, out, btn, to) {
     const text = inp.value.trim();
     if (text.length < 3) { toast("اكتب نص المنشور أولاً"); inp.focus(); return; }
     const all = inp.closest(".studio").querySelectorAll("[data-sai]"); all.forEach((x) => x.disabled = true);
     out.innerHTML = `<div class="card"><div class="skel"></div><div class="skel"></div></div>`; out.setAttribute("aria-busy", "true");
     try {
-      const r = await api("POST", "/api/aihub/studio", { tool, text, lang: lang || "ar" });
+      const r = await api("POST", "/api/aihub/studio", { tool, text, lang: lang || "ar", to });
       view._ai1 = aiResult(r) + (r.free ? `<p class="muted u-t-xs sai-free">باقي ${r.free.left} من ${r.free.daily} مجاناً اليوم</p>` : "");
       const o1 = out.isConnected ? out : document.getElementById("sai-out"), i1 = inp.isConnected ? inp : document.getElementById("sai-in");
       if (o1) { o1.innerHTML = view._ai1; wireAI(o1, i1); }
@@ -335,6 +372,10 @@
       ${x.description ? `<b>الوصف</b><div class="sai-row"><bdi class="grow">${esc(x.description)}</bdi>${copyBtn(x.description)}</div>` : ""}
       ${(x.hashtags || []).length ? `<b>الهاشتاقات</b><div class="sai-row"><div class="grow chips">${x.hashtags.map((h) => `<span class="chip"><bdi>${esc(h)}</bdi></span>`).join("")}</div>${copyBtn(x.hashtags.join(" "))}</div>` : ""}
       <button class="btn sm" data-compose="${esc([x.titles?.[0] ? "**" + x.titles[0] + "**" : "", view._aiText || "", (x.hashtags || []).join(" ")].filter(Boolean).join("\n\n"))}">${ic("pen", "xs")} انشر بهذه الاقتراحات</button></div>`;
+    if (r.tool === "repurpose") {
+      if (x.parts?.length) return `<div class="card sai-res"><b>السلسلة المقترحة</b>${x.parts.map((t, i) => `<div class="sai-row"><span class="chip">${i + 1}</span><bdi class="grow sai-pre">${esc(t)}</bdi>${copyBtn(t)}</div>`).join("")}<div class="row">${copyBtn(x.parts.join("\n\n"), "نسخ الكل")}</div></div>`;
+      return `<div class="card sai-res"><b>النسخة الجديدة</b><div class="sai-row"><bdi class="grow sai-pre">${esc(x.text)}</bdi></div><div class="row">${copyBtn(x.text)}${useBtn(x.text)}</div></div>`;
+    }
     if (r.tool === "translate") return `<div class="card sai-res"><b>الترجمة</b><div class="sai-row"><bdi class="grow sai-pre">${esc(x.text)}</bdi></div><div class="row">${copyBtn(x.text)}${useBtn(x.text)}</div></div>`;
     const tone = x.score >= 80 ? "ok" : x.score >= 55 ? "mid" : "low";
     return `<div class="card sai-res"><div class="row"><b class="grow">جاهزية النشر</b><span class="sai-score ${tone}">${x.score}/100</span></div>
