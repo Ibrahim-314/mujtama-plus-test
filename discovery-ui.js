@@ -695,21 +695,26 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       : `<div class="s-ai-mini" id="s-ai"><button class="btn ghost sm" id="s-ai-go">${ic("sparkle", "xs")} اسأل الذكاء عن «${h(q)}»</button><div id="s-ai-o"></div></div>`);
     const go = $("#s-ai-go"); go.onclick = () => smartAsk(q0); if (SR.autoAsk) { SR.autoAsk = false; smartAsk(q0); }
   }
-  async function smartAsk(q, refresh) {
+  async function smartAsk(q, refresh, thread = []) { // v2.132: thread = earlier [{q, a}] of this conversation
     const box = $("#s-ai"), out = $("#s-ai-o"); if (!box || !out) return;
     if (!DB.me) { out.innerHTML = `<p class="u-m0 u-mt6">سجّل دخولك لتسأل الذكاء.</p><a class="btn sm" href="#/settings">تسجيل الدخول</a>`; return; }
     if (!box.classList.contains("dbr")) { box.className = "card dbr s-ai"; box.insertAdjacentHTML("afterbegin", `<div class="dbr-h">${ic("sparkle", "sm")}<b>اسأل الذكاء</b></div>`); $("#s-ai-go")?.remove(); }
     box.setAttribute("aria-busy", "true"); out.innerHTML = `<p class="muted u-m0 u-mt6">يقرأ المنشورات وتعليقاتها…</p><div class="skel"></div><div class="skel"></div>`;
     try {
-      const qs = { q, refresh: !!refresh }; for (const k of ["date", "lang", "community"]) if (SR[k]) qs[k] = SR[k];
+      const qs = { q, refresh: !!refresh, history: thread.slice(-3) }; for (const k of ["date", "lang", "community"]) if (SR[k]) qs[k] = SR[k];
       const a = await api("POST", "/api/aihub/search", qs); if (!out.isConnected) return;
-      out.innerHTML = `${a.plan?.rewritten ? `<p class="muted u-t-xs u-m0 u-mt6">بحثنا عن: <bdi>${h(a.plan.rewritten)}</bdi></p>` : ""}<p class="dbr-lead"><bdi>${h(a.answer || a.message || "")}</bdi></p>
+      const past = thread.map((t) => `<div class="dbr-it s-ai-past"><b class="u-t-xs muted"><bdi>${h(t.q)}</bdi></b><p class="u-m0"><bdi>${h(t.a)}</bdi></p></div>`).join("");
+      out.innerHTML = `${past}${thread.length ? `<p class="u-t-xs u-m0 u-mt10"><b><bdi>${h(q)}</bdi></b></p>` : ""}${a.standalone ? `<p class="muted u-t-xs u-m0 u-mt6">فهمت سؤالك: <bdi>${h(a.standalone)}</bdi></p>` : ""}${a.steps?.length ? `<p class="muted u-t-xs u-m0 u-mt6">بحثت على خطوات: ${a.steps.map((x) => `<bdi>${h(x.q)}</bdi> (${nf(x.n)})`).join(" · ")}</p>` : ""}${a.plan?.rewritten ? `<p class="muted u-t-xs u-m0 u-mt6">بحثنا عن: <bdi>${h(a.plan.rewritten)}</bdi></p>` : ""}<p class="dbr-lead"><bdi>${h(a.answer || a.message || "")}</bdi></p>
         ${a.points.map((x) => `<div class="dbr-it"><bdi>${h(x.text)}</bdi><div class="dbr-c">${chips(x.cites, a.sources)}</div></div>`).join("")}
         ${a.followups?.length ? `<div class="s-chips u-mt10" aria-label="أسئلة متابعة">${a.followups.map((f) => `<button class="s-chip" data-fq="${h(f)}">${h(f)}</button>`).join("")}</div>` : ""}
         <div class="dbr-f muted u-t-xs"><span>مولّد بالذكاء من منشورات حقيقية — تحقّق من المصادر${a.free ? ` · باقي ${nf(a.free.left)} من ${nf(a.free.daily)} مجاناً اليوم` : ""}</span><button class="btn ghost sm" id="s-ai-re">${ic("refresh", "xs")} حدّث</button></div>`;
       openCites(out);
       out.querySelectorAll("[data-fq]").forEach((b) => b.onclick = () => { SR.q = b.dataset.fq; SR.autoAsk = true; $("#sq2").value = SR.q; runSearch(); });
-      $("#s-ai-re").onclick = () => smartAsk(q, true);
+      $("#s-ai-re").onclick = () => smartAsk(q, true, thread);
+      // v2.132: keep talking — a follow-up in this card carries the thread (the server resolves «وللمبتدئين؟» against it)
+      const next = [...thread, { q, a: String(a.answer || a.message || "").slice(0, 300) }].slice(-3);
+      out.insertAdjacentHTML("beforeend", `<form class="dask-f" id="s-ai-ff" role="search" aria-label="سؤال متابعة"><input name="q" maxlength="200" autocomplete="off" enterkeyhint="send" placeholder="اسأل متابعة… مثل: وللمبتدئين؟" aria-label="سؤال متابعة"><button class="btn" type="submit">${ic("sparkle", "sm")}<span>اسأل</span></button></form>`);
+      $("#s-ai-ff").onsubmit = (e) => { e.preventDefault(); const v = e.target.q.value.trim(); if (v) smartAsk(v, false, next); };
     } catch (e) { if (out.isConnected) out.innerHTML = aiErr(e); }
     finally { box.removeAttribute("aria-busy"); }
   }
