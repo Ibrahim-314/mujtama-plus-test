@@ -16,7 +16,8 @@ const GROUPS = ["people", "posts", "communities", "hashtags"];
 const RT = require("../../richtext.js");
 const AN = require("../lib/search-analyzer"), LEX = require("../lib/search-lexicon"), PH = require("../lib/search-phonetic"), EM = require("../lib/search-embed");
 const SV = 1, VEC_KINDS = new Set(["post", "community"]); // v2.125 meaning vectors (086): model version + which documents carry one
-const IV = 4; // search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
+const IV = 5, IV_READY = 4; // v2.126: 5 = answer field; docs at 4 are fully searchable (readiness needs ≥ 4) and are upgraded in the background.
+// search_docs index version (083_search_v2; 3 = v2.122 article bodies + poll options)
 const DATES = { day: 864e5, week: 7 * 864e5, month: 30 * 864e5, year: 365 * 864e5 };
 
 module.exports = (ctx) => {
@@ -43,7 +44,7 @@ module.exports = (ctx) => {
     await vocabDelta([], old);
   }
   async function writePostings(doc) {
-    const fields = [AN.analyze(doc.title || ""), AN.analyze(doc.body || ""), AN.analyze(doc.extra || "", { max: 3000 })];
+    const fields = [AN.analyze(doc.title || ""), AN.analyze(doc.body || ""), AN.analyze(doc.extra || "", { max: 3000 }), AN.analyze(doc.answer || "", { max: 1500 })];
     const rows = []; const terms = new Set();
     fields.forEach((fa, f) => { for (const [t, e] of fa.terms) { rows.push([t, f, e.tf]); terms.add(t); } });
     const old = new Set((await db.all("SELECT DISTINCT term FROM search_postings WHERE kind=$1 AND ref_id=$2", [doc.kind, doc.id])).map((r) => r.term));
@@ -77,7 +78,7 @@ module.exports = (ctx) => {
     [doc.kind, doc.id, doc.title || null, body, doc.ptype || null, doc.community || null, doc.lang || A.detectLang(doc.body || doc.title || "") || null, doc.author || null, doc.visibility || "public", doc.created_at || now(), extra, Number(doc.quality) || 0, IV]);
     await bumpTerms(old?.body, body, `${doc.title || ""} ${doc.body || ""}`);
     await writePostings(doc);
-    if (!doc._noVec) await writeVector(doc.kind, doc.id, `${doc.title || ""} ${doc.body || ""}`, doc.extra).catch(() => { });
+    if (!doc._noVec) await writeVector(doc.kind, doc.id, `${doc.title || ""} ${doc.body || ""}`, doc.answer || doc.extra).catch(() => { });
     if (meili) meili.index(doc).catch(e => ctx.jobsState && (ctx.jobsState.meili = { ok: false, error: e.message }));
   }
   async function removeDoc(kind, ref) {
@@ -103,10 +104,18 @@ module.exports = (ctx) => {
   const postDoc = (p, x = {}) => ({ kind: "post", id: p.id, title: p.title, body: bodyOf(p), ptype: p.type, community: p.community, lang: p.lang, author: p.author, visibility: p.visibility, created_at: p.created_at, ...x });
   /* v2.121: a post's document also carries its published comments (answers to a question live there; matched at half weight)
    * and an engagement score log(1 + reactions + 2·comments) used as a small ranking signal. */
+  /* v2.126 stage 3 (question ↔ answer): comments ordered by likes, and the post's ANSWER — the accepted comment, else the most-liked
+   * comment with at least 2 likes — gets its own index field (between body and comments) so a question is found by what answered it.
+   * An answered question ranks a little higher. */
   async function postExtras(pid) {
-    const cs = await db.all("SELECT text FROM comments WHERE post=$1 AND status='published' ORDER BY created_at DESC LIMIT 40", [pid]);
+    const cs = await db.all(`SELECT c.id, c.text, (SELECT COUNT(*) FROM reactions r WHERE r.target=c.id) likes FROM comments c
+      WHERE c.post=$1 AND c.status='published' ORDER BY likes DESC, c.created_at DESC LIMIT 40`, [pid]);
     const rx = Number((await db.get("SELECT COUNT(*) n FROM reactions WHERE target=$1", [pid]))?.n) || 0;
-    return { extra: cs.map(c => c.text || "").join(" ").slice(0, 4000) || null, quality: Math.round(Math.log1p(rx + 2 * cs.length) * 100) / 100 };
+    const p = await db.get("SELECT data FROM posts WHERE id=$1", [pid]); let d = null; try { d = typeof p?.data === "string" ? JSON.parse(p.data) : p?.data; } catch { d = null; }
+    const acc = d?.acceptedAnswer ? cs.find((c) => c.id === d.acceptedAnswer) : null, top = cs[0] && Number(cs[0].likes) >= 2 ? cs[0] : null;
+    const ans = acc || top;
+    return { extra: cs.map(c => c.text || "").join(" ").slice(0, 4000) || null, answer: ans ? String(ans.text || "").slice(0, 2000) : null,
+      quality: Math.round((Math.log1p(rx + 2 * cs.length) + (acc ? 0.6 : top ? 0.3 : 0)) * 100) / 100 };
   }
   async function indexPost(pid) {
     const p = await db.get("SELECT * FROM posts WHERE id=$1", [pid]);
@@ -128,6 +137,7 @@ module.exports = (ctx) => {
   bus.on("POST_APPROVED", e => indexPost(e.post).catch(() => { }));
   bus.on("POST_DELETED", e => removeDoc("post", e.post).catch(() => { }));
   bus.on("COMMENT_CREATED", e => e.post && indexPost(e.post).catch(() => { }));
+  bus.on("ANSWER_ACCEPTED", e => e.post && indexPost(e.post).catch(() => { })); // v2.126: the accepted answer becomes the post's answer field
   bus.on("CONTENT_REMOVED", e => e.post && removeDoc("post", e.post).catch(() => { }));
   bus.on("USER_REGISTERED", async e => { const u = await db.get("SELECT * FROM users WHERE id=$1", [e.user]); if (u) await indexUser(u); });
   bus.on("COMMUNITY_CREATED", async e => { const c = await db.get("SELECT * FROM communities WHERE id=$1", [e.community]); if (c) await indexCommunity(c); });
@@ -179,7 +189,7 @@ module.exports = (ctx) => {
       const miss = await db.all(`SELECT d.kind, d.ref_id FROM search_docs d LEFT JOIN search_vec v ON v.kind=d.kind AND v.ref_id=d.ref_id
         WHERE d.kind IN ('post','community') AND (v.ref_id IS NULL OR v.sv < ${SV}) LIMIT 1000`).catch(() => []);
       for (const r of miss) {
-        if (r.kind === "post") { const p = await db.get("SELECT id, title, text, data FROM posts WHERE id=$1", [r.ref_id]); if (p) await writeVector("post", p.id, `${p.title || ""} ${bodyOf(p)}`, (await postExtras(p.id)).extra).catch(() => { }); }
+        if (r.kind === "post") { const p = await db.get("SELECT id, title, text, data FROM posts WHERE id=$1", [r.ref_id]); if (p) await writeVector("post", p.id, `${p.title || ""} ${bodyOf(p)}`, ((x) => x.answer || x.extra)(await postExtras(p.id))).catch(() => { }); }
         else { const c = await db.get("SELECT name, descr FROM communities WHERE id=$1", [r.ref_id]); if (c) await writeVector("community", r.ref_id, `${c.name || ""} ${c.descr || ""}`).catch(() => { }); }
       }
       VCOUNT.at = 0;
@@ -296,7 +306,7 @@ module.exports = (ctx) => {
   /* qualifiers that rank but rarely decide WHAT is asked («أفضل محمصة» = محمصة): they score, but weigh little in coverage.
    * Grammar-level words, not topics — topical meaning stays with idf, forms, sound keys and the AI plan. */
   const QSOFT = new Set(["افضل", "احسن", "اقوي", "اجمل", "اروع", "انسب", "اسهل", "ارخص", "طريقه", "طرق", "زين", "زينه", "حلو", "حلوه", "جيد", "ممتاز", "best", "top", "good", "great", "way", "ways", "how"].map((w) => A.normalize(w)));
-  const FW = [2.2, 1, 0.5], K1 = 1.2, BB = 0.6, isArw = (w) => /[\u0600-\u06FF]/.test(w);
+  const FW = [2.2, 1, 0.5, 0.8], K1 = 1.2, BB = 0.6, isArw = (w) => /[\u0600-\u06FF]/.test(w);
   const inList = (a, off = 0) => a.map((_, i) => "$" + (i + 1 + off)).join(",");
   function queryForms(w) {
     const m = new Map(AN.forms(w));
@@ -362,7 +372,7 @@ module.exports = (ctx) => {
     if (Date.now() - READY.at < 60e3) return READY.ok;
     let ok = false;
     try { if (await db.read.get("SELECT 1 x FROM search_postings LIMIT 1")) { // v2.124: a handful of docs that failed to re-index must not keep the whole index off
-      const c = await db.read.get(`SELECT COUNT(*) n, SUM(CASE WHEN iv < ${IV} THEN 1 ELSE 0 END) s FROM search_docs`);
+      const c = await db.read.get(`SELECT COUNT(*) n, SUM(CASE WHEN iv < ${IV_READY} THEN 1 ELSE 0 END) s FROM search_docs`);
       ok = Number(c?.s || 0) <= Math.max(5, Math.floor(Number(c?.n || 0) * 0.01));
     } } catch { ok = false; }
     READY = { at: Date.now(), ok }; return ok;
@@ -474,7 +484,22 @@ module.exports = (ctx) => {
     // a lexical hit that matched only part of the question (cov < 1) yields to a strong meaning match; a full match keeps the lead
     lex.forEach((x, i) => m.set(x.kind + "|" + x.id, { kind: x.kind, id: x.id, s: Math.pow(x.cov ?? 1, 2) / (RRF_K + i + 1), lex: true }));
     ok.forEach((x, i) => { const k = x.kind + "|" + x.id, e = m.get(k), add = 0.8 / (RRF_K + i + 1); if (e) e.s += add; else m.set(k, { kind: x.kind, id: x.id, s: add, sem: true }); });
-    return [...m.values()].sort((a, b) => b.s - a.s);
+    return Object.assign([...m.values()].sort((a, b) => b.s - a.s), { rrf: true });
+  }
+  /* v2.126: among comparable results an ANSWERED post (it has an answer field: accepted or ≥ 2-like comment) moves up — the reader
+   * of a question wants the thread that already holds the answer. One indexed lookup over the top results. */
+  async function answeredFirst(list) {
+    const top = list.slice(0, 200).filter((x) => x.kind === "post"); if (!top.length) return list;
+    const ids = top.map((x) => x.id);
+    const ans = new Set((await db.read.all(`SELECT DISTINCT ref_id FROM search_postings WHERE kind='post' AND f=3 AND ref_id IN (${inList(ids)})`, ids).catch(() => [])).map((r) => r.ref_id));
+    if (!ans.size) return list;
+    // a third RRF list: the answered posts in their current order (lexical-only lists are first turned into RRF scores by rank)
+    const rrf = !!list.rrf;
+    let k = 0;
+    return list.map((x, i) => {
+      const base = rrf ? x.s : 1 / (RRF_K + i + 1), a = x.kind === "post" && ans.has(x.id);
+      return { ...x, s: base + (a ? 0.8 / (RRF_K + ++k) : 0), ans: a || undefined };
+    }).sort((a, b) => b.s - a.s);
   }
   async function engineIds(q, kinds, f) {
     if (meili && !f._plan) {
@@ -485,9 +510,28 @@ module.exports = (ctx) => {
       // with an AI plan, the meaning vector is taken from the AI's rewrite of the question (its expansions sharpen the vector)
       const sq = f._plan ? [f._plan.rewritten, ...(f._plan.concepts || []).map((c) => c.join(" "))].filter(Boolean).join(" ") : q;
       const lex = await postingsIds(q, kinds, f), sem = sq ? await semIds(sq, kinds, f).catch(() => []) : [];
-      return { engine: sem.length ? "hybrid" : "index", ids: fuse(lex, sem) };
+      return { engine: sem.length ? "hybrid" : "index", ids: await answeredFirst(fuse(lex, sem)) };
     }
     return { engine: "builtin", ids: await builtinIds(q, kinds, f) }; // index still being (re)built: the v2.121 scan keeps working
+  }
+  /* v2.126 stage 3: each result that is a question (or has an accepted answer) carries its best answer — the accepted comment, else
+   * the most-liked comment with ≥ 2 likes. Only published comments by active members the viewer has not blocked; the post itself
+   * already passed the visibility check, so its comments are visible to this viewer. */
+  async function attachAnswers(items, viewer) {
+    const blocked = new Set((viewer?.prefs?.blocked) || []);
+    const want = items.filter((p) => p.type === "question" || p.acceptedAnswer); if (!want.length) return;
+    const ids = want.map((p) => p.id);
+    const rows = await db.read.all(`SELECT c.id, c.post, c.author, c.text, c.created_at, (SELECT COUNT(*) FROM reactions r WHERE r.target=c.id) likes
+      FROM comments c JOIN users u ON u.id=c.author WHERE c.post IN (${inList(ids)}) AND c.status='published' AND u.status='active'`, ids);
+    const by = new Map(); for (const r of rows) { if (blocked.has(r.author)) continue; (by.get(r.post) || by.set(r.post, []).get(r.post)).push(r); }
+    const authors = new Map((await db.read.all(`SELECT * FROM users WHERE id IN (${inList([...new Set(rows.map((r) => r.author))].concat("-"))})`, [...new Set(rows.map((r) => r.author))].concat("-"))).map((u) => [u.id, u]));
+    for (const p of want) {
+      const cs = by.get(p.id) || [], acc = p.acceptedAnswer ? cs.find((c) => c.id === p.acceptedAnswer) : null;
+      const top = cs.slice().sort((a, b) => Number(b.likes) - Number(a.likes) || String(b.created_at).localeCompare(String(a.created_at)))[0];
+      const a = acc || (top && Number(top.likes) >= 2 ? top : null);
+      p.answers = cs.length;
+      if (a) { const u = authors.get(a.author); p.bestAnswer = { id: a.id, text: String(a.text || "").slice(0, 280), accepted: !!acc, likes: Number(a.likes) || 0, author: u ? ctx.services.users.pub(u) : null }; }
+    }
   }
   async function run(viewer, q, f, { limit = 20 } = {}) {
     const want = f.type === "all" ? GROUPS : [f.type];
@@ -497,7 +541,7 @@ module.exports = (ctx) => {
     const fetchRows = async (table, list) => { if (!list.length) return []; const rows = await db.read.all(`SELECT * FROM ${table} WHERE id IN (${list.map((_, i) => "$" + (i + 1)).join(",")})`, list); const m = new Map(rows.map(r => [r.id, r])); return list.map(i => m.get(i)).filter(Boolean); };
     const out = { engine, groups: {} };
     if (want.includes("people")) { const rows = (await fetchRows("users", of("user").slice(0, 100))).filter(u => u.status === "active" && !((viewer?.prefs?.blocked) || []).includes(u.id)); out.groups.people = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.users.pub) }; }
-    if (want.includes("posts")) { const rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
+    if (want.includes("posts")) { const rows = await content().filterVisible(await fetchRows("posts", of("post").slice(0, 200)), viewer?.id); out.groups.posts = { total: rows.length, items: rows.slice(0, limit).map(p => content().toClient(p, viewer?.id)) }; await attachAnswers(out.groups.posts.items, viewer); out.users = await ctx.services.ranking.authors(out.groups.posts.items); }
     if (want.includes("communities")) { const rows = (await fetchRows("communities", of("community").slice(0, 100))).filter(c => c.type !== "invite"); out.groups.communities = { total: rows.length, items: rows.slice(0, limit).map(ctx.services.communities.toClient) }; }
     if (want.includes("hashtags")) { // tags are stored canonical but not normalised: compare in normalised space
       const toks = A.tokens(q);
