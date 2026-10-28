@@ -1,5 +1,29 @@
 [
   {
+    "v": "2.128.0",
+    "date": "2026-10-28",
+    "ar": {
+      "title": "أوامر البحث المتقدمة",
+      "items": [
+        "from:@اسم أو من:اسم لمنشورات شخص معيّن، و@اسم داخل البحث للمنشورات التي تذكره",
+        "\"عبارة دقيقة\" و-كلمة لاستبعاد كلمة، و#وسم مع كلماتك",
+        "since: و until: (أو منذ: وحتى:) للتاريخ، وmin_faves: وmin_replies: للتفاعل",
+        "filter:media / questions / links / polls / articles وغيرها، وlang: وnear:",
+        "الأوامر تظهر كشرائح فوق النتائج"
+      ]
+    },
+    "en": {
+      "title": "Advanced search operators",
+      "items": [
+        "from:@name for one person's posts, and @name in a search for posts that mention them",
+        "\"exact phrase\", -word to exclude, #tag together with your words",
+        "since: and until: for dates, min_faves: and min_replies: for engagement",
+        "filter:media / questions / links / polls / articles and more, plus lang: and near:",
+        "Your operators show as chips above the results"
+      ]
+    }
+  },
+  {
     "v": "2.127.0",
     "date": "2026-10-28",
     "ar": {
