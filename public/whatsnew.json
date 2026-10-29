@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.137.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "أيقونة الشرح الجديدة",
+      "items": [
+        "علامة الشرح صارت أيقونة «i» صغيرة جنب عنوان الصفحة",
+        "تضغطها تطلع فقاعة صغيرة بسهم تحتها، وتقفل لما تضغط برا",
+        "تتبع الوضع الفاتح والداكن",
+        "انشالت من الصفحات الرئيسية (الرئيسية، استكشف، المجتمعات، الرسائل، الإشعارات، المزيد، حسابي، فيديوتك، الغرف الصوتية، فاتك اليوم) وبقيت في الصفحات الداخلية"
+      ]
+    },
+    "en": {
+      "title": "New help icon",
+      "items": [
+        "The help mark is now a small «i» next to the page title",
+        "Tap it for a small bubble with an arrow; tap outside to close",
+        "Follows light and dark mode",
+        "Removed from the main pages (Home, Explore, Communities, Messages, Notifications, More, my profile, Vidtik, voice rooms, digest); inner pages keep it"
+      ]
+    }
+  },
+  {
     "v": "2.136.0",
     "date": "2026-10-29",
     "ar": {
