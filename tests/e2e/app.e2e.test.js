@@ -22,7 +22,7 @@ const newPage = async opts => {
 test("mobile: register → onboarding → post → tap-to-like → comment", async () => {
   const p = await newPage(MOBILE);
   await onboard(p, S.base, "e2e_mobile", "سارة");
-  await p.click("#fab");
+  await p.click("#cbar");
   await p.fill("#c3-text", "أول منشور من اختبار طرف لطرف #برمجة");
   await p.click("#c3-pub");
   await p.waitForSelector(".post-card >> text=أول منشور من اختبار");
