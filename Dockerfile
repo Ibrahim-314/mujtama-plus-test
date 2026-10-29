@@ -1,5 +1,5 @@
 # ---- build stage: minified, hashed, precompressed client bundle ----
-FROM node:22-alpine AS build
+FROM node:22.23.4-alpine AS build
 WORKDIR /src
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund --ignore-scripts
@@ -7,7 +7,7 @@ COPY . .
 RUN node tools/build.mjs && node tools/budget.mjs
 
 # ---- runtime stage: server + dist only, non-root, healthchecked ----
-FROM node:22-alpine
+FROM node:22.23.4-alpine
 RUN apk add --no-cache ffmpeg tini
 WORKDIR /app
 COPY server/package.json server/package-lock.json server/
