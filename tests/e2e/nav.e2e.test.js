@@ -202,7 +202,7 @@ test("legacy nav order with «me» reads as «menu»; g m opens the hub; desktop
   await p.reload(); await p.waitForSelector(".bottomnav a[data-r=home]");
   await until(() => window.MPPrefs && MPPrefs.get().nav.join() === "menu,home,explore,communities,notifications");
   await p.evaluate(() => MPPrefs.set("nav", ["home", "explore", "communities", "notifications", "menu"]));
-  await go("#/home"); await settle(); await p.click("body"); await p.keyboard.press("g"); await p.keyboard.press("m"); await until(() => location.hash === "#/menu");
+  await go("#/home"); await settle(); await p.evaluate(() => document.activeElement?.blur()); /* v2.139: the page centre may now be a challenge step button, so no click */ await p.keyboard.press("g"); await p.keyboard.press("m"); await until(() => location.hash === "#/menu");
   const d = await S.browser.newContext({ ...DESKTOP, reducedMotion: "reduce" }); const w = await d.newPage(); w.on("pageerror", (e) => errors.push("w: " + e.message));
   await w.goto(S.base + "/?nosw"); await w.fill("#a-handle", "nav_admin"); await w.fill("#a-pass", "secret1234"); await w.click("#a-go"); await w.waitForSelector(".bottomnav a[data-r=home]");
   const rail = await w.evaluate(() => [...document.querySelectorAll(".bottomnav a, .bottomnav button")].filter((a) => a.offsetParent).sort((x, y) => x.getBoundingClientRect().top - y.getBoundingClientRect().top).map((a) => a.dataset.r || a.dataset.side || a.className));
