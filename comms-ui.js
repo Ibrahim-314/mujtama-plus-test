@@ -80,6 +80,9 @@
 .cm-name .ic{width:14px;height:14px;flex:none;color:var(--ok)}
 .cm-name .cm-tm{color:var(--muted)}
 .cm-prev{display:block;color:var(--muted);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-row.unread{box-shadow:none;border-inline-start:0;background:transparent}
+.cm-newdiv{display:flex;align-items:center;gap:10px;margin:10px 0 6px;color:var(--accent);font-size:var(--fs-xs);font-weight:700}.cm-newdiv::before,.cm-newdiv::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--accent) 35%,transparent)}
+.cm-down{position:fixed;inset-inline-start:max(14px,calc(50% - var(--col)/2 + 14px));z-index:29;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);box-shadow:var(--sh-2);display:grid;place-items:center;cursor:pointer}.cm-down svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 .cm-row.unread .cm-prev{color:var(--text);font-weight:600}
 .cm-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted);flex:none}
 .cm-row.unread .cm-side>time{color:var(--accent);font-weight:700}
@@ -233,14 +236,15 @@ body.cm-chat .topbar{display:none}
 .cm-chat-head{padding:8px 6px;gap:4px}
 .cm-chat-head .who .av,.cm-chat-head .who .cm-gav{width:42px;height:42px;border-radius:14px}
 .cm-chat-head .who b,.cm-chat-head .who strong{font-size:16px}
-.cm-chat-head .cm-ib{color:var(--accent-ink)}
+.cm-chat-head .cm-ib{color:var(--accent-ink);width:40px;min-width:40px}
 .cm-chat-head .cm-ib:first-child{color:var(--text)}
 .cm-day{box-shadow:none;border:1px solid var(--card-bd,var(--line));border-radius:var(--r-pill,999px);color:var(--muted)}
 .cm-ta{border-color:var(--card-bd,var(--line-2));background:var(--bg-2)}
 .cm-comp .cm-ib:not(.cm-sendb){color:var(--accent-ink)}
 /* v2.134 «الذكاء في الرسائل» */
 .ai-sp{width:22px;height:22px;flex:none}
-.cm-comp .cm-ib.ai-ib{background:linear-gradient(135deg,var(--brand-1),var(--brand-2));color:var(--on-accent);box-shadow:var(--sh-1)}
+.cm-comp .cm-ib.ai-ib{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+.cm-comp .cm-ib.ai-ib[aria-expanded=true]{background:var(--accent);color:var(--on-accent)}
 .cm-comp .cm-ib.ai-ib[aria-expanded=true]{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
 .ai-pill{position:fixed;inset-inline:0;z-index:31;display:flex;justify-content:center;pointer-events:none;bottom:calc(76px + env(safe-area-inset-bottom))}
 .ai-pill>div{pointer-events:auto;display:inline-flex;align-items:center;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);background:var(--card);box-shadow:var(--sh-1)}
@@ -273,7 +277,9 @@ body.cm-chat .topbar{display:none}
 .ai-chip.sk{width:150px;color:transparent;animation:cmPulse 1.4s infinite;background:var(--bg-2);border-color:transparent}
 .ai-ib:focus-visible,.ai-chip:focus-visible,.ai-pt:focus-visible,.ai-pill button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.ai-load i,.ai-chip.sk{animation:none}}
-@media (min-width:760px){body.cm-chat .topbar{display:flex}.cm-comp{inset-inline-start:var(--rail-w,0)}}
+@media (min-width:760px){body.cm-chat .topbar{display:flex}.cm-comp{inset-inline:max(96px,calc(50% - 310px)) auto;width:var(--col)}}
+@media (min-width:1180px){.cm-comp{inset-inline-start:var(--cx)}}
+body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
 @media (prefers-reduced-motion:reduce){.cm-typing i,.cm-rec .dot{animation:none}.cm-m.gone{transition:none}.cm-flash{animation:none;outline:2px solid var(--accent)}.cm-pick button{transition:none}}
 @media (forced-colors:active){.cm-b{border:1px solid CanvasText}.cm-tab[aria-selected=true]{outline:2px solid Highlight}}
 `;
@@ -435,9 +441,19 @@ body.cm-chat .topbar{display:none}
   function newDm() {
     const cands = DB.users.filter(u => u.id !== DB.me && !(DB.blocked || []).includes(u.id));
     const s = sheet(`<h4 id="cm-ndh">رسالة جديدة</h4><input class="cm-search" id="cm-nq" type="search" placeholder="ابحث عن شخص" aria-label="ابحث عن شخص"><div class="menu" id="cm-nl" role="list" aria-labelledby="cm-ndh"></div>`);
-    const paint = (q) => { s.querySelector("#cm-nl").innerHTML = cands.filter(u => !q || u.name.includes(q) || u.handle.includes(q)).slice(0, 40).map(u => `<button data-u="${u.id}" role="listitem">${h(u.name)} <span class="muted">@${h(u.handle)}</span></button>`).join("") || `<div class="cm-empty">لا نتائج</div>`;
-      s.querySelectorAll("[data-u]").forEach(b => b.onclick = () => openDm(b.dataset.u)); };
-    paint(""); const qi = s.querySelector("#cm-nq"); qi.oninput = () => paint(qi.value.trim()); setTimeout(() => qi.focus(), 50);
+    let seq = 0;
+    const paint = (q, extra = [], busy = false) => {
+      const ql = q.toLowerCase(), seen = new Set(), list = [...cands.filter(u => !q || u.name.toLowerCase().includes(ql) || u.handle.toLowerCase().includes(ql)), ...extra].filter(u => u.id !== DB.me && !seen.has(u.id) && seen.add(u.id)).slice(0, 40);
+      s.querySelector("#cm-nl").innerHTML = list.map(u => `<button data-u="${u.id}" role="listitem">${h(u.name)} <span class="muted">@${h(u.handle)}</span></button>`).join("")
+        || `<div class="cm-empty">${busy ? "جارٍ البحث…" : q ? "ما لقينا أحد بهذا الاسم" : "اكتب اسم الشخص أو معرّفه"}</div>`;
+      s.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { if (!DB.users.some(x => x.id === b.dataset.u)) { const u = list.find(x => x.id === b.dataset.u); if (u) addPeople([u]); } openDm(b.dataset.u); });
+    };
+    const find = async (q) => {
+      const my = ++seq; paint(q, [], q.length >= 2);
+      if (q.length < 2) return;
+      try { const r = await api("GET", "/api/search/suggest?q=" + encodeURIComponent(q)); if (my === seq) paint(q, (r.people || []).filter(u => !(DB.blocked || []).includes(u.id))); } catch { if (my === seq) paint(q); }
+    };
+    paint(""); const qi = s.querySelector("#cm-nq"); let t = 0; qi.oninput = () => { clearTimeout(t); t = setTimeout(() => find(qi.value.trim()), 220); }; setTimeout(() => qi.focus(), 50);
   }
   async function openDm(uid) {
     try { const core = MC(); const id = core?.openDM ? (await core.openDM(uid)).id : (await api("POST", "/api/conversations", { user: uid })).conversation.id; closeSheet(); location.hash = "#/chat/" + id; }
@@ -469,6 +485,7 @@ body.cm-chat .topbar{display:none}
     if (ctx !== mine) return; // a newer render of this route took over
     ctx.conv = ST.info[cid];
     view.insertAdjacentHTML("beforeend", `<div class="cm-comp" id="cm-comp"><div></div></div>`);
+    { const cp = $("#cm-comp"); if (cp && window.ResizeObserver) { ST.compRO?.disconnect(); ST.compRO = new ResizeObserver(() => { const hh = cp.offsetHeight, near = document.documentElement.scrollHeight - (innerHeight + scrollY) < 160; document.body.style.setProperty("--cm-comp-h", hh + "px"); if (near) requestAnimationFrame(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" })); const pill = $("#ai-pill"); if (pill) pill.style.bottom = (hh + 10) + "px"; }); ST.compRO.observe(cp); } }
     const unread = ST.convs?.find(x => x.id === cid)?.unread || 0;
     await aiState();
     if (ctx !== mine) return;
@@ -481,7 +498,16 @@ body.cm-chat .topbar{display:none}
   }
   function chatFail(e) { view.innerHTML = `<div class="cm-wrap"><div class="cm-empty">${e?.status === 403 ? "لست عضواً في هذه المحادثة" : e?.status === 404 ? "المحادثة غير موجودة" : "تعذر تحميل المحادثة"}<br><br><a class="btn" href="#/messages">الرسائل</a></div></div>`; document.body.classList.remove("cm-chat"); }
 
+  function paintDown() { // v2.136: «↓» back to the latest message when scrolled up
+    const far = !!ctx && document.documentElement.scrollHeight - (innerHeight + scrollY) > 600;
+    let b = document.getElementById("cm-down");
+    if (!far) { b?.remove(); return; }
+    if (!b) { view.insertAdjacentHTML("beforeend", `<button class="cm-down" id="cm-down" aria-label="إلى آخر رسالة"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`); b = document.getElementById("cm-down");
+      b.onclick = () => { scrollTo({ top: document.documentElement.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }); }; }
+    b.style.bottom = `calc(var(--cm-comp-h, 72px) + 14px)`;
+  }
   async function onScrollTop() {
+    paintDown();
     if (!ctx || !ST.more[ctx.cid] || ctx.loadingOld || scrollY > 80) return;
     ctx.loadingOld = true; const first = ST.msgs[ctx.cid][0]; const hBefore = document.documentElement.scrollHeight;
     try { await loadMsgs(ctx.cid, first.at); paintThread(); scrollTo(0, document.documentElement.scrollHeight - hBefore + scrollY); } catch { }
@@ -510,12 +536,18 @@ body.cm-chat .topbar{display:none}
     const atBottom = toBottom || innerHeight + scrollY >= document.documentElement.scrollHeight - 120;
     const reads = ST.reads[c.id] || {}, me = ST.info[c.id]?.members.find(m => m.user === DB.me);
     let out = "", prevDay = "";
+    if (ctx.divAt === undefined) { // «رسائل جديدة»: decided once, when the chat opens (before it is marked read)
+      const lr = me ? (me.lastReadAt || "") : null, firstNew = lr === null ? null : all.find(m => m.from !== DB.me && m.kind !== "system" && !m.deleted && m.at > lr);
+      ctx.divAt = firstNew?.id || null; ctx.divFirst = true;
+    }
+    const divAt = ctx.divAt;
     if (ST.more[c.id]) out += `<button class="btn ghost" id="cm-older" style="align-self:center;margin:6px 0">رسائل أقدم</button>`;
     out += c.e2ee ? `<div class="cm-e2ee">${ic("lock", "sm")} الرسائل والمكالمات مشفرة طرفاً لطرف. لا يستطيع أحد خارج هذه المحادثة قراءتها، ولا حتى مجتمع بلس. <a href="#/e2ee">اعرف المزيد</a></div>`
       : c.kind !== "group" ? `<div class="cm-e2ee" style="background:var(--bg-2)">هذه المحادثة غير مشفرة طرفاً لطرف. <a href="#/chatinfo/${c.id}">فعّل التشفير</a></div>` : "";
     all.forEach((m, i) => {
       const d = dayKey(m.at); if (d !== prevDay) { out += `<div class="cm-day" role="separator">${h(dayName(m.at))}</div>`; prevDay = d; }
       if (m.kind === "system") { out += `<div class="cm-sys">${m.meta?.event === "e2ee" ? ic("lock") + " " : m.meta?.event === "ttl" ? ic("cmTimer") + " " : ""}${h(sysText(m))}</div>`; return; }
+      if (m.id === divAt) out += `<div class="cm-newdiv" id="cm-newdiv" role="separator"><span>رسائل جديدة</span></div>`;
       const prev = all[i - 1], next = all[i + 1];
       const near = (a, b) => a && b && a.kind !== "system" && b.kind !== "system" && a.from === b.from && dayKey(a.at) === dayKey(b.at) && Math.abs(new Date(a.at) - new Date(b.at)) < 5 * 60e3;
       const cont = near(prev, m), last = !near(m, next), mine = m.from === DB.me;
@@ -530,7 +562,10 @@ body.cm-chat .topbar{display:none}
     const dec = $("#cm-dec"); if (dec) dec.onclick = async () => { if (!confirm("حذف طلب المراسلة؟")) return; try { await api("POST", `/api/conversations/${c.id}/decline`); location.hash = "#/messages?tab=requests"; } catch (e) { errToast(e); } };
     bindBubbles(th, byId);
     tickExpiry();
-    if (atBottom) requestAnimationFrame(() => scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }));
+    const nd = ctx.divFirst && $("#cm-newdiv"); ctx.divFirst = false;
+    if (nd && toBottom) { requestAnimationFrame(() => { const y = nd.getBoundingClientRect().top + scrollY - 120; scrollTo({ top: Math.min(y, document.documentElement.scrollHeight), behavior: "instant" }); paintDown(); }); }
+    else if (atBottom) requestAnimationFrame(() => { scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" }); paintDown(); });
+    else paintDown();
   }
 
   function bubble(m, c, { cont, last, mine, reads, byId }) {
@@ -822,7 +857,7 @@ body.cm-chat .topbar{display:none}
   async function deliver(body) {
     const c = ctx.conv, m = await sendMsg(c, body);
     if (m?.id) { if (m.encrypted && !m.error) ST.plain[m.id] = { text: m.text, meta: m.meta, kind: m.kind, file: m.file, reply: m.reply, encrypted: true }; if (body.file && body.kind === "image") urls[m.id] = URL.createObjectURL(body.file); const arr = (ST.msgs[c.id] ||= []); if (!arr.some(x => x.id === m.id)) arr.push(m); seen.add("m" + m.id); }
-    live("أُرسلت الرسالة"); paintThread(true);
+    live("أُرسلت الرسالة"); ctx.divAt = null; paintThread(true);
     const lc = ST.convs?.find(x => x.id === c.id); if (lc && m?.id) { lc.last = m; lc.updatedAt = m.at; }
   }
 
