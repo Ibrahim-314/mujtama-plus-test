@@ -15,7 +15,7 @@ async function axeOn(p, sel) {
   if (!(await p.evaluate(() => !!window.axe))) await p.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
   return (await p.evaluate(async (s) => (await axe.run(document.querySelector(s), { runOnly: ["wcag2a", "wcag2aa"] })).violations.map(v => ({ id: v.id, impact: v.impact, sel: v.nodes[0]?.target?.join(" ") })), sel)).filter(v => ["serious", "critical"].includes(v.impact));
 }
-const fab = async () => { await P.evaluate(() => { location.hash = "#/home"; }); await P.click("#fab"); await P.waitForSelector("#composer3[data-mode=general]"); };
+const fab = async () => { await P.evaluate(() => { location.hash = "#/home"; }); await P.click("#cbar"); await P.waitForSelector("#composer3[data-mode=general]"); };
 const published = async (p = P) => { try { await p.waitForSelector("#composer3", { state: "detached", timeout: 10000 }); } catch (e) { throw new Error("editor still open: " + (await p.textContent("#c3-err").catch(() => "")) + " | " + e.message.split("\n")[0]); } };
 
 test.before(async () => {
