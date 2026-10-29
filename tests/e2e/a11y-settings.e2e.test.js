@@ -53,12 +53,12 @@ test("screen reader + keyboard: skip link, landmarks, names, focus after navigat
   assert.equal(await p.evaluate(() => document.querySelector(".bottomnav a[aria-current=page]")?.dataset.r), "menu");
   // modal sheet: focus inside, Escape closes, focus returns to the opener
   await p.goto(S.base + "/?nosw#/home");
-  await p.waitForSelector("#fab");
-  await p.focus("#fab");
+  await p.waitForSelector("#cbar");
+  await p.focus("#cbar"); // v2.139: the Home composer bar is the keyboard entry (floating button removed)
   await p.keyboard.press("Enter");
   await until(() => document.querySelector("body > [role=dialog][aria-modal=true]:not(#sheet)")?.contains(document.activeElement)); // the composer
   await p.keyboard.press("Escape");
-  await until(() => !document.querySelector("body > [role=dialog]:not(#sheet)") && document.activeElement?.id === "fab");
+  await until(() => !document.querySelector("body > [role=dialog]:not(#sheet)") && document.activeElement?.id === "cbar");
   // bottom sheet (#sheet): labelled dialog, focus inside, Tab trapped, Escape restores focus
   await p.evaluate(() => {
     const b = document.createElement("button");
