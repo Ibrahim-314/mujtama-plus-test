@@ -9,8 +9,9 @@
 .hp-inl > .hp-btn { margin-inline-end: auto; }
 .hp-has > :not(h2):not(.hp-btn) { flex-basis: 100%; }
 .hp-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
-.hp-btn .hp-q { display: grid; place-items: center; width: 26px; height: 26px; border: 1.5px solid var(--line-2); border-radius: 50%; font-size: var(--fs-sm); font-weight: 750; line-height: 1; transition: background .15s, color .15s, border-color .15s; }
-.hp-btn:hover .hp-q, .hp-btn[aria-expanded="true"] .hp-q { background: var(--accent2); border-color: var(--accent); color: var(--accent-ink); }
+/* v2.137: the small round «i» (soft accent tint), like an info badge; the 44 px hit area stays */
+.hp-btn .hp-q { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--accent2); color: var(--accent-ink); font: 750 13px/1 var(--font, system-ui), system-ui, sans-serif; font-style: normal; transition: background .15s, color .15s; }
+.hp-btn:hover .hp-q, .hp-btn[aria-expanded="true"] .hp-q { background: var(--accent); color: var(--on-accent, #fff); }
 .hp-btn:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 0; border-radius: 50%; }
 .hp-btn.hp-top { border-radius: 14px; }
 /* v2.61 fix: in a page head the 44 px «؟» target must not make the title row taller than the title itself (the help chunk loads
@@ -22,18 +23,16 @@
 .hp-strip { position: relative; z-index: 3; height: 0; margin: 0; pointer-events: none; }
 .hp-strip > .hp-btn { position: absolute; top: calc(-1 * var(--s2)); inset-inline-end: calc(-1 * var(--s2)); pointer-events: auto; }
 .hp-strip .hp-q { background: var(--elev); box-shadow: var(--sh-1); }
-.hp-in { display: grid; gap: var(--s3); }
-.hp-head { display: flex; align-items: center; gap: var(--s2); }
-.hp-head h3 { flex: 1; min-width: 0; margin: 0; font-size: var(--fs-lg); line-height: 1.35; }
-.hp-head h3:focus { outline: none; } .hp-head h3:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
-.hp-badge { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--accent2); color: var(--accent-ink); font-weight: 800; }
-.hp-x { flex: none; border: 0; background: none; color: var(--text-2); cursor: pointer; } .hp-x:hover { background: var(--bg-2); }
-.hp-body p { margin: 0 0 var(--s1); color: var(--text-2); font-size: var(--fs-md); line-height: 1.65; }
-.hp-tips { padding: var(--s3); border-radius: var(--r-sm); background: var(--bg-2); }
-.hp-tips h4 { margin: 0 0 var(--s1); color: var(--accent-ink); font-size: var(--fs-sm); }
-.hp-tips ul { margin: 0; padding-inline-start: var(--s5); display: grid; gap: var(--s1); color: var(--text-2); font-size: var(--fs-sm); line-height: 1.6; }
-.hp-foot { display: flex; justify-content: flex-end; }
-.hp-foot .btn { min-height: 44px; min-width: 96px; }
-/* desktop popover, anchored under «؟» by help-ui.js (--hp-x / --hp-y) */
-.hp-pop { position: fixed; z-index: 90; inset-inline-start: auto; left: var(--hp-x, 12px); top: var(--hp-y, 72px); width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; padding: var(--s4); border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--elev); box-shadow: var(--sh-3); animation: fade .16s ease; }
+/* v2.137 bubble (toggletip) under «i»: inverted colours (dark on the light theme, light on the dark theme), arrow points at «i» */
+.hp-pop { position: fixed; z-index: 90; left: var(--hp-x, 12px); top: var(--hp-y, 72px); width: max-content; max-width: min(300px, calc(100vw - 24px)); padding: 10px 14px; border-radius: 12px; background: var(--text); color: var(--bg); box-shadow: 0 10px 28px rgb(0 0 0 / .28); animation: hpIn .14s var(--ease, ease-out) both; margin-top: 8px; }
+.hp-pop.up { margin-top: -8px; }
+.hp-pop:focus { outline: none; } .hp-pop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hp-arrow { position: absolute; top: -6px; left: calc(var(--hp-ax, 50%) - 7px); width: 14px; height: 14px; background: inherit; transform: rotate(45deg); border-radius: 2px; }
+.hp-pop.up .hp-arrow { top: auto; bottom: -6px; }
+.hp-body p { margin: 0; font-size: var(--fs-sm, 14px); line-height: 1.6; color: inherit; }
+.hp-body p + p { margin-top: 4px; }
+.hp-tips { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; font-size: var(--fs-xs, 12.5px); line-height: 1.55; opacity: .82; }
+.hp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@keyframes hpIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.hp-pop.up { animation-name: hpInUp; } @keyframes hpInUp { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .hp-pop { animation: none; } }
