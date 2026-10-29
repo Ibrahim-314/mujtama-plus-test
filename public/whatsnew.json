@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.138.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "رأس صفحة أنظف",
+      "items": [
+        "انشال الفراغ الغريب في الشريط العلوي",
+        "الشعار والاسم يمين، والعالم والبحث والرسائل وصورتك في مجموعة مرتبة يسار",
+        "صورتك صارت في الطرف بإطار خفيف وتبقى ظاهرة في الصفحات الداخلية",
+        "أزرار بنفس المقاس، وما يتحرك شي لما تتنقل بين الصفحات"
+      ]
+    },
+    "en": {
+      "title": "Cleaner top bar",
+      "items": [
+        "Removed the odd empty gap in the top bar",
+        "Logo and name on one side; language, search, messages and your avatar grouped on the other",
+        "Your avatar sits at the edge with a soft ring and stays on inner pages",
+        "Even button sizes and no shifting between pages"
+      ]
+    }
+  },
+  {
     "v": "2.137.0",
     "date": "2026-10-29",
     "ar": {
