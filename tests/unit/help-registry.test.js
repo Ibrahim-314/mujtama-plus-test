@@ -1,7 +1,7 @@
 /* v2.61 page help: route matching, language fallback and the registry's own shape (help-ui.js + help-content.js). */
 const test = require("node:test"), assert = require("node:assert");
 const path = require("node:path");
-const { match, norm, lines, pick, sectionOf, merge } = require(path.join(__dirname, "..", "..", "help-ui.js"));
+const { match, norm, lines, pick, sectionOf, merge, isMain } = require(path.join(__dirname, "..", "..", "help-ui.js"));
 
 const L = [
   { route: "#/c/:id", title: { ar: "مجتمع" } },
@@ -91,4 +91,9 @@ test("every router route resolves to an entry (tools/help-coverage.mjs)", () => 
   const out = JSON.parse(require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "..", "..", "tools", "help-coverage.mjs"), "--json"], { encoding: "utf8" }));
   assert.ok(out.routes > 150, "found the router (" + out.routes + ")");
   assert.deepEqual(out.missing, []); assert.deepEqual(out.sectionMissing, []);
+});
+test("v2.137: main tabs carry no help icon; inner pages and other people's profiles do", () => {
+  for (const h of ["#/", "", "#/home", "#/explore", "#/communities", "#/messages?f=unread", "#/notifications", "#/menu", "#/me", "#/clips", "#/shorts", "#/rooms", "#/digest", "#/u/himo", "#/u/@HIMO"]) assert.equal(isMain(h, "himo"), true, h);
+  for (const h of ["#/settings", "#/clips/drafts", "#/room/12", "#/c/5", "#/u/sara", "#/chat/3", "#/wallet"]) assert.equal(isMain(h, "himo"), false, h);
+  assert.equal(isMain("#/u/himo", ""), false, "unknown viewer → not treated as mine");
 });
