@@ -64,6 +64,12 @@
   /* v2.61 CLS fix: the page-help «؟» slot for screens without a page head (Home) is in the bar from the first paint, 44 px reserved
    * and invisible; the lazy help chunk only toggles it on/off (.on + data-help), so nothing beside it moves. Mobile keeps it
    * too (v2.61.1): the wordmark shrinks under 400 px to make room, so «؟» never floats over the screen. */
+  /* v2.140: before sign-in/onboarding #/settings/language is gated, so 🌐 (and the welcome screen's language button) switch ar ⇄ en in place */
+  document.addEventListener("click", (e) => {
+    const g = e.target.closest?.("#mp-lang-btn,#ob-lang"); if (!g || !document.body.classList.contains("ob")) return;
+    e.preventDefault(); e.stopPropagation();
+    window.MPChunks?.load("i18n").then(() => window.MPI18n && MPI18n.setLang(MPI18n.current() === "en" ? "ar" : "en")).catch(() => { });
+  }, true);
   if (acts && !acts.querySelector("#tbHelp")) acts.insertAdjacentHTML("afterbegin", `<button type="button" class="icon-btn hp-slot" id="tbHelp" tabindex="-1" aria-hidden="true" data-noi18n><span class="hp-q" aria-hidden="true">؟</span></button>`);
   acts?.insertAdjacentHTML("beforeend", `<a href="#/me" class="icon-btn tb-me" id="tbMe" aria-label="${LBL.me}" title="${LBL.me}"><span class="tb-av" aria-hidden="true"></span></a>`);
   const mt = nav.querySelector('a[data-r="menu"]');
