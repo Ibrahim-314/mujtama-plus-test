@@ -18,7 +18,7 @@
   const ic = (n, c = "sm") => (window.MPFeat ? MPFeat.ico(n, c) : UI.icon(n, c));
   const signed = () => typeof DB !== "undefined" && !!DB.me;
   const amt = (s) => `<bdi dir="ltr" class="mj-n">${h(s)}</bdi>`;
-  const day = (s) => { try { return new Intl.DateTimeFormat("ar", { numberingSystem: "latn", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(s)); } catch { return String(s || "").slice(0, 16); } };
+  const day = (s) => { try { return new Intl.DateTimeFormat(window.MPI18n && MPI18n.current() === "en" ? "en" : "ar", { numberingSystem: "latn", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(s)); } catch { return String(s || "").slice(0, 16); } };
   const errBox = (e) => UI.empty({ title: "تعذّر التحميل", text: e?.message || "تعذّر الاتصال بالخادم" });
   const skel = (n = 3) => Array.from({ length: n }, () => `<div class="skel row"></div>`).join("");
   const page = (head, body) => { view.innerHTML = `<div class="wrap mj-page">${UI.pageHead({ ...head, id: "mj-h" })}${body}</div>`; $("#mj-h")?.focus({ preventScroll: true }); };
