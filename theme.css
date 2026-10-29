@@ -999,3 +999,7 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 /* v2.114 studio AI */
 .seg .sai-tab{display:inline-flex;align-items:center;justify-content:center;min-width:44px;padding-inline:10px}
 .seg .sai-tab svg{color:var(--accent)}.seg .sai-tab.on svg,.seg .sai-tab:hover svg{color:var(--brand-2)}
+
+/* v2.139: floating compose button removed (Home composer + desktop rail «نشر» + «n» shortcut remain) */
+#fab, .fab#fab { display: none !important; }
+
