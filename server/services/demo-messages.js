@@ -1,5 +1,5 @@
 /* v2.134 — demo DMs + group chats for testing messages AI on Render test only.
- * On when DEMO_MESSAGES=1: every real user (cap 100) gets 22 demo conversations (12 DMs + 10 groups, ~320 messages)
+ * On when DEMO_MESSAGES=1: every real user (cap 100) gets 22 demo conversations (12 DMs + 10 groups, 266 messages)
  * with unread runs, dates/tasks, an English chat and a scam-like message. Everything is tagged:
  * conversation ids start with "cv_dmsg_", demo people with "u_dmsg", every message has meta.demo=true.
  * When DEMO_MESSAGES is not 1 at boot, the tagged rows are removed (only those rows). Real data is never touched. */
