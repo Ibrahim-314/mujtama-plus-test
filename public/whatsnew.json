@@ -1,5 +1,31 @@
 [
   {
+    "v": "2.136.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "الرسائل: ترتيب وإصلاحات",
+      "items": [
+        "قائمة المحادثات أنظف: اختفى الخط البنفسجي المزعج على طرف المحادثات غير المقروءة",
+        "خط «رسائل جديدة» يوديك لأول رسالة ما قريتها",
+        "زر ↓ صغير يرجعك لآخر رسالة لما تطلع فوق",
+        "زر ✨ صار أهدأ، واسم المحادثة ياخذ مساحة أكبر",
+        "«رسالة جديدة» تبحث عن أي شخص بالاسم أو المعرّف",
+        "إصلاح: خانة الكتابة في الكمبيوتر كانت تغطي آخر رسالة وما كانت على عرض المحادثة"
+      ]
+    },
+    "en": {
+      "title": "Messages: tidier, with fixes",
+      "items": [
+        "Cleaner chat list: the stray purple bar on unread chats is gone",
+        "A «New messages» line takes you to the first message you haven't read",
+        "A small ↓ button brings you back to the latest message",
+        "A calmer ✨ button, and more room for the chat name",
+        "«New message» now finds anyone by name or handle",
+        "Fix: on desktop the composer covered the last message and didn't match the chat width"
+      ]
+    }
+  },
+  {
     "v": "2.135.0",
     "date": "2026-10-29",
     "ar": {
