@@ -138,7 +138,7 @@ const Views = {
     const list = Feed.build(feedMode), shown = list.slice(0, feedLimit);
     const trends = Trends.list(3), sugComm = DB.communities.find(c => !S.membership(c.id)), sugUser = DB.users.find(u => u.id !== DB.me && !S.follows(DB.me, u.id) && !DB.blocked.includes(u.id));
     let html = `<div class="wrap">
-      <div class="card composer-bar" id="cbar">${av(S.me())}<div class="fake">ماذا تريد أن تنشر؟</div></div>
+      <div class="card composer-bar" id="cbar" role="button" tabindex="0" aria-label="ماذا تريد أن تنشر؟">${av(S.me())}<div class="fake">ماذا تريد أن تنشر؟</div></div>
       <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>`;
     if (!shown.length) html += `${UI.empty({ title: "لا يوجد محتوى هنا بعد", text: "تابع أشخاصاً وانضم إلى مجتمعات لتمتلئ خلاصتك.", action: '<a class="btn" href="#/explore">اكتشف أشخاصاً ومجتمعات</a>' })}`;
     shown.forEach((p, i) => {
@@ -150,7 +150,7 @@ const Views = {
     if (list.length > feedLimit) html += `<div class="skel" id="more-sentinel"></div>`;
     else if (shown.length) html += `<div class="empty">وصلت للنهاية <a href="#/explore" class="u-c-ac">استكشف المزيد</a></div>`;
     view.innerHTML = html + "</div>";
-    $("#cbar").onclick = () => openComposer();
+    $("#cbar").onclick = () => openComposer(); $("#cbar").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openComposer(); } };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
     const sen = $("#more-sentinel");
     if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); setTimeout(() => { feedLimit += 10; const y = scrollY; rerender(); scrollTo(0, y); }, 400); } }).observe(sen);
@@ -417,7 +417,7 @@ function route() {
   const h = location.hash.replace(/^#\/?/, "").split("?")[0] || "home";
   const [r, a, b] = h.split("/");
   if (!DB.onboarded) { $(".bottomnav").style.display = "none"; $("#fab").style.display = "none"; document.body.classList.remove("has-fab"); return Views.onboarding(view._ob || 1); }
-  $(".bottomnav").style.display = ""; { const fabOn = ["home", "communities", "c", "u", "me", "topic", "tag", "list", "events"].includes(r); $("#fab").style.display = fabOn ? "" : "none"; document.body.classList.toggle("has-fab", fabOn); }
+  $(".bottomnav").style.display = ""; { const fabOn = ["home", "communities", "c", "u", "me", "topic", "tag", "list", "events"].includes(r); void fabOn; document.body.classList.remove("has-fab"); } /* v2.139: no floating button */
   if (window.MPNav) MPNav.paint(); else document.querySelectorAll(".bottomnav a[data-r]").forEach(x => x.classList.toggle("active", x.dataset.r === r));
   if (view._route !== h) { view._ctab = view._ptab = view._csort = view._ltab = null; if (r !== "explore") view._q = ""; scrollTo(0, 0); }
   view._route = h;
