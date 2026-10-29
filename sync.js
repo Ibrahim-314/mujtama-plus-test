@@ -199,6 +199,7 @@ closeSheet = function () { _closeSheet(); if (Remote.pendingRender && DB.onboard
 
 /* ---------- Auth screen ---------- */
 function showAuth(mode = "login") {
+  view._authMode = mode;
   window.MPSession?.set("out"); // v2.51: guests never start the protected modules (see chunks.js / MPSession)
   document.body.classList.add("ob"); $(".bottomnav").style.display = "none"; $("#fab").style.display = "none";
   const piBtn = Remote.health?.pi && PiAdapter.available() ? `<button class="u-mt10 btn ghost block" id="pi-login">الدخول بحساب Pi</button>` : "";
