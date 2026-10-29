@@ -2611,3 +2611,12 @@
 "استكشف صنّاعاً": "Explore creators"
 });
 /* === /v271-tabs === */
+
+/* === v2139-home === */
+(window.MPI18N = window.MPI18N || {}).en = Object.assign(window.MPI18N.en || {}, {
+"شارك لحظة تختفي بعد 24 ساعة": "Share a moment that disappears after 24 hours",
+"عرض كل التحديات": "Show all challenges",
+"طي التحديات": "Fold challenges",
+"تقدّم التحديات": "Challenges progress"
+});
+/* === /v2139-home === */
