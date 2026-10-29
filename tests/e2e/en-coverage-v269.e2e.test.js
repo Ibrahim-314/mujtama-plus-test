@@ -21,7 +21,8 @@ test("390 EN: main routes carry no Arabic UI text; AR unchanged", async () => {
   await onboard(p, S.base, "en_sweeper", "Sweeper");
   assert.match(await p.textContent(".bottomnav"), /الرئيسية/);
   await p.waitForFunction(() => !!window.MPI18n?.setLang, null, { timeout: 15000 });
-  await p.evaluate(() => window.MPI18n.setLang("en")); await p.waitForFunction(() => document.documentElement.dir === "ltr");
+  /* v2.140 de-flake: under parallel load a late SW/route navigation can land right after onboarding; wait it out and retry once */
+  try { await p.evaluate(() => window.MPI18n.setLang("en")); } catch { await p.waitForLoadState("load"); await p.waitForFunction(() => !!window.MPI18n?.setLang, null, { timeout: 15000 }); await p.evaluate(() => window.MPI18n.setLang("en")); } await p.waitForFunction(() => document.documentElement.dir === "ltr");
   const left = {};
   for (const r of ROUTES) {
     await p.evaluate((r) => { document.getElementById("sheet")?.classList.add("hidden"); location.hash = r; }, r);
