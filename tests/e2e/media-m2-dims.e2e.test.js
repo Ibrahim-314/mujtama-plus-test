@@ -74,7 +74,7 @@ test("editors publish imageDims: community post and public post", async () => {
   P.comm = await until(async () => (await S.app.ctx.db.get("SELECT id, data FROM posts WHERE community=$1 AND text LIKE $2", [cid, "%عريضة في المجتمع%"])));
   assert.deepEqual(P.comm.data.imageDims, [[1600, 900]]);
 
-  await go(o, "#/home"); await o.click("#fab"); await o.waitForSelector("#composer3[data-mode=general]");
+  await go(o, "#/home"); await o.evaluate(() => document.getElementById("fab").click()); /* v2.139: hidden compose trigger (desktop rail / «n»), the floating button is gone */ await o.waitForSelector("#composer3[data-mode=general]");
   const [c2] = await Promise.all([o.waitForEvent("filechooser"), o.click('#composer3 [data-tool="img"]')]);
   await c2.setFiles(path.join(FX, "wide1600.jpg"));
   await o.waitForSelector("#composer3 .thumb[data-i]", { timeout: 20000 });
