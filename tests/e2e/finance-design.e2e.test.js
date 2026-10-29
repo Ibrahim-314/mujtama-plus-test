@@ -65,7 +65,7 @@ test("P60: wallet → statement (filter, CSV) → invoice (print) → annual →
 
 test("P55: tap targets ≥ 44 px on core screens, logical chip margins, busy skeleton", async () => {
   await p.goto(S.base + "/?nosw#/home");
-  await p.waitForSelector(".topbar .top-actions .icon-btn", { timeout: 20000 }); // v2.52: the bar starts with the (hidden on tab roots) back button
+  await p.waitForSelector(".topbar .top-actions .icon-btn:not(.hp-slot)", { timeout: 20000 }); // v2.52: the bar starts with the (hidden on tab roots) back button
   const small = await p.evaluate(() => [...document.querySelectorAll(".topbar .icon-btn, .tab, .btn, .seg button, .bottomnav a")].filter((e) => e.offsetParent).map((e) => { const r = e.getBoundingClientRect(); return { c: e.className, h: Math.round(r.height), w: Math.round(r.width) }; }).filter((x) => x.h < 44 || x.w < 44));
   assert.deepEqual(small, []);
   const m = await p.evaluate(() => { const c = document.createElement("span"); c.className = "chip"; document.body.append(c); const s = getComputedStyle(c); const r = [s.marginLeft, s.marginRight]; c.remove(); return r; });
