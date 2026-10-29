@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.140.1",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "تحديث أمني للخادم",
+      "items": [
+        "تثبيت Node.js على 22.23.4 لسدّ ثغرة أمنية خطيرة صدرت في 20 أكتوبر 2026"
+      ]
+    },
+    "en": {
+      "title": "Server security update",
+      "items": [
+        "Node.js pinned to 22.23.4, closing a serious security flaw published on 20 October 2026"
+      ]
+    }
+  },
+  {
     "v": "2.140.0",
     "date": "2026-10-29",
     "ar": {
