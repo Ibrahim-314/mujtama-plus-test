@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.139.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "رئيسية أرتب",
+      "items": [
+        "انحذف زر النشر العائم المكرر، والنشر صار من شريط «بماذا تفكر؟» أعلى الصفحة",
+        "«أضف قصة» صارت سطر أنيق بدل مربع كبير لما ما فيه قصص",
+        "بطاقة «تحديات أسبوعك الأول» فيها عداد وتقدّم، وكل خطوة توديك لمكانها، وتقدر تطويها",
+        "إصلاح نصوص عربية كانت تظهر في الواجهة الإنجليزية"
+      ]
+    },
+    "en": {
+      "title": "A tidier home",
+      "items": [
+        "The duplicate floating post button is gone; post from the «What's on your mind?» bar at the top",
+        "«Add story» is now a neat row instead of a big tile when there are no stories",
+        "The first-week challenges card shows progress, every step takes you there, and it folds away",
+        "Fixed Arabic text that showed in the English interface"
+      ]
+    }
+  },
+  {
     "v": "2.138.0",
     "date": "2026-10-29",
     "ar": {
