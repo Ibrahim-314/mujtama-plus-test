@@ -117,7 +117,7 @@ test("minor: the labelled post never reaches the client; #/age lists the protect
 
 test("composer chips and the urgent report sheet", async () => {
   await B.evaluate(() => { location.hash = "#/home"; });
-  await B.waitForSelector("#fab", { state: "visible" }); await B.click("#fab");
+  await B.waitForSelector("#cbar", { state: "visible" }); await B.click("#cbar");
   await B.waitForSelector("#composer3 #mn-lbl [data-mn-l=violence]", { state: "attached" }); await B.evaluate(() => { document.querySelector("#composer3 #c3-opts").open = true; });
   await B.fill("#c3-text", "مشهد قتال من فيلم الأكشن الجديد");
   await B.click("#mn-lbl [data-mn-l=violence]");
