@@ -3,7 +3,9 @@
  * the registry has an entry for the current route (also the hand-built heads .nf-head / .cm-head); screens without a page head
  * (Home, Explore) get it in the reserved top-bar slot #tbHelp — on mobile too since v2.61.1 (the wordmark shrinks under 400 px to
  * make room); the overlay row (.hp-strip) is only a last-resort fallback when the bar has no room.
- * It opens a short explanation (2–4 lines + up to 3 tips): a bottom sheet on mobile (the shared #sheet, swipe/Esc to close),
+ * v2.137: the icon is a small round «i» and opens a small bubble with an arrow (dark on light, light on dark) on every screen size;
+ * the 7 main tabs (Home, Explore, Communities, Messages, Notifications, More, my profile) and Vidtik, voice rooms, «فاتك اليوم» show no icon — inner pages only.
+ * (Before v2.137 it opened a bottom sheet on mobile / a popover on desktop:)
  * a popover anchored to the button on desktop (≥ 720 px). Both are modal dialogs with a focus trap; Esc and the close button
  * return focus to «؟». Text is in the interface language (ar/en; v2.67 retired fr/ur → en) with Arabic fallback, and it is never re-translated
  * by the i18n DOM walk (data-noi18n). No entry for the route → no icon.
@@ -56,6 +58,12 @@
     if (path === "#/studio") return st._stab || q.get("tab") || ""; // no tab picked yet → the page-wide studio entry
     return q.get("tab") || "";
   }
+  /** v2.137: the main tabs carry no help icon (user's call) — Home, Explore, Communities, Messages, Notifications, More, my profile + Vidtik, voice rooms, «فاتك اليوم» (user, 2026-10-29) */
+  const MAIN = new Set(["#/home", "#/explore", "#/communities", "#/messages", "#/notifications", "#/menu", "#/me", "#/profile", "#/clips", "#/shorts", "#/rooms", "#/digest"]);
+  function isMain(hash, myHandle) {
+    const path = norm(hash); if (MAIN.has(path)) return true;
+    const m = /^#\/u\/([^/]+)$/.exec(path); return !!(m && myHandle && decodeURIComponent(m[1]).replace(/^@/, "").toLowerCase() === String(myHandle).toLowerCase());
+  }
   /** one field in language L, falling back to Arabic: { text, lang } */
   const pick = (f, L) => (f && f[L] != null && f[L] !== "" && !(Array.isArray(f[L]) && !f[L].length) ? { v: f[L], lang: L } : { v: f ? f.ar : null, lang: "ar" });
   const lines = (v) => (Array.isArray(v) ? v : String(v ?? "").split("\n")).map((x) => String(x).trim()).filter(Boolean);
@@ -67,10 +75,11 @@
   const curLang = () => { const l = (typeof DB !== "undefined" && DB.settings && DB.settings.lang) || document.documentElement.lang || "ar"; const n = l === "fr" || l === "ur" ? "en" : l; return UIT[n] ? n : "ar"; };
   const T = () => UIT[curLang()];
 
-  if (typeof module !== "undefined" && module.exports && typeof document === "undefined") { module.exports = { match, norm, lines, pick, sectionOf, merge }; return; }
+  if (typeof module !== "undefined" && module.exports && typeof document === "undefined") { module.exports = { match, norm, lines, pick, sectionOf, merge, isMain }; return; }
 
   const list = () => window.MPHelpContent || [];
-  const entryFor = (hash = location.hash) => match(hash, list(), sectionOf(hash, document.getElementById("view") || {}));
+  const myHandle = () => { try { const u = typeof DB !== "undefined" && (DB.users || []).find((x) => x.id === DB.me); return u ? u.handle : ""; } catch { return ""; } };
+  const entryFor = (hash = location.hash) => (isMain(hash, myHandle()) ? null : match(hash, list(), sectionOf(hash, document.getElementById("view") || {})));
   /* en text lives in its own lazy chunk ("helpcontent-<lang>"), merged once; Arabic is always present (fallback) */
   const merged = { ar: true }, langPend = {};
   function ensureLang(L = curLang()) {
@@ -81,15 +90,15 @@
   }
 
   /* ---------- the «؟» button ---------- */
-  const glyph = () => (RTL[curLang()] ? "؟" : "?");
-  const btnHtml = (top) => `<button type="button" class="hp-btn${top ? " icon-btn hp-top" : ""}" data-help aria-haspopup="dialog" aria-expanded="false" aria-label="${esc(T().btn)}" title="${esc(T().btn)}" data-noi18n><span class="hp-q" aria-hidden="true">${glyph()}</span></button>`;
+  const glyph = () => "i"; // v2.137: the small round «i» (same in every language)
+  const btnHtml = (top) => `<button type="button" class="hp-btn${top ? " icon-btn hp-top" : ""}" data-help aria-expanded="false" aria-label="${esc(T().btn)}" title="${esc(T().btn)}" data-noi18n><span class="hp-q" aria-hidden="true">${glyph()}</span></button>`;
   /* the top-bar «؟» is a slot nav.js reserves from the first paint (#tbHelp): turned on/off here, never inserted or removed, so the
    * bar never shifts (CLS 0). Off = invisible, unfocusable, no data-help. */
   const slotEl = () => document.getElementById("tbHelp");
   function setSlot(on) {
     const b = slotEl(); if (!b) return;
     if (!on) { if (!b.classList.contains("on")) return; b.classList.remove("on", "hp-btn", "hp-top"); b.removeAttribute("data-help"); b.removeAttribute("aria-haspopup"); b.removeAttribute("aria-expanded"); b.removeAttribute("aria-label"); b.removeAttribute("title"); b.setAttribute("aria-hidden", "true"); b.tabIndex = -1; return; }
-    b.classList.add("on", "hp-btn", "hp-top"); b.setAttribute("data-help", ""); b.setAttribute("aria-haspopup", "dialog"); if (!b.hasAttribute("aria-expanded")) b.setAttribute("aria-expanded", "false");
+    b.classList.add("on", "hp-btn", "hp-top"); b.setAttribute("data-help", ""); if (!b.hasAttribute("aria-expanded")) b.setAttribute("aria-expanded", "false");
     b.setAttribute("aria-label", T().btn); b.title = T().btn; b.removeAttribute("aria-hidden"); b.removeAttribute("tabindex");
     const q = b.querySelector(".hp-q"); if (q && q.textContent !== glyph()) q.textContent = glyph();
   }
@@ -127,74 +136,47 @@
     lastKey = key;
   }
 
-  /* ---------- the dialog (sheet on mobile, popover on desktop) ---------- */
+  /* ---------- the bubble (v2.137): a small dark toggletip with an arrow under «i», same on phone and desktop ----------
+   * Light theme: dark bubble; dark theme: light bubble. Tap «i» again, tap outside, or Esc closes it. Non-modal: the page stays usable. */
   let openFrom = null, pop = null;
-  const desktop = () => matchMedia("(min-width: 720px)").matches;
   function content(e) {
     const L = curLang(), t = pick(e.title, L), b = pick(e.body, L), tp = pick(e.tips, L);
     const dirOf = (l) => (RTL[l] ? "rtl" : "ltr"), body = lines(b.v).slice(0, 4), tips = lines(tp.v).slice(0, 3);
-    return `<div class="hp-in" data-noi18n>
-      <div class="hp-head"><span class="hp-badge" aria-hidden="true">${glyph()}</span><h3 id="hp-t" tabindex="-1" lang="${t.lang}" dir="${dirOf(t.lang)}">${esc(t.v)}</h3>
-        <button type="button" class="icon-btn hp-x" data-hp-close aria-label="${esc(T().close)}"><svg class="ic" aria-hidden="true"><use href="#i-x"/></svg></button></div>
+    return `<span class="hp-sr" id="hp-t" lang="${t.lang}">${esc(t.v)}</span>
       <div class="hp-body" lang="${b.lang}" dir="${dirOf(b.lang)}">${body.map((x) => `<p>${esc(x)}</p>`).join("")}</div>
-      ${tips.length ? `<div class="hp-tips" lang="${tp.lang}" dir="${dirOf(tp.lang)}"><h4>${esc(T().tips)}</h4><ul>${tips.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-      <div class="hp-foot"><button type="button" class="btn sm" data-hp-close>${esc(T().ok)}</button></div></div>`;
+      ${tips.length ? `<ul class="hp-tips" lang="${tp.lang}" dir="${dirOf(tp.lang)}" aria-label="${esc(T().tips)}">${tips.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}`;
   }
-  const focusables = (root) => [...root.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter((x) => !x.disabled && x.getClientRects().length);
-  function trap(root) {
-    root.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); close(); return; }
-      if (ev.key !== "Tab") return;
-      const f = focusables(root); if (!f.length) return;
-      const a = f[0], z = f[f.length - 1], cur = document.activeElement;
-      if (ev.shiftKey && (cur === a || !root.contains(cur))) { ev.preventDefault(); z.focus(); }
-      else if (!ev.shiftKey && (cur === z || !root.contains(cur))) { ev.preventDefault(); a.focus(); }
-    });
-    root.addEventListener("click", (ev) => { if (ev.target.closest("[data-hp-close]")) close(); });
-  }
+  function onKey(ev) { if (ev.key === "Escape" && pop) { ev.preventDefault(); ev.stopPropagation(); close(); } }
   function open(btn) {
     if (!merged[curLang()]) { ensureLang().then(() => open(btn)); return; }
-    const e = entryFor(); if (!e) return;
-    close(true); openFrom = btn || null; btn?.setAttribute("aria-expanded", "true");
-    if (desktop() && btn) {
-      pop = document.createElement("div"); pop.className = "hp-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-modal", "true"); pop.setAttribute("aria-labelledby", "hp-t");
-      pop.dir = document.documentElement.dir || "rtl"; pop.innerHTML = content(e); document.body.appendChild(pop); trap(pop); place();
-      setTimeout(() => document.addEventListener("pointerdown", outside, true), 0);
-      addEventListener("resize", place); addEventListener("scroll", place, { passive: true });
-      pop.querySelector("#hp-t").focus({ preventScroll: true });
-    } else if (typeof sheet === "function") {
-      const s = sheet(`<div class="hp-sheet">${content(e)}</div>`);
-      s._onclose = () => { openFrom?.setAttribute("aria-expanded", "false"); refocus(openFrom); openFrom = null; };
-      const p = s.querySelector(".panel"); p.classList.add("hp-panel"); p.setAttribute("role", "dialog"); p.setAttribute("aria-modal", "true"); p.setAttribute("aria-labelledby", "hp-t"); trap(p);
-      p.querySelector("#hp-t").focus({ preventScroll: true });
-    }
+    const e = entryFor(); if (!e || !btn) return;
+    close(true); openFrom = btn; btn.setAttribute("aria-expanded", "true");
+    pop = document.createElement("div"); pop.className = "hp-pop"; pop.id = "hp-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-labelledby", "hp-t"); pop.tabIndex = -1;
+    pop.dir = document.documentElement.dir || "rtl"; pop.setAttribute("data-noi18n", ""); pop.innerHTML = content(e) + `<span class="hp-arrow" aria-hidden="true"></span>`;
+    document.body.appendChild(pop); btn.setAttribute("aria-controls", "hp-pop"); place();
+    setTimeout(() => document.addEventListener("pointerdown", outside, true), 0);
+    document.addEventListener("keydown", onKey, true); addEventListener("resize", place); addEventListener("scroll", place, { passive: true });
+    pop.focus({ preventScroll: true });
   }
-  /* focus goes back to «؟»; a screen may re-render while the dialog is open (closeSheet → pending rerender), so if the
-   * button was replaced, the new one (re-added by decorate) takes the focus once the screen settles */
+  /* focus goes back to «i»; a screen may re-render while the bubble is open, so the new button (re-added by decorate) takes it */
   function refocus(b) {
-    if (b?.isConnected) b.focus({ preventScroll: true });
-    setTimeout(() => {
-      const a = document.activeElement, lost = !a || a === document.body || a.matches?.("#view, #view h2, #view [tabindex='-1']");
-      const cur = b?.isConnected ? b : document.querySelector("#view [data-help], .topbar [data-help]");
-      if (cur && lost && !pop && document.getElementById("sheet")?.classList.contains("hidden")) cur.focus({ preventScroll: true });
-    }, 150);
+    if (b?.isConnected) { b.focus({ preventScroll: true }); return; }
+    setTimeout(() => { const cur = document.querySelector("#view [data-help], .topbar [data-help]"); const a = document.activeElement; if (cur && !pop && (!a || a === document.body)) cur.focus({ preventScroll: true }); }, 150);
   }
   function place() {
     if (!pop || !openFrom) return;
-    const r = openFrom.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, rtl = (document.documentElement.dir || "rtl") === "rtl";
-    let x = rtl ? r.right - w : r.left; x = Math.max(12, Math.min(x, innerWidth - w - 12));
-    let y = r.bottom + 8; if (y + h > innerHeight - 12) y = Math.max(12, r.top - h - 8);
-    pop.style.setProperty("--hp-x", x + "px"); pop.style.setProperty("--hp-y", y + "px");
+    if (!openFrom.isConnected) { close(true); return; }
+    const r = openFrom.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, cx = r.left + r.width / 2;
+    let x = Math.max(12, Math.min(cx - w / 2, innerWidth - w - 12));
+    let y = r.bottom - 6, up = false; if (y + h + 8 > innerHeight - 12 && r.top - h > 12) { y = r.top - h + 6; up = true; }
+    pop.classList.toggle("up", up);
+    pop.style.setProperty("--hp-x", x + "px"); pop.style.setProperty("--hp-y", y + "px"); pop.style.setProperty("--hp-ax", Math.max(14, Math.min(cx - x, w - 14)) + "px");
   }
   function outside(ev) { if (pop && !pop.contains(ev.target) && !(openFrom && openFrom.contains(ev.target))) close(); }
   function close(silent) {
-    if (pop) {
-      pop.remove(); pop = null; document.removeEventListener("pointerdown", outside, true); removeEventListener("resize", place); removeEventListener("scroll", place);
-      const b = openFrom; openFrom = null; b?.setAttribute("aria-expanded", "false"); if (!silent) refocus(b);
-      return;
-    }
-    const s = document.getElementById("sheet");
-    if (s && !s.classList.contains("hidden") && s.querySelector(".hp-sheet") && typeof closeSheet === "function") { if (silent) s._onclose = null; closeSheet(); }
+    if (!pop) return;
+    pop.remove(); pop = null; document.removeEventListener("pointerdown", outside, true); document.removeEventListener("keydown", onKey, true); removeEventListener("resize", place); removeEventListener("scroll", place);
+    const b = openFrom; openFrom = null; b?.setAttribute("aria-expanded", "false"); if (!silent) refocus(b);
   }
 
   document.addEventListener("click", (ev) => { const b = ev.target.closest?.("[data-help]"); if (!b) return; ev.preventDefault(); if (pop && openFrom === b) close(); else open(b); });
@@ -204,7 +186,7 @@
   // the language can change without a route change (#/settings/language): redraw the button label/glyph
   new MutationObserver(() => { lastKey = ""; ensureLang(); soon(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["lang", "dir"] });
 
-  const ready = () => { window.MPHelp = { match, entryFor, sectionOf, open, close, decorate, ensureLang }; decorate(); ensureLang(); };
+  const ready = () => { window.MPHelp = { match, entryFor, sectionOf, isMain, open, close, decorate, ensureLang }; decorate(); ensureLang(); };
   if (window.MPHelpContent) ready();
   else if (window.MPChunks) MPChunks.load("helpcontent").then(ready, () => { window.MPHelpContent = window.MPHelpContent || []; ready(); });
   else ready();
