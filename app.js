@@ -392,7 +392,7 @@ const Views = {
 
   onboarding(step = 1) {
     document.body.classList.add("ob");
-    if (step === 1) view.innerHTML = `<div class="wrap" style="text-align:center;padding-top:40px"><div class="logo" style="width:80px;height:80px;font-size:56px;border-radius:26px;margin:auto">+</div><h2 class="u-t-num u-mt20">أهلاً بك في مجتمع بلس</h2><p class="muted">اكتشف أشخاصاً ومجتمعات ونقاشات تهمك، وشارك أفكارك مع العالم.</p><br><button class="btn block" id="n1">ابدأ</button></div>`;
+    if (step === 1) view.innerHTML = `<div class="wrap" style="text-align:center;padding-top:40px"><div class="logo" style="width:80px;height:80px;font-size:56px;border-radius:26px;margin:auto">+</div><h2 class="u-t-num u-mt20">أهلاً بك في مجتمع بلس</h2><p class="muted">اكتشف أشخاصاً ومجتمعات ونقاشات تهمك، وشارك أفكارك مع العالم.</p><br><button class="btn block" id="n1">ابدأ</button>${(() => { const en = !!(window.MPI18n && MPI18n.current() === "en"); return `<button type="button" class="btn ghost block u-mt12" id="ob-lang" data-mplang="${en ? "ar" : "en"}" lang="${en ? "ar" : "en"}" data-noi18n>${en ? "العربية" : "English"}</button>`; })()}</div>`; /* v2.140: visitors pick the language right on the welcome screen */
     if (step === 2) view.innerHTML = `<div class="wrap"><h2>ما الذي يهمك؟</h2><p class="muted">اختر ٣ اهتمامات على الأقل لنخصص لك المحتوى.</p><div class="chips">${TOPICS.map(t => `<button class="tab ${DB.interests.includes(t.slug) ? "on" : ""}" data-i="${t.slug}">${t.name}</button>`).join("")}</div><br><button class="btn block" id="n2" ${DB.interests.length < 3 ? "disabled" : ""}>التالي (${DB.interests.length}/3)</button></div>`;
     if (step === 3) {
       const sug = DB.users.filter(u => u.id !== DB.me).sort((a, b) => b.topics.filter(t => DB.interests.includes(t)).length - a.topics.filter(t => DB.interests.includes(t)).length).slice(0, 5);
@@ -416,6 +416,7 @@ function commRow(c) { const m = S.membership(c.id); return `<div class="card row
 function route() {
   const h = location.hash.replace(/^#\/?/, "").split("?")[0] || "home";
   const [r, a, b] = h.split("/");
+  if (window.MPSession?.state === "out" && typeof showAuth === "function") return showAuth(view._authMode || "login"); /* v2.140: a signed-out visitor keeps the sign-in screen (re-render, language switch, deep links) instead of the onboarding gate */
   if (!DB.onboarded) { $(".bottomnav").style.display = "none"; $("#fab").style.display = "none"; document.body.classList.remove("has-fab"); return Views.onboarding(view._ob || 1); }
   $(".bottomnav").style.display = ""; { const fabOn = ["home", "communities", "c", "u", "me", "topic", "tag", "list", "events"].includes(r); void fabOn; document.body.classList.remove("has-fab"); } /* v2.139: no floating button */
   if (window.MPNav) MPNav.paint(); else document.querySelectorAll(".bottomnav a[data-r]").forEach(x => x.classList.toggle("active", x.dataset.r === r));
