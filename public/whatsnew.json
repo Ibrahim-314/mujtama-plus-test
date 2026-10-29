@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.140.0",
+    "date": "2026-10-29",
+    "ar": {
+      "title": "اللغة للزوار وأمان أقوى",
+      "items": [
+        "تقدر تغيّر اللغة للإنجليزي من زر 🌐 قبل ما تسجّل، وفيه زر «English» في شاشة الترحيب",
+        "شاشة الدخول تبقى ظاهرة للزائر وما تتحول لشاشة الترحيب",
+        "تغيير مفاتيح التشفير وكلمة سر قاعدة البيانات احتياطاً بعد حادثة الاستضافة"
+      ]
+    },
+    "en": {
+      "title": "Language for visitors, stronger security",
+      "items": [
+        "Switch to English from the 🌐 button before signing in, plus an «العربية / English» button on the welcome screen",
+        "The sign-in screen stays put for visitors instead of jumping to the welcome screen",
+        "Encryption keys and the database password were rotated as a precaution after the hosting incident"
+      ]
+    }
+  },
+  {
     "v": "2.139.0",
     "date": "2026-10-29",
     "ar": {
