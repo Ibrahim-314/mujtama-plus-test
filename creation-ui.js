@@ -114,7 +114,7 @@
     q("#rm-hand")?.addEventListener("click", () => api("POST", `/api/rooms/${RTC.room}/hand`, { up: !me.hand }).then(st => { RTC.state = st; renderRoom(); }));
     q("#rm-mic")?.addEventListener("click", async () => { const muted = !me.muted; if (RTC.local) RTC.local.getAudioTracks().forEach(t => t.enabled = !muted); RTC.state = await api("POST", `/api/rooms/${RTC.room}/mute`, { muted }); renderRoom(); });
     q("#rm-leave")?.addEventListener("click", () => leaveRoom().then(() => location.hash = "#/rooms"));
-    q("#rm-end")?.addEventListener("click", async () => { if (!confirm("إنهاء الغرفة للجميع؟")) return; if (RTC.rec) await stopRecording(true); await api("POST", `/api/rooms/${RTC.room}/end`); await leaveRoom(true); location.hash = "#/rooms"; });
+    q("#rm-end")?.addEventListener("click", async () => { if (!(await window.MPConfirm("إنهاء الغرفة للجميع؟", { ok: "إنهاء" }))) return; if (RTC.rec) await stopRecording(true); await api("POST", `/api/rooms/${RTC.room}/end`); await leaveRoom(true); location.hash = "#/rooms"; });
     q("#rm-rec")?.addEventListener("click", () => RTC.rec ? stopRecording(false) : startRecording());
     q("#rm-tip")?.addEventListener("click", (e) => roomTip(s, e.currentTarget));
     view.querySelectorAll("[data-promote]").forEach(b => b.onclick = () => api("POST", `/api/rooms/${RTC.room}/role`, { user: b.dataset.promote, role: "speaker" }).catch(e => toast(e.message)));
@@ -407,11 +407,11 @@
       <b>أول ٤٨ ساعة</b>${spark(s.first48h, 90)}<b>المصادر</b>${s.sources.map(x => `<div class="src-row"><span>${esc(x.label)}</span><div class="fn-bar"><i style="width:${x.share}%"></i></div><b>${x.share}٪</b></div>`).join("") || '<p class="muted">لا بيانات بعد</p>'}`);
   }
   async function stCalendar(body) {
-    const month = view._smonth || new Date().toISOString().slice(0, 7), c = await api("GET", "/api/studio/calendar?month=" + month);
+    const month = view._smonth || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`; })() /* v2.140.2: local month (the grid is local; UTC showed last month in the first hours of a month) */, c = await api("GET", "/api/studio/calendar?month=" + month);
     const [y, m] = month.split("-").map(Number), first = new Date(y, m - 1, 1), daysIn = new Date(y, m, 0).getDate(), lead = first.getDay();
     const byDay = {}; for (const it of c.items) { const d = new Date(it.at).getDate(); (byDay[d] ||= []).push(it); }
     const shift = (k) => { const d = new Date(y, m - 1 + k, 1); view._smonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; studioView(); };
-    body.innerHTML = `<div class="row cal-head"><button class="btn ghost" id="cal-prev" aria-label="الشهر السابق">→</button><b class="u-tc grow">${first.toLocaleDateString(lcl(), { month: "long", year: "numeric" })}</b><button class="btn ghost" id="cal-next" aria-label="الشهر التالي">←</button></div>
+    body.innerHTML = `<div class="row cal-head" data-month="${month}"><button class="btn ghost" id="cal-prev" aria-label="الشهر السابق">→</button><b class="u-tc grow">${first.toLocaleDateString(lcl(), { month: "long", year: "numeric" })}</b><button class="btn ghost" id="cal-next" aria-label="الشهر التالي">←</button></div>
       <div class="cal">${DAYS.map((d, i) => `<div class="cal-dow">${dow3(i)}</div>`).join("")}${Array.from({ length: lead }, () => `<div></div>`).join("")}${Array.from({ length: daysIn }, (_, i) => { const d = i + 1, items = byDay[d] || [], today = new Date().toDateString() === new Date(y, m - 1, d).toDateString(); return `<div class="cal-day ${today ? "today" : ""}" data-day="${d}"><span class="cal-n">${d}</span>${items.slice(0, 3).map(it => `<button type="button" class="cal-item ${it.status}" draggable="${it.status === "scheduled"}" data-item="${it.id}" title="${esc(it.title)}" aria-label="${esc(it.title)} · ${it.status === "scheduled" ? "مجدول" : "منشور"} ${esc(fmtAt(it.at))}">${it.status === "scheduled" ? ic("refresh", "xs") : ""}<bdi>${esc(it.title.slice(0, 14))}</bdi></button>`).join("")}${items.length > 3 ? `<button type="button" class="cal-more" data-more="${d}" aria-label="كل منشورات اليوم ${d}">+${items.length - 3}</button>` : ""}</div>`; }).join("")}</div>
       <p class="muted cal-hint">${ic("refresh", "xs")} <span>اضغط منشوراً مجدولاً لتغيير موعده، أو اسحبه إلى يوم آخر على الحاسوب. اضغط يوماً لجدولة منشور فيه.</span></p>`;
     $("#cal-prev").onclick = () => shift(-1); $("#cal-next").onclick = () => shift(1);
