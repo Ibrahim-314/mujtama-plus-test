@@ -228,6 +228,7 @@
     let d; try { d = await loadCenter(st.tab, st.sort); } catch (e) { if (view._nf === token) view.innerHTML = `<div class="wrap nf-page"><div class="empty err" role="alert">${ic("offline")}<span class="empty-t">تعذّر تحميل الإشعارات</span><span class="empty-x">${h(e.message)}</span><button class="btn" data-ui="route">إعادة المحاولة</button></div></div>`; return; }
     if (view._nf !== token || !/^#\/notifications/.test(location.hash || "#/")) return;
     st.data = d;
+    if (!d.local && Number.isFinite(d.unread)) { const nb = document.getElementById("notifBadge"); if (nb) { nb.textContent = d.unread; nb.classList.toggle("on", d.unread > 0); } } // v2.140.2: the server count is the truth while online
     const tabs = TABS.map(([key, label]) => ({ key, label, unread: (d.tabs || []).find(t => t.key === key)?.unread || 0 }));
     const anyUnread = d.groups.some(g => !g.read), e = EMPTY[st.tab] || EMPTY.all;
     const focusTab = document.activeElement?.dataset?.tab;
