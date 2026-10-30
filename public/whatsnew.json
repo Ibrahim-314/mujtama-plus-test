@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.142.1",
+    "date": "2026-10-30",
+    "ar": {
+      "title": "حركة أهدأ",
+      "items": [
+        "إذا فعّلت «تقليل الحركة» في جهازك تظهر الصفحات فوراً بلا حركة دخول",
+        "إصلاح اختبار «استكشف» المتذبذب"
+      ]
+    },
+    "en": {
+      "title": "Calmer motion",
+      "items": [
+        "With Reduce Motion on, pages appear instantly without entrance animation",
+        "Fixed the flaky Explore test"
+      ]
+    }
+  },
+  {
     "v": "2.142.0",
     "date": "2026-10-30",
     "ar": {
