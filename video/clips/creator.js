@@ -36,7 +36,9 @@
   async function page(handle) {
     document.body.classList.remove("shorts-mode");
     const token = {}; view._vt = token;
-    view.innerHTML = `<div class="wrap vt-pf" aria-busy="true"><div class="vt-pf-skel"><span></span><span></span><span></span></div></div>`;
+    // v2.140.2: a refresh of the profile already on screen (sync / realtime re-render) keeps it until the new data lands — no skeleton flash
+    const same = view._vtHandle === handle && view.querySelector(".vt-pf .vt-grid"); view._vtHandle = handle;
+    if (!same) view.innerHTML = `<div class="wrap vt-pf" aria-busy="true"><div class="vt-pf-skel"><span></span><span></span><span></span></div></div>`;
     let r;
     try { r = await api("GET", "/api/clips/creator/" + encodeURIComponent(handle)); }
     catch (e) {
