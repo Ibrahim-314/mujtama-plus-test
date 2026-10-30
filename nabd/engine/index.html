@@ -36,7 +36,7 @@ body{color:#fff;background:#03040f;overflow:hidden;touch-action:none;-webkit-use
 #ld .ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 9.6%,rgba(3,4,15,.55) 9.6% 10%)}
 #ld .foot{display:flex;justify-content:space-between;margin-top:10px;font-size:11px;color:#7f93b5;direction:rtl}
 #ld.done .stage i{animation:none;background:#5dff9a;box-shadow:0 0 10px #5dff9a}
-#ld .err{display:none;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(120,30,50,.75);border:1px solid #ff7a90;font-size:13px;line-height:1.6}
+#ld .err{display:none;margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(120,30,50,.75);border:1px solid #ff7a90;font-size:13px;line-height:1.6;white-space:pre-line}
 #ld.fail .err{display:block}
 @media (orientation:landscape){#ld .top{top:6vh}#ld h1{font-size:clamp(34px,6vw,64px)}#ld .bot{bottom:5vh}}
 @media (prefers-reduced-motion:reduce){#ld .bg,#ld .fill:after{animation:none}}
@@ -93,10 +93,11 @@ const engine = new Engine(GODOT_CONFIG);
     const v=Math.floor(shown);fill.style.width=shown.toFixed(2)+'%';pct.textContent=v;
     let s=STAGES[0][1];for(const [k,t] of STAGES) if(v>=k) s=t;stg.textContent=s;
   }
-  setInterval(paint,120);
-  function fail(err){console.error(err);ld.classList.add('fail');document.getElementById('err').textContent=(err&&err.message)||String(err||'حدث خطأ غير معروف');stg.textContent="تعذّر التشغيل";}
+  const paintT=setInterval(paint,120);
+  /* v2.140.2: a failure stops the bar and tips (no frozen "loading" state) and explains it in Arabic, not Godot's English text. */
+  function fail(err){console.error(err);gone=true;clearInterval(paintT);clearInterval(tipT);tipBox.style.display='none';ld.classList.add('fail');document.getElementById('err').textContent=(typeof err==='string'?err:'')||'تعذّر تشغيل اللعبة. أعد تحميل الصفحة وحاول مرة أخرى.';stg.textContent="تعذّر التشغيل";}
   const missing=Engine.getMissingFeatures({threads:GODOT_THREADS_ENABLED});
-  if(missing.length){fail("متصفحك لا يدعم تشغيل اللعبة (WebGL2).\n"+missing.join('، '));return}
+  if(missing.length){const gl=missing.some(m=>/webgl/i.test(m));fail(gl?"جهازك أو متصفحك لا يدعم رسوميات WebGL2 اللازمة للعبة.\nجرّب أحدث نسخة من Chrome أو Safari، وتأكد من تفعيل «تسريع الأجهزة» في إعدادات المتصفح.":"متصفحك ينقصه بعض ما تحتاجه اللعبة. جرّب أحدث نسخة من Chrome أو Safari.");return}
   engine.startGame({onProgress:function(cur,tot){
       const t=tot>0?tot:total; if(cur>0){const k=Math.min(1,cur/t);target=Math.max(target,10+k*76);mb.textContent=(cur/1048576).toFixed(1)+' / '+(t/1048576).toFixed(1)+' م.ب';if(k>=0.999)dl=true}
   }}).then(()=>{dl=true;setTimeout(close,4000)},fail);
