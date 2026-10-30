@@ -96,7 +96,10 @@ test("transfer fee goes to the platform; revenue dashboard, costs, margin, break
   assert.equal((await admin.req("PUT", "/api/admin/finance/settings", { piUsdRate: 0.5 })).piUsd.rate, 0.5);
   r = await admin.req("GET", "/api/admin/revenue" + range);
   assert.equal(r.margin.revenueUsd, 0.55); assert.equal(r.margin.marginUsd, -4.7); assert.equal(r.breakEven.reached, false); assert.ok(r.breakEven.payersNeeded > 1);
-  assert.equal(r.breakEven.aiSubscribersNeeded, Math.ceil(5.25 / (2 * 0.5)));
+  // the monthly cost is the range's cost spread over the calendar months it touches (a range near a month end spans two)
+  const mFrom = new Date(T - 10 * DAY).toISOString().slice(0, 7), mTo = new Date(T + DAY).toISOString().slice(0, 7);
+  const monthsN = (Number(mTo.slice(0, 4)) - Number(mFrom.slice(0, 4))) * 12 + Number(mTo.slice(5, 7)) - Number(mFrom.slice(5, 7)) + 1;
+  assert.equal(r.breakEven.aiSubscribersNeeded, Math.ceil(5.25 / monthsN / (2 * 0.5)));
   const csv = await admin.req("GET", "/api/admin/revenue.csv" + range); assert.equal(csv.status, 200);
   assert.match(csv.headers.get("content-type"), /text\/csv/); const text = csv.buf.toString("utf8");
   assert.ok(text.startsWith("\ufeff")); assert.match(text, /stream,ai,/); assert.match(text, /cost,.*hosting,Railway,5/);
