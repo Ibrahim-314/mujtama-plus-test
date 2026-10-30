@@ -8,6 +8,7 @@ test("whatsnew.json matches the app version", () => {
   const seen = new Set(); let prev = null;
   for (const x of list) {
     assert.ok(!seen.has(x.v), "duplicate " + x.v); seen.add(x.v);
+    assert.ok(x.quiet === undefined || typeof x.quiet === "boolean", "quiet is a boolean when set, at " + x.v);
     assert.ok(x.ar?.title && x.en?.title && x.ar.items?.length && x.en.items?.length, "both languages for " + x.v);
     const n = x.v.split(".").map(Number); if (prev) assert.ok(n[0] < prev[0] || (n[0] === prev[0] && (n[1] < prev[1] || (n[1] === prev[1] && n[2] < prev[2]))), "newest first at " + x.v); prev = n;
   }
