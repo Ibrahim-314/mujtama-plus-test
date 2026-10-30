@@ -1,5 +1,35 @@
 [
   {
+    "v": "2.140.2",
+    "date": "2026-10-30",
+    "ar": {
+      "title": "إصلاحات وتحسينات الجودة",
+      "items": [
+        "نافذة تأكيد داخل التطبيق بدل نافذة المتصفح عند الحذف والإرسال، تعمل في كل المتصفحات",
+        "مساعد الذكاء في الرسائل يوضح التحميل ويعيد المحاولة عند الفشل",
+        "زر اللغة في الإعدادات يغيّر اللغة فعلاً، وترجمة إنجليزية أوسع",
+        "عدّاد الإشعارات صار مطابقاً لمركز الإشعارات",
+        "اللقطات: رسالة واضحة في نهاية الصفحة، وملفك يتحدّث بدون وميض",
+        "تقويم الاستوديو يفتح على الشهر الصحيح أول ساعات الشهر",
+        "«ليش رائج؟» أسرع ولا يستهلك رصيدك عند تكرار السؤال",
+        "تحسينات في إمكانية الوصول والتباين"
+      ]
+    },
+    "en": {
+      "title": "Fixes and quality",
+      "items": [
+        "In-app confirm sheet instead of the browser dialog for deletes and sends, works in every browser",
+        "Messages AI shows loading and offers retry on failure",
+        "The language switch in Settings now really changes the language, with wider English coverage",
+        "The notification badge matches the notification center",
+        "Clips: a clear end-of-feed card, and your profile refreshes without a flash",
+        "The Studio calendar opens on the right month in the first hours of a month",
+        "«Why trending?» is faster and repeat questions don't use your allowance",
+        "Accessibility and contrast improvements"
+      ]
+    }
+  },
+  {
     "v": "2.140.1",
     "date": "2026-10-29",
     "ar": {
