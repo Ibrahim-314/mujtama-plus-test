@@ -42,7 +42,7 @@
 "تتابعه": "Following",
 "المتابعون": "Followers",
 "المتابِعون": "Followers",
-"متابِع": "follower",
+"متابِع": "followers",
 "انضم": "Join",
 "انضممت": "Joined",
 "مغادرة": "Leave",
