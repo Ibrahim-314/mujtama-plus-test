@@ -88,7 +88,7 @@
     page("…", `<div id="lc-a">${skel}</div>`, back("#/faq", "مركز المساعدة"));
     try {
       const { article: a } = await api("GET", "/api/helpcenter/articles/" + enc(slug));
-      $v("#lc-h").textContent = a.title; document.title = a.title + " — مجتمع بلس";
+      $v("#lc-h").textContent = a.title; document.title = a.title + " — " + (window.MPI18n?.t ? window.MPI18n.t("مجتمع بلس") : "مجتمع بلس");
       $v("#lc-a").innerHTML = `<div class="card"><p class="muted">${h(HCAT[a.category] || "")}</p><div class="lc-body">${h(a.body)}</div></div><p class="muted">هل ما زلت تحتاج مساعدة؟ <a href="#/tickets/new">افتح تذكرة دعم</a></p>`;
     } catch (e) { $v("#lc-a").innerHTML = errBox(e); }
   }
@@ -207,7 +207,7 @@
       <div class="list">${[["users", "مجتمعات", "انضم إلى مجتمعات حول اهتماماتك أو أنشئ مجتمعك بقواعدك ومشرفيك."], ["shield", "أمان أولاً", "حظر وكتم وإبلاغ بلمسة، وحماية خاصة للقُصّر، ومراجعة بشرية للبلاغات."], ["award", "Pi Network", "ادعم صناع المحتوى، وتسوّق في سوق المجتمع، وادفع بأمان عبر نافذة Pi الرسمية."], ["lock", "خصوصيتك", "رسائل مشفرة، وتنزيل بياناتك أو حذف حسابك في أي وقت، ودون تتبع إعلاني."], ["globe", "عربي أولاً", "واجهة عربية كاملة مع الإنجليزية."], ["star", "سفراء المجتمع", "أعضاء يرحّبون بالقادمين الجدد. <a href=\"#/ambassadors\">كن سفيراً</a>"]]
         .map(([i, t, d]) => `<div class="li"><span class="ico">${UI.icon(i, "sm")}</span><span class="t"><b>${t}</b><small>${d}</small></span></div>`).join("")}</div>
       <div class="card lc-row"><a href="#/faq">مركز المساعدة</a><a href="#/legal">الشروط والخصوصية</a><a href="#/transparency">تقارير الشفافية</a></div>`);
-    document.title = "عن مجتمع بلس";
+    document.title = window.MPI18n?.t ? window.MPI18n.t("عن مجتمع بلس") : "عن مجتمع بلس";
   }
 
   /* ======================= staff screens ======================= */
