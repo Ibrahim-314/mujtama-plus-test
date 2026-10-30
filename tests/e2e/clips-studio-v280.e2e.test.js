@@ -52,12 +52,13 @@ test("390 light RTL: drafts → editor → schedule, profile tools, stats page, 
   const backHref = await p.getAttribute(".vs-head a", "href");
   assert.equal(backHref, "#/clips/@vs_maker", "back goes to my Vidtik profile");
   // delete asks first: dismiss keeps it, accept removes it
-  p.once("dialog", d => d.dismiss());
+  // v2.140.2: the in-app MPConfirm sheet replaced native confirm()
   await p.click('[data-vs-del="cd_vsdraftb2"]');
-  await p.waitForTimeout(300);
+  await p.waitForSelector("#mp-cf-x", { timeout: 5000 }); await p.click("#mp-cf-x");
+  await p.waitForSelector("#mp-cf-x", { state: "detached", timeout: 5000 });
   assert.equal(await p.locator(".vs-d").count(), 2, "cancelled confirm keeps the draft");
-  p.once("dialog", d => d.accept());
   await p.click('[data-vs-del="cd_vsdraftb2"]');
+  await p.waitForSelector("#mp-cf-ok", { timeout: 5000 }); await p.click("#mp-cf-ok");
   await p.waitForFunction(() => document.querySelectorAll(".vs-d").length === 1, null, { timeout: 10000 });
 
   // open the draft in the editor
@@ -90,8 +91,10 @@ test("390 light RTL: drafts → editor → schedule, profile tools, stats page, 
   assert.equal(await p.getAttribute(".vt-tool", "href"), "#/clips/drafts");
   assert.deepEqual(await axe(p, ".vt-pf"), []);
   const stat = p.locator('.vt-stat[href="#/clips/stats/vs_c1"]');
+  await stat.waitFor({ state: "attached", timeout: 10000 }).catch(() => {});
   assert.equal(await stat.count(), 1, await p.evaluate(() => (document.querySelector(".vt-grid")?.outerHTML || "no grid").slice(0, 1500)));
-  const box = await stat.boundingBox(); assert.ok(box.width >= 44 && box.height >= 44, "44px target");
+  // v2.140.2: the profile can re-render once after the publish syncs (same content); measure the settled tile
+  let box = null; for (let i = 0; i < 20 && !(box = await stat.boundingBox().catch(() => null)); i++) await p.waitForTimeout(150); assert.ok(box.width >= 44 && box.height >= 44, "44px target");
 
   // a viewer opens the clip from the profile grid → counted as «profile»
   const v = await S.browser.newContext({ ...MOBILE });
