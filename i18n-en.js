@@ -39,7 +39,7 @@
 "متابعة": "Follow",
 "يتابع": "Following",
 "يتابعك": "Follows you",
-"تتابعه": "You follow",
+"تتابعه": "Following",
 "المتابعون": "Followers",
 "المتابِعون": "Followers",
 "متابِع": "follower",
