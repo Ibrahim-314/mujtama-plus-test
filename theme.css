@@ -1003,3 +1003,9 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 /* v2.139: floating compose button removed (Home composer + desktop rail «نشر» + «n» shortcut remain) */
 #fab, .fab#fab { display: none !important; }
 
+
+/* v2.140.2 in-app confirm (MPConfirm) */
+.mp-cf { padding: 6px 2px 2px; }
+.mp-cf-t { margin: 0 0 16px; font-size: 1.02rem; line-height: 1.6; font-weight: 600; outline: none; }
+.mp-cf-b { display: flex; gap: 10px; }
+.mp-cf-b .btn { flex: 1; min-height: 44px; }
