@@ -84,14 +84,19 @@ body.mp-offline .mp-off{opacity:1;transform:none}
   const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
   const fmtVer = (v) => { v = String(v || "").replace(/^mp-/, "").replace(/^v/i, ""); return isEn() ? v : v.replace(/\d/g, (d) => AR_DIGITS[d]).replace(/\./g, "٫"); };
   const notesFetch = () => fetch("/whatsnew.json?t=" + Date.now(), { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-  const notesOf = (list, v) => { v = String(v || "").replace(/^mp-/, ""); const n = (Array.isArray(list) ? list : []).find((x) => x && x.v === v) || null; return n ? { v: n.v, ...(isEn() ? n.en : n.ar) } : null; };
+  const notesOf = (list, v) => { v = String(v || "").replace(/^mp-/, ""); const n = (Array.isArray(list) ? list : []).find((x) => x && x.v === v) || null; return n ? { v: n.v, quiet: n.quiet === true, ...(isEn() ? n.en : n.ar) } : null; };
+  /* v2.143: a release marked "quiet" in whatsnew.json (small maintenance, nothing the user would notice) never pops the
+   * «يوجد تحديث» bar on its own nor the «تم التحديث» card; it applies on the next normal reopen and still shows in
+   * «سجل الإصدارات». A manual «تحقق من التحديثات» still offers it. */
   const swVersion = (w) => new Promise((res) => { if (!w) return res(null); try { const ch = new MessageChannel(); ch.port1.onmessage = (e) => res(/^\d+\.\d+/.test(String(e.data || "")) ? e.data : null); w.postMessage("mp-app-version", [ch.port2]); } catch { return res(null); } setTimeout(() => res(null), 800); });
   const listHtml = (items, max) => `<ul>${(items || []).slice(0, max).map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`;
-  async function offerUpdate(reg) {
+  async function offerUpdate(reg, manual) {
     if (!reg.waiting || !SW.controller) return;
     const [list, wv] = await Promise.all([notesFetch(), swVersion(reg.waiting)]);
     if (!reg.waiting) return;
-    const n = notesOf(list, wv), ver = (wv || n?.v || "").replace(/^mp-/, "");
+    const n = notesOf(list, wv);
+    if (n?.quiet && !manual) return;
+    const ver = (wv || n?.v || "").replace(/^mp-/, "");
     const en = isEn(), items = n?.items || [];
     const html = `<div class="mp-upd-h"><b>${en ? "A new update is available" : "يوجد تحديث جديد"}</b>${ver ? `<span class="mp-upd-v">${en ? "Version" : "الإصدار"} <bdi>${esc(fmtVer(ver))}</bdi>${n?.title ? " · " + esc(n.title) : ""}</span>` : ""}</div>`
       + `<button class="btn" data-a="up">${en ? "Update" : "تحديث"}</button><button class="mp-pwa-x" data-a="x" aria-label="${en ? "Later" : "لاحقاً"}">×</button>`
@@ -110,7 +115,7 @@ body.mp-offline .mp-off{opacity:1;transform:none}
     let last = "", visits = 0; try { last = localStorage.getItem("mp-last-ver") || ""; visits = +localStorage.getItem("mp-visits") || 0; localStorage.setItem("mp-last-ver", cur); localStorage.removeItem("mp-upd-from"); } catch { return; }
     // show once after a version change; a returning visitor who predates this card also sees it once
     if (last ? last === cur : visits < 2) return;
-    const n = notesOf(await notesFetch(), cur); if (!n || n.v !== cur) return;
+    const n = notesOf(await notesFetch(), cur); if (!n || n.v !== cur || n.quiet) return;
     const en = isEn();
     bar("mp-updated", `<div class="mp-upd-h"><b>${en ? "Updated to version" : "تم التحديث إلى الإصدار"} <bdi>${esc(fmtVer(cur))}</bdi></b>${n.title ? `<span class="mp-upd-v">${esc(n.title)}</span>` : ""}</div><button class="mp-pwa-x" data-a="x" aria-label="${en ? "Close" : "إغلاق"}">×</button>${listHtml(n.items, 5)}`,
       { '[data-a="x"]': (el) => el.remove() }).classList.add("mp-upd");
@@ -132,7 +137,7 @@ body.mp-offline .mp-off{opacity:1;transform:none}
     const reg = SW && await SW.getRegistration().catch(() => null); if (!reg) { if (manual) T("التحديثات غير متاحة في هذا المتصفح"); return false; }
     lastCheck = Date.now();
     try { await reg.update(); } catch { if (manual) T("تعذّر التحقق من التحديثات بلا اتصال"); return false; }
-    if (reg.waiting) { offerUpdate(reg); return true; }
+    if (reg.waiting) { offerUpdate(reg, manual); return true; }
     if (manual) T(reg.installing ? "يجري تنزيل التحديث…" : "أنت على أحدث إصدار ✓");
     return !!reg.installing;
   }
