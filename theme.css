@@ -478,7 +478,7 @@ details summary { cursor: pointer; }
 .vtick { display: inline-flex; vertical-align: -2px; margin-inline-start: 3px; cursor: pointer; }
 .profile-v2 .cover-v2 { position: relative; overflow: hidden; height: 190px; }
 .profile-v2 .cover-v2 img { width: 100%; height: 125%; object-fit: cover; transform: translateY(var(--py, 0)); opacity: var(--po, 1); will-change: transform; }
-.cover-cam { position: absolute; inset-block-end: 12px; inset-inline-start: 12px; border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(8px); display: flex; gap: 6px; align-items: center; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.cover-cam { position: absolute; z-index: 2; inset-block-start: 12px; inset-inline-start: 12px; border: 0; border-radius: 999px; padding: 8px 14px; background: rgba(0,0,0,.45); color: #fff; backdrop-filter: blur(8px); display: flex; gap: 6px; align-items: center; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .av.editable { cursor: pointer; }
 .av-cam { position: absolute; inset-block-end: 2px; inset-inline-end: 2px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--card); background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; }
 .pmeta { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 14px; margin: 4px 0 8px; }
