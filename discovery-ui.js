@@ -1164,7 +1164,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       onDrop: (t, el) => moveItem(cid, el.dataset.id, t.dataset.folder),
       onEnd: async (ids) => { ids.forEach((id, i) => { const it = itemsOf(cid).find(x => x.postId === id); if (it) it.position = i; }); await saveLocal(); mirror(); if (online() && navigator.onLine) api("PUT", `/api/collections/${cid}/items/order`, { posts: ids }).then(() => live("حُفظ الترتيب")).catch(e => toast(e.message)); } }));
     $("#cv-ren").onclick = () => { const n = prompt("الاسم الجديد", c.name); if (n && n.trim()) mutate({ op: "rename", collection: cid, name: n.trim() }, () => { c.name = n.trim(); }).then(() => route()); };
-    $("#cv-del").onclick = async () => { if (!confirm(`حذف «${c.name}» وكل ما فيها؟`)) return; try { await api("DELETE", "/api/collections/" + cid); await syncNow(); location.hash = "#/library"; } catch (e) { toast(e.message); } };
+    $("#cv-del").onclick = async () => { if (!(await window.MPConfirm(`حذف «${c.name}» وكل ما فيها؟`, { ok: "حذف" }))) return; try { await api("DELETE", "/api/collections/" + cid); await syncNow(); location.hash = "#/library"; } catch (e) { toast(e.message); } };
     $("#cv-share").onclick = () => shareSheet(c);
   }
   async function shareSheet(c) {
@@ -1212,7 +1212,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     painted(re);
     if (!d.mine) return;
     $("#pl-vis").onclick = async () => { await api("PATCH", "/api/plists/" + id, { visibility: l.visibility === "public" ? "private" : "public" }); listView(id); };
-    $("#pl-del").onclick = async () => { if (!confirm("حذف القائمة؟")) return; await api("DELETE", "/api/plists/" + id); view._dlib = "lists"; location.hash = "#/library"; };
+    $("#pl-del").onclick = async () => { if (!(await window.MPConfirm("حذف القائمة؟", { ok: "حذف" }))) return; await api("DELETE", "/api/plists/" + id); view._dlib = "lists"; location.hash = "#/library"; };
     $("#pl-add").onclick = () => {
       const s = sheet(`<h4>إضافة إلى «${h(l.name)}»</h4><input id="pa-q" placeholder="ابحث بالاسم أو المعرّف" aria-label="بحث عن أشخاص" class="u-w100"><div id="pa-r" class="u-mt8"></div>`);
       const members = new Set(d.members.map(u => u.id)); let tm;
