@@ -41,7 +41,7 @@ const GROUPS = [
 
 module.exports = (ctx) => {
   const { db, log } = ctx;
-  const on = process.env.DEMO_MESSAGES === "1";
+  const on = require("../lib/prod-guard").testSwitches().demoMessages; // v2.143: forced off on the production host
   const cap = +(process.env.DEMO_MESSAGES_USERS || 100);
   const iso = (ms) => new Date(ms).toISOString();
 
