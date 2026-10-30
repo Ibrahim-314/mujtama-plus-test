@@ -91,11 +91,11 @@
     const f = $("#mj-sf"), err = $("#mj-err");
     let ikey = newKey(); // one key per attempt: a retried request (double tap, flaky network) is answered once
     f.addEventListener("input", () => { ikey = newKey(); err.hidden = true; });
-    f.addEventListener("submit", (e) => {
+    f.addEventListener("submit", async (e) => {
       e.preventDefault(); err.hidden = true;
       const to = f.to.value.trim().replace(/^@/, ""), amount = f.amount.value.trim().replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace("٫", ".");
       if (!to || !/^\d{1,8}(\.\d{1,7})?$/.test(amount) || Number(amount) <= 0) { err.textContent = !to ? "اكتب اسم المستخدم" : "اكتب مبلغاً صحيحاً (حتى ٧ منازل عشرية)"; err.hidden = false; (to ? f.amount : f.to).focus(); return; }
-      if (!confirm(`إرسال ${amount} MJT إلى @${to}؟ لا يمكن التراجع.`)) return;
+      if (!(await window.MPConfirm(`إرسال ${amount} MJT إلى @${to}؟ لا يمكن التراجع.`, { ok: "إرسال", danger: false }))) return;
       busy(e.submitter, async () => {
         try {
           const r = await api("POST", "/api/mjt/transfers", { to, amount, note: f.note.value.trim() || undefined, ikey });
