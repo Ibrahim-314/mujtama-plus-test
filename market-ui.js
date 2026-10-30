@@ -262,7 +262,7 @@
     const reason = !on ? "not_configured" : L.canBuy ? null : L.buyReason || "not_configured";
     const can = on && !!L.canBuy, qmax = L.quantity == null ? 99 : Math.max(0, Number(L.quantity) || 0);
     const off = !on || reason === "not_configured";
-    document.title = `${L.title} · السوق · مجتمع بلس`;
+    document.title = `${L.title} · ${window.MPI18n?.t ? window.MPI18n.t("السوق") : "السوق"} · ${window.MPI18n?.t ? window.MPI18n.t("مجتمع بلس") : "مجتمع بلس"}`;
     v.innerHTML = `<div class="wrap mk-page" data-mk-listing="${h(L.id)}">${back("#/market", "السوق")}
       ${gallery(imgs, L.title)}
       <h2 id="mk-h" tabindex="-1" class="u-mt12">${h(L.title)}</h2>
