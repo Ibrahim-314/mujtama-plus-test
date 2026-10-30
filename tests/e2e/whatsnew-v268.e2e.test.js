@@ -13,6 +13,15 @@ test.after(async () => { await ctx?.close(); await S?.close(); });
 test("what's-new card after an update + numeric version in #/app", async () => {
   const notes = await (await fetch(S.base + "/whatsnew.json")).json();
   assert.ok(Array.isArray(notes) && notes[0].ar.items.length && notes[0].en.items.length);
+  // v2.143: a "quiet" release shows no card — check that first, then serve the same notes un-quieted for the card checks
+  let quiet = true;
+  await ctx.route("**/whatsnew.json*", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(notes.map((n, i) => (i === 0 ? { ...n, quiet } : n))) }));
+  await p.goto(S.base + "/#/home");
+  await p.waitForFunction(() => !!window.MPPwa, null, { timeout: 30000 });
+  await p.evaluate(() => localStorage.setItem("mp-last-ver", "2.67.0"));
+  await p.reload(); await p.waitForTimeout(3500);
+  assert.equal(await p.$("#mp-updated"), null, "quiet release: no «تم التحديث» card");
+  quiet = false;
   await p.goto(S.base + "/#/home");
   await p.waitForFunction(() => !!window.MPPwa, null, { timeout: 30000 });
   await p.evaluate(() => localStorage.setItem("mp-last-ver", "2.67.0"));
