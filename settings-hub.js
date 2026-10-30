@@ -7,10 +7,11 @@
 window.MPSettingsV2 = function () {
   const ver = $("#ver"); if (ver) ver.textContent = VERSION;
   const S2 = DB.settings;
+  const curLang = () => (window.MPI18n?.current ? window.MPI18n.current() : S2.lang) === "en" ? "en" : "ar";
   const first = view.querySelector(".wrap .card");
   first.insertAdjacentHTML("beforebegin", `
     <div class="card"><b>اللغة والمظهر</b>
-      <div class="seg"><button data-lang="ar" class="${S2.lang === "ar" ? "on" : ""}">العربية (RTL)</button><button data-lang="en" class="${S2.lang === "en" ? "on" : ""}">English (LTR)</button></div>
+      <div class="seg"><button data-lang="ar" class="${curLang() === "ar" ? "on" : ""}" aria-pressed="${curLang() === "ar"}">العربية (RTL)</button><button data-lang="en" class="${curLang() === "en" ? "on" : ""}" aria-pressed="${curLang() === "en"}">English (LTR)</button></div>
       <div class="seg"><button data-theme="system" class="${S2.theme === "system" ? "on" : ""}">تلقائي</button><button data-theme="light" class="${S2.theme === "light" ? "on" : ""}">فاتح</button><button data-theme="dark" class="${S2.theme === "dark" ? "on" : ""}">داكن</button></div></div>
     <div class="card"><b>التحكم بالمحتوى</b>
       <div class="list flat">${UI.li({ href: "#/interests", icon: "target", title: "مركز الاهتمامات" })}</div>
@@ -19,7 +20,8 @@ window.MPSettingsV2 = function () {
       <h4>المحتوى الحساس</h4><select id="sens2"><option value="show">إظهار</option><option value="warn">تحذير قبل العرض</option><option value="hide">إخفاء</option></select></div>
     <section class="set-grp"><h3 class="set-h">السلامة</h3><div class="list">${UI.li({ href: "#/decisions", icon: "flag", title: "القرارات على حسابي والاستئناف" })}${UI.li({ href: "#/admin", icon: "shield", title: "لوحة الإدارة (للمشرفين)" })}</div></section>`);
   $("#sens2").value = S2.sensitive;
-  view.querySelectorAll("[data-lang]").forEach(b => b.onclick = () => { S2.lang = b.dataset.lang; save(); applyShell(); rerender(); });
+  /* v2.140.2: this segment only wrote DB.settings.lang, which the i18n layer ignores — route it through MPI18n.setLang like the language page. */
+  view.querySelectorAll("[data-lang]").forEach(b => b.onclick = async () => { const L = b.dataset.lang; S2.lang = L; save(); try { if (window.MPChunks?.load) await window.MPChunks.load("i18n").catch(() => {}); if (window.MPI18n?.setLang) await window.MPI18n.setLang(L); } catch { /* falls back to the shell flip */ } applyShell(); rerender(); });
   view.querySelectorAll("[data-theme]").forEach(b => b.onclick = () => { S2.theme = b.dataset.theme; save(); applyShell(); rerender(); });
   view.querySelectorAll("[data-cl]").forEach(c => c.onchange = () => { S2.languages = c.checked ? [...new Set([...S2.languages, c.dataset.cl])] : S2.languages.filter(x => x !== c.dataset.cl); save(); });
   view.querySelectorAll("[data-ct2]").forEach(c => c.onchange = () => { S2.contentTypes[c.dataset.ct2] = c.checked; save(); });
