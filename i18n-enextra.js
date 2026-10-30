@@ -2670,3 +2670,43 @@
 "أُوقف الذكاء الاصطناعي في الرسائل": "AI in messages turned off"
 });
 /* === /v21402-msgai === */
+/* === v21410-design: EN leftovers found by the v2.141 screenshot audit === */
+Object.assign(window.MPI18N.en, {
+"مكافأة الدخول اليومي +{n} MJT": "Daily sign-in reward +{n} MJT",
+"أهلاً بك في مجتمع بلس": "Welcome to Mujtama Plus",
+"الأكثر تداولاً · {t}": "Most discussed · {t}",
+"الأكثر تداولاً": "Most discussed",
+"{n} منشور · {n} مشارك · يتسارع ×{n}": "{n} posts · {n} people · rising ×{n}",
+"ما الذي يدور؟ ←": "What's going on? →",
+"ما الذي يدور؟": "What's going on?",
+"الرائج في {t}": "Trending in {t}",
+"مقالات ونقاشات تستحق القراءة": "Articles and discussions worth reading",
+"{name} · منذ {n} س": "{name} · {n}h ago",
+"{name} · منذ {n} د": "{name} · {n}m ago",
+"{name} · منذ {n} ي": "{name} · {n}d ago",
+"ملخص مولّد آلياً من المنشورات": "Summary generated automatically from posts",
+"عمليات بحثك الأخيرة": "Your recent searches",
+"مسح الكل": "Clear all",
+"رائج الآن في {t}": "Trending now in {t}",
+"يبحث عنه الآخرون": "Others are searching for",
+"ابحث عن أشخاص، منشورات، مجتمعات، وسوم…": "Search people, posts, communities, hashtags…",
+"نوع النتائج": "Result type",
+"حذف «{name}» من السجل": "Remove “{name}” from history",
+"ابحث في المحادثات": "Search conversations",
+"نوع المحادثات": "Conversation type",
+"تغيير الغلاف": "Change cover",
+"تغيير الصورة": "Change photo",
+"كيف يراك الآخرون": "How others see you",
+"حساب جديد: ما معنى هذه الشارة؟": "New account: what does this badge mean?",
+"اتصال بـ {name}": "Call {name}",
+"REST وOAuth وWebhooks": "REST, OAuth and Webhooks",
+"يطابق اهتماماتك": "Matches your interests",
+"نشط هذه الأيام": "Active these days",
+"ابحث عن مجتمع": "Search for a community",
+"ترتيب الدليل": "Directory order",
+"{n} غير مقروء": "{n} unread",
+"التعليقات {n}": "Comments {n}",
+"من {n} مصدراً · جمل مقتبسة حرفياً": "From {n} sources · sentences quoted word for word",
+"مجموعاتك — اسحب من المقبض لإعادة الترتيب": "Your collections — drag the handle to reorder"
+});
+/* === /v21410-design === */
