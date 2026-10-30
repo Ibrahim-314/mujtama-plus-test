@@ -29,6 +29,8 @@ const dark = (pg) => pg.evaluate(() => document.documentElement.setAttribute("da
 
 test.before(async () => {
   S = await startStack();
+  // v2.140.2: the daily sign-in reward (v2.87, +1 MJT on first load) would move the exact balances this test reads; it has its own tests
+  await S.app.ctx.db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('mining',$1,'e2e',$2) ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=$2", [JSON.stringify({ checkinOn: false }), new Date().toISOString()]);
   actx = await S.browser.newContext({ ...MOBILE, viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   p = await actx.newPage(); p.on("pageerror", (e) => errors.push("staff: " + e.message)); p.on("dialog", (d) => d.accept());
   await onboard(p, S.base, "mjt_admin", "نورة المشرفة"); // first account → admin
@@ -79,7 +81,10 @@ test("member: converted balance, in-app label, earn rules, send with confirm, hi
   await u.fill("#mj-sf [name=to]", "@mjt_admin"); await u.fill("#mj-sf [name=amount]", "2.5"); await u.fill("#mj-sf [name=note]", "شكراً على المراجعة");
   assert.ok((await minTap(u, "#mj-sf input, #mj-sf .btn")) >= 44);
   assert.deepEqual(await axe(u), [], "send dark"); await shot(u, "send-360-dark");
-  rl(); await tap(u, "#mj-sf [type=submit]"); await until(u, () => location.hash === "#/mjt?tab=history");
+  rl(); await tap(u, "#mj-sf [type=submit]");
+  // v2.140.2: the send asks first in the in-app MPConfirm sheet (native confirm() is suppressed in some webviews)
+  await u.waitForSelector("#mp-cf-ok"); assert.match(await u.textContent("#mp-cf-t"), /إرسال 2\.5 MJT إلى @mjt_admin/); await tap(u, "#mp-cf-ok");
+  await until(u, () => location.hash === "#/mjt?tab=history");
   await until(u, () => /تحويل مُرسَل/.test(document.querySelector("#mj-hl")?.textContent || ""));
   assert.match(await u.textContent(".mj-big"), /36\.5/);
   assert.equal(await u.evaluate(() => !!document.querySelector("#mj-more")), false, "no «المزيد» when everything fits");
