@@ -74,7 +74,7 @@
   }
   const clipHTML = (p) => { const u = S.user(p.author); return `<section class="short" role="article" data-short="${p.id}" aria-label="${esc(u?.name || "لقطة")}" style="${MPVideoSources.poster(p.video) ? `background-image:url('${esc(MPVideoSources.poster(p.video))}')` : `background:${p.media || "#111"}`}"><div class="short-player"></div>
       <div class="short-info">${av(u)}<div><b><bdi>${esc(u?.name || "")}</bdi></b><p>${esc((p.text || "").slice(0, 140))}</p></div></div>
-      <div class="short-actions"><button data-react="${p.id}" aria-label="إعجاب">${ic(S.reactionsOf(p.id).some(r => r.user === DB.me) ? "heartF" : "heart")}<span>${S.reactionsOf(p.id).length || clipCounts.get(p.id)?.likes || ""}</span></button><a href="#/post/${p.id}" aria-label="التعليقات">${ic("comment")}<span>${S.commentsOf(p.id).length || clipCounts.get(p.id)?.comments || ""}</span></a><button data-share="${p.id}" aria-label="مشاركة">${ic("share")}</button></div>${!p.video?.variants ? `<div class="short-ph">${ic("play", "lg")}<span>${fmtDur(p.video?.duration)}</span></div>` : ""}</section>`; };
+      <div class="short-actions"><button data-react="${p.id}" aria-label="إعجاب">${ic(S.reactionsOf(p.id).some(r => r.user === DB.me) ? "heartF" : "heart")}<span>${S.reactionsOf(p.id).length || clipCounts.get(p.id)?.likes || ""}</span></button><a href="#/post/${p.id}" aria-label="التعليقات">${ic("comment")}<span>${S.commentsOf(p.id).length || clipCounts.get(p.id)?.comments || ""}</span></a><button data-share="${p.id}" aria-label="مشاركة">${ic("share")}</button></div>${!p.video?.variants ? `<div class="short-ph short-nosrc" role="note">${ic("clapper", "lg")}<span>لا يتوفر ملف فيديو لهذه اللقطة</span><small>اسحب للقطة التالية</small></div>` : ""}</section>`; }; // v2.140.2: a clip with no video file no longer shows a dead play button
   function shortsView() {
     fire.view(); // extension point: a fresh visit (reset per-visit state)
     document.body.classList.add("shorts-mode"); clipsLocal = false; // each visit asks the server feed again
@@ -136,6 +136,8 @@
       if (add.length) secs().slice(-add.length).forEach(fire.section); // extension point: each new .short section
       secs().slice(-add.length || secs().length).forEach(s => { if (!s._obs) { s._obs = true; io.observe(s); } });
       if (!secs().length) { feed.removeAttribute("role"); feed.innerHTML = clipsTab() === "following" ? clipsFollowEmpty() : `<div class="empty" role="status" style="color:#fff;padding-top:40vh">لا لقطات بعد</div>`; } // a feed with no articles is invalid ARIA
+      // v2.140.2: the feed ending used to be a silent stop after the last clip — say so and offer the next step
+      if (next === null && secs().length && !feed.querySelector(".shorts-end")) feed.insertAdjacentHTML("beforeend", `<div class="shorts-end" role="article" aria-label="نهاية اللقطات">${ic("check", "lg")}<b>شاهدت كل اللقطات المتاحة الآن</b><span>ارجع لاحقاً لجديد من تتابعهم، أو اكتشف المزيد.</span><div class="shorts-end-b"><a class="btn" href="#/explore">استكشف</a><a class="btn ghost" href="#/clips/create">أنشئ لقطة</a></div></div>`);
       feed.setAttribute("aria-busy", "false");
       if (add.length && next !== null && secs().length - Math.max(cur, 0) <= 3) load();
     };
