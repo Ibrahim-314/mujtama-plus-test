@@ -19,10 +19,10 @@ const config = {
   storageDir: process.env.STORAGE_DIR || path.join(__dirname, "storage"),
   storageDriver: process.env.STORAGE_DRIVER || "local",
   secureCookies: process.env.NODE_ENV === "production",
-  seedDemo: process.env.SEED_DEMO !== "0",
+  seedDemo: require("./lib/prod-guard").testSwitches().seedDemo, // v2.143: never on the production host (lib/prod-guard.js)
   /* v2.82.1: «دخول تجريبي» button — test copies only (Render). Needs DEMO_LOGIN=1 AND refuses to turn on under Railway
    * (production), whatever the env says, so it can never leak into the live app. */
-  demoLogin: process.env.DEMO_LOGIN === "1" && !process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_PROJECT_ID,
+  demoLogin: require("./lib/prod-guard").testSwitches().demoLogin,
   piEnabled: process.env.PI_ENABLED === "1",
   piApiKey: secret("PI_API_KEY"),
   piApi: process.env.PI_API_URL || "https://api.minepi.com",
@@ -50,6 +50,7 @@ async function createApp(overrides = {}) {
   Object.assign(config, overrides);
   const db = await connect(overrides.databaseUrl || secret("DATABASE_URL") || undefined);
   await migrate(db, { log: (m) => log.info(m) });
+  { const g = require("./lib/prod-guard").testSwitches(); if (g.blocked.length) log.warn("prod-guard: test-only switches refused on the production host", { blocked: g.blocked }); }
   const { bus, cache, rl, scale } = await Scale.createScale({ log, overrides }), realtime = new Realtime(), router = new Router();
   const STREAM = Symbol("stream");
   const ctx = { db, bus, cache, rl, realtime, router, config, services: {}, STREAM, scale };
