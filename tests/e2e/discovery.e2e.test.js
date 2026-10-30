@@ -120,6 +120,9 @@ test("explore: magazine page with location trends and AI summary; hashtag page f
   await P.click("#tp-f"); await P.waitForSelector('#tp-f[aria-pressed="true"]');
   assert.ok((await call("GET", "/api/follows/topics")).topics.includes("design"), "topic followed");
   await go("#/topic/ai"); await until((t) => (document.querySelector(".tp-head h2")?.textContent || "").includes(t), "الذكاء الاصطناعي");
+  // v2.142.1: the topic page re-renders its rows as data lands; let any entrance animation settle before reading opacity (was flaky in the full file)
+  await P.waitForFunction(() => document.querySelectorAll(".wrap > .card.row").length > 0);
+  await P.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => 0))));
   const voices = await P.$$eval(".wrap > .card.row", cs => cs.map(c => ({ op: getComputedStyle(c).opacity, h: c.offsetHeight })));
   assert.ok(voices.length && voices.every(v => v.op === "1" && v.h > 40), "«أصوات بارزة» rows are painted");
 });
