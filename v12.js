@@ -294,7 +294,7 @@ moreMenu = function (pid) {
     if (a === "edit") openComposer({ edit: pid, text: p.text }); // v2.50: the edit editor, not prompt()
     if (a === "pin") { me.pinned = me.pinned === pid ? null : pid; save(); toast(me.pinned ? "تم التثبيت" : "أُلغي التثبيت"); }
     if (a === "arch") { p.status = p.status === "archived" ? "published" : "archived"; save(); toast(p.status === "archived" ? "تمت الأرشفة" : "أعيد نشره"); }
-    if (a === "del" && confirm(window.MPI18n ? window.MPI18n.t("حذف المنشور؟") : "حذف المنشور؟")) { Cmd.deletePost(pid); toast("تم الحذف"); }
+    if (a === "del") window.MPConfirm("حذف المنشور؟", { ok: "حذف" }).then((y) => { if (y) { Cmd.deletePost(pid); toast("تم الحذف"); } });
     rerender();
   });
 };
