@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.142.0",
+    "date": "2026-10-30",
+    "ar": {
+      "title": "لمسات تصميم ٢",
+      "items": [
+        "زر تغيير الغلاف صار ظاهراً ويمكن الضغط عليه (كان مختبئاً خلف صورتك)",
+        "صفحة «المزيد» أخف وأوضح بنفس الأقسام كلها",
+        "ترجمة «متابِع» في الواجهة الإنجليزية صارت followers"
+      ]
+    },
+    "en": {
+      "title": "Design touches 2",
+      "items": [
+        "The change-cover button is visible and tappable (it was hidden behind your photo)",
+        "A lighter, clearer More page with every section kept",
+        "English label fix: followers"
+      ]
+    }
+  },
+  {
     "v": "2.141.0",
     "date": "2026-10-30",
     "ar": {
