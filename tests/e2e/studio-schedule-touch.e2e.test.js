@@ -27,10 +27,16 @@ let postA, postB, postC;
 async function calendar(p, at) {
   await p.evaluate(() => { document.getElementById("sheet")?.classList.add("hidden"); location.hash = "#/studio"; });
   await p.waitForSelector('[data-stab="calendar"]'); await p.click('[data-stab="calendar"]'); await p.waitForSelector(".cal-day");
-  const want = at.toISOString().slice(0, 7), cur = new Date().toISOString().slice(0, 7);
-  if (want !== cur) { await p.click("#cal-next"); await p.click('[data-stab="calendar"]').catch(() => {}); await p.waitForSelector(".cal-day"); }
+  // v2.140.2: step to the wanted month from the month on screen (the studio remembers the last month shown)
+  const want = await p.evaluate((iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; }, at.toISOString());
+  for (let i = 0; i < 3; i++) {
+    const shown = await p.getAttribute(".cal-head", "data-month"); if (shown === want) break;
+    await p.click(shown < want ? "#cal-next" : "#cal-prev");
+    await p.waitForFunction((h) => document.querySelector(".cal-head")?.dataset.month !== h, shown); await p.waitForSelector(".cal-day");
+  }
+  assert.equal(await p.getAttribute(".cal-head", "data-month"), want, "calendar shows the wanted month");
 }
-const itemAt = async (p, id) => (await call(p, "GET", "/api/studio/calendar?month=" + new Date().toISOString().slice(0, 7))).items.concat((await call(p, "GET", "/api/studio/calendar?month=" + ahead(32).toISOString().slice(0, 7))).items).find((x) => x.id === id);
+const itemAt = async (p, id) => (await call(p, "GET", "/api/studio/calendar?month=" + new Date().toISOString().slice(0, 7))).items.concat((await call(p, "GET", "/api/studio/calendar?month=" + (() => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); })() /* v2.140.2: the next calendar month (ahead(32) skipped it near a month end) */)).items).find((x) => x.id === id);
 
 test.before(async () => {
   S = await startStack();
