@@ -129,8 +129,10 @@ html:root:root:root:root[data-theme=dark]{--bg:#000;--bg-2:#000;--card:#000;--el
     navAt = 0;
     if (lost) focusMain(false);
     const name = (h?.textContent || "").trim().slice(0, 80);
-    if (name) { say("صفحة " + name); document.title = name + " · مجتمع بلس"; } else document.title = "مجتمع بلس";
-    const h1 = document.getElementById("pg-h1"); if (h1) h1.textContent = name || "مجتمع بلس";
+    // v2.140.2: the tab title / page name go through the i18n layer (brand and heading stayed Arabic in English mode)
+    const tr = (x) => (window.MPI18n && window.MPI18n.t ? window.MPI18n.t(x) : x), nm = name ? tr(name) : "", brand = tr("مجتمع بلس");
+    if (nm) { say(tr("صفحة") + " " + nm); document.title = nm + " · " + brand; } else document.title = brand;
+    const h1 = document.getElementById("pg-h1"); if (h1) h1.textContent = nm || brand;
   }
 
   /* ---------- names, roles and keyboard for core markup (small, idempotent fixes) ---------- */
