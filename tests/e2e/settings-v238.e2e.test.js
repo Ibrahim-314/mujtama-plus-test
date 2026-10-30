@@ -60,7 +60,8 @@ test("every old entry is reachable in exactly one section, in a fixed order; sec
   }
   // fixed order inside a section (v2.36 row-order fix kept)
   await go("#/settings?s=privacy");
-  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.set-sec[data-s="privacy"] > .list > .li')].map((x) => x.getAttribute("href"))), ["#/security", "#/privacy", "#/protection", "#/mydata", "#/decisions"]);
+  // v2.140.2: the messages-AI switch row (v2.13x, no href) leads the section; the linked rows keep their fixed order
+  assert.deepEqual(await p.evaluate(() => [...document.querySelectorAll('.set-sec[data-s="privacy"] > .list > .li')].map((x) => x.getAttribute("href") || x.id)), ["msgai-set", "#/security", "#/privacy", "#/protection", "#/mydata", "#/decisions"]);
   assert.equal(await p.textContent(".page-head h2"), "الخصوصية والأمان");
   await p.click(".page-head .back"); await until(() => document.querySelector(".set-page")?.dataset.sv === "hub");
   await p.click('.set-nav [data-s="display"]'); await until(() => /s=display/.test(location.hash) && !document.querySelector('.set-sec[data-s="display"]').hidden);
