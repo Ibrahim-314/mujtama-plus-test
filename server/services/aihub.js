@@ -475,7 +475,7 @@ module.exports = (ctx, opts = {}) => {
     const c = cites(j.cites, ok), found = j.found !== false && c.length > 0;
     return { q, answer, found, cites: found ? c : [], sources: found ? srcMap(facts.posts, new Set(c)) : {}, provider: o.provider, model: o.model || null, free: o.free || null };
   }
-  const whyCache = new Map(); // user|tag → { hash, at, out } (1 h)
+  const whyCache = new Map(); // tag|post-ids → { at, out } (1 h). v2.140.2: shared by viewers who see the very same posts (the key is the visible set, so nobody gets a source they cannot see)
   async function whyTrend(user, b) {
     const tg = ctx.services.trends; if (!tg) throw fail(503, "not_configured", "الرائج غير متاح الآن");
     const raw = str(b.tag, 80).replace(/^#/, ""); if (!raw) throw E.bad("اختر وسماً");
@@ -484,11 +484,11 @@ module.exports = (ctx, opts = {}) => {
     const posts = (d.posts || []).filter((p) => !p.createdAt || new Date(p.createdAt).getTime() > since).filter((p) => String(p.text || p.title || "").trim().length > 8).slice(0, 20)
       .map((p) => ({ id: p.id, by: names.get(p.author) || "", text: String((p.title ? p.title + " — " : "") + (p.text || "")).replace(/\s+/g, " ").slice(0, 300) }));
     if (posts.length < 2) return { tag: d.tag, why: "", angles: [], few: true, message: "لا توجد منشورات كافية تراها عن هذا الوسم لنشرح سبب رواجه." };
-    const hash = posts.map((p) => p.id).join("|"), key = user.id + "|" + d.tag, hit = whyCache.get(key);
-    if (hit && hit.hash === hash && Date.now() - hit.at < 3600e3) return { ...hit.out, cached: true };
+    const hash = posts.map((p) => p.id).join("|"), key = d.tag + "|" + hash, hit = whyCache.get(key);
+    if (hit && hit.hash === hash && Date.now() - hit.at < 3600e3) return { ...hit.out, free: null, cached: true }; // a cache hit spends no free allowance
     if (!rl.hit("ai_hub", user.id)) throw E.rate();
     const ask = `الوسم #${d.tag} رائج الآن${d.trend ? ` (${d.trend.posts || posts.length} منشوراً)` : ""}. من هذه المنشورات فقط اشرح للقارئ ببساطة لماذا هو رائج، وما الزوايا أو الآراء المختلفة حوله (بدون انحياز ولا حكم على الأشخاص، ولا تخترع أحداثاً).\nأعد: {"why":"جملة أو جملتان: لماذا يتكلم الناس عنه","angles":[{"text":"زاوية أو رأي","cites":["معرّفات المنشورات"]}]} (2-4 زوايا)\n\nالمنشورات:\n${JSON.stringify(posts)}`;
-    const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 900, freeMax: 900 });
+    const o = await run(user, [{ role: "user", content: ask }], { feature: "digest", system: BR_SYS, maxTokens: 650, freeMax: 650 }); // v2.140.2: shorter answer = faster «ليش رائج؟»
     const j = parseJSON(o.text), ok = new Set(posts.map((p) => p.id));
     const why = str(j?.why, 400), angles = (Array.isArray(j?.angles) ? j.angles : []).map((a) => ({ text: str(a?.text, 260), cites: cites(a?.cites, ok) })).filter((a) => a.text && a.cites.length).slice(0, 4);
     if (!why) throw fail(502, "bad_output", "لم يرجع النموذج شرحاً مفهوماً. أعد المحاولة أو جرّب نموذجاً آخر.");
