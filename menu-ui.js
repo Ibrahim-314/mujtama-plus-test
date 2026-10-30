@@ -99,7 +99,8 @@
   });
 
   const tag = (it) => (it.pi && piOn === false ? `<span class="mn-tag">غير مفعّل بعد</span>` : "");
-  const row = (it, withCat) => UI.li({ href: it.h, icon: it.i, title: it.t, sub: withCat ? it.ct + (it.s ? " · " + it.s : "") : it.s, end: tag(it) + `<span class="chev" aria-hidden="true">←</span>`, attrs: `data-mn="${esc(it.r)}"` });
+  const tr = (x) => (window.MPI18n?.t ? window.MPI18n.t(x) : x);
+  const row = (it, withCat) => UI.li({ href: it.h, icon: it.i, title: it.t, sub: withCat ? tr(it.ct) + (it.s ? " · " + tr(it.s) : "") : it.s, /* v2.140.2: category and subtitle translate one by one (the joined line has no catalogue key) */ end: tag(it) + `<span class="chev" aria-hidden="true">←</span>`, attrs: `data-mn="${esc(it.r)}"` });
 
   function render() {
     const u = typeof S !== "undefined" && DB.me ? S.me() : null, items = all().filter((x) => !x.staff || staff()), open = new Set(ss.get(OK, []));
