@@ -27,3 +27,6 @@
 #mn-find .list { margin-top: 0; }
 .mn-foot { margin-top: var(--s6); text-align: center; font-size: var(--fs-xs); line-height: 2; } .mn-foot a { color: var(--accent-ink); }
 @media (prefers-reduced-motion: reduce) { .mn-chev .ic { transition: none; } }
+/* v2.142: lighter «المزيد» — flatter, shorter shortcut tiles with a hairline instead of a shadow; labels stay on two lines at most */
+.mn-tile { min-height: 78px; gap: 5px; padding: 10px 4px 8px; box-shadow: none; border: 1px solid var(--line); } .mn-tile:hover { box-shadow: var(--sh-1); }
+.mn-tile .ico { width: 36px; height: 36px; border-radius: 12px; } .mn-tile > span:last-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
