@@ -275,6 +275,7 @@ body.cm-chat .topbar{display:none}
 .ai-chip:disabled{opacity:.55}
 .ai-tone .ai-chip{min-height:32px;padding:4px 12px;font-size:var(--fs-sm);color:var(--accent-ink);border-color:color-mix(in srgb,var(--accent) 30%,transparent);background:color-mix(in srgb,var(--accent) 8%,var(--card))}
 .ai-chip.sk{width:150px;color:transparent;animation:cmPulse 1.4s infinite;background:var(--bg-2);border-color:transparent}
+.ai-ld{display:inline-flex;gap:6px}.ai-ld .ai-chip.sk{display:inline-block;min-height:32px;width:120px}.ai-none{font-size:.85rem;align-self:center}
 .ai-ib:focus-visible,.ai-chip:focus-visible,.ai-pt:focus-visible,.ai-pill button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.ai-load i,.ai-chip.sk{animation:none}}
 @media (min-width:760px){body.cm-chat .topbar{display:flex}.cm-comp{inset-inline:max(96px,calc(50% - 310px)) auto;width:var(--col)}}
@@ -435,7 +436,7 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
       }).join("")}</section>`);
     }).catch(() => { });
     view.querySelectorAll("[data-acc]").forEach(b => b.onclick = async () => { try { await api("POST", `/api/conversations/${b.dataset.acc}/accept`); toast("قُبل الطلب"); location.hash = "#/chat/" + b.dataset.acc; } catch (e) { errToast(e); } });
-    view.querySelectorAll("[data-dec]").forEach(b => b.onclick = async () => { if (!confirm("حذف طلب المراسلة؟ لن يُبلَّغ المرسل.")) return; try { await api("POST", `/api/conversations/${b.dataset.dec}/decline`); ST.convs = ST.convs.filter(c => c.id !== b.dataset.dec); live("حُذف الطلب"); listView(true); } catch (e) { errToast(e); } });
+    view.querySelectorAll("[data-dec]").forEach(b => b.onclick = async () => { if (!(await window.MPConfirm("حذف طلب المراسلة؟ لن يُبلَّغ المرسل.", { ok: "حذف" }))) return; try { await api("POST", `/api/conversations/${b.dataset.dec}/decline`); ST.convs = ST.convs.filter(c => c.id !== b.dataset.dec); live("حُذف الطلب"); listView(true); } catch (e) { errToast(e); } });
   }
 
   function newDm() {
@@ -559,7 +560,7 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
     paintTyping();
     const ob = $("#cm-older"); if (ob) ob.onclick = () => { scrollTo(0, 0); onScrollTop(); };
     const acc = $("#cm-acc"); if (acc) acc.onclick = async () => { try { await api("POST", `/api/conversations/${c.id}/accept`); me.state = "accepted"; toast("قُبل الطلب"); paintThread(); paintComposer(); markRead(c.id); } catch (e) { errToast(e); } };
-    const dec = $("#cm-dec"); if (dec) dec.onclick = async () => { if (!confirm("حذف طلب المراسلة؟")) return; try { await api("POST", `/api/conversations/${c.id}/decline`); location.hash = "#/messages?tab=requests"; } catch (e) { errToast(e); } };
+    const dec = $("#cm-dec"); if (dec) dec.onclick = async () => { if (!(await window.MPConfirm("حذف طلب المراسلة؟", { ok: "حذف" }))) return; try { await api("POST", `/api/conversations/${c.id}/decline`); location.hash = "#/messages?tab=requests"; } catch (e) { errToast(e); } };
     bindBubbles(th, byId);
     tickExpiry();
     const nd = ctx.divFirst && $("#cm-newdiv"); ctx.divFirst = false;
@@ -720,7 +721,7 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
   async function aiOpen(keep) {
     const box = $("#cm-comp > div"), ta = $("#cm-ta"); if (!box || !ta || !ctx) return;
     ctx.aiOpen = true; $("#cm-ai")?.setAttribute("aria-expanded", "true"); $("#ai-panel")?.remove();
-    box.insertAdjacentHTML("afterbegin", `<div class="ai-panel" id="ai-panel" role="group" aria-label="مساعد الذكاء"><div class="ai-sugg" id="ai-sg"><span class="lbl">${AI_SP} ردود مقترحة</span><button class="ai-chip sk" disabled>…</button><button class="ai-chip sk" disabled>…</button></div>
+    box.insertAdjacentHTML("afterbegin", `<div class="ai-panel" id="ai-panel" role="group" aria-label="مساعد الذكاء"><div class="ai-sugg" id="ai-sg"><span class="lbl">${AI_SP} ردود مقترحة</span><span class="ai-ld" role="status" aria-live="polite"><span class="ai-chip sk" aria-hidden="true"></span><span class="ai-chip sk" aria-hidden="true"></span><span class="sr-only">يجهّز الاقتراحات…</span></span></div>
       <div class="ai-sugg ai-tone" id="ai-tn">${AI_TONES.map(([k, l]) => `<button class="ai-chip" data-tone="${k}">${l}</button>`).join("")}<button class="ai-chip" id="ai-sum">لخّص المحادثة</button><button class="ai-chip" id="ai-ex">مواعيد ومهام</button></div></div>`);
     const tones = () => { const has = ta.value.trim().length > 1; box.querySelectorAll("[data-tone]").forEach((b) => { b.hidden = !has; }); };
     tones(); ta.addEventListener("input", tones);
@@ -735,11 +736,15 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
       finally { box.querySelectorAll("#ai-tn .ai-chip").forEach((x) => { x.disabled = false; }); const t = AI_TONES.find(([k]) => k === b.dataset.tone); if (t) b.textContent = t[1]; }
     });
     if (keep && ctx.aiReplies) return paintReplies(ctx.aiReplies);
-    try { const r = await aiCall({ tool: "replies", draft: ta.value.trim() }); if (!ctx?.aiOpen) return; ctx.aiReplies = r.replies; paintReplies(r.replies); }
-    catch (e) { const sg = $("#ai-sg"); if (sg) sg.innerHTML = `<span class="lbl">${AI_SP} تعذّرت الاقتراحات</span>`; aiErr(e); }
+    /* v2.140.2: never leave the loading chips forever — time out after 20 s, show a retry; an empty list says so. */
+    const failReplies = (msg) => { const sg = $("#ai-sg"); if (!sg) return; sg.innerHTML = `<span class="lbl">${AI_SP} ${msg}</span><button class="ai-chip" id="ai-rt">إعادة المحاولة</button>`; $("#ai-rt").onclick = () => { ctx.aiReplies = null; aiOpen(); }; };
+    try {
+      const r = await Promise.race([aiCall({ tool: "replies", draft: ta.value.trim() }), new Promise((_, rej) => setTimeout(() => rej(Object.assign(new Error("timeout"), { aiTimeout: true })), 20000))]);
+      if (!ctx?.aiOpen) return; ctx.aiReplies = r.replies || []; paintReplies(ctx.aiReplies);
+    } catch (e) { if (!ctx?.aiOpen) return; failReplies(e && e.aiTimeout ? "الاقتراحات تأخرت" : "تعذّرت الاقتراحات"); if (!(e && e.aiTimeout)) aiErr(e); }
     function paintReplies(list) {
       const sg = $("#ai-sg"); if (!sg) return;
-      sg.innerHTML = `<span class="lbl">${AI_SP} ردود مقترحة</span>` + list.map((t) => `<button class="ai-chip" data-rp>${h(t)}</button>`).join("");
+      sg.innerHTML = `<span class="lbl">${AI_SP} ردود مقترحة</span>` + (list.length ? list.map((t) => `<button class="ai-chip" data-rp>${h(t)}</button>`).join("") : `<span class="muted ai-none">ما فيه اقتراحات لهذه المحادثة الآن</span>`);
       sg.querySelectorAll("[data-rp]").forEach((b) => b.onclick = () => { ta.value = b.textContent; ctx.draft = ta.value; ta.dispatchEvent(new Event("input")); ta.focus(); live("وُضع الرد في مربع الكتابة، عدّله وأرسله"); });
     }
   }
@@ -775,7 +780,7 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
     try { const core = MC(); const r = core?.react ? await core.react(m.id, next) : await api("POST", `/api/chat/messages/${m.id}/react`, { emoji: next }); if (stored) stored.reactions = r.reactions; live(next ? `تفاعلت بـ ${next}` : "أُزيل التفاعل"); paintThread(); } catch (e) { errToast(e); }
   }
   async function delMsg(m) {
-    if (!confirm("حذف هذه الرسالة لدى الجميع؟ لا يمكن التراجع.")) return;
+    if (!(await window.MPConfirm("حذف هذه الرسالة لدى الجميع؟ لا يمكن التراجع.", { ok: "حذف" }))) return;
     try { await api("DELETE", `/api/chat/messages/${m.id}`); const s = (ST.msgs[ctx.cid] || []).find(x => x.id === m.id); if (s) Object.assign(s, { deleted: true, text: "", meta: null, enc: null, reactions: [] }); delete ST.plain[m.id]; live("حُذفت الرسالة للجميع"); paintThread(); } catch (e) { errToast(e); }
   }
 
@@ -929,9 +934,9 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
     view.querySelectorAll("[data-mm]").forEach(b => b.onclick = () => { const m = c.members.find(x => x.user === b.dataset.mm), u = person(m.user);
       const s = sheet(`<h4>${h(u.name)}</h4><div class="menu"><button data-x="role">${m.role === "admin" ? "إلغاء الإشراف" : "تعيين مشرفاً"}</button><a href="#/u/${h(u.handle)}">عرض الملف الشخصي</a><button data-x="rm" class="u-c-dg">إزالة من المجموعة</button></div>`);
       s.querySelector("[data-x=role]").onclick = async () => { try { await api("PATCH", `/api/chat/conversations/${cid}`, { role: { user: m.user, role: m.role === "admin" ? "member" : "admin" } }); closeSheet(); infoView(cid); } catch (e) { errToast(e); } };
-      s.querySelector("[data-x=rm]").onclick = async () => { if (!confirm(`إزالة ${u.name} من المجموعة؟`)) return; try { await api("DELETE", `/api/chat/conversations/${cid}/members/${m.user}`); closeSheet(); infoView(cid); } catch (e) { errToast(e); } };
+      s.querySelector("[data-x=rm]").onclick = async () => { if (!(await window.MPConfirm(`إزالة ${u.name} من المجموعة؟`, { ok: "إزالة" }))) return; try { await api("DELETE", `/api/chat/conversations/${cid}/members/${m.user}`); closeSheet(); infoView(cid); } catch (e) { errToast(e); } };
       s.querySelector("button").focus(); });
-    const lv = $("#ci-leave"); if (lv) lv.onclick = async () => { if (!confirm("مغادرة المجموعة؟ لن تصلك رسائلها بعد الآن.")) return; try { await api("DELETE", `/api/chat/conversations/${cid}/members/${DB.me}`); ST.convs = (ST.convs || []).filter(x => x.id !== cid); location.hash = "#/messages"; } catch (e) { errToast(e); } };
+    const lv = $("#ci-leave"); if (lv) lv.onclick = async () => { if (!(await window.MPConfirm("مغادرة المجموعة؟ لن تصلك رسائلها بعد الآن.", { ok: "مغادرة" }))) return; try { await api("DELETE", `/api/chat/conversations/${cid}/members/${DB.me}`); ST.convs = (ST.convs || []).filter(x => x.id !== cid); location.hash = "#/messages"; } catch (e) { errToast(e); } };
   }
 
   /* multi-select people picker (group creation / adding members) */
@@ -1043,7 +1048,7 @@ body.cm-chat{padding-bottom:calc(var(--cm-comp-h,72px) + 12px)!important}
       <section class="cm-sec"><h3>الأجهزة النشطة (${active.length})</h3>${active.map(row).join("") || `<p class="cm-note">لا أجهزة بعد</p>`}</section>
       ${revoked.length ? `<section class="cm-sec"><h3>أجهزة أُلغيت</h3>${revoked.slice(0, 5).map(row).join("")}</section>` : ""}
       <a class="cm-li" href="#/e2ee">${ic("cmInfo")}<span class="cm-mid">لربط جهاز جديد<small>سجّل الدخول من الجهاز الآخر وافتح الرسائل؛ سيظهر هنا تلقائياً. تحقّق من أي جهاز لا تعرفه وألغِه.</small></span></a>`;
-    view.querySelectorAll("[data-rv]").forEach(b => b.onclick = async () => { if (!confirm("إلغاء ربط هذا الجهاز؟ لن تصله رسائلك المشفرة بعد الآن.")) return; try { await (e2 ? e2.revoke(b.dataset.rv) : api("DELETE", "/api/e2ee/devices/" + b.dataset.rv)); toast("أُلغي ربط الجهاز"); devicesView(); } catch (e) { errToast(e); } });
+    view.querySelectorAll("[data-rv]").forEach(b => b.onclick = async () => { if (!(await window.MPConfirm("إلغاء ربط هذا الجهاز؟ لن تصله رسائلك المشفرة بعد الآن.", { ok: "إلغاء الربط" }))) return; try { await (e2 ? e2.revoke(b.dataset.rv) : api("DELETE", "/api/e2ee/devices/" + b.dataset.rv)); toast("أُلغي ربط الجهاز"); devicesView(); } catch (e) { errToast(e); } });
     const en = $("#dv-en"); if (en) en.onclick = async () => { en.disabled = true; try { await e2.ready(); toast("فُعّل التشفير على هذا الجهاز"); devicesView(); } catch (e) { errToast(e); en.disabled = false; } };
   }
 
