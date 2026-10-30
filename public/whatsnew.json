@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.141.0",
+    "date": "2026-10-30",
+    "ar": {
+      "title": "لمسات تصميم",
+      "items": [
+        "اقتراحات البحث تظهر بشكل صحيح وتبقى أثناء الكتابة",
+        "أزرار الملف الشخصي تتسع في شاشة الجوال بدون خروج عن الحافة",
+        "لون موحّد لأيقونة الذكاء ✨ في كل الصفحات",
+        "ترجمة إنجليزية أوسع للبحث والاستكشاف والرسائل والمجتمعات"
+      ]
+    },
+    "en": {
+      "title": "Design touches",
+      "items": [
+        "Search suggestions show correctly and stay while you type",
+        "Profile buttons fit on phone screens without running off the edge",
+        "One colour for the AI ✨ icon on every page",
+        "Wider English coverage for search, explore, messages and communities"
+      ]
+    }
+  },
+  {
     "v": "2.140.2",
     "date": "2026-10-30",
     "ar": {
