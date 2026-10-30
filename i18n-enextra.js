@@ -2620,3 +2620,53 @@
 "تقدّم التحديات": "Challenges progress"
 });
 /* === /v2139-home === */
+
+/* === v21402-msgai === */
+(window.MPI18N = window.MPI18N || {}).en = Object.assign(window.MPI18N.en || {}, {
+"رسائل جديدة": "New messages",
+"قد تكون رسالة احتيال. لا تشارك رمز تحقق أو بيانات بطاقة أو كلمة مرور.": "This may be a scam. Don't share a verification code, card details, or a password.",
+"ليش؟": "Why?",
+"ألطف": "Friendlier",
+"أرسمي": "More formal",
+"صحّح الإملاء": "Fix spelling",
+"{name} لخّص لي اللي فاتني": "{name} Catch me up",
+"اللي فاتك في «{name}»": "What you missed in «{name}»",
+"اللي فاتك في المحادثة": "What you missed in the chat",
+"مطلوب منك": "Asked of you",
+"رسائل": "Messages",
+"الرسالة ←": "Message →",
+"اقترح لي رد": "Suggest a reply",
+"يطلب رمز تحقق": "Asks for a verification code",
+"يطلب بيانات بطاقة أو حساب بنكي": "Asks for card or bank details",
+"يطلب كلمة مرور": "Asks for a password",
+"يدّعي تعليق حسابك": "Claims your account is suspended",
+"يدّعي أنك ربحت جائزة": "Claims you won a prize",
+"يستعجلك بمهلة قصيرة": "Pressures you with a short deadline",
+"يطلب تحويل مبلغ أو رسوم": "Asks you to transfer money or pay a fee",
+"فيه رابط مختصر يخفي وجهته": "Has a short link that hides where it goes",
+"ينتحل جهة رسمية أو دعماً فنياً": "Impersonates an official body or tech support",
+"ليش هذي الرسالة مشبوهة؟": "Why is this message suspicious?",
+"التطبيق وفريقه ما يطلبون منك رمز التحقق أبداً. إذا شكّيت، احظر المرسل وبلّغ عنه.": "The app and its team will never ask for your verification code. If in doubt, block and report the sender.",
+"خطر عالٍ": "High risk",
+"مشبوهة": "Suspicious",
+"خطر منخفض": "Low risk",
+"تقدير الذكاء:": "AI estimate:",
+"{name} مواعيد ومهام من المحادثة": "{name} Dates and tasks from the chat",
+"بدون تاريخ": "No date",
+"ما لقيت مواعيد أو مهام واضحة في آخر الرسائل.": "No clear dates or tasks in the latest messages.",
+"ما يُضاف شي إلا لما تضغط · راجع التاريخ قبل الحفظ": "Nothing is added until you tap · check the date before saving",
+"موعد.ics": "event.ics",
+"جهّزت الموعد، افتحه لإضافته لتقويمك": "Event ready, open it to add it to your calendar",
+"نُسخت": "Copied",
+"{name} ردود مقترحة": "{name} Suggested replies",
+"لخّص المحادثة": "Summarize the chat",
+"مواعيد ومهام": "Dates and tasks",
+"تم تحسين رسالتك، راجعها قبل الإرسال": "Your message was improved, review it before sending",
+"رجوع للأصل": "Back to original",
+"وُضع الرد في مربع الكتابة، عدّله وأرسله": "The reply is in the composer, edit it and send",
+"الذكاء الاصطناعي في الرسائل": "AI in messages",
+"تلخيص ما فاتك واقتراح الردود. لا يعمل في المحادثات المشفرة": "Catch-up summaries and suggested replies. Off in encrypted chats",
+"شُغّل الذكاء الاصطناعي في الرسائل": "AI in messages turned on",
+"أُوقف الذكاء الاصطناعي في الرسائل": "AI in messages turned off"
+});
+/* === /v21402-msgai === */
