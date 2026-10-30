@@ -61,3 +61,18 @@ body.shorts-mode .short-info p { display: -webkit-box; -webkit-line-clamp: 3; -w
 @media (prefers-reduced-motion: reduce) {
   .shorts { scroll-behavior: auto; }
 }
+/* v2.140.2: clip with no video file, and the end of the feed */
+.short-nosrc { position: absolute; inset: 0; justify-content: center; text-align: center; padding: 24px; color: #fff; pointer-events: none; }
+.short-nosrc span { font-weight: 700; font-size: 15px; }
+.short-nosrc small { opacity: .75; font-size: 13px; }
+.shorts-end { min-height: 60%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px 24px; text-align: center; color: #fff; scroll-snap-align: start; }
+.shorts-end span { opacity: .8; font-size: 14px; max-width: 32ch; }
+.shorts-end-b { display: flex; gap: 10px; margin-top: 8px; }
+.shorts-end .btn.ghost { background: rgb(255 255 255 / .16); color: #fff; border: 1px solid rgb(255 255 255 / .55); }
+/* v2.140.2: the shared player's error box had no styles inside a clip (they hang off .mp-video, which clips do not use), so it
+ * fell under the video and «إعادة المحاولة» could not be tapped. Same look as the post player, above the clip overlays. */
+.short-player .mp-err { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; text-align: center; color: #fff; background: rgb(0 0 0 / .78); }
+.short-player .mp-err[hidden] { display: none; }
+.short-player .mp-err span { font-size: 13px; opacity: .85; max-width: 30ch; }
+.short-player .mp-err .btn { min-height: 44px; margin-top: 4px; pointer-events: auto; }
+.short-player.errored .mp-ui { display: none; }
