@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.143.0",
+    "date": "2026-10-30",
+    "ar": {
+      "title": "أزرار تستجيب وتحديثات أأمن",
+      "items": [
+        "إصلاح زر «ما الذي يدور؟» وأزرار المصادر في بطاقة «الأكثر تداولاً» بصفحة استكشف: كانت دائرة الإضاءة تغطيها فلا تستجيب للمس",
+        "كل تحديث صار يمر بفحوص أمان ونسخة احتياطية قبل أن يصلك، ويرجع تلقائياً إذا ظهرت مشكلة",
+        "التحديثات الصغيرة صارت تُطبَّق بهدوء بلا نوافذ منبثقة"
+      ]
+    },
+    "en": {
+      "title": "Buttons that respond, safer updates",
+      "items": [
+        "Fixed «What's going on?» and the source buttons on Explore's trending card: a glow circle covered them so taps did nothing",
+        "Every update now passes safety checks and a backup before it reaches you, and rolls back automatically if something goes wrong",
+        "Small updates now apply quietly, without pop-ups"
+      ]
+    }
+  },
+  {
     "v": "2.142.1",
     "date": "2026-10-30",
     "ar": {
