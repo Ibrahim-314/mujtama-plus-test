@@ -572,7 +572,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     const close = () => { clearTimeout(tm); seq++; sugg.hidden = true; combo.setAttribute("aria-expanded", "false"); inp.removeAttribute("aria-activedescendant"); active = -1; };
     const choose = (o) => { close(); if (o.href) { location.hash = o.href; return; } inp.value = o.q; SR.q = o.q; runSearch(); };
     const paintSugg = (s) => {
-      opts = [...s.history.map(q => ({ q, kind: "history" })), ...s.terms.filter(t => !s.history.includes(t)).map(q => ({ q, kind: "term" })), ...s.people.map(u => ({ href: "#/u/" + u.handle, label: u.name, sub: "@" + u.handle, user: u })), ...s.hashtags.map(t => ({ href: "#/tag/" + enc(t.tag), label: "#" + t.tag, sub: nf(t.posts) + " منشور" })), ...s.communities.map(c => ({ href: "#/c/" + c.id, label: c.name, sub: "مجتمع" }))].slice(0, 10);
+      const hq = (s.history || []).map(x => (typeof x === "string" ? x : x && x.q)).filter(Boolean); opts = [...hq.map(q => ({ q, kind: "history" })), ...(s.terms || []).filter(t => !hq.includes(t)).map(q => ({ q, kind: "term" })), ...s.people.map(u => ({ href: "#/u/" + u.handle, label: u.name, sub: "@" + u.handle, user: u })), ...s.hashtags.map(t => ({ href: "#/tag/" + enc(t.tag), label: "#" + t.tag, sub: nf(t.posts) + " منشور" })), ...s.communities.map(c => ({ href: "#/c/" + c.id, label: c.name, sub: "مجتمع" }))].slice(0, 10);
       if (!opts.length || document.activeElement !== inp) return close();
       sugg.innerHTML = opts.map((o, i) => `<div class="s-opt" role="option" id="so-${i}" aria-selected="false" data-i="${i}">${o.user ? av(o.user, "sm") : ic(o.kind === "history" ? "history" : o.href ? (o.label.startsWith("#") ? "hash" : "community") : "search", "sm")}<span>${o.q ? mark(o.q, inp.value) : h(o.label)}</span>${o.sub ? `<span class="muted">${h(o.sub)}</span>` : ""}</div>`).join("");
       sugg.hidden = false; combo.setAttribute("aria-expanded", "true");
@@ -583,7 +583,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       const my = ++seq; tm = setTimeout(async () => { const v = inp.value; try { const s = await api("GET", "/api/search/suggest?q=" + enc(v)); if (inp.value === v && my === seq) paintSugg(s); } catch { close(); } }, 140);
     };
     inp.onfocus = () => inp.oninput();
-    inp.onblur = () => setTimeout(close, 120);
+    inp.onblur = () => setTimeout(() => { if (document.activeElement !== inp) close(); }, 120); // v2.141: a stale blur must not cancel typeahead the user started after refocusing
     inp.onkeydown = (e) => {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") { if (sugg.hidden) return; e.preventDefault(); active = (active + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length; sugg.querySelectorAll(".s-opt").forEach((el, i) => el.setAttribute("aria-selected", i === active)); inp.setAttribute("aria-activedescendant", "so-" + active); sugg.querySelector(`#so-${active}`)?.scrollIntoView({ block: "nearest" }); }
       else if (e.key === "Enter") { e.preventDefault(); if (active >= 0 && !sugg.hidden) choose(opts[active]); else { close(); SR.q = inp.value.trim(); if (SR.q) runSearch(); } }
