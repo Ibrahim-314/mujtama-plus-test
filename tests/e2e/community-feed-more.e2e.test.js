@@ -48,13 +48,14 @@ test("B1: scrolling to the end loads the older posts, no duplicates; «عرض ا
   await p.context().close();
 });
 
-test("B8: 390 light/dark — compact FAB stays visible, the feed ends with room for it; screenshots", async () => {
+test("B8: 390 light/dark — no floating compose button (removed v2.139), the feed ends with room above the dock; screenshots", async () => {
   for (const scheme of ["light", "dark"]) {
     const p = await page({ ...MOBILE, colorScheme: scheme }); await onboard(p, S.base, "fm_shot_" + scheme, "لقطات " + scheme);
     if (scheme === "dark") await p.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
     await p.goto(S.base + "/?nosw#/c/" + cid); await p.waitForSelector("#c-feed .post-head");
-    const fab = await p.evaluate(() => { const f = document.getElementById("fab"), r = f.getBoundingClientRect(), cs = getComputedStyle(f); return { w: r.width, h: r.height, vis: cs.display !== "none" && cs.visibility !== "hidden" }; });
-    assert.ok(fab.vis, "FAB visible"); assert.ok(fab.w >= 44 && fab.w <= 50, "compact FAB ≥44px: " + fab.w);
+    const fab = await p.evaluate(() => { const f = document.getElementById("fab"); if (!f) return { w: 0, vis: false }; const r = f.getBoundingClientRect(), cs = getComputedStyle(f); return { w: r.width, h: r.height, vis: cs.display !== "none" && cs.visibility !== "hidden" }; });
+    // v2.139: the floating compose button was removed at the owner's request (it duplicated the composer bar)
+    assert.ok(!fab.vis || fab.w === 0, "FAB stays removed");
     assert.ok(await p.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".c-main")).paddingBottom) >= 56), "room for the FAB at the end");
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "no horizontal overflow");
     await p.evaluate(() => scrollTo(0, document.querySelector("#c-feed").offsetTop - 200)); await p.waitForTimeout(400);
@@ -65,7 +66,7 @@ test("B8: 390 light/dark — compact FAB stays visible, the feed ends with room 
   }
   const d = await page({ ...DESKTOP, colorScheme: "dark" }); await onboard(d, S.base, "fm_desk", "سطح المكتب");
   await d.goto(S.base + "/?nosw#/c/" + cid); await d.waitForSelector("#c-feed .post-head");
-  assert.ok(await d.evaluate(() => { const f = document.getElementById("fab"); return getComputedStyle(f).display === "none" || f.getBoundingClientRect().width >= 56; }), "desktop FAB unchanged");
+  assert.ok(await d.evaluate(() => { const f = document.getElementById("fab"); return !f || getComputedStyle(f).display === "none" || f.getBoundingClientRect().width === 0; }), "desktop FAB stays removed (v2.139)");
   await d.evaluate(() => document.querySelector("#c-feedmore").scrollIntoView({ block: "end" })); await d.waitForTimeout(300);
   await d.screenshot({ path: path.join(SHOTS, "feed-more-1440-dark-ar.png") }); await d.context().close();
 });
