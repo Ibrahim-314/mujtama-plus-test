@@ -53,7 +53,7 @@
     fixBack();
     view.querySelector(".vs-list")?.addEventListener("click", async (e) => {
       const b = e.target.closest("[data-vs-del]"); if (!b) return;
-      if (!confirm(T("حذف هذه المسودة؟ لا يمكن التراجع."))) return;
+      if (!(await window.MPConfirm("حذف هذه المسودة؟ لا يمكن التراجع.", { ok: "حذف" }))) return;
       b.disabled = true;
       try { await api("DELETE", `/api/clips/drafts/${encodeURIComponent(b.dataset.vsDel)}`); say(T("حُذفت المسودة")); if (view._vs === token) drafts(); }
       catch (x) { b.disabled = false; say(x?.message || T("تعذّر الإجراء")); }
