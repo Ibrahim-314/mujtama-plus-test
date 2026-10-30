@@ -1012,8 +1012,3 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 .mp-cf-t { margin: 0 0 16px; font-size: 1.02rem; line-height: 1.6; font-weight: 600; outline: none; }
 .mp-cf-b { display: flex; gap: 10px; }
 .mp-cf-b .btn { flex: 1; min-height: 44px; }
-/* v2.141: one look for every AI entry — on quiet (ghost) buttons and idle tabs the sparkle icon wears the AI colour, on any page */
-.btn.ghost svg.ic:has(> use[href="#i-sparkle"]), .tab:not(.on) svg.ic:has(> use[href="#i-sparkle"]) { color: var(--accent); }
-/* v2.141: profile shortcut chips scroll sideways — a soft edge shows there is more */
-.profile-top .chips { mask-image: linear-gradient(to left, black 88%, transparent); -webkit-mask-image: linear-gradient(to left, black 88%, transparent); }
-[dir="ltr"] .profile-top .chips { mask-image: linear-gradient(to right, black 88%, transparent); -webkit-mask-image: linear-gradient(to right, black 88%, transparent); }
