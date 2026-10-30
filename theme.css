@@ -855,6 +855,9 @@ button.list.li { cursor: pointer; }
 /* profile head: actions never push the avatar off-screen at 360px */
 .profile-top > .row { gap: 6px; min-width: 0; } .profile-top > .row .btn { flex: none; padding-inline: 16px; } .profile-top > .row .btn.icon { padding: 0; }
 .profile-top > .row .av.lg { flex: none; }
+/* v2.141: the action row never runs off the screen — on phones the buttons tighten, and anything left wraps under the avatar */
+.profile-top > .row { flex-wrap: wrap; row-gap: 8px; } .profile-top > .row > .grow { min-width: 0; }
+@media (max-width: 430px) { .profile-top > .row .btn.icon, .profile-top > .row .cl-hb { width: 36px !important; height: 36px !important; min-width: 36px; } .profile-top > .row .btn:not(.icon):not(.cl-hb) { padding-inline: 12px; } .profile-top > .row { gap: 4px; } }
 .rep-chip { background: var(--surface-sunken) !important; } .rep-chip .ic { color: var(--warn); }
 /* one back control everywhere: the legacy «→ parent» muted link at the top of a screen gets the page-head back style */
 .wrap > a.muted:first-child, .wrap > a[data-ui=back]:first-child { display: inline-flex; align-items: center; gap: 6px; min-height: var(--h-md); font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
@@ -1009,3 +1012,8 @@ a.card > .ei:first-child, .card > span[aria-hidden=true]:first-child > .ei { wid
 .mp-cf-t { margin: 0 0 16px; font-size: 1.02rem; line-height: 1.6; font-weight: 600; outline: none; }
 .mp-cf-b { display: flex; gap: 10px; }
 .mp-cf-b .btn { flex: 1; min-height: 44px; }
+/* v2.141: one look for every AI entry — on quiet (ghost) buttons and idle tabs the sparkle icon wears the AI colour, on any page */
+.btn.ghost svg.ic:has(> use[href="#i-sparkle"]), .tab:not(.on) svg.ic:has(> use[href="#i-sparkle"]) { color: var(--accent); }
+/* v2.141: profile shortcut chips scroll sideways — a soft edge shows there is more */
+.profile-top .chips { mask-image: linear-gradient(to left, black 88%, transparent); -webkit-mask-image: linear-gradient(to left, black 88%, transparent); }
+[dir="ltr"] .profile-top .chips { mask-image: linear-gradient(to right, black 88%, transparent); -webkit-mask-image: linear-gradient(to right, black 88%, transparent); }
