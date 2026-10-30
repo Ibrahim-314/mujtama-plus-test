@@ -16,6 +16,23 @@ const richText = (t = "") => esc(t)
 function toast(msg) { const t = $("#toast") || document.body.appendChild(Object.assign(document.createElement("div"), { id: "toast", className: "toast" })); t.textContent = msg; t.classList.add("on"); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("on"), 2200); }
 function sheet(html) { const s = $("#sheet"); s.innerHTML = `<div class="panel">${html}</div>`; s.classList.remove("hidden"); s.onclick = e => { if (e.target === s) closeSheet(); }; return s; }
 function closeSheet() { const s = $("#sheet"); if (s._onclose) { s._onclose(); s._onclose = null; } s.classList.add("hidden"); s.innerHTML = ""; }
+/* v2.140.2: in-app confirm sheet. Native confirm() is suppressed by some embedded browsers (e.g. Pi Browser webviews), which
+ * silently cancelled deletes. MPConfirm(text, {ok, cancel, danger}) resolves true/false; Escape/backdrop = false. */
+window.MPConfirm = function (text, o = {}) {
+  const tr = (x) => (window.MPI18n && window.MPI18n.t ? window.MPI18n.t(x) : x);
+  return new Promise((res) => {
+    const ret = document.activeElement; let done = false;
+    const fin = (v) => { if (done) return; done = true; document.removeEventListener("keydown", key, true); const sh = $("#sheet"); sh._onclose = null; closeSheet(); if (ret && ret.isConnected && ret.focus) try { ret.focus(); } catch { /* gone */ } res(v); };
+    const key = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fin(false); } };
+    const s = sheet(`<div class="mp-cf" role="alertdialog" aria-modal="true" aria-labelledby="mp-cf-t"><p id="mp-cf-t" class="mp-cf-t" tabindex="-1">${esc(tr(text))}</p><div class="mp-cf-b"><button type="button" class="btn${o.danger === false ? "" : " danger"}" id="mp-cf-ok">${esc(tr(o.ok || "تأكيد"))}</button><button type="button" class="btn ghost" id="mp-cf-x">${esc(tr(o.cancel || "تراجع"))}</button></div></div>`);
+    s._onclose = () => { if (!done) { done = true; document.removeEventListener("keydown", key, true); res(false); } };
+    s.onclick = (e) => { if (e.target === s) fin(false); };
+    s.querySelector("#mp-cf-ok").onclick = () => fin(true);
+    s.querySelector("#mp-cf-x").onclick = () => fin(false);
+    document.addEventListener("keydown", key, true);
+    setTimeout(() => s.querySelector("#mp-cf-t")?.focus(), 30);
+  });
+};
 
 /* ---------- Post card ---------- */
 function postCard(p, opts = {}) {
@@ -103,7 +120,7 @@ function moreMenu(pid) {
     if (a === "why") { sheet(`<h4>لماذا أرى هذا؟</h4>${Feed.why(p).map(r => `<p>• ${r}</p>`).join("")}<p class="muted">يمكنك التحكم من «إدارة ما تراه» في حسابك.</p>`); return; }
     closeSheet();
     if (a === "edit") openComposer({ edit: pid, text: p.text });
-    if (a === "del" && confirm(window.MPI18n ? window.MPI18n.t("حذف المنشور؟") : "حذف المنشور؟")) { Cmd.deletePost(pid); toast("تم الحذف"); }
+    if (a === "del") window.MPConfirm("حذف المنشور؟", { ok: "حذف" }).then((y) => { if (y) { Cmd.deletePost(pid); toast("تم الحذف"); } });
     if (a === "ni") { Cmd.notInterested(pid); toast("سنعرض لك محتوى أقل مثل هذا"); }
     if (a === "mt") { Cmd.mute("topics", p.topic); toast("تم كتم الموضوع"); }
     if (a === "mu") { Cmd.mute("users", p.author); toast("تم الكتم"); }
@@ -138,7 +155,7 @@ const Views = {
     const list = Feed.build(feedMode), shown = list.slice(0, feedLimit);
     const trends = Trends.list(3), sugComm = DB.communities.find(c => !S.membership(c.id)), sugUser = DB.users.find(u => u.id !== DB.me && !S.follows(DB.me, u.id) && !DB.blocked.includes(u.id));
     let html = `<div class="wrap">
-      <div class="card composer-bar" id="cbar" role="button" tabindex="0" aria-label="ماذا تريد أن تنشر؟">${av(S.me())}<div class="fake">ماذا تريد أن تنشر؟</div></div>
+      <div class="card composer-bar" id="cbar" role="button" tabindex="0" aria-label="ماذا تريد أن تنشر؟">${av(S.me()).replace(/^<a href="[^"]*"/, '<span aria-hidden="true"').replace(/<\/a>$/, "</span>") /* v2.140.2: no link nested inside the role=button bar (axe nested-interactive) */}<div class="fake">ماذا تريد أن تنشر؟</div></div>
       <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>`;
     if (!shown.length) html += `${UI.empty({ title: "لا يوجد محتوى هنا بعد", text: "تابع أشخاصاً وانضم إلى مجتمعات لتمتلئ خلاصتك.", action: '<a class="btn" href="#/explore">اكتشف أشخاصاً ومجتمعات</a>' })}`;
     shown.forEach((p, i) => {
@@ -458,7 +475,7 @@ function patchFollow(uid) {
 }
 const App = {
   refreshBadges() {
-    const n = DB.notifications.filter(x => x.user === DB.me && !x.read).length, m = DB.messages.filter(x => x.from !== DB.me && !x.read).length;
+    const n = DB.notifications.filter(x => (!x.user || x.user === DB.me) && !x.read).length /* v2.140.2: same rule as the notification center (server rows may omit user) */, m = DB.messages.filter(x => x.from !== DB.me && !x.read).length;
     const nb = $("#notifBadge"), mb = $("#msgBadge");
     nb.textContent = n; nb.classList.toggle("on", n > 0); mb.textContent = m; mb.classList.toggle("on", m > 0);
   }
