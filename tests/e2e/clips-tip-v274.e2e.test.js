@@ -11,6 +11,8 @@ const SHOTS = process.env.TIP_SHOTS;
 let S, creator, viewer;
 test.before(async () => {
   S = await startStack({ fakeVideoMs: 1 });
+  // v2.140.2: the daily sign-in reward (v2.87, +1 MJT on first load) would move the exact balances this tip test reads; it has its own tests
+  await S.app.ctx.db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('mining',$1,'e2e',$2) ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=$2", [JSON.stringify({ checkinOn: false }), new Date().toISOString()]);
 });
 test.after(async () => {
   await S.close();
