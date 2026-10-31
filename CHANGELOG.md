@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.145.1 — 2026-10-31 — «أرض نظيفة» (user-approved; no feature removed, no migration, no intended visible change beyond the fixes)
+
+- #/admin: tool cards are put in one fixed order (`ADM_ORDER` in v12-screens.js, unknown cards after by id/href) instead of the order the module calls happened to finish.
+- «التشغيل والمراقبة» admin card: English title/sub in i18n-enplus, arrow uses `.fwd` (flips in LTR), utility classes instead of inline styles; trust/investigations card arrows flip in LTR too.
+- #/admin/ops at ≤600 px: SLO + alert-rule tables stack into readable rows, chart labels 11 px; 1440 unchanged. Leaving #/admin/ops before its data arrived threw a page error (null `#ops-body`) — guarded.
+- Home `#more-sentinel` is an invisible sentinel; the skeleton shows only while the next 10 posts load, then the end state/next sentinel replaces it.
+- Admin i18n lists (`/api/admin/i18n/strings`, `/missing`) get a key tie-breaker → deterministic order.
+- ui.js buildShell fallback: the v2.145 comment sat inside the top-actions template literal and rendered as text; moved out.
+- a11y: unread badges `aria-hidden` inside labelled nav/top links and bottom-nav links named by their visible label → axe `label-content-name-mismatch` fixed when a count shows (pre-existing).
+- Tests: tests/e2e/clean-v21451.e2e.test.js (admin order ×2 loads, ops EN + LTR arrow, ops 390 stack / 1440 table, sentinel at rest, axe).
+- E2E notes (full suite on 2.145.0): flaky under load but pass alone — compliance, mentor-goals, nav-deep, p74, launch (2/2 alone), p61-66-71-plus (3/3 alone, twice). Pre-existing failures also failing on 2.144 (documented, not hidden): clips-tip-v274, nabd-v2105, nav.
+
 ## 2.145.0 — 2026-10-31 — الرئيسية H2 «أول 5 ثواني» (user-approved mockup; no feature removed, no migration)
 
 - Header: SVG icons (language, search, messages) in index.html from the first paint (no emoji → SVG swap); Home on phones uses a 50 px bar (`body.on-home`), hide-on-scroll-down / show-on-scroll-up (existing nav.js), reduced motion respected.
