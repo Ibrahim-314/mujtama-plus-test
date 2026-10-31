@@ -53,9 +53,9 @@
 .pd-blur::before{content:"";position:absolute;inset:-20px;background:inherit;filter:blur(18px);opacity:.85}.pd-blur span{position:relative;background:rgba(20,10,40,.72);color:#fff;border-radius:999px;padding:6px 14px;font-weight:700;font-size:13px}
 .pd-blur::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-100%);animation:pdshine 2.8s ease-in-out infinite}
 @keyframes pdshine{to{transform:translateX(100%)}}@media (prefers-reduced-motion:reduce){.pd-blur::after{animation:none;display:none}}
-.pd-badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;margin:6px 0 0;background:#efe7ff;color:#4a2a9a}[data-theme=dark] .pd-badge{background:#2f2350;color:#dccfff}
+.pd-badge{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);font-weight:700;border-radius:999px;padding:2px 10px;margin:6px 0 0;background:#efe7ff;color:#4a2a9a}[data-theme=dark] .pd-badge{background:#2f2350;color:#dccfff}
 .pd-opts{border:1.5px dashed var(--line);border-radius:14px;padding:10px 12px;margin:10px 0}.pd-opts legend{font-weight:800;padding:0 6px}
-.pd-opts .pd-r{display:flex;align-items:center;gap:8px;margin:6px 0;font-weight:600}.pd-tnote{font-weight:400;font-size:13px}.pd-opts .pd-r input{width:20px;height:20px;margin:0}
+.pd-opts .pd-r{display:flex;align-items:center;gap:8px;margin:6px 0;font-weight:600}.pd-tnote{font-weight:400;font-size:var(--fs-sm)}.pd-opts .pd-r input{width:20px;height:20px;margin:0}
 .pd-f{display:block;margin:8px 0}.pd-f>span{display:block;font-weight:700;margin-bottom:4px;font-size:14px}.pd-f input,.pd-f select,.pd-f textarea{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;background:var(--card);color:inherit}
 .pd-f textarea{min-height:60px;resize:vertical}.pd-err{color:#a11616;font-weight:600;min-height:1em;margin:4px 0}[data-theme=dark] .pd-err{color:#ff9a9a}
 .pd-opts [hidden],.pd-page [hidden],.pd-sheet [hidden]{display:none!important}
@@ -104,15 +104,15 @@
     return "";
   }
   if (typeof postInner === "function") {
-    const _pin = postInner;
-    postInner = function (p, opts = {}) {
+    
+    PostHooks.inner("paid-ui#1", 370, (_pin) => function (p, opts = {}) {
       if (!p || p.status === "deleted") return _pin(p, opts);
       if (!p.locked) { const html = _pin(p, opts); return p.paid?.mode ? html.replace('<div class="actions"', badge(p) + '<div class="actions"') : html; }
       // render a body-free clone: teaser text only; media, images, video, audio, poll, doc never reach the renderers
       const q = { ...p, text: teaserOf(p), doc: null, media: null, images: null, alts: null, video: null, audio: null, poll: null, quoteOf: null, stances: null, translations: null, type: p.type === "article" ? "article" : "post" };
       const html = _pin(q, opts);
       return html.includes('<div class="actions"') ? html.replace('<div class="actions"', lockCard(p) + '<div class="actions"') : html + lockCard(p);
-    };
+    });
   }
 
   /* ---------- unlock (PPV) ---------- */
