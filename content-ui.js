@@ -25,8 +25,8 @@
   });
 
   /* =================== Rendering: rich text, real images, audio, video =================== */
-  const _pi = postInner;
-  postInner = function (p, opts = {}) {
+  
+  PostHooks.inner("content-ui#1", 150, (_pi) => function (p, opts = {}) {
     let h = _pi(p, opts); if (!p || !RT) return h;
     if (p.doc && p.type !== "article") {
       const html = RT.toHTML(p.doc, { media: (m) => m });
@@ -51,7 +51,7 @@
       h = h.replace(/<div class="media play"[^>]*>[\s\S]*?<\/div>/, `<div class="${cls}" data-video="${p.id}"${poster && !ar ? ` data-poster="${esc(poster)}"` : ""}${style ? ` style="${style}"` : ""}><button class="mp-big" aria-label="تشغيل الفيديو">${ic("play", "lg")}</button>${v.duration > 0 || v.variants.captions?.length ? `<span class="dur">${v.duration > 0 ? fmtDur(v.duration) : ""}${v.variants.captions?.length ? (v.duration > 0 ? " · " : "") + "CC" : ""}</span>` : ""}</div>`);
     }
     return h;
-  };
+  });
   /** the stored image urls of a post → gallery markup (null when the post has no real uploaded image) */
   function galleryFor(p) {
     let urls = [], alts = [];
@@ -369,8 +369,7 @@
 
 
   /* =================== wiring =================== */
-  const _home = Views.home;
-  Views.home = function () { _home.apply(this, arguments); document.body.classList.remove("shorts-mode"); storiesBar(); };
+  HomeHooks.section("stories", 30, function () { document.body.classList.remove("shorts-mode"); storiesBar(); });
   // v2.71: the view comes from the lazy "clips" chunk (window.Clips.view); chunks.js normally loads it before route() runs,
   // this fallback covers a direct call (app.js keeps the original route) — load, then re-render if still on the page
   const shortsView = () => { if (window.Clips?.view) return Clips.view(); view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`; /* v2.81: one shared re-route with chunks.js (it used to load + Clips.view() here AND re-route there: the first clip opened twice) */ (window.MPChunks?.reroute ? MPChunks.reroute("clips") : (window.MPChunks ? MPChunks.load("clips") : Promise.resolve()).then(() => { if (window.Clips?.view && /^#\/(shorts|clips)(\?|\/|$)/.test(location.hash)) Clips.view(); })).catch(() => toast("تعذّر التحميل")); };
