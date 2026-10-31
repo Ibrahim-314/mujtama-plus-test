@@ -503,7 +503,7 @@ setInterval(() => DB.events.forEach(e => { const dt = new Date(e.startsAt) - Dat
 
 /* ---------- Home v2: daily prompt card + new-user discovery when feed is thin ---------- */
 HomeHooks.section("circle", 10, function () {
-  const bar = $("#cbar"); if (bar) bar.querySelector(".fake").textContent = (I18N[DB.settings.lang] || I18N.ar).compose;
+  const bar = $("#cbar"); if (bar) bar.textContent = (I18N[DB.settings.lang] || I18N.ar).compose; /* v2.145: #cbar is the «ماذا تريد أن تنشر؟» field itself */
   const following = S.following(DB.me).length;
   if (following < 2 && feedMode === "for") {
     const tabs = view.querySelector(".tabs");
