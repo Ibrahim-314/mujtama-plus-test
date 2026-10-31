@@ -1,6 +1,6 @@
 /* === v278-challenges: «تحدي الأسبوع» weekly Vidtik challenges (video/clips/challenges.js) === */
 /* feed pill, centred under the «لك | المتابَعون» tabs; leaves with the other overlays in clean-screen mode */
-.cl-chl-pill { position: fixed; z-index: 5; inset-block-start: calc(env(safe-area-inset-top) + 58px); left: var(--cl-tabs-x, 50%); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; min-height: 36px; max-width: calc(100% - 128px); padding: 0 12px; border-radius: 999px; background: rgb(20 20 26 / .5); border: 1px solid rgb(255 255 255 / .22); color: white; font-size: var(--fs-sm, 13px); font-weight: 700; text-decoration: none; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: opacity .25s ease, visibility 0s linear 0s; }
+.cl-chl-pill { position: fixed; z-index: 5; inset-block-start: calc(env(safe-area-inset-top) + 58px); left: var(--cl-tabs-x, 50%); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 6px; min-height: 36px; max-width: calc(100% - 128px); padding: 0 12px; border-radius: 999px; background: rgb(20 20 26 / .5); border: 1px solid rgb(255 255 255 / .22); color: white; font-size: var(--fs-sm); font-weight: 700; text-decoration: none; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); transition: opacity .25s ease, visibility 0s linear 0s; }
 .cl-chl-pill .ic { color: rgb(255 201 60); flex: none; }
 .cl-chl-pill bdi { overflow: hidden; text-overflow: ellipsis; opacity: .9; }
 .cl-chl-pill::before { content: ""; position: absolute; inset: -4px 0; } /* 44 px tap target without a taller pill */
@@ -9,25 +9,25 @@
 body.shorts-mode.cl-clean .cl-chl-pill { opacity: 0 !important; visibility: hidden; pointer-events: none; transition: opacity .25s ease, visibility 0s linear .25s; }
 body:not(.shorts-mode) .cl-chl-pill { display: none; }
 /* participant chip inside a clip's caption block */
-body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-block: 2px -8px; padding: 0 2px; color: white; font-size: var(--fs-sm, 13px); font-weight: 750; text-decoration: none; text-shadow: 0 1px 6px rgb(0 0 0 / .55); }
+body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-block: 2px -8px; padding: 0 2px; color: white; font-size: var(--fs-sm); font-weight: 750; text-decoration: none; text-shadow: 0 1px 6px rgb(0 0 0 / .55); }
 .cl-chl-chip .ic { color: rgb(255 201 60); }
 .cl-chl-chip:hover span { text-decoration: underline; }
 .cl-chl-chip:focus-visible { outline: 2px solid white; outline-offset: 2px; border-radius: 8px; }
 
 /* pages */
 .clc .clc-body { display: grid; gap: 16px; }
-.clc-h { display: flex; align-items: center; gap: 6px; margin: 4px 2px 8px; font-size: var(--fs-md, 15px); font-weight: 800; color: var(--text-2); }
+.clc-h { display: flex; align-items: center; gap: 6px; margin: 4px 2px 8px; font-size: var(--fs-md); font-weight: 800; color: var(--text-2); }
 .clc section > .clc-card + .clc-card { margin-block-start: 8px; }
 .clc-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r, 18px); background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; box-shadow: var(--sh-1); transition: transform .15s ease, border-color .15s ease; }
 .clc-card:hover { border-color: var(--line-2); transform: translateY(-1px); }
 .clc-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .clc-card-ic { flex: none; width: 48px; height: 48px; border-radius: 15px; display: grid; place-items: center; color: white; background: var(--grad); }
 .clc-card-t { display: grid; gap: 2px; min-width: 0; flex: 1; }
-.clc-card-t strong { font-size: var(--fs-md, 15px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.clc-card-t small { color: var(--muted); font-size: var(--fs-sm, 13px); }
+.clc-card-t strong { font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clc-card-t small { color: var(--muted); font-size: var(--fs-sm); }
 .clc-card-big { padding: 18px; background: var(--grad); border: 0; color: white; }
 .clc-card-big .clc-card-ic { width: 56px; height: 56px; background: rgb(255 255 255 / .18); color: rgb(255 214 90); }
-.clc-card-big .clc-card-t strong { font-size: var(--fs-lg, 18px); }
+.clc-card-big .clc-card-t strong { font-size: var(--fs-lg); }
 .clc-card-big .clc-card-t small { color: rgb(255 255 255 / .9); }
 .clc-card-w { display: flex; flex: none; }
 .clc-card-w .clc-av + .clc-av { margin-inline-start: -10px; }
@@ -44,16 +44,16 @@ body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: c
 .clc-hero.clc-ended, .clc-hero.clc-cancelled { filter: saturate(.75); }
 .clc-hero-ic { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: rgb(255 255 255 / .18); color: rgb(255 214 90); }
 .clc-hero p { margin: 0; position: relative; z-index: 1; }
-.clc-hero-tag a { display: inline-flex; align-items: center; min-height: 44px; margin-block: -8px; color: white; font-size: 22px; font-weight: 850; text-decoration: none; }
+.clc-hero-tag a { display: inline-flex; align-items: center; min-height: 44px; margin-block: -8px; color: white; font-size: var(--fs-2xl); font-weight: 850; text-decoration: none; }
 .clc-hero-tag a:hover { text-decoration: underline; }
-.clc-hero-b { font-size: var(--fs-md, 15px); line-height: 1.6; opacity: .95; white-space: pre-line; }
-.clc-hero-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--fs-sm, 13px); font-weight: 700; opacity: .92; }
+.clc-hero-b { font-size: var(--fs-md); line-height: 1.6; opacity: .95; white-space: pre-line; }
+.clc-hero-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: var(--fs-sm); font-weight: 700; opacity: .92; }
 .clc-dot { opacity: .6; }
 .clc-stats { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; }
 .clc-stats > div { min-width: 84px; padding: 8px 12px; border-radius: 14px; background: rgb(255 255 255 / .16); }
-.clc-stats dt { font-size: 12px; opacity: .85; }
+.clc-stats dt { font-size: var(--fs-xs); opacity: .85; }
 .clc-stats dd { margin: 0; font-size: 18px; font-weight: 850; }
-.clc-stats .clc-me dd { font-size: var(--fs-sm, 13px); font-weight: 700; }
+.clc-stats .clc-me dd { font-size: var(--fs-sm); font-weight: 700; }
 .clc-stats .clc-me strong { font-size: 18px; }
 .clc-hero .clc-join { position: relative; z-index: 1; justify-self: start; min-height: 48px; display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; background: white; color: var(--accent-ink); border: 0; font-weight: 800; }
 .clc-hero .clc-join:focus-visible, .clc-hero .btn:focus-visible, .clc-hero-tag a:focus-visible { outline: 3px solid white; outline-offset: 2px; }
@@ -66,9 +66,9 @@ body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: c
 .clc-pod ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: end; }
 .clc-pod li a { display: grid; justify-items: center; gap: 4px; padding: 14px 6px; border-radius: var(--r, 18px); background: var(--card); border: 1px solid var(--line); color: var(--text); text-decoration: none; text-align: center; min-height: 44px; }
 .clc-pod li a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.clc-pod .clc-av { width: 52px; height: 52px; font-size: 20px; }
-.clc-pod strong { font-size: var(--fs-sm, 13px); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.clc-pod small { color: var(--text-2); font-size: 12px; font-weight: 700; }
+.clc-pod .clc-av { width: 52px; height: 52px; font-size: var(--fs-xl); }
+.clc-pod strong { font-size: var(--fs-sm); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.clc-pod small { color: var(--text-2); font-size: var(--fs-xs); font-weight: 700; }
 .clc-pod .clc-pod-1 { order: 2; } .clc-pod .clc-pod-1 a { padding-block: 22px; background: color-mix(in srgb, #e8b623 12%, var(--card)); border-color: color-mix(in srgb, #e8b623 45%, var(--line)); }
 .clc-pod .clc-pod-2 { order: 1; } .clc-pod .clc-pod-3 { order: 3; }
 
@@ -77,7 +77,7 @@ body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: c
 .clc-tabs button { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; }
 .clc-tabs button[aria-selected="true"] { background: var(--card); box-shadow: var(--sh-1); color: var(--accent-ink); font-weight: 700; }
 .clc-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.clc-rank { position: absolute; z-index: 1; top: 6px; inset-inline-start: 6px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-weight: 850; background: rgb(0 0 0 / .62); color: white; }
+.clc-rank { position: absolute; z-index: 1; top: 6px; inset-inline-start: 6px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 850; background: rgb(0 0 0 / .62); color: white; }
 .clc-rank-1 { background: #e8b623; color: #2a1d00; } .clc-rank-2 { background: #c9cfd8; color: #1d2229; } .clc-rank-3 { background: #c58046; color: #2a1405; }
 .clc-score { position: absolute; z-index: 1; inset-inline-start: 6px; bottom: 36px; display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 800; text-shadow: 0 1px 3px black; }
 .clc-score .ic { width: 13px; height: 13px; }
@@ -86,8 +86,8 @@ body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: c
 
 /* staff form */
 .clc-form { display: grid; gap: 6px; padding: 16px; border-radius: var(--r, 18px); background: var(--card); color: var(--text); border: 1px solid var(--line); }
-.clc-form h3 { margin: 0 0 4px; font-size: var(--fs-lg, 18px); }
-.clc-form label { font-size: var(--fs-sm, 13px); font-weight: 700; color: var(--text-2); margin-block-start: 6px; }
+.clc-form h3 { margin: 0 0 4px; font-size: var(--fs-lg); }
+.clc-form label { font-size: var(--fs-sm); font-weight: 700; color: var(--text-2); margin-block-start: 6px; }
 .clc-form input, .clc-form textarea { min-height: 44px; width: 100%; box-sizing: border-box; }
 .clc-form input:disabled { opacity: .6; }
 .clc-hint { margin: 0; font-size: 12.5px; color: var(--muted); }
@@ -97,14 +97,14 @@ body.shorts-mode .short-info .cl-chl-chip { display: inline-flex; align-items: c
 .clc-quick { display: flex; flex-wrap: wrap; gap: 6px; }
 .clc-quick .chip { min-height: 36px; border: 0; cursor: pointer; font: inherit; font-size: 12.5px; position: relative; }
 .clc-quick .chip::before { content: ""; position: absolute; inset: -4px 0; }
-.clc-err { margin: 0; min-height: 1.2em; color: var(--danger); font-size: var(--fs-sm, 13px); }
+.clc-err { margin: 0; min-height: 1.2em; color: var(--danger); font-size: var(--fs-sm); }
 .clc-acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .clc-acts .btn { min-height: 44px; flex: 1; }
 
-.vt-chl-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; color: white; font-weight: 700; font-size: var(--fs-sm, 13px); }
+.vt-chl-note { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 12px 0 0; color: white; font-weight: 700; font-size: var(--fs-sm); }
 .vt-chl-note .ic { color: rgb(255 201 60); }
 /* hashtag page: this tag is the live challenge */
-.clc-tagbar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 12px; padding: 8px 12px; border-radius: 14px; background: var(--accent2); color: var(--accent-ink); font-weight: 750; font-size: var(--fs-sm, 13px); text-decoration: none; }
+.clc-tagbar { display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 12px; padding: 8px 12px; border-radius: 14px; background: var(--accent2); color: var(--accent-ink); font-weight: 750; font-size: var(--fs-sm); text-decoration: none; }
 .clc-tagbar:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .clc-card, .cl-chl-pill { transition: none !important; } .clc-card:hover { transform: none; } }
 /* === end v278-challenges === */
