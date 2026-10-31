@@ -21,7 +21,7 @@
   if (!document.getElementById("integrity-css")) {
     const st = document.createElement("style");
     st.id = "integrity-css";
-    st.textContent = `.newacct{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--text);cursor:pointer;vertical-align:middle;font-family:inherit}
+    st.textContent = `.newacct{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);font-weight:600;padding:2px 10px;border-radius:999px;border:1px solid var(--line);background:var(--bg-2);color:var(--text);cursor:pointer;vertical-align:middle;font-family:inherit}
 .newacct:focus-visible,.ig-btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .ig-sig{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}.ig-sig:last-child{border-bottom:0}
 .ig-dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--line)}.ig-dot.on{background:var(--ok)}.ig-dot.warn{background:var(--warn)}.ig-dot.bad{background:var(--danger)}
@@ -30,7 +30,7 @@
 .ig-graph{width:100%;height:auto;background:var(--bg-2);border-radius:14px;border:1px solid var(--line)}
 .ig-mem{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}.ig-tabs{display:flex;gap:6px;margin:8px 0}
 .ig-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.ig-ev{font-size:13px;background:var(--bg-2);border-radius:10px;padding:8px;margin:6px 0;white-space:pre-wrap;word-break:break-word}`;
+.ig-ev{font-size:var(--fs-sm);background:var(--bg-2);border-radius:10px;padding:8px;margin:6px 0;white-space:pre-wrap;word-break:break-word}`;
     document.head.appendChild(st);
   }
 
