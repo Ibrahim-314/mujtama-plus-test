@@ -3466,5 +3466,9 @@
 "فهمت سؤالك:": "I understood your question as:",
 "بحثت على خطوات:": "I searched in steps:",
 "اسأل متابعة… مثل: وللمبتدئين؟": "Ask a follow-up… e.g. and for beginners?",
-"سؤال متابعة": "Follow-up question"
+"سؤال متابعة": "Follow-up question",
+/* v2.145 home H2 «أول 5 ثواني» */
+"ساعدني في الكتابة": "Help me write",
+"قصتك": "Your story",
+"التالي:": "Next:"
 });
