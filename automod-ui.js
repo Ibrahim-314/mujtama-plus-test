@@ -55,19 +55,19 @@
     st.textContent = `
 .am-ov{position:fixed;inset:0;z-index:1200;background:rgba(10,8,20,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px}
 @media(min-width:700px){.am-ov{align-items:center}}
-.am-dlg{background:var(--card,#fff);color:var(--text,#15121f);border-radius:var(--r-lg,24px);box-shadow:var(--sh-3);max-width:440px;width:100%;padding:22px 20px 18px;text-align:start}
+.am-dlg{background:var(--card,var(--white));color:var(--text,#15121f);border-radius:var(--r-lg,24px);box-shadow:var(--sh-3);max-width:440px;width:100%;padding:22px 20px 18px;text-align:start}
 .am-dlg h2{font-size:1.1rem;margin:0 0 8px;display:flex;gap:8px;align-items:center}
 .am-dlg p{margin:0 0 10px;color:var(--text-2,#3d3850);line-height:1.7}
 .am-dlg ul{margin:0 0 12px;padding:0 18px 0 0;color:var(--text-2,#3d3850);line-height:1.7}
 .am-dlg .am-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 .am-dlg .am-row .btn{flex:1;min-height:44px}
 .am-dlg .btn:focus-visible,.am-banner button:focus-visible{outline:3px solid var(--accent,#6d3cf4);outline-offset:2px}
-.am-banner{display:flex;gap:10px;align-items:flex-start;background:color-mix(in srgb,var(--warn,#e8932a) 14%,var(--card,#fff));border:1px solid color-mix(in srgb,var(--warn,#e8932a) 45%,transparent);color:var(--text,#15121f);border-radius:var(--r-sm,12px);padding:10px 12px;margin:0 0 10px;font-size:.92rem;line-height:1.6}
+.am-banner{display:flex;gap:10px;align-items:flex-start;background:color-mix(in srgb,var(--warn,#e8932a) 14%,var(--card,var(--white)));border:1px solid color-mix(in srgb,var(--warn,#e8932a) 45%,transparent);color:var(--text,#15121f);border-radius:var(--r-sm,12px);padding:10px 12px;margin:0 0 10px;font-size:.92rem;line-height:1.6}
 .am-banner b{display:block}
 .am-banner button{background:none;border:0;color:var(--accent-ink,#4f22d1);font-weight:700;padding:4px 0;cursor:pointer;text-decoration:underline}
 .am-item{border:1px solid var(--line,#e9e6f2);border-radius:var(--r-sm,12px);padding:12px;margin:0 0 10px}
 .am-item q{display:block;color:var(--muted,#625c76);margin:6px 0;quotes:none}
-.am-msgwarn{font-size:.85rem;color:var(--text,#15121f);background:color-mix(in srgb,var(--danger,#e0394a) 12%,var(--card,#fff));border-radius:10px;padding:6px 10px;margin-top:4px}`;
+.am-msgwarn{font-size:.85rem;color:var(--text,#15121f);background:color-mix(in srgb,var(--danger,#e0394a) 12%,var(--card,var(--white)));border-radius:10px;padding:6px 10px;margin-top:4px}`;
     document.head.appendChild(st);
   }
 
@@ -147,8 +147,8 @@
     else await dialog({ title: "قيد المراجعة", html, buttons: [{ id: "ok", label: "إغلاق" }] });
   }
   if (typeof postCard === "function") {
-    const _pc = postCard;
-    postCard = function (p, opts) { const html = _pc(p, opts); return p && p.status === "held" ? html.replace(/^\s*<div class="card[^"]*"[^>]*>/, (m) => m + heldBanner(p)) : html; };
+    
+    PostHooks.card("automod-ui#1", 120, (_pc) => function (p, opts) { const html = _pc(p, opts); return p && p.status === "held" ? html.replace(/^\s*<div class="card[^"]*"[^>]*>/, (m) => m + heldBanner(p)) : html; });
   }
   if (typeof document !== "undefined") document.addEventListener("click", (e) => {
     const b = e.target.closest?.("[data-am-why]"); if (b) { e.preventDefault(); openWhy(b.getAttribute("data-am-why")); return; }
