@@ -23,7 +23,7 @@
   const CSS = `
 .pt-shield{background:none;border:0;color:var(--muted);padding:0;width:44px;height:44px;flex:none;align-self:flex-start;margin-inline-end:-8px;border-radius:12px;display:inline-grid;place-items:center;cursor:pointer}
 .pt-shield:hover,.pt-shield:focus-visible{color:var(--accent-ink);background:var(--accent2)}
-.pt-sheet h4{margin:0 0 4px}.pt-sub{color:var(--muted);font-size:13px;margin:0 0 10px}
+.pt-sheet h4{margin:0 0 4px}.pt-sub{color:var(--muted);font-size:var(--fs-sm);margin:0 0 10px}
 .pt-menu{display:grid;gap:6px}.pt-menu button,.pt-menu a{display:flex;align-items:center;gap:10px;text-align:start;padding:12px;border-radius:14px;background:var(--bg-2);border:1px solid var(--line);color:var(--text);font:inherit;font-weight:650;cursor:pointer;text-decoration:none}
 .pt-menu button small,.pt-menu a small{display:block;color:var(--muted);font-weight:500;font-size:12.5px}
 .pt-menu .danger{color:var(--danger)}.pt-menu button:focus-visible,.pt-menu a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -34,11 +34,11 @@
 .pt-opts small{display:block;color:var(--muted)}.pt-row{display:flex;gap:8px;margin-top:12px}.pt-row .btn{flex:1}
 .pt-note{border-radius:14px;padding:10px 12px;background:var(--bg-2);border:1px solid var(--line);font-size:13.5px;margin:10px 0}
 .pt-note.warn{border-color:var(--warn)}.pt-res{display:grid;gap:8px}.pt-res .r{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px}
-.pt-res .r .grow{min-width:0}.pt-res .r small{display:block;color:var(--muted)}.pt-tel{font-weight:800;font-size:17px;color:var(--accent-ink);text-decoration:none;direction:ltr}
+.pt-res .r .grow{min-width:0}.pt-res .r small{display:block;color:var(--muted)}.pt-tel{font-weight:800;font-size:var(--fs-lg);color:var(--accent-ink);text-decoration:none;direction:ltr}
 .pt-hidden>*:not(.pt-reveal){display:none}.pt-hidden.pt-open>*{display:revert}.pt-reveal{display:block;width:100%;text-align:start;background:var(--bg-2);border:1px dashed var(--line-2);color:var(--muted);padding:8px 10px;border-radius:12px;cursor:pointer;font:inherit}
 .pt-mutedcard{display:flex;gap:10px;align-items:center;color:var(--muted)}.pt-mutedcard .grow{min-width:0}
 .pt-banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--warn);background:var(--card);border-radius:16px;padding:12px;margin:10px 0}
-.pt-banner p{margin:0;flex:1 1 220px}.pt-audience{font-size:13px;color:var(--muted);padding:6px 12px}
+.pt-banner p{margin:0;flex:1 1 220px}.pt-audience{font-size:var(--fs-sm);color:var(--muted);padding:6px 12px}
 .pt-art p,.pt-art li{line-height:1.8}.pt-pol{white-space:normal;line-height:1.9}.pt-pol h3{margin:14px 0 6px}
 .pt-field{display:grid;gap:4px;margin:8px 0}.pt-field input,.pt-field select,.pt-field textarea{width:100%}
 .pt-list .row{padding:8px 0;border-bottom:1px solid var(--line)}`;
@@ -208,24 +208,24 @@
 
   /* =================== post cards: 🛡 button + timed feed mutes =================== */
   if (typeof postInner === "function") {
-    const _pi = postInner;
-    postInner = function (p, opts) {
+    
+    PostHooks.inner("protection-ui#1", 320, (_pi) => function (p, opts) {
       const html = _pi(p, opts);
       if (!online() || !p || p.status === "deleted" || !DB.me) return html;
       const btn = `<button class="pt-shield" data-safety="${h(p.id)}" aria-label="أدوات الأمان لهذا المنشور" title="أدوات الأمان">${ic("shield", "sm")}</button>`;
       const re = new RegExp(`(<button class="more" data-more="${p.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}")`);
       return re.test(html) ? html.replace(re, btn + "$1") : html;
-    };
+    });
   }
   if (typeof postCard === "function") {
-    const _pc = postCard;
-    postCard = function (p, opts) {
+    
+    PostHooks.card("protection-ui#2", 321, (_pc) => function (p, opts) {
       if (online() && p && ST.rules.length && p.author !== DB.me && !ST.reveal.has(p.id) && !(opts && opts.full)) {
         const hit = Core.muteHit({ text: [p.title, p.text].filter(Boolean).join(" "), author: p.author }, ST.rules, "feed");
         if (hit) return `<div class="card pt-mutedcard" data-pt-muted="${h(p.id)}"><span aria-hidden="true">${ic("volumeX", "sm")}</span><div class="grow">منشور مخفي ${hit.kind === "user" ? "من حساب كتمته" : `لاحتوائه «${h(hit.value)}» المكتومة`}</div><button class="btn ghost" data-pt-reveal="${h(p.id)}">عرض</button></div>`;
       }
       return _pc(p, opts);
-    };
+    });
   }
   document.addEventListener("click", (e) => {
     const b = e.target.closest?.("[data-safety]"); if (b) { e.preventDefault(); e.stopImmediatePropagation(); safetySheet(b.dataset.safety); return; }
