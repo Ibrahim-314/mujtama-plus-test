@@ -17,7 +17,8 @@
   st.textContent = `.ops-page h3{font-size:16px;margin:0 0 8px}.ops-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}.ops-tabs a{padding:6px 12px;min-height:44px;box-sizing:border-box;display:inline-flex;align-items:center;border-radius:999px;border:1px solid var(--line,#e2e8f0);color:inherit;text-decoration:none;font-size:14px}.ops-tabs a[aria-current=page]{background:var(--accent2,#efe9ff);color:var(--accent-ink,#4f22d1);border-color:var(--accent,#6d3cf4);font-weight:700}
 .ops-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:10px}.ops-kpi{background:var(--card,#fff);border:1px solid var(--line,#e2e8f0);border-radius:12px;padding:10px}.ops-kpi b{display:block;font-size:20px}.ops-kpi span{font-size:12px;color:var(--muted,#64748b)}
 .ops-chart{width:100%;height:120px;direction:ltr;display:block}.ops-chart text{font-size:9px;fill:var(--muted,#64748b)}.ops-st{font-size:12px;border-radius:999px;padding:1px 8px;background:#dcfce7;color:#166534}.ops-st.warn,.ops-st.at_risk,.ops-st.degraded{background:#fef3c7;color:#92400e}.ops-st.bad,.ops-st.exhausted,.ops-st.firing,.ops-st.outage{background:#fee2e2;color:#991b1b}.ops-st.off,.ops-st.no_data,.ops-st.not_configured{background:#e2e8f0;color:#475569}
-.ops-x{overflow-x:auto;max-width:100%}.ops-page{overflow-wrap:anywhere}.ops-tbl{width:100%;border-collapse:collapse;font-size:13px}.ops-tbl td,.ops-tbl th{padding:5px 4px;border-bottom:1px solid var(--line,#e2e8f0);text-align:start}.ops-tbl input[type=number]{width:72px;padding:6px}.ops-cell{text-align:center!important;border-radius:4px}.ops-form{display:grid;gap:6px}.ops-form input:not([type=checkbox]),.ops-form textarea,.ops-form select{width:100%;box-sizing:border-box}.ops-form label{display:inline-flex;align-items:center;gap:4px;margin:4px 0}.ops-bar{height:8px;border-radius:4px;background:var(--line,#e2e8f0);overflow:hidden}.ops-bar i{display:block;height:100%;background:#1f9d55}`;
+.ops-x{overflow-x:auto;max-width:100%}.ops-page{overflow-wrap:anywhere}.ops-tbl{width:100%;border-collapse:collapse;font-size:13px}.ops-tbl td,.ops-tbl th{padding:5px 4px;border-bottom:1px solid var(--line,#e2e8f0);text-align:start}.ops-tbl input[type=number]{width:72px;padding:6px}.ops-cell{text-align:center!important;border-radius:4px}.ops-form{display:grid;gap:6px}.ops-form input:not([type=checkbox]),.ops-form textarea,.ops-form select{width:100%;box-sizing:border-box}.ops-form label{display:inline-flex;align-items:center;gap:4px;margin:4px 0}.ops-bar{height:8px;border-radius:4px;background:var(--line,#e2e8f0);overflow:hidden}.ops-bar i{display:block;height:100%;background:#1f9d55}
+@media (max-width:600px){.ops-chart text{font-size:11px}.ops-stack thead{display:none}.ops-stack tr{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line,#e2e8f0)}.ops-stack td{border:0;padding:0}.ops-stack td:first-child{grid-column:1/-1}.ops-stack td:nth-child(5){justify-self:end}}`;
   document.head.appendChild(st);
 
   /* ---------- inline SVG charts ---------- */
@@ -57,8 +58,9 @@
     const ch = o.channels, chs = [["inapp", "إشعار داخل التطبيق"], ["webhook", "Webhook"], ["email", "البريد"]].map(([k, l]) => `<span class="ops-st ${ch[k] ? "" : "off"}">${l}: ${ch[k] ? "متاح" : "غير مضبوط"}</span>`).join(" ");
     const drills = o.drills.map(d => `<tr><td>${esc(String(d.at).slice(0, 16).replace("T", " "))}</td><td><span class="ops-st ${d.ok ? "" : "bad"}">${d.ok ? "نجح" : "فشل"}</span></td><td>${esc(d.backup)}</td><td>${nf(d.tables_n)} جدول · ${nf(d.rows_n)} صف</td><td>${nf(d.ms)} م.ث</td></tr>`).join("");
     const comps = Object.entries(o.now.components).map(([k, val]) => `<span class="ops-st ${val === null ? "not_configured" : val ? "" : "outage"}">${esc(COMP[k] || k)}</span>`).join(" ");
-    $("#ops-body").removeAttribute("aria-busy");
-    $("#ops-body").innerHTML = `
+    const body = $("#ops-body"); if (!body) return; // v2.145.1: page left before the data came back
+    body.removeAttribute("aria-busy");
+    body.innerHTML = `
 <div class="ops-tabs" role="group" aria-label="المدى الزمني">${[1, 6, 24, 168].map(h => `<a href="#" data-hours="${h}"${h === o.hours ? ' aria-current="page"' : ""}>${h === 168 ? "7 أيام" : h + " ساعة"}</a>`).join("")}</div>
 <div class="ops-grid"><div class="ops-kpi"><b>${nf(lm.requests)}</b><span>طلبات آخر دقيقة</span></div><div class="ops-kpi"><b>${lm.requests ? esc(Math.round((lm.errors / lm.requests) * 1000) / 10) : 0}٪</b><span>أخطاء آخر دقيقة</span></div><div class="ops-kpi"><b>${nf(Math.round(lm.p95))}</b><span>p95 آخر دقيقة (م.ث)</span></div><div class="ops-kpi"><b>${nf(o.now.queue.queued || 0)}</b><span>مهام في الطابور</span></div><div class="ops-kpi"><b>${nf(o.now.memoryMb)}</b><span>الذاكرة (MB)</span></div><div class="ops-kpi"><b>${o.alerts.firing.length}</b><span>تنبيهات نشطة</span></div></div>
 <div class="card"><p style="margin:0">${comps}</p></div>
@@ -68,8 +70,8 @@
 <div class="card"><h3>نسبة الأخطاء ٪</h3>${line(s, { key: "errorRate", color: "#dc2626", unit: "٪", fmtX: p => hm(p.t) })}</div>
 <div class="card"><h3>زمن الاستجابة p95 (م.ث)</h3>${line(s, { key: "p95", color: "#d97706", fmtX: p => hm(p.t) })}</div>
 <div class="card"><h3>طابور المهام</h3>${line(s, { key: "backlog", color: "#7c3aed", fmtX: p => hm(p.t) })}</div>
-<div class="card"><h3>أهداف مستوى الخدمة (SLO) وميزانية الأخطاء</h3><div class="ops-x"><table class="ops-tbl"><thead><tr><th>الهدف</th><th>الحالي</th><th>الميزانية</th><th>الحالة</th><th>تعديل</th></tr></thead><tbody>${slo}</tbody></table></div></div>
-<div class="card"><h3>تنبيهات المناوبة</h3>${firing ? `<ul>${firing}</ul>` : `<p class="muted">لا تنبيهات نشطة</p>`}<p>${chs}</p><div class="ops-x"><table class="ops-tbl"><thead><tr><th>القاعدة</th><th>الحد</th><th></th></tr></thead><tbody>${rules}</tbody></table></div>
+<div class="card"><h3>أهداف مستوى الخدمة (SLO) وميزانية الأخطاء</h3><div class="ops-x"><table class="ops-tbl ops-stack"><thead><tr><th>الهدف</th><th>الحالي</th><th>الميزانية</th><th>الحالة</th><th>تعديل</th></tr></thead><tbody>${slo}</tbody></table></div></div>
+<div class="card"><h3>تنبيهات المناوبة</h3>${firing ? `<ul>${firing}</ul>` : `<p class="muted">لا تنبيهات نشطة</p>`}<p>${chs}</p><div class="ops-x"><table class="ops-tbl ops-stack"><thead><tr><th>القاعدة</th><th>الحد</th><th></th></tr></thead><tbody>${rules}</tbody></table></div>
 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn ghost" id="ops-eval">تقييم القواعد الآن</button><button class="btn ghost" id="ops-test">إرسال تنبيه تجريبي</button></div>
 ${hist ? `<details style="margin-top:8px"><summary>سجل التنبيهات</summary><div class="ops-x"><table class="ops-tbl">${hist}</table></div></details>` : ""}</div>
 <div class="card"><h3>الحوادث (صفحة الحالة العامة)</h3><div id="ops-inc"><div class="skel"></div></div>
@@ -138,8 +140,9 @@ ${m.zeroQueries.length ? `<div class="ops-x"><table class="ops-tbl"><thead><tr><
     let p; try { p = await api("GET", "/api/admin/ops/product?days=" + days); } catch (e) { if (v._ops === tok) $("#ops-body").innerHTML = `<div class="empty">${esc(e.message)}</div>`; return; }
     if (v._ops !== tok) return;
     const t = p.totals, cell = x => (x === null ? `<td class="ops-cell muted">—</td>` : `<td class="ops-cell" style="background:rgba(37,99,235,${(0.08 + (x / 100) * 0.8).toFixed(2)});color:${x > 55 ? "#fff" : "inherit"}">${esc(x)}٪</td>`);
-    $("#ops-body").removeAttribute("aria-busy");
-    $("#ops-body").innerHTML = `
+    const body = $("#ops-body"); if (!body) return; // v2.145.1: page left before the data came back
+    body.removeAttribute("aria-busy");
+    body.innerHTML = `
 <div class="ops-tabs" role="group" aria-label="المدى">${[7, 30, 90].map(d => `<a href="#" data-days="${d}"${d === p.days ? ' aria-current="page"' : ""}>${d} يوماً</a>`).join("")}</div>
 <div class="ops-grid"><div class="ops-kpi"><b>${nf(t.users)}</b><span>إجمالي المستخدمين</span></div><div class="ops-kpi"><b>${nf(t.signups)}</b><span>تسجيلات جديدة (${p.days} يوماً)</span></div><div class="ops-kpi"><b>${nf(t.dau)}</b><span>نشطون اليوم DAU</span></div><div class="ops-kpi"><b>${nf(t.wau)}</b><span>نشطون أسبوعياً WAU</span></div><div class="ops-kpi"><b>${nf(t.mau)}</b><span>نشطون شهرياً MAU</span></div><div class="ops-kpi"><b>${esc(t.stickiness)}٪</b><span>الالتصاق DAU/MAU</span></div><div class="ops-kpi"><b>${esc(t.actionsPerActiveDay)}</b><span>تفاعلات لكل يوم نشط</span></div></div>
 <div class="card"><h3>النمو: إجمالي المستخدمين</h3>${line(p.growth, { key: "users", color: "#1f9d55", fmtX: x => x.day })}</div>
@@ -151,7 +154,7 @@ ${m.zeroQueries.length ? `<div class="ops-x"><table class="ops-tbl"><thead><tr><
   }
 
   /* ---------- wiring ---------- */
-  const card = `<a class="card" id="ops-adm" href="#/admin/ops" style="display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none"><span aria-hidden="true" style="font-size:24px"><svg class=ei aria-hidden=true><use href=#i-trendUp /></svg></span><span style="flex:1"><b>التشغيل والمراقبة</b><span class="muted" style="display:block">رسوم الأداء، أهداف الخدمة، التنبيهات، الحوادث، مؤشرات المنتج</span></span><span aria-hidden="true">‹</span></a>`;
+  const card = `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="ops-adm" href="#/admin/ops"><span aria-hidden="true" class="u-t-2xl"><svg class=ei aria-hidden=true><use href=#i-trendUp /></svg></span><span class="u-f1"><b>التشغيل والمراقبة</b><span class="u-db muted">رسوم الأداء، أهداف الخدمة، التنبيهات، الحوادث، مؤشرات المنتج</span></span><span class="fwd" aria-hidden="true">←</span></a>`;
   const _extra = window.ExtraRoutes;
   window.ExtraRoutes = (a, b) => {
     const prev = _extra ? _extra(a, b) : {};
