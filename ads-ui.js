@@ -91,7 +91,7 @@
 .ad-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ad-n{white-space:nowrap;font-variant-numeric:tabular-nums}.ad-page{max-width:680px;margin:auto}.ad-ul{list-style:none;margin:0;padding:0}.ad-end{display:flex;flex-direction:column;align-items:flex-end;gap:6px}.ad-why li>.ix{color:var(--accent);margin-top:3px}.ad-menu .btn,.ad-btns .btn{display:inline-flex;align-items:center;gap:8px}.ad-btns .btn{justify-content:center}.ad-del{color:var(--danger)}.ad-page h2:focus,.ad-sheet h3:focus{outline:none}
 .ad-card{border:1.5px solid #e9c46a}[data-theme=dark] .ad-card{border-color:#7a5d17}
-.ad-tag{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13px;margin:0 0 6px;color:var(--text-2)}
+.ad-tag{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:var(--fs-sm);margin:0 0 6px;color:var(--text-2)}
 .ad-lbl{display:inline-flex;align-items:center;font-weight:800;font-size:12.5px;border-radius:999px;padding:2px 10px;background:#fff3d6;color:#5c3800}[data-theme=dark] .ad-lbl{background:#3a2c0c;color:#ffd27a}
 .ad-by a{color:inherit;font-weight:700}
 .ad-menu{display:flex;flex-direction:column;gap:8px;margin:8px 0}.ad-menu button,.ad-menu a{width:100%;text-align:start;min-height:44px;justify-content:flex-start;text-decoration:none}
@@ -137,13 +137,7 @@
     return out;
   }
   if (typeof Feed !== "undefined") { const _b = Feed.build; Feed.build = function (mode) { return mark(_b.apply(Feed, arguments), mode); }; }
-  if (typeof Views !== "undefined" && Views.home) {
-    const _home = Views.home;
-    Views.home = function () { // outermost at call time, whatever chunk wrapped Feed.build last
-      const b = Feed.build; Feed.build = function (mode) { return mark(b.apply(Feed, arguments), mode); };
-      try { return _home.apply(this, arguments); } finally { Feed.build = b; setTimeout(watch, 0); }
-    };
-  }
+  if (typeof HomeHooks !== "undefined") { HomeHooks.feed("ads", 90, mark); HomeHooks.after("ads", 90, watch); }
   function promo(p, html) {
     const pr = p.promoted, cid = String(pr.campaignId), adv = pr.advertiser || {}, lid = "ad-l-" + h(cid) + "-" + h(p.id);
     AD.set(cid, { promoted: pr, postId: p.id });
@@ -153,8 +147,8 @@
     return html.replace(new RegExp(`<button([^>]*?)data-more="${p.id.replace(/[^\w-]/g, "")}"([^>]*)>`), (_m, a, b) => `<button${(a + b).replace(/\s(aria-label|title|aria-haspopup)="[^"]*"/g, "")} data-more="${h(p.id)}" data-ad-more="${h(cid)}" aria-haspopup="dialog" aria-label="خيارات الإعلان: ${h(advName)}">`);
   }
   if (typeof postCard === "function") {
-    const _pc = postCard;
-    postCard = function (p) { const html = _pc.apply(this, arguments); return p?.promoted?.campaignId && !p.repostOf && shown(p.promoted) ? promo(p, html) : html; };
+    
+    PostHooks.card("ads-ui#1", 400, (_pc) => function (p) { const html = _pc.apply(this, arguments); return p?.promoted?.campaignId && !p.repostOf && shown(p.promoted) ? promo(p, html) : html; });
   }
   /* events: impression (≥ 50 % for ≥ 1 s, once per feed token) and click (once, on open) */
   const sent = new Set();
