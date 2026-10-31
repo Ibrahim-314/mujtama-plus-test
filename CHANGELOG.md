@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.144.0 — 2026-10-31 — «ميزانية التصميم» + الرئيسية H1 (no feature removed, no migration, no visible change)
+
+- 2.144: font sizes / white / shadows moved onto tokens; market list inline styles → class (761c3aa).
+- H1a: `HomeHooks` — one home assembly point with ranked sections (circle 10 · challenges 20 · stories 30 · discovery 40) + after hooks; replaces 6 `Views.home` wrappers.
+- H1b: `PostHooks` ranked middleware replaces 14 `postCard`/`postInner` wrappers (order no longer depends on chunk load order).
+- H1c: duplicate MJT disclaimer EN key removed from i18n-enplus (text was load-order dependent).
+- Fix: top-bar title (and back-button label) in English no longer flips back to Arabic — `nav.js setTitle` compared the translated text with the Arabic source and rewrote it every paint; now tracks `data-src` and translates the node in the same task (found by the visual gate).
+- `tools/visual-diff.mjs`: deterministic screenshot diff (158 routes × 390/1440 × ar/en × light/dark). Full gate vs 2.143: 1264 screens, 1253 identical, 11 environment-only diffs reviewed. `ship.sh` now runs a permanent core-routes × 8 visual gate against the last shipped release.
+
 ## 2.80.0 — 2026-10-22 — «أدوات صانع فيديوتك» (no feature removed, additive migration 078)
 
 - مسودات فيديوتك: «حفظ مسودة» في المحرر يحفظ الفيديو المرفوع والوصف وموضع الغلاف والرابط والموعد؛ صفحة `#/clips/drafts` لفتحها أو حذفها (20 مسودة كحد أقصى، خاصة بصاحبها). API: `GET/PUT/DELETE /api/clips/drafts`.
