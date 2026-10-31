@@ -11,7 +11,7 @@
 .hp-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; flex: none; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
 /* v2.137: the small round «i» (soft accent tint), like an info badge; the 44 px hit area stays */
 .hp-btn .hp-q { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%; background: var(--accent2); color: var(--accent-ink); font: 750 13px/1 var(--font, system-ui), system-ui, sans-serif; font-style: normal; transition: background .15s, color .15s; }
-.hp-btn:hover .hp-q, .hp-btn[aria-expanded="true"] .hp-q { background: var(--accent); color: var(--on-accent, #fff); }
+.hp-btn:hover .hp-q, .hp-btn[aria-expanded="true"] .hp-q { background: var(--accent); color: var(--on-accent, var(--white)); }
 .hp-btn:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 0; border-radius: 50%; }
 .hp-btn.hp-top { border-radius: 14px; }
 /* v2.61 fix: in a page head the 44 px «؟» target must not make the title row taller than the title itself (the help chunk loads
@@ -29,9 +29,9 @@
 .hp-pop:focus { outline: none; } .hp-pop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hp-arrow { position: absolute; top: -6px; left: calc(var(--hp-ax, 50%) - 7px); width: 14px; height: 14px; background: inherit; transform: rotate(45deg); border-radius: 2px; }
 .hp-pop.up .hp-arrow { top: auto; bottom: -6px; }
-.hp-body p { margin: 0; font-size: var(--fs-sm, 14px); line-height: 1.6; color: inherit; }
+.hp-body p { margin: 0; font-size: var(--fs-sm); line-height: 1.6; color: inherit; }
 .hp-body p + p { margin-top: 4px; }
-.hp-tips { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; font-size: var(--fs-xs, 12.5px); line-height: 1.55; opacity: .82; }
+.hp-tips { margin: 6px 0 0; padding-inline-start: 18px; display: grid; gap: 2px; font-size: var(--fs-xs); line-height: 1.55; opacity: .82; }
 .hp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @keyframes hpIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .hp-pop.up { animation-name: hpInUp; } @keyframes hpInUp { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
