@@ -155,14 +155,14 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
 })();
 
 /* ---------- Post card polish ---------- */
-const _pcard = postCard;
-postCard = function (p, opts) {
+
+PostHooks.card("ui#1", 90, (_pcard) => function (p, opts) {
   let h = _pcard(p, opts);
   h = h.replace('<div class="card"', '<div class="card post-card"').replace('<div class="repost-label"><svg class=ei aria-hidden=true><use href=#i-repost /></svg>', `<div class="repost-label">${icon("repost", "xs")}`);
   return h;
-};
-const _pinner = postInner;
-postInner = function (p, opts = {}) {
+});
+
+PostHooks.inner("ui#2", 91, (_pinner) => function (p, opts = {}) {
   let h = _pinner(p, opts);
   if (!p || !h.includes('class="actions"')) return h;
   const u = S.user(p.author) || {}, mine = S.myReaction(p.id), rs = S.reactionsOf(p.id).length, cs = S.commentsOf(p.id).length, rp = S.repostsOf(p.id), saved = S.saved(p.id);
@@ -183,7 +183,7 @@ postInner = function (p, opts = {}) {
   h = h.replace(" · <svg class=ei aria-hidden=true><use href=#i-lock /></svg>", ` · ${icon("lock", "xs")}`);
   h = h.replace(/<div class="media" style="background:(url\([^"]*?\)[^"]*)"><\/div>/g, '<div class="media zoomable" data-zoom="1" style="background:$1"></div>');
   return h;
-};
+});
 
 /* ---------- Gestures ---------- */
 const haptic = (ms = 8) => { try { navigator.vibrate && navigator.vibrate(ms); } catch { } };
