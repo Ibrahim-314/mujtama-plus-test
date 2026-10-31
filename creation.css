@@ -8,11 +8,11 @@
 .spark { width: 100%; height: auto; display: block; margin-top: 6px; }
 .src-row { display: grid; grid-template-columns: 110px 1fr 46px; gap: 8px; align-items: center; padding: 6px 0; font-size: 14px; }
 .top-post { width: 100%; border: 0; font: inherit; color: inherit; cursor: pointer; gap: 10px; text-align: start; }
-.cal-dow { text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0; }
+.cal-dow { text-align: center; font-size: var(--fs-xs); color: var(--muted); padding: 4px 0; }
 .cal-day { min-height: 74px; background: var(--card); border-radius: 12px; padding: 4px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; overflow: hidden; border: 2px solid transparent; }
 .cal-day.today { border-color: var(--accent); }
 .cal-day.over { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
-.cal-n { font-size: 12px; font-weight: 700; color: var(--muted); }
+.cal-n { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); }
 .cal-item { font-size: 10.5px; border-radius: 6px; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; gap: 2px; align-items: center; }
 .cal-item.published { background: color-mix(in srgb, var(--ok) 16%, transparent); }
 .cal-item.scheduled { background: color-mix(in srgb, var(--accent) 18%, transparent); cursor: grab; }
