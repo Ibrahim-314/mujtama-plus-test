@@ -63,7 +63,7 @@ module.exports = (ctx, opts = {}) => {
     const args = []; let where = "1=1";
     if (l) { args.push(l); where += ` AND lang=$${args.length}`; }
     if (s) { args.push("%" + s + "%"); where += ` AND (LOWER(key) LIKE $${args.length} OR LOWER(text) LIKE $${args.length})`; }
-    const rows = await db.all(`SELECT key, lang, text, updated_by, updated_at FROM ui_strings WHERE ${where} ORDER BY updated_at DESC LIMIT 500`, args);
+    const rows = await db.all(`SELECT key, lang, text, updated_by, updated_at FROM ui_strings WHERE ${where} ORDER BY updated_at DESC, key ASC, lang ASC LIMIT 500`, args);
     return { items: rows.map((r) => ({ key: r.key, lang: r.lang, text: r.text, updatedBy: r.updated_by || null, updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null })), languages: LANGUAGES };
   }));
   R.put("/api/admin/i18n/strings", admin(async (req) => {
@@ -86,7 +86,7 @@ module.exports = (ctx, opts = {}) => {
   }));
   R.get("/api/admin/i18n/missing", admin(async (req) => {
     const l = lang(req.query?.lang || "en");
-    const rows = await db.all("SELECT key, count, last_seen FROM ui_string_misses WHERE lang=$1 ORDER BY count DESC, last_seen DESC LIMIT 300", [l]);
+    const rows = await db.all("SELECT key, count, last_seen FROM ui_string_misses WHERE lang=$1 ORDER BY count DESC, last_seen DESC, key ASC LIMIT 300", [l]);
     return { lang: l, items: rows.map((r) => ({ key: r.key, count: Number(r.count), lastSeen: new Date(r.last_seen).toISOString() })) };
   }));
 
