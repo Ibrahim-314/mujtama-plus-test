@@ -104,7 +104,6 @@
 "حد التحويل الواحد": "Single transfer limit",
 "خرج": "Out",
 "دخل": "In",
-"رصيد داخل التطبيق فقط — ليس عملة على أي بلوكشين، ولا يُسحب ولا يُباع.": "In-app balance only — not a coin on any blockchain; it can't be withdrawn or sold.",
 "عند الإيقاف لا يستطيع أحد إرسال مجتمع كوين إليك": "When off, nobody can send you MJT Coin",
 "قاعة مجتمع كوين": "MJT Coin hall",
 "قاعة هذا المبنى قيد البناء، وستُفتح قريباً داخل المدينة": "This building's hall is being built and will open in the city soon",
