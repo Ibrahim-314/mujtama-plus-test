@@ -49,14 +49,14 @@
 .lc-search{display:flex;gap:6px;margin:0 0 12px}.lc-search input{flex:1}
 .lc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.lc-chips button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
 .lc-item{display:block;color:inherit;text-decoration:none}.lc-item b{display:block}.lc-faq summary{cursor:pointer;font-weight:700;padding:4px 0;min-height:32px}.lc-faq p{margin:6px 0 2px;white-space:pre-line}
-.lc-body{white-space:pre-line;line-height:1.8}.lc-badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;border:1px solid var(--line);margin-inline-start:6px;vertical-align:middle}
+.lc-body{white-space:pre-line;line-height:1.8}.lc-badge{display:inline-block;font-size:var(--fs-xs);border-radius:999px;padding:2px 8px;border:1px solid var(--line);margin-inline-start:6px;vertical-align:middle}
 .lc-badge.open,.lc-badge.pending{color:var(--accent)}.lc-badge.answered{color:#0a7d3b}.lc-badge.closed,.lc-badge.resolved{color:var(--muted)}.lc-badge.urgent,.lc-badge.high{color:#b42318}
 .lc-msg{border-inline-start:3px solid var(--line);padding:6px 10px;margin:8px 0}.lc-msg.staff{border-color:var(--accent)}.lc-msg.internal{border-color:#b54708;background:rgba(181,71,8,.06)}
-.lc-msg .muted{font-size:12px}.lc-att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.lc-att img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.lc-msg .muted{font-size:var(--fs-xs)}.lc-att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.lc-att img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
 .lc-form label{display:block;font-weight:700;margin:10px 0 4px}.lc-form input,.lc-form textarea,.lc-form select{width:100%;box-sizing:border-box}.lc-form textarea{min-height:110px}
 .lc-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.lc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0}
 .lc-kpis div{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}.lc-kpis b{display:block;font-size:20px}.lc-code{font-family:ui-monospace,monospace;direction:ltr;unicode-bidi:isolate;user-select:all}
-.lc-hero{text-align:center;padding:24px 8px}.lc-mark{width:64px;height:64px;border-radius:20px;background:var(--grad);color:#fff;display:grid;place-items:center;margin:0 auto}.lc-mark .ic{width:32px;height:32px}.lc-hero h1{font-size:28px;margin:8px 0}.lc-hero p{font-size:16px}.lc-feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.lc-hero{text-align:center;padding:24px 8px}.lc-mark{width:64px;height:64px;border-radius:20px;background:var(--grad);color:var(--white);display:grid;place-items:center;margin:0 auto}.lc-mark .ic{width:32px;height:32px}.lc-hero h1{font-size:28px;margin:8px 0}.lc-hero p{font-size:16px}.lc-feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
 .lc-amb{font-size:.9em;margin-inline-start:4px}.lc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 /* design-review pass (phase 50): non-layout consistency only (no size/spacing change → visual baselines unaffected):
    one focus ring everywhere, form controls inherit the Arabic font, vertical-only textarea resize, bidi-isolated numbers, no image overflow */
