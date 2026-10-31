@@ -150,8 +150,44 @@ $("#fab").onclick = () => openComposer();
 
 /* ---------- Views ---------- */
 let feedMode = "for", feedLimit = 10;
+/* v2.145 H1: one home assembly point. Modules register a section hook (fixed rank, so the order no longer depends on
+ * which chunk loaded first) or a feed mapper, instead of wrapping Views.home. Each hook is isolated: one failure never
+ * blanks the home. Ranks: 10 circle card · 20 challenges · 30 stories · 40 discovery · 50 wellbeing. */
+const HomeHooks = (() => {
+  const secs = [], feeds = [], after = [];
+  const put = (arr, name, rank, fn) => { const i = arr.findIndex(h => h.name === name); if (i >= 0) arr.splice(i, 1); arr.push({ name, rank, fn }); arr.sort((a, b) => a.rank - b.rank); };
+  return {
+    section(name, rank, fn) { put(secs, name, rank, fn); },
+    feed(name, rank, fn) { put(feeds, name, rank, fn); },
+    after(name, rank, fn) { put(after, name, rank, fn); },
+    list() { return secs.map(h => h.name); },
+    run(base, ctx, args) {
+      const b = Feed.build, maps = feeds.slice();
+      if (maps.length) Feed.build = function (mode) { return maps.reduce((arr, h) => { try { return h.fn(arr, mode); } catch (e) { console.warn("home feed " + h.name, e); return arr; } }, b.apply(Feed, arguments)); };
+      try { base.apply(ctx, args); for (const h of secs.slice()) { try { h.fn(); } catch (e) { console.warn("home " + h.name, e); } } }
+      finally { Feed.build = b; for (const h of after.slice()) setTimeout(() => { try { h.fn(); } catch (e) { console.warn("home after " + h.name, e); } }, 0); }
+    }
+  };
+})();
+/* v2.145 H1b: post card / post body middleware in a fixed rank order (was ~13 ad-hoc wrappers whose order depended on
+ * which lazy chunk loaded first). A wrapper registers (next) => function (p, opts) {...}; lower rank sits closer to the
+ * base renderer. A wrapper assigned the old way is absorbed as the new base, so nothing is ever dropped. */
+const PostHooks = (() => {
+  const st = { inner: { base: postInner, built: null, mws: [] }, card: { base: postCard, built: null, mws: [] } };
+  const cur = (k) => (k === "inner" ? postInner : postCard);
+  const set = (k, fn) => { if (k === "inner") postInner = fn; else postCard = fn; };
+  function add(k, name, rank, mw) {
+    const s = st[k]; if (s.built && cur(k) !== s.built) s.base = cur(k); /* someone wrapped directly: keep it */
+    else if (!s.built) s.base = cur(k);
+    const i = s.mws.findIndex(h => h.name === name); if (i >= 0) s.mws.splice(i, 1);
+    s.mws.push({ name, rank, mw }); s.mws.sort((a, b) => a.rank - b.rank);
+    s.built = s.mws.reduce((next, h) => h.mw(next), s.base); set(k, s.built);
+  }
+  return { inner: (n, r, mw) => add("inner", n, r, mw), card: (n, r, mw) => add("card", n, r, mw), list: (k) => st[k].mws.map(h => h.name + ":" + h.rank) };
+})();
 const Views = {
-  home() {
+  home() { return HomeHooks.run(Views._homeBase, this, arguments); },
+  _homeBase() {
     const list = Feed.build(feedMode), shown = list.slice(0, feedLimit);
     const trends = Trends.list(3), sugComm = DB.communities.find(c => !S.membership(c.id)), sugUser = DB.users.find(u => u.id !== DB.me && !S.follows(DB.me, u.id) && !DB.blocked.includes(u.id));
     let html = `<div class="wrap">
