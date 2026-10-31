@@ -13,7 +13,7 @@
 .cl-cm-item { display: flex; gap: 10px; padding-block: 10px; }
 .cl-cm-av .av { pointer-events: none; }
 .cl-cm-body { min-width: 0; flex: 1; }
-.cl-cm-meta { font-size: 13px; } .cl-cm-meta .muted { font-size: 12px; }
+.cl-cm-meta { font-size: var(--fs-sm); } .cl-cm-meta .muted { font-size: var(--fs-xs); }
 .cl-cm-text { margin: 2px 0 0; overflow-wrap: anywhere; line-height: 1.55; }
 .cl-cm-empty { text-align: center; padding-block: 32px; }
 .cl-cm-form { display: flex; gap: 8px; padding: 10px 12px; border-block-start: 1px solid var(--line); background: var(--card); }
