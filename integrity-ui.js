@@ -356,7 +356,7 @@
     const _admin = V12.admin;
     V12.admin = function () {
       _admin.apply(this, arguments);
-      if (online() && isStaff()) $("#view .wrap h2")?.insertAdjacentHTML("afterend", `<a href="#/investigations" class="u-dflex card row">${ic("target")}<div class="grow"><b>لوحة التحقيقات</b><div class="muted">الشبكات المنسقة، الحسابات المتعددة، المتابعون الوهميون</div></div><span class="muted">←</span></a>`);
+      if (online() && isStaff()) $("#view .wrap h2")?.insertAdjacentHTML("afterend", `<a href="#/investigations" class="u-dflex card row">${ic("target")}<div class="grow"><b>لوحة التحقيقات</b><div class="muted">الشبكات المنسقة، الحسابات المتعددة، المتابعون الوهميون</div></div><span class="muted fwd" aria-hidden="true">←</span></a>`);
     };
   }
   window.MPIntegrity.views = { trustCenter, investigations, investigation, invUser };
