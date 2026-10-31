@@ -93,6 +93,7 @@ window.V12X = {
  * different arrows, different heights). Collect them into one grouped list of uniform rows (icon tile · title · sub · chevron),
  * keeping each element's id and href (tests and deep links rely on them) and its click handlers (the <a> itself is reused). */
 const ADM_IC = { "#/admin/activation": "settings", "#/admin/pi-activation": "coin", "#/admin/transfers": "swap", "#/admin/pricing": "tag", "#/admin/revenue": "chart", "#/admin/digital": "doc", "#/compliance": "lock", "#/status": "chart", "#/trust": "shield", "#/investigations": "target" };
+const ADM_ORDER = ["lc-adm", "ops-adm", "mp-adm-ai", "ah-adm-link", "mp-adm-i18n", "ad-adm", "tp-adm", "pd-adm", "mk-adm", "tr-adm", "pi-adm", "bz-adm", "fn-adm", "#/investigations", "#/trust"];
 function adminTools(w) {
   const list = w?.querySelector("#adm-tools"); if (!list) return;
   const fix = (a) => {
@@ -105,8 +106,20 @@ function adminTools(w) {
     a.innerHTML = `<span class="ico">${pi || /^#\/admin\/pi/.test(href) ? '<b class="pi-g" aria-hidden="true">π</b>' : UI.icon(use, "sm")}</span><span class="t"><b></b>${st ? "<small></small>" : ""}</span><span class="chev" aria-hidden="true">←</span>`;
     a.querySelector(".t b").textContent = title; if (st) a.querySelector(".t small").textContent = st;
   };
+  // v2.145.1: each module adds its card right after the title when its own call returns, so their order was the order
+  // those calls finished. Put them in one fixed order (unknown cards after, by id/href) — only moves when it differs.
+  const order = () => {
+    const h = w.querySelector(".page-head h2"); if (!h) return;
+    const cards = []; for (let n = h.nextElementSibling; n; n = n.nextElementSibling) if (n.matches("a, div[id]")) cards.push(n);
+    if (cards.length < 2) return;
+    const key = (n) => { const k = n.id || n.getAttribute("href") || ""; const i = ADM_ORDER.indexOf(k); return i < 0 ? ADM_ORDER.length + ":" + k : String(i).padStart(3, "0"); };
+    const want = [...cards].sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
+    if (want.every((n, i) => n === cards[i])) return;
+    const anchor = document.createComment("adm"); h.after(anchor); want.forEach((n) => anchor.before(n)); anchor.remove();
+  };
   const sweep = () => {
     if (!list.isConnected) return mo.disconnect();
+    order();
     const h2 = w.querySelector(":scope > .page-head, :scope > h2"), kpi = w.querySelector(":scope > .kpi"); if (!h2 || !kpi) return;
     const got = [];
     for (let n = h2.nextElementSibling; n && n !== kpi; n = n.nextElementSibling) got.push(n);
