@@ -130,7 +130,7 @@
     back.hidden = root || ob;
     nav.querySelectorAll("a[data-r]").forEach((a) => { const on = a.dataset.r === o; a.classList.toggle("active", on); a.classList.toggle("owner", on && a.dataset.r !== r); });
     nav.querySelectorAll("a[data-side]").forEach((a) => a.classList.toggle("active", a.dataset.side === r && (r !== "me" || !seg(h)[1])));
-    if (!back.hidden) { const p = parentOf(); const lbl = st.s.length > 1 ? "رجوع" : "رجوع إلى " + (labelFor(p) || "الصفحة السابقة"); if (back.getAttribute("aria-label") !== lbl) back.setAttribute("aria-label", lbl); }
+    if (!back.hidden) { const p = parentOf(); const lbl = st.s.length > 1 ? "رجوع" : "رجوع إلى " + (labelFor(p) || "الصفحة السابقة"); if (back.dataset.src !== lbl) { back.setAttribute("aria-label", lbl); back.dataset.src = lbl; tr(back); } }
     // avatar of the signed-in member
     // v2.56: a signed-out visitor has a local placeholder profile — no avatar square (it showed a lone letter in a purple tile)
     try { const guest = window.MPSession?.state === "out", u = !guest && typeof S !== "undefined" && DB.me ? S.me() : null; const k = u ? (u.handle + "|" + (u.avatar ? (u.avatar["64"] || u.avatar["200"] || "") : "") + "|" + u.color) : "";
@@ -140,9 +140,14 @@
     // a module that fills its screen deeper than the observed wrapper (e.g. a community page) — look again a few times
     clearTimeout(retryT); if (root || headingOf()) retries = 0; else if (retries < 8) retryT = setTimeout(() => { retries++; paint(); }, 250);
   }
+  /* translate a shell node we just wrote (no-op in Arabic or before the i18n chunk has booted — its first pass covers it then) */
+  function tr(el) { try { if (window.MPI18n && MPI18n.current() !== "ar") MPI18n.apply(el); } catch { /* i18n is optional */ } }
   function titleText() { const f = FIXED[key()]; if (f) return f[0]; const hd = headingOf(); return hd ? (window.UI ? UI.noEmo(hd.textContent.trim()) : hd.textContent.trim()) : (labelFor(here()) || ""); }
   function setTitle(t) {
-    if (title.textContent !== t) title.textContent = t;
+    /* v2.144.1: compare with the source we last wrote, not the shown text — the i18n chunk turns «المنشور» into «Post», and
+     * comparing the translated text with the Arabic source re-wrote it on every paint (retries, scroll) and left the title in
+     * Arabic until the translator's next frame. Translate it now, in the same task, so it is never shown untranslated. */
+    if (title.dataset.src !== t || (t && !title.firstChild)) { title.textContent = t; title.dataset.src = t; tr(title); }
     const hd = t ? headingOf() : null;
     if (hd === watched && (!hd || hd.isConnected)) return;
     if (titleObs) titleObs.disconnect(); watched = hd;
