@@ -1,5 +1,30 @@
 [
   {
+ "v": "2.145.1",
+ "date": "2026-10-31",
+ "quiet": true,
+ "ar": {
+  "title": "إصلاحات صغيرة",
+  "items": [
+   "بطاقات لوحة الإدارة صارت بترتيب ثابت في كل مرة",
+   "بطاقة «التشغيل والمراقبة» بالإنجليزي صحيحة وسهمها في الاتجاه الصحيح",
+   "صفحة التشغيل والمراقبة أوضح على شاشة الجوال",
+   "نهاية الخلاصة في الرئيسية ما عادت تُظهر مربع تحميل ثابتاً",
+   "تحسينات لقارئ الشاشة في شريط التنقل"
+  ]
+ },
+ "en": {
+  "title": "Small fixes",
+  "items": [
+   "Admin dashboard cards now always appear in the same order",
+   "The «Operations & Monitoring» card is in English with its arrow pointing the right way",
+   "The Operations & Monitoring page is easier to read on phones",
+   "The end of the Home feed no longer shows a stuck loading box",
+   "Screen-reader improvements in the navigation bar"
+  ]
+ }
+},
+  {
  "v": "2.145.0",
  "date": "2026-10-31",
  "quiet": true,
