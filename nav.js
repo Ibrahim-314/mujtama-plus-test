@@ -127,6 +127,7 @@
     const h = here(), r = key(h), root = isRoot(h), o = top().o || ownerFor(h);
     const ob = !(typeof DB !== "undefined" && DB.onboarded) || document.body.classList.contains("ob");
     document.body.classList.toggle("nav-deep", !root && !ob);
+    document.body.classList.toggle("on-home", r === "home" && !ob); // v2.145 H2: thinner bar on Home (phones)
     back.hidden = root || ob;
     nav.querySelectorAll("a[data-r]").forEach((a) => { const on = a.dataset.r === o; a.classList.toggle("active", on); a.classList.toggle("owner", on && a.dataset.r !== r); });
     nav.querySelectorAll("a[data-side]").forEach((a) => a.classList.toggle("active", a.dataset.side === r && (r !== "me" || !seg(h)[1])));
