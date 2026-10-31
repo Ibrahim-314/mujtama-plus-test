@@ -132,5 +132,5 @@ body.shorts-mode.cl-clean .vt-new { opacity: 0 !important; visibility: hidden; p
 /* v2.82 «قص المقطع» */
 .vt-trim { flex-direction: column; align-items: stretch; gap: 6px; }
 .vt-trim-c { display: flex; flex-direction: column; gap: 6px; }
-.vt-trim-r { display: grid; grid-template-columns: 4.5em 1fr 3.2em; align-items: center; gap: 8px; font-size: var(--fs-sm, var(--fs-xs)); }
+.vt-trim-r { display: grid; grid-template-columns: 4.5em 1fr 3.2em; align-items: center; gap: 8px; font-size: var(--fs-sm); }
 .vt-trim-v { direction: ltr; font-variant-numeric: tabular-nums; text-align: end; font-size: var(--fs-xs); opacity: .85; }
