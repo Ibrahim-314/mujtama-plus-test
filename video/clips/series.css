@@ -9,8 +9,8 @@ body.shorts-mode .short-info.cl-ov .cl-ser { position: static; inset: auto; disp
 .cl-sr-stack { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .cl-sr-stack rect { fill: rgb(255 255 255 / .25); }
 .cl-sr-txt { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-.cl-sr-txt b { flex: none; font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
-.cl-sr-txt small { flex: none; font-size: 12px; font-weight: 600; opacity: .78; white-space: nowrap; }
+.cl-sr-txt b { flex: none; font-size: var(--fs-sm); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 38vw; }
+.cl-sr-txt small { flex: none; font-size: var(--fs-xs); font-weight: 600; opacity: .78; white-space: nowrap; }
 .cl-sr-txt small::before { content: "·"; margin-inline-end: 6px; }
 .cl-sr-more { flex: none; width: 7px; height: 7px; margin-inline-start: 2px; border-top: 2px solid currentColor; border-left: 2px solid currentColor; rotate: 45deg; translate: 0 2px; opacity: .8; }
 .cl-sr-line { position: absolute; inset-inline: 14px; inset-block-end: 3px; }
@@ -48,15 +48,15 @@ body.shorts-mode .short-info.cl-ov .cl-ser-add { display: inline-flex; align-ite
 .cl-srs-cov img { width: 100%; height: 100%; object-fit: cover; }
 .cl-srs-cov .cl-sr-stack { width: 22px; height: 22px; }
 .cl-srs-meta { flex: 1; min-width: 0; }
-.cl-srs-meta h2 { margin: 0; font-size: 15px; font-weight: 850; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cl-srs-meta p { margin: 2px 0 0; font-size: 12px; line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.cl-srs-meta h2 { margin: 0; font-size: var(--fs-md); font-weight: 850; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cl-srs-meta p { margin: 2px 0 0; font-size: var(--fs-xs); line-height: 1.4; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
 .cl-srs-hero .cl-srs-fol { flex: none; min-height: 34px; height: 34px; padding-block: 0; padding-inline: 12px; font-size: 12.5px; box-shadow: none; }
 .cl-srs-prog { display: block; height: 3px; margin-block: 0 12px; border-radius: 4px; background: var(--bg-2); overflow: hidden; }
 .cl-srs-prog i { background: var(--grad); }
 .cl-srs-res { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; margin-block-end: 12px; padding: 4px 10px 4px 6px; border: 0; border-radius: 12px; background: var(--bg-2); color: var(--text); font: inherit; text-align: start; cursor: pointer; }
 .cl-srs-res > span:last-child { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.cl-srs-res b { flex: none; font-size: 13px; font-weight: 800; }
-.cl-srs-res small { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-srs-res b { flex: none; font-size: var(--fs-sm); font-weight: 800; }
+.cl-srs-res small { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cl-srs-res-play { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); position: relative; }
 .cl-srs-res-play::after { content: ""; position: absolute; inset: 0; margin: auto; width: 0; height: 0; border-block: 6px solid transparent; border-inline-start: 9px solid white; translate: 1px 0; }
 [dir="rtl"] .cl-srs-res-play::after { translate: -1px 0; border-inline-start: 0; border-inline-end: 9px solid white; }
@@ -71,13 +71,13 @@ body.shorts-mode .short-info.cl-ov .cl-ser-add { display: inline-flex; align-ite
 .cl-sr-card:disabled { cursor: default; opacity: .6; }
 .cl-sr-card:focus-visible, .cl-srs-res:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 @media (hover: hover) { .cl-sr-card:not(:disabled):hover { transform: translateY(-3px); } }
-.cl-sr-ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; font-weight: 900; color: rgb(255 255 255 / .9); }
+.cl-sr-ph { position: absolute; inset: 0; display: grid; place-items: center; font-size: var(--fs-2xl); font-weight: 900; color: rgb(255 255 255 / .9); }
 .cl-sr-ep, .cl-sr-flag { position: absolute; z-index: 1; inset-block-start: 6px; font-size: 10.5px; font-weight: 800; padding: 1px 6px; border-radius: 999px; }
 .cl-sr-ep { inset-inline-start: 6px; background: rgb(0 0 0 / .6); }
 .cl-sr-flag { inset-inline-end: 6px; background: var(--accent); }
 .cl-sr-seen { position: absolute; z-index: 1; inset-block-start: 6px; inset-inline-end: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgb(255 255 255 / .92); color: var(--accent-ink); }
 .cl-sr-ct { position: absolute; z-index: 1; inset-inline: 8px; inset-block-end: 8px; font-size: 11.5px; font-weight: 750; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; text-shadow: 0 1px 3px black; }
-.cl-srs-all { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; margin-block-start: 2px; border-radius: 12px; color: var(--accent-ink); font-weight: 750; font-size: 13px; text-decoration: none; }
+.cl-srs-all { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; margin-block-start: 2px; border-radius: 12px; color: var(--accent-ink); font-weight: 750; font-size: var(--fs-sm); text-decoration: none; }
 .cl-srs-all:focus-visible, .cl-srs-x:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cl-srs-msg { text-align: center; padding-block: 28px; }
 .cl-srs-skel { display: grid; grid-template-columns: repeat(3, 96px); gap: 8px; padding-block: 56px 10px; }
@@ -97,8 +97,8 @@ body.shorts-mode .short-info.cl-ov .cl-ser-add { display: inline-flex; align-ite
 @keyframes cl-up-ring { to { stroke-dashoffset: 0; } }
 .cl-up-t { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .cl-up-t small { font-size: 11.5px; font-weight: 700; opacity: .85; }
-.cl-up-t b { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cl-up-go { flex: none; min-height: 44px; padding-inline: 14px; border: 0; border-radius: 12px; background: white; color: black; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.cl-up-t b { font-size: var(--fs-sm); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cl-up-go { flex: none; min-height: 44px; padding-inline: 14px; border: 0; border-radius: 12px; background: white; color: black; font: inherit; font-size: var(--fs-sm); font-weight: 800; cursor: pointer; }
 .cl-up-x { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgb(255 255 255 / .14); color: white; display: grid; place-items: center; cursor: pointer; }
 @media (min-width: 760px) { .cl-up { inset-block-end: 170px; } }
 @media (prefers-reduced-motion: reduce) { .cl-ser, .cl-up, .cl-srs-backdrop, .cl-srs-sheet, .cl-sr-card { transition: none; } .cl-srs-skel i { animation: none; } }
