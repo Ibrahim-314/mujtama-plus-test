@@ -48,8 +48,10 @@
   <h1 class="vh" id="pg-h1">مجتمع بلس</h1>
   <a href="#/home" class="brand"><span class="logo">+</span><span>مجتمع بلس</span></a>
   <div class="top-actions">
-    <a href="#/search" class="icon-btn" title="بحث" aria-label="بحث">🔎</a>
-    <a href="#/messages" class="icon-btn" title="الرسائل" aria-label="الرسائل">✉️<span class="badge" id="msgBadge"></span></a>
+    <!-- v2.145 H2: real icons from the first paint (no emoji → SVG swap); ui.js keeps them, nav.js keeps the language slot -->
+    <a href="#/settings/language" class="icon-btn" id="mp-lang-btn" title="اللغة" aria-label="اللغة"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></a>
+    <a href="#/search" class="icon-btn" title="بحث" aria-label="بحث"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></a>
+    <a href="#/messages" class="icon-btn" title="الرسائل" aria-label="الرسائل"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg><span class="badge" id="msgBadge"></span></a>
   </div>
 </header>
 <main id="view" tabindex="-1"></main>
