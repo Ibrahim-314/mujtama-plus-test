@@ -32,9 +32,9 @@
 
   /* ---------- style ---------- */
   const st = document.createElement("style");
-  st.textContent = `.mp-trb{border:0;background:none;color:var(--accent-ink);font:inherit;font-size:13px;font-weight:600;padding:4px 0;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.mp-trb .ic{width:15px;height:15px;flex:none}.mp-trb[aria-busy=true]{opacity:.6}
-.mp-tr-out{border-inline-start:3px solid var(--accent);padding-inline-start:8px;white-space:pre-wrap}.mp-tr-lbl{font-size:12px;color:var(--muted);margin-top:4px}
-.cm-b .mp-trb{display:flex;font-size:12px}.mp-ai-feat{margin:8px 0;padding-inline-start:18px}.mp-meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.mp-meter i{display:block;height:100%;background:var(--accent)}`;
+  st.textContent = `.mp-trb{border:0;background:none;color:var(--accent-ink);font:inherit;font-size:var(--fs-sm);font-weight:600;padding:4px 0;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.mp-trb .ic{width:15px;height:15px;flex:none}.mp-trb[aria-busy=true]{opacity:.6}
+.mp-tr-out{border-inline-start:3px solid var(--accent);padding-inline-start:8px;white-space:pre-wrap}.mp-tr-lbl{font-size:var(--fs-xs);color:var(--muted);margin-top:4px}
+.cm-b .mp-trb{display:flex;font-size:var(--fs-xs)}.mp-ai-feat{margin:8px 0;padding-inline-start:18px}.mp-meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.mp-meter i{display:block;height:100%;background:var(--accent)}`;
   document.head.appendChild(st);
 
   /* ---------- where translatable text lives ---------- */
@@ -137,12 +137,12 @@
   function needs(text) { const l = detect(text); return l && l !== ui() && !skip().includes(l); }
   const btnHtml = (k) => `<button type="button" class="mp-trb" data-aitr="${esc(k)}" aria-pressed="false">${TRI}${esc(MPT("ترجمة"))}</button>`;
   if (typeof postInner === "function") {
-    const _pi = postInner;
-    postInner = function (p) {
+    
+    PostHooks.inner("ai-ui#1", 450, (_pi) => function (p) {
       let h = _pi.apply(this, arguments);
       try { if (on() && p && p.status === "published" && !p.promoted && needs((p.title ? p.title + " " : "") + (p.text || ""))) h = h.replace('<div class="actions">', btnHtml("post:" + p.id) + '<div class="actions">'); } catch { /* keep the card */ }
       return h;
-    };
+    });
   }
   function decorate(root = document.getElementById("view")) {
     if (!root || !on()) return;
