@@ -1,5 +1,30 @@
 [
   {
+ "v": "2.144.0",
+ "date": "2026-10-31",
+ "quiet": true,
+ "ar": {
+  "title": "ترتيب داخلي أمتن",
+  "items": [
+   "توحيد الألوان والخطوط والظلال من الداخل بدون أي تغيير في الشكل",
+   "الصفحة الرئيسية والمنشورات صار لها ترتيب ثابت يمنع اختلاف الأقسام بين تحميل وآخر",
+   "كل تحديث صار يُقارَن بالصور مع النسخة السابقة قبل أن يصلك",
+   "إصلاح نص رصيد MJT بالإنجليزي كان يتغير بين نسختين",
+   "في الإنجليزي: عنوان أعلى الصفحة ما عاد يظهر بالعربي أحياناً"
+  ]
+ },
+ "en": {
+  "title": "Sturdier under the hood",
+  "items": [
+   "Colours, fonts and shadows unified internally with no change to how anything looks",
+   "The home page and posts now assemble in a fixed order, so sections no longer shift between loads",
+   "Every update is now compared screen by screen with the previous version before it reaches you",
+   "Fixed the English MJT balance note, which switched between two wordings",
+   "Page titles at the top no longer flash in Arabic when the app is in English"
+  ]
+ }
+},
+{
     "v": "2.143.0",
     "date": "2026-10-30",
     "ar": {
