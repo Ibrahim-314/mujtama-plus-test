@@ -135,7 +135,7 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
 /* ---------- App shell ---------- */
 (function buildShell() {
   const top = $(".top-actions");
-  if (top) top.innerHTML = `
+  if (top && !top.querySelector("svg")) top.innerHTML = ` /* v2.145: index.html ships the SVG icons from the first paint; this is only a fallback */
     <a href="#/search" class="icon-btn" aria-label="بحث" title="بحث">${icon("search")}</a>
     <a href="#/messages" class="icon-btn" aria-label="الرسائل" title="الرسائل">${icon("mail")}<span class="badge" id="msgBadge"></span></a>`;
   const brand = $(".brand"); if (brand) brand.innerHTML = `<span class="logo" aria-hidden="true"></span><span class="brand-text">مجتمع بلس</span>`;
