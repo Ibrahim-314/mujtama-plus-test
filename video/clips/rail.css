@@ -3,7 +3,7 @@ body.shorts-mode .short-actions.cl-rail { inset-inline-end: 6px; inset-block-end
 .short-actions.cl-rail > .cl-rail-btn { min-width: 52px; min-height: 52px; padding: 2px; gap: 2px; border-radius: 16px; background: none; color: white; filter: none; -webkit-tap-highlight-color: transparent; }
 .cl-rail-ic { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: rgba(0,0,0,.28); transition: transform .16s ease, background-color .16s ease, color .16s ease; }
 .short-actions.cl-rail .cl-rail-ic .ic { width: 28px; height: 28px; filter: drop-shadow(0 1px 3px rgba(0,0,0,.65)); }
-.cl-rail-n { font-size: 12px; font-weight: 700; line-height: 1.15; min-height: 1.15em; color: white; text-shadow: 0 1px 3px rgba(0,0,0,.85); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cl-rail-n { font-size: var(--fs-xs); font-weight: 700; line-height: 1.15; min-height: 1.15em; color: white; text-shadow: 0 1px 3px rgba(0,0,0,.85); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cl-rail-n::before { content: attr(data-n); }
 .cl-rail-btn:hover .cl-rail-ic { background: rgba(0,0,0,.45); }
 .cl-rail-btn:active .cl-rail-ic { transform: scale(.88); }
@@ -31,13 +31,13 @@ body.shorts-mode .short-actions.cl-rail { inset-inline-end: 6px; inset-block-end
 .cl-tip { gap: 10px; max-height: min(88vh, 720px); overflow-y: auto; overscroll-behavior: contain; }
 .cl-tip-head { display: flex; align-items: center; gap: 10px; }
 .cl-tip-head .cl-rail-st { margin: 0; }
-.cl-tip-who { margin: 2px 0 0; font-size: 13px; }
+.cl-tip-who { margin: 2px 0 0; font-size: var(--fs-sm); }
 .cl-tip-muted { color: rgba(255,255,255,.72); }
 .cl-tip-av { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; background: rgba(255,255,255,.14); }
 .cl-tip-av-i { display: inline-grid; place-items: center; font-weight: 700; color: white; }
-.cl-tip-sum { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: 13px; }
+.cl-tip-sum { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: 12px; background: rgba(255,255,255,.06); font-size: var(--fs-sm); }
 .cl-tip-faces { display: inline-flex; flex: none; }
-.cl-tip-faces .cl-tip-av { width: 26px; height: 26px; font-size: 12px; border: 2px solid rgb(28 28 34); }
+.cl-tip-faces .cl-tip-av { width: 26px; height: 26px; font-size: var(--fs-xs); border: 2px solid rgb(28 28 34); }
 .cl-tip-faces .cl-tip-av + .cl-tip-av { margin-inline-start: -8px; }
 .cl-tip-num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; direction: ltr; display: inline-block; }
 .cl-tip-form { display: grid; gap: 10px; }
@@ -48,13 +48,13 @@ body.shorts-mode .short-actions.cl-rail { inset-inline-end: 6px; inset-block-end
 .cl-tip-chip[aria-pressed="true"] { background: rgb(255 201 60); border-color: rgb(255 201 60); color: rgb(28 28 34); }
 .cl-tip-chip[aria-pressed="true"] small { color: rgb(28 28 34 / .8); }
 .cl-tip-chip:active { transform: scale(.95); }
-.cl-tip-field { display: grid; gap: 4px; font-size: 13px; color: rgba(255,255,255,.85); }
+.cl-tip-field { display: grid; gap: 4px; font-size: var(--fs-sm); color: rgba(255,255,255,.85); }
 .cl-tip-in { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.22); background: rgba(0,0,0,.25); color: white; font: inherit; font-size: 16px; }
 .cl-tip-in::placeholder { color: rgba(255,255,255,.55); }
 .cl-tip-check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; cursor: pointer; }
 .cl-tip-check input { width: 20px; height: 20px; accent-color: rgb(255 201 60); }
-.cl-tip-bal { margin: 0; font-size: 13px; color: rgba(255,255,255,.85); }
-.cl-tip-err { margin: 0; min-height: 1.2em; font-size: 13px; color: rgb(255 160 160); }
+.cl-tip-bal { margin: 0; font-size: var(--fs-sm); color: rgba(255,255,255,.85); }
+.cl-tip-err { margin: 0; min-height: 1.2em; font-size: var(--fs-sm); color: rgb(255 160 160); }
 .cl-tip-err:empty { min-height: 0; }
 .cl-tip-send { min-height: 52px; border: 0; border-radius: 14px; background: rgb(255 201 60); color: rgb(28 28 34); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .cl-tip-send[disabled] { background: rgba(255,255,255,.16); color: rgba(255,255,255,.7); cursor: not-allowed; }
