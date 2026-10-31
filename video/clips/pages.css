@@ -4,7 +4,7 @@
 .cl-snd-a:focus-visible { outline: 3px solid white; outline-offset: 2px; box-shadow: 0 0 0 5px rgba(0,0,0,.6); }
 .clp-pg-head { display: flex; align-items: center; gap: 12px; margin: 6px 0 12px; }
 .clp-pg-back { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: var(--card); border: 1px solid var(--line); }
-.clp-pg-ic { flex: none; width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: 28px; font-weight: 900; color: white; background: var(--grad); box-shadow: var(--sh-1); }
+.clp-pg-ic { flex: none; width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: var(--fs-num); font-weight: 900; color: white; background: var(--grad); box-shadow: var(--sh-1); }
 .clp-pg-t { min-width: 0; }
 .clp-pg-t h1 { margin: 0; font-size: 21px; font-weight: 850; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clp-pg-t p { margin: 2px 0 0; }
