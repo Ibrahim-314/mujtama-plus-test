@@ -88,14 +88,14 @@ themeCss.textContent = `
 .blurwrap{position:relative}.blurwrap .blurred{filter:blur(14px);pointer-events:none;user-select:none}
 .blurwrap .reveal{position:absolute;inset:0;display:grid;place-items:center;text-align:center;z-index:2}
 .play{position:relative}.play::after{content:"▶";position:absolute;inset:0;display:grid;place-items:center;font-size:44px;color:#fff;text-shadow:0 4px 18px #0008}
-.dur{position:absolute;bottom:8px;inset-inline-end:8px;background:#000a;color:#fff;font-size:12px;padding:2px 8px;border-radius:8px}
+.dur{position:absolute;bottom:8px;inset-inline-end:8px;background:#000a;color:var(--white);font-size:var(--fs-xs);padding:2px 8px;border-radius:8px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:8px 0}.grid3 div{aspect-ratio:1;border-radius:10px}
-.series{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--accent);margin-top:4px}
-.sponsored{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
-.event-card{border-radius:14px;padding:14px;color:#fff;margin:8px 0}
+.series{display:flex;gap:6px;align-items:center;font-size:var(--fs-sm);color:var(--accent);margin-top:4px}
+.sponsored{font-size:var(--fs-xs);color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.event-card{border-radius:14px;padding:14px;color:var(--white);margin:8px 0}
 .progress{height:6px;border-radius:3px;background:var(--line);overflow:hidden}.progress i{display:block;height:100%;background:var(--accent)}
 
-.world{display:inline-block;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin:4px 4px 0 0}
+.world{display:inline-block;font-size:var(--fs-xs);background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin:4px 4px 0 0}
 .suggest{border:1px solid var(--line);border-radius:12px;margin-top:4px;overflow:hidden}.suggest button{display:block;width:100%;text-align:start;border:0;background:var(--card);padding:9px 12px;color:var(--text)}
 [dir=ltr] .fab{left:auto;right:calc(50% - min(280px,50vw) + 16px)}
 label.chk{display:flex;gap:8px;align-items:center;margin:8px 0}label.chk input{width:auto}
@@ -199,8 +199,8 @@ const Translate = {
 };
 
 /* ---------- Post card v2 ---------- */
-const _inner = postInner;
-postInner = function (p, opts = {}) {
+
+PostHooks.inner("v12#1", 70, (_inner) => function (p, opts = {}) {
   if (!p || p.status === "deleted" || p.status === "removed") return `<div class="muted">المنشور الأصلي غير متاح</div>`;
   let h = _inner(p, opts);
   let extra = "";
@@ -237,7 +237,7 @@ postInner = function (p, opts = {}) {
     h = `<div class="blurwrap"><div class="blurred">${h}</div><div class="reveal"><div><div><svg class=ei aria-hidden=true><use href=#i-alert /></svg> محتوى قد يكون حساساً</div><button class="u-mt8 btn" data-reveal="${p.id}">عرض</button></div></div></div>`;
   if (p.sensitive && DB.settings.sensitive === "hide" && p.author !== DB.me) return `<div class="muted">محتوى مخفي حسب إعداداتك</div>`;
   return h;
-};
+});
 
 /* impressions vs opens vs dwell (view quality signals) */
 const impObs = new IntersectionObserver(en => en.forEach(e => { if (e.isIntersecting) { const id = e.target.dataset.imp; DB.impressions[id] = (DB.impressions[id] || 0) + 1; impObs.unobserve(e.target); } }), { threshold: .6 });
@@ -502,16 +502,14 @@ Views.notifications = function () {
 setInterval(() => DB.events.forEach(e => { const dt = new Date(e.startsAt) - Date.now(); if ((e.reminders || []).includes(DB.me) && dt > 0 && dt < 3600e3 && !e._reminded) { e._reminded = true; notify(DB.me, "event", { actor: e.organizer }); save(); App.refreshBadges(); } }), 60e3);
 
 /* ---------- Home v2: daily prompt card + new-user discovery when feed is thin ---------- */
-const _home = Views.home;
-Views.home = function () {
-  _home();
+HomeHooks.section("circle", 10, function () {
   const bar = $("#cbar"); if (bar) bar.querySelector(".fake").textContent = (I18N[DB.settings.lang] || I18N.ar).compose;
   const following = S.following(DB.me).length;
   if (following < 2 && feedMode === "for") {
     const tabs = view.querySelector(".tabs");
     tabs.insertAdjacentHTML("afterend", `<div class="card discover"><b><svg class=ei aria-hidden=true><use href=#i-raise /></svg> ابدأ ببناء دائرتك</b><p class="muted">تابع أشخاصاً وانضم لمجتمعات لتصبح خلاصتك أذكى.</p>${DB.users.filter(u => u.id !== DB.me && !S.follows(DB.me, u.id)).slice(0, 3).map(userRow).join("")}</div>`);
   }
-};
+});
 
 /* ---------- Routes ---------- */
 MPRoutes.extend((a, b) => ({
