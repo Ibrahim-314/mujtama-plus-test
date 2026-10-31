@@ -22,7 +22,7 @@
   if (!document.getElementById("ec-css")) document.head.insertAdjacentHTML("beforeend", `<style id="ec-css">
 .ec-page{max-width:760px;margin:auto}.ec-page h2:focus{outline:none}.ec-it{padding:12px 14px;border-radius:16px;border:1px solid var(--line,#e5e5e5);margin-bottom:10px}
 .ec-it .top{display:flex;gap:8px;align-items:baseline;justify-content:space-between;flex-wrap:wrap}.ec-it .cur{font-size:18px;font-weight:800}
-.ec-sug{margin-top:8px;padding:8px 10px;border-radius:12px;background:#f59e0b14;font-size:13px}.ec-chip{font-size:12px;padding:2px 8px;border-radius:999px;background:#8882;margin-inline-start:6px}
+.ec-sug{margin-top:8px;padding:8px 10px;border-radius:12px;background:#f59e0b14;font-size:var(--fs-sm)}.ec-chip{font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;background:#8882;margin-inline-start:6px}
 .ec-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.ec-row .btn{min-height:44px}.ec-f label{display:block;margin-top:8px}.ec-f input,.ec-f select{width:100%;min-height:44px;box-sizing:border-box}
 .ec-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}.ec-k div{padding:12px;border-radius:14px;background:#8881}.ec-k b{display:block;font-size:19px}
 .ec-t{width:100%;border-collapse:collapse;font-size:14px}.ec-t th,.ec-t td{padding:8px 6px;border-bottom:1px solid var(--line,#eee);text-align:start}.ec-t td.n{direction:ltr;text-align:end}
