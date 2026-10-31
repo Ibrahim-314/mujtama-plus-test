@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.145.0 — 2026-10-31 — الرئيسية H2 «أول 5 ثواني» (user-approved mockup; no feature removed, no migration)
+
+- Header: SVG icons (language, search, messages) in index.html from the first paint (no emoji → SVG swap); Home on phones uses a 50 px bar (`body.on-home`), hide-on-scroll-down / show-on-scroll-up (existing nav.js), reduced motion respected.
+- Composer: `#hcomp` card = avatar + «ماذا تريد أن تنشر؟» (`#cbar`, now a real button) + one row of 7 icon-only 44 px buttons (صورة، فيديو، مقطع صوتي، استطلاع، سلسلة، مقال، ساعدني في الكتابة) each opening the existing editor flow (`homeCompose`).
+- Stories: strip only when others have active stories; otherwise the add-story card is gone and the composer avatar carries «+» (`#st-new`) → existing add-story flow (or my own story's ring → viewer).
+- Week-one challenges: one 48 px bar (ring x/5, title, «التالي: … · N أيام متبقية», chevron) that expands to the existing list; open state remembered (`mp_ch_open`, closed by default).
+- First post top at 390 ar (seeded world): 304 px without «فاتك اليوم», 638 px with it. Tabs, «فاتك اليوم», dock, feed, side rail unchanged.
+- Tests: tests/e2e/home-h2-v2145.e2e.test.js (composer 7 flows, story badge vs strip, challenge bar, header hide/show, axe 390 light / LTR / 1440 dark).
+
 ## 2.144.0 — 2026-10-31 — «ميزانية التصميم» + الرئيسية H1 (no feature removed, no migration, no visible change)
 
 - 2.144: font sizes / white / shadows moved onto tokens; market list inline styles → class (761c3aa).
