@@ -37,7 +37,7 @@
 ${F} #more-sentinel,${F} .wrap>.card.discover,${F} #notifBadge,${F} #msgBadge,${F} .d-digest{display:none!important}
 ${F} *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 .wb-fold{display:none!important}
-.wb-calm{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:13px;color:var(--muted)}
+.wb-calm{display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:var(--fs-sm);color:var(--muted)}
 .wb-more{display:block;width:100%;margin:8px 0 18px}
 .wb-cu{text-align:center;padding:28px 16px}.wb-ic{color:var(--accent);line-height:1}.wb-ic .ic{width:44px;height:44px}.wb-h{margin:0 0 6px;font-size:var(--fs-md);color:var(--muted)}.wb-big{font-size:var(--fs-3xl);font-weight:800;font-variant-numeric:tabular-nums}.wb-diff{display:flex;align-items:center;gap:8px;margin:8px 0 0;color:var(--muted);font-size:var(--fs-sm)}.wb-clear{margin-top:var(--s3);color:var(--danger)}.wb-cu h3{margin:10px 0 6px}
 .wb-bars{display:flex;align-items:flex-end;gap:6px;height:120px;margin:10px 0 4px}.wb-bars div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%;font-size:11px;color:var(--muted)}
@@ -154,7 +154,7 @@ ${F} *{animation:none!important;transition:none!important;scroll-behavior:auto!i
     }
     window.MPI18n?.apply(wrap);
   }
-  if (typeof Views !== "undefined" && Views.home) { const _h = Views.home; Views.home = function () { const r = _h.apply(this, arguments); setTimeout(enhanceHome, 0); return r; }; }
+  if (typeof HomeHooks !== "undefined") HomeHooks.after("wellbeing", 50, enhanceHome);
 
   /* ---------- #/wellbeing ---------- */
   const tog = (id, on, label, hint) => `<label class="wb-row" for="${id}"><span><b>${esc(T(label))}</b>${hint ? `<small class="muted">${esc(T(hint))}</small>` : ""}</span><input type="checkbox" class="switch" id="${id}" ${on ? "checked" : ""}></label>`;
