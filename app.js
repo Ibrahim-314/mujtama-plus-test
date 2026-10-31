@@ -185,13 +185,33 @@ const PostHooks = (() => {
   }
   return { inner: (n, r, mw) => add("inner", n, r, mw), card: (n, r, mw) => add("card", n, r, mw), list: (k) => st[k].mws.map(h => h.name + ":" + h.rank) };
 })();
+/* v2.145 H2 «أول 5 ثواني»: the Home composer = one row (avatar + «ماذا تريد أن تنشر؟») and one row of 7 icon-only shortcuts, each
+ * opening the EXISTING editor flow for that type (no new feature). Icons from the approved mockup; the thread icon is dots on a
+ * vertical line with text lines. The avatar slot also carries the add-story «+» when nobody has an active story (content-ui.js). */
+const HOME_Q = [["img", "صورة", "M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM21 16l-5-5-9 9"],
+  ["video", "فيديو", "M5 6h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM16 10l5-3v10l-5-3"],
+  ["audio", "مقطع صوتي", "M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"],
+  ["poll", "استطلاع", "M5 20V10M12 20V4M19 20v-7"],
+  ["thread", "سلسلة", "M6 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM6 17a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM6 7v10M11 5h9M11 9h6M11 19h9"],
+  ["article", "مقال", "M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h7"],
+  ["ai", "ساعدني في الكتابة", "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"]];
+const homeAv = () => av(S.me()).replace(/^<a href="[^"]*"/, '<span aria-hidden="true"').replace(/<\/a>$/, "</span>"); /* no link inside the composer card */
+function homeCompose(k) {
+  const type = ["video", "audio", "poll", "thread", "article"].includes(k) ? k : "post";
+  const inEd = (sel, then) => { let n = 0; const t = setInterval(() => { const el = document.querySelector("#composer3 " + sel); if (el || ++n > 60) { clearInterval(t); if (el) then(el); } }, 50); };
+  return Promise.resolve(openComposer({ type })).then(() => {
+    if (k === "img") inEd("[data-tool=img]", (b) => b.click()); /* the editor's own image picker */
+    if (k === "ai") { const C = window.MPChunks; (C ? C.load("ai").catch(() => { }).then(() => C.load("assistant")).catch(() => { }) : Promise.resolve()).then(() => inEd(".mp-asb", (b) => b.click())); } /* «✨ المساعد» of the editor */
+  });
+}
 const Views = {
   home() { return HomeHooks.run(Views._homeBase, this, arguments); },
   _homeBase() {
     const list = Feed.build(feedMode), shown = list.slice(0, feedLimit);
     const trends = Trends.list(3), sugComm = DB.communities.find(c => !S.membership(c.id)), sugUser = DB.users.find(u => u.id !== DB.me && !S.follows(DB.me, u.id) && !DB.blocked.includes(u.id));
     let html = `<div class="wrap">
-      <div class="card composer-bar" id="cbar" role="button" tabindex="0" aria-label="ماذا تريد أن تنشر؟">${av(S.me()).replace(/^<a href="[^"]*"/, '<span aria-hidden="true"').replace(/<\/a>$/, "</span>") /* v2.140.2: no link nested inside the role=button bar (axe nested-interactive) */}<div class="fake">ماذا تريد أن تنشر؟</div></div>
+      <div class="card composer-bar h2c" id="hcomp"><div class="h2c-r1"><span class="h2c-av">${homeAv()}</span><button type="button" class="fake" id="cbar">ماذا تريد أن تنشر؟</button></div>
+      <div class="h2c-q" role="group" aria-label="نوع المنشور">${HOME_Q.map(([k, l, d]) => `<button type="button" class="h2c-b" data-q="${k}" aria-label="${l}" title="${l}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg></button>`).join("")}</div></div>
       <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>`;
     if (!shown.length) html += `${UI.empty({ title: "لا يوجد محتوى هنا بعد", text: "تابع أشخاصاً وانضم إلى مجتمعات لتمتلئ خلاصتك.", action: '<a class="btn" href="#/explore">اكتشف أشخاصاً ومجتمعات</a>' })}`;
     shown.forEach((p, i) => {
@@ -203,7 +223,8 @@ const Views = {
     if (list.length > feedLimit) html += `<div class="skel" id="more-sentinel"></div>`;
     else if (shown.length) html += `<div class="empty">وصلت للنهاية <a href="#/explore" class="u-c-ac">استكشف المزيد</a></div>`;
     view.innerHTML = html + "</div>";
-    $("#cbar").onclick = () => openComposer(); $("#cbar").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openComposer(); } };
+    $("#cbar").onclick = () => openComposer();
+    $("#hcomp").onclick = (e) => { const q = e.target.closest("[data-q]"); if (q) homeCompose(q.dataset.q); else if (!e.target.closest("button")) openComposer(); };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
     const sen = $("#more-sentinel");
     if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); setTimeout(() => { feedLimit += 10; const y = scrollY; rerender(); scrollTo(0, y); }, 400); } }).observe(sen);
