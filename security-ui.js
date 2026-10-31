@@ -79,11 +79,11 @@
   /* ---------- Lazy media + data saver (Phase 5) ---------- */
   const io = "IntersectionObserver" in window ? new IntersectionObserver((en) => en.forEach(e => { if (e.isIntersecting) { show(e.target); io.unobserve(e.target); } }), { rootMargin: "600px 0px" }) : null;
   function show(el) { if (el.dataset.bg) { el.style.background = el.dataset.bg; el.removeAttribute("data-bg"); el.classList.remove("lazy"); } }
-  const _pi = postInner;
-  postInner = function (p, opts) {
+  
+  PostHooks.inner("security-ui#1", 110, (_pi) => function (p, opts) {
     const h = _pi(p, opts);
     return h.replace(/(<div class="media[^"]*")([^>]*?) style="background:(url\([^"]*?\)[^"]*)"/g, (m, open, mid, bg) => `${open.replace('class="media', 'class="media lazy')}${mid} data-bg="${bg}" style="background:var(--bg-2)"`);
-  };
+  });
   function hydrateMedia() {
     const saver = MP.dataSaver();
     document.querySelectorAll(".media.lazy[data-bg]").forEach(el => {
