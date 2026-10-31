@@ -2679,6 +2679,8 @@
 "تقييمات أقدم": "Older Reviews",
 "حُمّل {n} تقييماً": "Loaded {n} {p:review|reviews}",
 "نزاعات السوق": "Market Disputes",
+"التشغيل والمراقبة": "Operations & Monitoring",
+"رسوم الأداء، أهداف الخدمة، التنبيهات، الحوادث، مؤشرات المنتج": "Performance charts, service goals, alerts, incidents, product metrics",
 "ردّ البائع": "Seller’s Reply",
 "مفتوح": "Open",
 "دليل {n}": "Evidence {n}",
