@@ -135,14 +135,15 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
 /* ---------- App shell ---------- */
 (function buildShell() {
   const top = $(".top-actions");
-  if (top && !top.querySelector("svg")) top.innerHTML = ` /* v2.145: index.html ships the SVG icons from the first paint; this is only a fallback */
+  /* v2.145: index.html ships the SVG icons from the first paint; this is only a fallback (v2.145.1: comment kept outside the template so it never renders as text) */
+  if (top && !top.querySelector("svg")) top.innerHTML = `
     <a href="#/search" class="icon-btn" aria-label="بحث" title="بحث">${icon("search")}</a>
-    <a href="#/messages" class="icon-btn" aria-label="الرسائل" title="الرسائل">${icon("mail")}<span class="badge" id="msgBadge"></span></a>`;
+    <a href="#/messages" class="icon-btn" aria-label="الرسائل" title="الرسائل">${icon("mail")}<span class="badge" id="msgBadge" aria-hidden="true"></span></a>`;
   const brand = $(".brand"); if (brand) brand.innerHTML = `<span class="logo" aria-hidden="true"></span><span class="brand-text">مجتمع بلس</span>`;
   const NAV = { home: ["home", "homeF"], explore: ["compass", "compassF"], communities: ["users", "usersF"], notifications: ["bell", "bellF"], menu: ["menu", "menuF"], me: ["user", "userF"] };
   document.querySelectorAll(".bottomnav a").forEach(a => {
-    const [off, on] = NAV[a.dataset.r] || ["home", "homeF"], label = a.querySelector("small").textContent, badge = a.querySelector(".badge");
-    a.setAttribute("aria-label", label);
+    const [off, on] = NAV[a.dataset.r] || ["home", "homeF"], badge = a.querySelector(".badge");
+    /* v2.145.1: no aria-label here — the visible <small> label (+ the unread count) is the name, so axe label-content-name-mismatch holds when a count shows */
     a.querySelector("span").innerHTML = icon(off, "ic-off") + icon(on, "ic-on") + (badge ? badge.outerHTML : "");
   });
   const nav = $(".bottomnav");
