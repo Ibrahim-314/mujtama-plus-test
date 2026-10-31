@@ -285,10 +285,10 @@ playVideo = function (pid) {
 
 /* phase 41: server translation moved to the lazy `ai` chunk (subscribers, ai-ui.js) */
 function wrapRender() {
-  const inner = postInner;
-  postInner = function (p, opts) {
+  
+  PostHooks.inner("sync#1", 80, (inner) => function (p, opts) {
     return inner(p, opts);
-  };
+  });
   MPSettings.add(function () {
     const ver = $("#ver"); if (ver) ver.textContent = verLabel(Remote.health?.version || APP_VERSION) + (Remote.on ? " · متصل بالخادم" : " · وضع تجريبي محلي");
     if (!Remote.on) return;
