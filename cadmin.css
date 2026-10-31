@@ -474,7 +474,7 @@ html:root[data-theme=dark] .ca .btn.danger { background: color-mix(in srgb, var(
 .cai { position: relative; overflow: hidden; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .cai::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, #4f22d1, #c04cf0, #22c3e6); }
 .cai-h { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.cai-go { width: 100%; min-height: 44px; margin-top: 8px; background: linear-gradient(135deg, #4f22d1, #c04cf0); border: 0; color: #fff; }
+.cai-go { width: 100%; min-height: 44px; margin-top: 8px; background: linear-gradient(135deg, #4f22d1, #c04cf0); border: 0; color: var(--white); }
 .cai-lead { font-weight: 650; line-height: 1.6; margin: 8px 0; }
 .cai-sec { margin-top: 12px; }
 .cai-sec h4 { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; font-size: .92em; }
