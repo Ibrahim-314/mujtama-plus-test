@@ -309,17 +309,25 @@
   async function storiesBar() {
     if (!online() || location.hash.split("/")[1] !== "home") return;
     const groups = await loadStories().catch(() => []);
-    const anchor = view.querySelector("#cbar"); if (!anchor) return;
+    const anchor = view.querySelector("#hcomp"), slot = anchor?.querySelector(".h2c-av"); if (!anchor) return;
     const me = S.me(), mine = groups.find(g => g.user.id === DB.me);
-    const ring = (u, seen) => `<span class="st-ring ${seen ? "seen" : ""}"><span class="av" style="background:${u.color}">${u.avatar ? `<img src="${esc(u.avatar["200"] || u.avatar["64"])}" alt="">` : esc(u.name[0])}</span></span>`;
+    const face = (u) => `<span class="av" style="background:${u.color}">${u.avatar ? `<img src="${esc(u.avatar["200"] || u.avatar["64"])}" alt="">` : esc(u.name[0])}</span>`;
+    const ring = (u, seen) => `<span class="st-ring ${seen ? "seen" : ""}">${face(u)}</span>`;
     const others = groups.filter(g => g.user.id !== DB.me);
-    // v2.139: with no stories from others (and none of mine) the bar is one compact row instead of a lone big tile
-    const solo = !mine && !others.length;
-    const html = solo ? `<div class="stories-bar st-solo" data-keep="stories" data-keep-before="#cbar" role="group" aria-label="القصص"><button class="st-add-row" id="st-new"><span class="st-ring add"><span class="av" style="background:${me.color}">${me.avatar ? `<img src="${esc(me.avatar["200"] || me.avatar["64"])}" alt="">` : esc(me.name[0])}</span><i>${ic("plus", "xs")}</i></span><span class="st-add-t"><b>أضف قصة</b><small>شارك لحظة تختفي بعد 24 ساعة</small></span><span class="st-add-go" aria-hidden="true">${ic("back", "xs")}</span></button></div>` : `<div class="stories-bar" data-keep="stories" data-keep-before="#cbar" role="group" aria-label="القصص"><button class="st-item" id="st-new">${mine ? ring(me, true) : `<span class="st-ring add"><span class="av" style="background:${me.color}">${me.avatar ? `<img src="${esc(me.avatar["200"])}" alt="">` : esc(me.name[0])}</span><i>${ic("plus", "xs")}</i></span>`}<span>${mine ? "قصتك" : "أضف قصة"}</span></button>${others.map(g => `<button class="st-item" data-st="${g.user.id}">${ring(g.user, g.allSeen)}<span>${esc(g.user.name.split(" ")[0])}</span></button>`).join("")}</div>`;
-    const cur = view.querySelector(".stories-bar"); // v2.29: update in place (no remove + re-insert → no jump)
-    if (cur && cur.outerHTML !== html) cur.outerHTML = html; else if (!cur) anchor.insertAdjacentHTML("beforebegin", html);
-    document.querySelectorAll(".stories-bar").forEach((x, i) => { if (i) x.remove(); });
-    $("#st-new").onclick = () => mine ? storyViewer(groups, groups.indexOf(mine)) : openComposer({ type: "story" });
+    /* v2.145 H2: the strip shows only when other people have active stories. Otherwise there is no «أضف قصة» card: the composer
+     * avatar carries a small «+» (or my own story's ring) that opens the same add-story / my-story flow — #st-new either way. */
+    const cur = view.querySelector(".stories-bar");
+    if (!others.length) {
+      cur?.remove();
+      const btn = `<button type="button" class="h2c-st${mine ? " mine" : ""}" id="st-new" aria-label="${mine ? "قصتك" : "أضف قصة"}" title="${mine ? "قصتك" : "أضف قصة"}">${mine ? ring(me, true) : face(me) + `<i aria-hidden="true">${ic("plus", "xs")}</i>`}</button>`;
+      if (slot && slot.innerHTML !== btn) slot.innerHTML = btn;
+    } else {
+      if (slot?.querySelector("#st-new")) slot.innerHTML = homeAv();
+      const html = `<div class="stories-bar" data-keep="stories" data-keep-before="#hcomp" role="group" aria-label="القصص"><button class="st-item" id="st-new">${mine ? ring(me, true) : `<span class="st-ring add">${face(me)}<i>${ic("plus", "xs")}</i></span>`}<span>${mine ? "قصتك" : "أضف قصة"}</span></button>${others.map(g => `<button class="st-item" data-st="${g.user.id}">${ring(g.user, g.allSeen)}<span>${esc(g.user.name.split(" ")[0])}</span></button>`).join("")}</div>`;
+      if (cur && cur.outerHTML !== html) cur.outerHTML = html; else if (!cur) anchor.insertAdjacentHTML("beforebegin", html); // v2.29: in place, no jump
+      document.querySelectorAll(".stories-bar").forEach((x, i) => { if (i) x.remove(); });
+    }
+    const add = $("#st-new"); if (add) add.onclick = (e) => { e.stopPropagation(); if (mine) storyViewer(groups, groups.indexOf(mine)); else openComposer({ type: "story" }); };
     document.querySelectorAll("[data-st]").forEach(b => b.onclick = () => storyViewer(groups, groups.findIndex(g => g.user.id === b.dataset.st)));
   }
   function storyViewer(groups, gi, ii) {
