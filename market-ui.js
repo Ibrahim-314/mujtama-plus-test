@@ -65,6 +65,7 @@
 
   /* ---------- styles (kept out of the core CSS budget) ---------- */
   if (!document.getElementById("mk-css")) document.head.insertAdjacentHTML("beforeend", `<style id="mk-css">
+.mk-list{list-style:none!important;margin:0!important;padding:4px 14px!important}
 .mk-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mk-n{white-space:nowrap;font-variant-numeric:tabular-nums}.mk-page{container-type:inline-size}.mk-page h2:focus,.mk-sheet h3:focus{outline:none}
 .mk-page [hidden],.mk-sheet [hidden]{display:none!important}
@@ -74,28 +75,28 @@
 .mk-fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;padding-bottom:8px}.mk-fgrid 
 @container (min-width:560px){.mk-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.mk-fgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}@container (min-width:860px){.mk-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .mk-ph{aspect-ratio:1;background:var(--bg-2);position:relative;overflow:hidden}.mk-ph img{width:100%;height:100%;object-fit:cover;display:block}
-.mk-ph .mk-kind{position:absolute;top:8px;inset-inline-start:8px;background:rgba(20,10,40,.72);color:#fff;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700}
+.mk-ph .mk-kind{position:absolute;top:8px;inset-inline-start:8px;background:rgba(20,10,40,.72);color:var(--white);border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700}
 .mk-cb{padding:8px 10px 10px;display:flex;flex-direction:column;gap:3px;min-width:0}.mk-cb .mk-t{font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.mk-cb .mk-pr{font-weight:850;font-size:15px;color:var(--brand-1,#6d3cf4)}[data-theme=dark] .mk-cb .mk-pr{color:#c9b6ff}.mk-cb .mk-m{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mk-cb .mk-pr{font-weight:850;font-size:var(--fs-md);color:var(--brand-1,#6d3cf4)}[data-theme=dark] .mk-cb .mk-pr{color:#c9b6ff}.mk-cb .mk-m{font-size:var(--fs-xs);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mk-more{display:flex;justify-content:center;padding:14px}
 .mk-stars{position:relative;display:inline-block;font-size:14px;line-height:1;letter-spacing:1px;vertical-align:-1px}.mk-s0{color:#d6d0e4}[data-theme=dark] .mk-s0{color:#4a4360}
 .mk-s1{position:absolute;top:0;inset-inline-start:0;overflow:hidden;white-space:nowrap;color:#f5a524}
 .mk-gal{position:relative;border-radius:20px;overflow:hidden;background:var(--bg-2);touch-action:pan-y;user-select:none}.mk-gal:focus-visible{outline:3px solid var(--brand-1,#6d3cf4);outline-offset:2px}
 .mk-track{display:flex;transition:transform .3s var(--ease,ease)}.mk-slide{flex:0 0 100%;aspect-ratio:4/3;display:grid;place-items:center;margin:0;cursor:zoom-in}.mk-slide img{width:100%;height:100%;object-fit:contain;display:block}
-.mk-gbtn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(20,10,40,.6);color:#fff;font-size:22px;cursor:pointer;display:grid;place-items:center;direction:ltr}
+.mk-gbtn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:0;background:rgba(20,10,40,.6);color:var(--white);font-size:var(--fs-2xl);cursor:pointer;display:grid;place-items:center;direction:ltr}
 .mk-gbtn[disabled]{opacity:.3;cursor:default}.mk-prev{inset-inline-start:8px}.mk-next{inset-inline-end:8px}
-.mk-count{position:absolute;bottom:8px;inset-inline-end:10px;background:rgba(20,10,40,.7);color:#fff;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
+.mk-count{position:absolute;bottom:8px;inset-inline-end:10px;background:rgba(20,10,40,.7);color:var(--white);border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:700}
 .mk-thumbs{display:flex;gap:8px;overflow-x:auto;padding:8px 2px;margin:0;list-style:none;scrollbar-width:thin}.mk-thumbs button{flex:none;width:62px;height:62px;padding:0;border-radius:12px;border:2.5px solid transparent;overflow:hidden;background:var(--bg-2);cursor:pointer}
 .mk-thumbs button[aria-current=true]{border-color:var(--brand-1,#6d3cf4)}.mk-thumbs img{width:100%;height:100%;object-fit:cover;display:block}
 .mk-lb{position:fixed;inset:0;z-index:1000;background:rgba(8,4,18,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px}
-.mk-lb img{max-width:100%;max-height:calc(100vh - 120px);object-fit:contain}.mk-lb .mk-lbx{position:absolute;top:12px;inset-inline-end:12px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;font-size:22px;cursor:pointer}
+.mk-lb img{max-width:100%;max-height:calc(100vh - 120px);object-fit:contain}.mk-lb .mk-lbx{position:absolute;top:12px;inset-inline-end:12px;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:var(--white);font-size:var(--fs-2xl);cursor:pointer}
 .mk-lb .mk-gbtn{background:rgba(255,255,255,.18)}.mk-lb p{color:#fff;margin:10px 0 0;font-size:14px;text-align:center}
-.mk-price{font-size:26px;font-weight:900;margin:2px 0 6px}.mk-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.mk-price{font-size:var(--fs-3xl);font-weight:900;margin:2px 0 6px}.mk-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
 .mk-buy{border:1.5px solid #c9b6f2;border-radius:18px;padding:12px 14px;margin:12px 0;background:linear-gradient(160deg,#f6f1ff,#fff8e8);color:#2b1a4f}[data-theme=dark] .mk-buy{background:linear-gradient(160deg,#241a3a,#2a2416);border-color:#5b4a86;color:#efe8ff}
 .mk-buy .mk-off{font-weight:700;color:#6e4300;background:#fff3d6;border-radius:10px;padding:6px 10px;margin:8px 0 0}[data-theme=dark] .mk-buy .mk-off{background:#3a2c0c;color:#ffd27a}
 .mk-buy .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.mk-buy .row .mk-f{flex:0 0 110px;margin:0}.mk-buy .row .pi-btn{flex:1 1 180px}
 .mk-desc{white-space:pre-wrap;line-height:1.75;overflow-wrap:anywhere}
-.mk-seller{display:flex;align-items:center;gap:12px}.mk-av{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--grad);color:#fff;font-weight:800}
+.mk-seller{display:flex;align-items:center;gap:12px}.mk-av{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:none;display:grid;place-items:center;background:var(--grad);color:var(--white);font-weight:800}
 .mk-seller .grow,.mk-row .grow{flex:1;min-width:0}.mk-row{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.mk-row:last-child{border:0}
 .mk-row .mk-th{width:56px;height:56px;border-radius:12px;object-fit:cover;flex:none;background:var(--bg-2)}.mk-row .grow>a,.mk-row .grow>b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
 .mk-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:none}
@@ -107,9 +108,9 @@
 .mk-escrow{border-inline-start:4px solid #13603a}.mk-escrow.refunded,.mk-escrow.split{border-color:#e8a412}.mk-note{border-inline-start:4px solid #e8a412}
 .mk-imgs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;list-style:none;margin:6px 0;padding:0}@container (min-width:560px){.mk-imgs{grid-template-columns:repeat(8,minmax(0,1fr))}}
 .mk-imgs li{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--bg-2)}.mk-imgs img{width:100%;height:100%;object-fit:cover;display:block}
-.mk-imgs .mk-cover{position:absolute;top:4px;inset-inline-start:4px;background:var(--grad);color:#fff;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800}
+.mk-imgs .mk-cover{position:absolute;top:4px;inset-inline-start:4px;background:var(--grad);color:var(--white);border-radius:999px;padding:0 7px;font-size:11px;font-weight:800}
 .mk-imgs .mk-ia{position:absolute;bottom:0;inset-inline:0;display:flex;justify-content:space-between;background:rgba(20,10,40,.65)}.mk-imgs .mk-ia button{border:0;background:none;color:#fff;min-width:28px;min-height:30px;font-size:15px;cursor:pointer;padding:0}
-.mk-imgs .mk-ia button[disabled]{opacity:.35}.mk-imgs .mk-up{display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.mk-imgs .mk-ia button[disabled]{opacity:.35}.mk-imgs .mk-up{display:grid;place-items:center;font-size:var(--fs-xs);color:var(--muted)}
 .mk-add{display:inline-flex;align-items:center;gap:6px;cursor:pointer}.mk-add input{position:absolute;opacity:0;width:1px;height:1px}.mk-add:focus-within{outline:3px solid var(--brand-1,#6d3cf4);outline-offset:2px;border-radius:12px}
 .mk-rate{border:0;padding:0;margin:8px 0}.mk-rate legend{font-weight:700;margin-bottom:4px}.mk-rate .mk-rs{display:inline-flex;flex-direction:row-reverse;gap:2px}[dir=rtl] .mk-rate .mk-rs{flex-direction:row-reverse}
 .mk-rate input{position:absolute;opacity:0;width:1px;height:1px}.mk-rate label{font-size:30px;line-height:1;color:#d6d0e4;cursor:pointer;padding:2px;min-width:40px;text-align:center}
@@ -461,12 +462,12 @@
       if (my !== seq || !live(token)) return;
       panel.removeAttribute("aria-busy");
       if (k === "listings") {
-        panel.innerHTML = rows.length ? `<ul class="card" style="list-style:none;margin:0;padding:4px 14px">${rows.map(L => { const im = imgOf(L), src = safeUrl(im?.thumb || im?.url); return `<li class="mk-row" data-mk-l="${h(L.id)}">${src ? `<img class="mk-th" src="${h(src)}" alt="" loading="lazy">` : `<span class="mk-th" aria-hidden="true"></span>`}<div class="grow">${L.status === "removed" ? `<b>${h(L.title)}</b>` : `<a href="#/market/item/${enc(L.id)}">${h(L.title)}</a>`}<div class="u-t-sm muted">${pi(L.price)}${L.quantity != null ? ` · المتوفر ${cnt(L.quantity)}` : ""}${L.views != null ? ` · ${cnt(L.views)} مشاهدة` : ""}</div></div>
+        panel.innerHTML = rows.length ? `<ul class="card mk-list">${rows.map(L => { const im = imgOf(L), src = safeUrl(im?.thumb || im?.url); return `<li class="mk-row" data-mk-l="${h(L.id)}">${src ? `<img class="mk-th" src="${h(src)}" alt="" loading="lazy">` : `<span class="mk-th" aria-hidden="true"></span>`}<div class="grow">${L.status === "removed" ? `<b>${h(L.title)}</b>` : `<a href="#/market/item/${enc(L.id)}">${h(L.title)}</a>`}<div class="u-t-sm muted">${pi(L.price)}${L.quantity != null ? ` · المتوفر ${cnt(L.quantity)}` : ""}${L.views != null ? ` · ${cnt(L.views)} مشاهدة` : ""}</div></div>
           <div class="mk-side">${chip(LST, L.status)}${L.status !== "removed" ? `<a class="u-t-sm muted" href="#/market/edit/${enc(L.id)}" aria-label="تعديل ${h(L.title)}">تعديل</a>` : ""}</div></li>`; }).join("")}</ul>`
           : `<div class="empty mk-empty">لم تنشر أي إعلان بعد.<br><br><a class="btn" href="#/market/new">أضف إعلاناً</a></div>`;
         return;
       }
-      panel.innerHTML = rows.length ? `<ul class="card" style="list-style:none;margin:0;padding:4px 14px">${rows.map(o => { const L = o.listing || {}, im = imgOf(L), src = safeUrl(im?.thumb || im?.url), other = k === "buyer" ? o.seller : o.buyer; return `<li class="mk-row" data-mk-o="${h(o.id)}">${src ? `<img class="mk-th" src="${h(src)}" alt="" loading="lazy">` : `<span class="mk-th" aria-hidden="true"></span>`}<div class="grow"><a href="#/market/orders/${enc(o.id)}">${h(L.title || o.title || "طلب")}</a>
+      panel.innerHTML = rows.length ? `<ul class="card mk-list">${rows.map(o => { const L = o.listing || {}, im = imgOf(L), src = safeUrl(im?.thumb || im?.url), other = k === "buyer" ? o.seller : o.buyer; return `<li class="mk-row" data-mk-o="${h(o.id)}">${src ? `<img class="mk-th" src="${h(src)}" alt="" loading="lazy">` : `<span class="mk-th" aria-hidden="true"></span>`}<div class="grow"><a href="#/market/orders/${enc(o.id)}">${h(L.title || o.title || "طلب")}</a>
           <div class="u-t-sm muted">${pi(o.total)}${o.qty > 1 ? ` · ${cnt(o.qty)} قطع` : ""}${other?.handle ? ` · ${k === "buyer" ? "البائع" : "المشتري"} @${h(other.handle)}` : ""} · ${h(day(o.createdAt))}</div></div><div class="mk-side">${chip(OST, o.status)}</div></li>`; }).join("")}</ul>`
         : `<div class="empty mk-empty">${k === "buyer" ? "لم تشترِ شيئاً من السوق بعد.<br><br><a class=\"btn\" href=\"#/market\">تصفّح السوق</a>" : "لا مبيعات بعد."}</div>`;
     };
@@ -611,7 +612,7 @@
       if (!live(token) || !box.isConnected) return;
       box.removeAttribute("aria-busy");
       const open = rows.filter(d => d.status !== "resolved");
-      box.innerHTML = open.length ? `<ul class="card" style="list-style:none;margin:0;padding:4px 14px">${open.map(d => { const o = d.order || {}, L = o.listing || d.listing || { title: d.title || o.title }, total = Number(o.total ?? d.total ?? d.amount), ev = list(d.evidence).map(x => (typeof x === "string" ? { id: x } : x)); return `<li class="mk-row" data-mk-d="${h(d.id)}" data-total="${h(total)}"><div class="grow" style="white-space:normal">
+      box.innerHTML = open.length ? `<ul class="card mk-list">${open.map(d => { const o = d.order || {}, L = o.listing || d.listing || { title: d.title || o.title }, total = Number(o.total ?? d.total ?? d.amount), ev = list(d.evidence).map(x => (typeof x === "string" ? { id: x } : x)); return `<li class="mk-row" data-mk-d="${h(d.id)}" data-total="${h(total)}"><div class="grow" style="white-space:normal">
         <b>${h(REASON[d.reason] || d.reason || "")}</b> · ${pi(total)} ${d.status === "seller_responded" ? chip({ x: ["ردّ البائع", "info"] }, "x") : chip({ x: ["مفتوح", "bad"] }, "x")}
         <div class="u-t-sm muted">${o.id || d.orderId ? `<a href="#/market/orders/${enc(o.id || d.orderId)}">${h(L.title || "الطلب")}</a> · ` : ""}المشتري @${h(d.buyer?.handle || o.buyer?.handle || "؟")} · البائع @${h(d.seller?.handle || o.seller?.handle || "؟")} · ${h(day(d.createdAt))}</div>
         ${d.text ? `<p class="u-my6 u-t-md">«${h(d.text)}»</p>` : ""}${ev.length ? `<div class="mk-ev">${ev.map((x, i) => safeUrl(x.url) ? `<a href="${h(safeUrl(x.url))}" target="_blank" rel="noopener"><img src="${h(safeUrl(x.thumb || x.url))}" alt="دليل ${cnt(i + 1)}" loading="lazy"></a>` : "").join("")}</div>` : ""}
