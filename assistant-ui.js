@@ -15,9 +15,9 @@
   const load = (force) => { if (!on()) return Promise.resolve(null); if (force || !meP) meP = Promise.all([api("GET", "/api/assistant/me"), api("GET", "/api/assistant/config")]).then(([m, c]) => { me = m; cfg = c; return m; }).catch(() => (meP = null)); return meP; };
 
   const st = document.createElement("style");
-  st.textContent = `.mp-asb{border:1px solid var(--line);background:var(--card,transparent);color:var(--accent);font:inherit;font-size:13px;border-radius:999px;padding:4px 10px;cursor:pointer;margin-block:6px;flex:none}
-.mp-as-acts{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.mp-as-acts .btn{font-size:13px;padding:6px 10px}.mp-as-out{border-inline-start:3px solid var(--accent);padding-inline-start:8px;white-space:pre-wrap;margin:8px 0}
-.mp-as-lbl{font-size:12px;color:var(--muted)}.mp-as-sug{display:block;width:100%;text-align:start;margin:6px 0}.mp-as-src{display:block;font-size:13px;color:inherit;margin:4px 0}.mp-as-cite{font-size:11px;color:var(--accent);margin-inline-start:4px}
+  st.textContent = `.mp-asb{border:1px solid var(--line);background:var(--card,transparent);color:var(--accent);font:inherit;font-size:var(--fs-sm);border-radius:999px;padding:4px 10px;cursor:pointer;margin-block:6px;flex:none}
+.mp-as-acts{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.mp-as-acts .btn{font-size:var(--fs-sm);padding:6px 10px}.mp-as-out{border-inline-start:3px solid var(--accent);padding-inline-start:8px;white-space:pre-wrap;margin:8px 0}
+.mp-as-lbl{font-size:var(--fs-xs);color:var(--muted)}.mp-as-sug{display:block;width:100%;text-align:start;margin:6px 0}.mp-as-src{display:block;font-size:var(--fs-sm);color:inherit;margin:4px 0}.mp-as-cite{font-size:11px;color:var(--accent);margin-inline-start:4px}
 .mp-as-why li{margin:4px 0}.mp-as-row{display:flex;gap:6px;margin-top:8px}.mp-as-row input{flex:1}`;
   document.head.appendChild(st);
 
