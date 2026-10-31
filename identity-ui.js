@@ -385,7 +385,7 @@
   });
   if (typeof V12 !== "undefined" && V12.admin) {
     const _admin = V12.admin;
-    V12.admin = function () { _admin.apply(this, arguments); const h = $("#view .wrap h2"); if (h && online()) h.insertAdjacentHTML("afterend", `<a href="#/trust" class="u-dflex card row">${ic("shield")}<div class="grow"><b>الثقة والنمو</b><div class="muted">التوثيق، الانتحال، قمع التسجيل، تجارب A/B</div></div><span class="muted">←</span></a>`); };
+    V12.admin = function () { _admin.apply(this, arguments); const h = $("#view .wrap h2"); if (h && online()) h.insertAdjacentHTML("afterend", `<a href="#/trust" class="u-dflex card row">${ic("shield")}<div class="grow"><b>الثقة والنمو</b><div class="muted">التوثيق، الانتحال، قمع التسجيل، تجارب A/B</div></div><span class="muted fwd" aria-hidden="true">←</span></a>`); };
   }
 
   /* ---------- routes & lifecycle ---------- */
