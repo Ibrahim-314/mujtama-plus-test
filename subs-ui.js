@@ -26,7 +26,7 @@
 .sb-tier .top{display:flex;justify-content:space-between;align-items:center;gap:8px}.sb-tier .price{font-weight:800;font-size:18px}
 .sb-ben{list-style:none;padding:0;margin:8px 0;display:flex;flex-wrap:wrap;gap:6px}.sb-ben li{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-xs);font-weight:600;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink)}
 .sb-tier .btn{width:100%;min-height:48px;margin-top:8px}.sb-hero .sbadge{margin-inline-start:6px}
-.sb-msgs{list-style:none;padding:0;margin:0}.sb-msgs li{padding:10px 12px;border-bottom:1px solid var(--line,#eee)}.sb-msgs .who{font-weight:700}.sb-msgs .bd{font-size:12px;margin-inline-start:6px}
+.sb-msgs{list-style:none;padding:0;margin:0}.sb-msgs li{padding:10px 12px;border-bottom:1px solid var(--line,#eee)}.sb-msgs .who{font-weight:700}.sb-msgs .bd{font-size:var(--fs-xs);margin-inline-start:6px}
 .sb-form{display:flex;gap:8px;margin-top:10px}.sb-form textarea{flex:1;min-height:48px}.sb-form .btn{min-width:90px}
 .sb-list{list-style:none;padding:0;margin:0}.sb-list li{display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid var(--line,#eee)}.sb-list .g{flex:1;min-width:0}
 .sb-ed label{display:flex;gap:8px;align-items:center;min-height:40px}.sb-ed input[type=text],.sb-ed input[type=number]{width:100%;min-height:44px;box-sizing:border-box}
