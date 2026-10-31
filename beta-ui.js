@@ -29,7 +29,7 @@
 .bt-kinds{display:flex;gap:6px}.bt-kinds label{flex:1;margin:0;text-align:center;padding:10px;border:1px solid var(--line,#ddd);border-radius:12px;cursor:pointer}.bt-kinds input{position:absolute;opacity:0}.bt-kinds label:has(input:checked){border-color:var(--brand,#5b2bd9);font-weight:700}
 .bt-scale{display:flex;gap:4px;flex-wrap:wrap}.bt-scale button{min-width:40px;min-height:44px}.bt-note{padding:10px 12px;border-radius:12px;background:#8881;font-size:14px;margin:8px 0}
 .bt-chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0}.bt-chips a{white-space:nowrap;min-height:40px}.bt-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}.bt-kpi div{padding:12px;border-radius:14px;background:#8881}.bt-kpi b{display:block;font-size:22px}
-.bt-card{padding:12px;margin-bottom:10px}.bt-st{font-size:12px;padding:2px 8px;border-radius:999px;background:#8882}.bt-code{font-family:ui-monospace,monospace;direction:ltr;user-select:all;padding:4px 8px;border-radius:8px;background:#8882}
+.bt-card{padding:12px;margin-bottom:10px}.bt-st{font-size:var(--fs-xs);padding:2px 8px;border-radius:999px;background:#8882}.bt-code{font-family:ui-monospace,monospace;direction:ltr;user-select:all;padding:4px 8px;border-radius:8px;background:#8882}
 .bt-badge{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);margin-inline-start:6px;white-space:nowrap}.bt-badge .ic{width:14px;height:14px}
 .bt-t{width:100%;border-collapse:collapse;font-size:14px}.bt-t th,.bt-t td{padding:8px 6px;border-bottom:1px solid var(--line,#eee);text-align:start;vertical-align:top}
 </style>`);
