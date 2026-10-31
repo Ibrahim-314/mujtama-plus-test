@@ -26,11 +26,11 @@
   let CFG = null;
   const cfg = async () => (CFG ||= await api("GET", "/api/digital/config"));
   if (!document.getElementById("dg-css")) document.head.insertAdjacentHTML("beforeend", `<style id="dg-css">
-.dg-page{max-width:720px;margin:auto}.dg-page section .empty{padding:24px 16px}.dg-page section .empty::before{width:72px;height:58px;margin-bottom:8px}.dg-it{padding:12px;margin-bottom:10px}.dg-sp{justify-content:space-between}.dg-sm{font-size:13px}.dg-page h2:focus{outline:none}.dg-bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.dg-bar .btn,.dg-bar a.btn{min-height:44px}
+.dg-page{max-width:720px;margin:auto}.dg-page section .empty{padding:24px 16px}.dg-page section .empty::before{width:72px;height:58px;margin-bottom:8px}.dg-it{padding:12px;margin-bottom:10px}.dg-sp{justify-content:space-between}.dg-sm{font-size:var(--fs-sm)}.dg-page h2:focus{outline:none}.dg-bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.dg-bar .btn,.dg-bar a.btn{min-height:44px}
 
 .dg-card .im{aspect-ratio:4/3;background:var(--surface-sunken) center/cover no-repeat}.dg-card .b{padding:10px 12px;display:grid;gap:2px}.dg-card .p{font-weight:700;color:var(--accent-ink)}.dg-card .t{font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dg-hero{border-radius:16px;aspect-ratio:16/9;background:#8881 center/cover no-repeat;margin-bottom:10px}.dg-files{list-style:none;padding:0;margin:8px 0}.dg-files li{display:flex;gap:8px;align-items:center;padding:10px;border-bottom:1px solid var(--line,#eee)}.dg-files .g{flex:1;min-width:0;word-break:break-word}
-.dg-note{padding:10px 12px;border-radius:12px;background:#8881;font-size:14px;margin:8px 0}.dg-buy{width:100%;min-height:52px;font-size:17px}.dg-key{font-family:ui-monospace,monospace;direction:ltr;user-select:all;padding:4px 8px;border-radius:8px;background:#8882}
+.dg-note{padding:10px 12px;border-radius:12px;background:#8881;font-size:14px;margin:8px 0}.dg-buy{width:100%;min-height:52px;font-size:var(--fs-lg)}.dg-key{font-family:ui-monospace,monospace;direction:ltr;user-select:all;padding:4px 8px;border-radius:8px;background:#8882}
 .dg-f label{display:block;margin-top:10px}.dg-f input:not([type=checkbox]),.dg-f select,.dg-f textarea{width:100%;min-height:44px;box-sizing:border-box}.dg-f textarea{min-height:90px}
 .dg-t{width:100%;border-collapse:collapse;font-size:14px}.dg-t th,.dg-t td{padding:8px 6px;border-bottom:1px solid var(--line,#eee);text-align:start}
 </style>`);
