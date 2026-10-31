@@ -17,12 +17,12 @@ body.shorts-mode .short.cl-scrub-on { -webkit-touch-callout: none; -webkit-user-
 .cl-scrub-tip { position: absolute; inset-block-end: 30px; left: clamp(68px, calc(var(--cl-p) * 100%), calc(100% - 68px)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
 .cl-scrub-tip[hidden], .cl-scrub-thumb[hidden], .cl-scrub-pill[hidden] { display: none; }
 .cl-scrub-thumb { display: block; width: var(--cl-w, 128px); height: var(--cl-h, 72px); border-radius: 10px; border: 2px solid white; background: black no-repeat; box-shadow: 0 4px 16px rgb(0 0 0 / .5); }
-.cl-scrub-time { padding: 3px 10px; border-radius: 99px; background: rgb(0 0 0 / .7); color: white; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; }
+.cl-scrub-time { padding: 3px 10px; border-radius: 99px; background: rgb(0 0 0 / .7); color: white; font-size: var(--fs-sm); font-weight: 700; font-variant-numeric: tabular-nums; direction: ltr; }
 .cl-scrub-icon { position: absolute; inset: 0; margin: auto; width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; background: rgb(0 0 0 / .45); color: white; opacity: 0; transform: scale(.7); pointer-events: none; z-index: 4; }
 .cl-scrub-icon .ic { width: 38px; height: 38px; }
 .cl-scrub-icon.on { animation: cl-scrub-pop .65s ease-out forwards; }
 @keyframes cl-scrub-pop { 0% { opacity: 0; transform: scale(.7); } 25% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
-.cl-scrub-pill { position: absolute; inset-block-start: calc(env(safe-area-inset-top) + 16px); inset-inline: 0; margin: 0 auto; width: max-content; padding: 4px 12px; border-radius: 99px; background: rgb(0 0 0 / .6); color: white; font-size: 13px; font-weight: 800; direction: ltr; pointer-events: none; z-index: 4; }
+.cl-scrub-pill { position: absolute; inset-block-start: calc(env(safe-area-inset-top) + 16px); inset-inline: 0; margin: 0 auto; width: max-content; padding: 4px 12px; border-radius: 99px; background: rgb(0 0 0 / .6); color: white; font-size: var(--fs-sm); font-weight: 800; direction: ltr; pointer-events: none; z-index: 4; }
 @keyframes cl-scrub-fade { 0%, 70% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
   .cl-scrub-track, .cl-scrub-knob { transition: none; }
