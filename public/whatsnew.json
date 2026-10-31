@@ -1,5 +1,28 @@
 [
   {
+ "v": "2.145.0",
+ "date": "2026-10-31",
+ "quiet": true,
+ "ar": {
+  "title": "رئيسية أخف من أول نظرة",
+  "items": [
+   "الشريط العلوي في الرئيسية أنحف، ويختفي عند النزول ويرجع عند الصعود",
+   "أزرار النشر صارت صفاً واحداً من الأيقونات: صورة، فيديو، مقطع صوتي، استطلاع، سلسلة، مقال، و«ساعدني في الكتابة»",
+   "إذا ما فيه قصص من غيرك، تضيف قصتك من علامة + على صورتك في خانة النشر",
+   "تحديات أسبوعك الأول صارت شريطاً صغيراً تفتحه بلمسة"
+  ]
+ },
+ "en": {
+  "title": "A lighter Home at first glance",
+  "items": [
+   "The Home top bar is slimmer and slides away as you scroll down, back as you scroll up",
+   "Posting shortcuts are now one row of icons: photo, video, audio clip, poll, thread, article and «Help me write»",
+   "When nobody else has a story, add yours from the + on your picture in the composer",
+   "Your first-week challenges are now a small bar you open with one tap"
+  ]
+ }
+},
+  {
  "v": "2.144.0",
  "date": "2026-10-31",
  "quiet": true,
