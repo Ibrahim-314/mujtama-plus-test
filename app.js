@@ -220,14 +220,14 @@ const Views = {
       if (i === 5 && sugComm) html += `<div class="card discover"><div class="muted">مجتمع مقترح لك</div><div class="u-mt8 row"><div class="av" style="background:${sugComm.color}"><svg class=ei aria-hidden=true><use href=#i-users /></svg></div><a href="#/c/${sugComm.id}" class="grow"><b>${esc(sugComm.name)}</b><div class="muted">${esc(sugComm.desc)}</div></a><button class="btn" data-join="${sugComm.id}">انضم</button></div></div>`;
       if (i === 8 && sugUser) html += `<div class="card discover"><div class="muted">شخص قد يهمك</div><div class="u-mt8 row">${av(sugUser)}<a href="#/u/${sugUser.handle}" class="grow"><b>${esc(sugUser.name)}</b><div class="muted">${esc(sugUser.bio)}</div></a><button class="btn" data-follow="${sugUser.id}">تابع</button></div></div>`;
     });
-    if (list.length > feedLimit) html += `<div class="skel" id="more-sentinel"></div>`;
+    if (list.length > feedLimit) html += `<div id="more-sentinel" aria-hidden="true"></div>`; // v2.145.1: a skeleton only while the next 10 load
     else if (shown.length) html += `<div class="empty">وصلت للنهاية <a href="#/explore" class="u-c-ac">استكشف المزيد</a></div>`;
     view.innerHTML = html + "</div>";
     $("#cbar").onclick = () => openComposer();
     $("#hcomp").onclick = (e) => { const q = e.target.closest("[data-q]"); if (q) homeCompose(q.dataset.q); else if (!e.target.closest("button")) openComposer(); };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
     const sen = $("#more-sentinel");
-    if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); setTimeout(() => { feedLimit += 10; const y = scrollY; rerender(); scrollTo(0, y); }, 400); } }).observe(sen);
+    if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); sen.classList.add("skel"); setTimeout(() => { feedLimit += 10; const y = scrollY; rerender(); scrollTo(0, y); }, 400); } }).observe(sen);
   },
 
   post(id) {
