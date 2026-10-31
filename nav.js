@@ -74,7 +74,7 @@
   acts?.insertAdjacentHTML("beforeend", `<a href="#/me" class="icon-btn tb-me" id="tbMe" aria-label="${LBL.me}" title="${LBL.me}"><span class="tb-av" aria-hidden="true"></span></a>`);
   const mt = nav.querySelector('a[data-r="menu"]');
   if (mt) {
-    mt.insertAdjacentHTML("beforebegin", `<a href="#/messages" class="side-only" data-side="messages" aria-label="${LBL.messages}"><span>${ic("mail", "ic-off")}${ic("mail", "ic-on")}<i class="badge" id="msgBadgeSide"></i></span><small class="side-label">${LBL.messages}</small></a>` +
+    mt.insertAdjacentHTML("beforebegin", `<a href="#/messages" class="side-only" data-side="messages" aria-label="${LBL.messages}"><span>${ic("mail", "ic-off")}${ic("mail", "ic-on")}<i class="badge" id="msgBadgeSide" aria-hidden="true"></i></span><small class="side-label">${LBL.messages}</small></a>` +
       `<a href="#/me" class="side-only" data-side="me" aria-label="${LBL.me}"><span>${ic("user", "ic-off")}${ic("userF", "ic-on")}</span><small class="side-label">حسابي</small></a>`);
   }
   const back = $("#tbBack"), title = $("#tbTitle"), me = $("#tbMe");
