@@ -3472,5 +3472,10 @@
 /* v2.145 home H2 «أول 5 ثواني» */
 "ساعدني في الكتابة": "Help me write",
 "قصتك": "Your story",
-"التالي:": "Next:"
+"التالي:": "Next:",
+/* v2.145.2 launch (tickets) in-place refresh */
+"التذكرة مغلقة.": "This ticket is closed.",
+"افتح تذكرة جديدة": "Open a new ticket",
+"مهمة": "High",
+"تم الإرسال ✓": "Sent ✓"
 });
