@@ -1,4 +1,4 @@
-/* global route */
+/* global route, rerender */
 /* Track 7 — Phase 34 in a real browser: «بياناتي وخصوصيتي» (consent switch, request form, schedule + cancel account
  * deletion), the reporter's report timeline, the account decision log with an inline appeal opened from the
  * notification link (?appeal=…), the in-app policy reader and transparency report, the admin compliance console
@@ -108,13 +108,27 @@ test("report timeline for the reporter, then account decision log with inline ap
   await call(ADM, "POST", `/api/admin/reports/${rep.id}`, { action: "remove" });
   await open(U, "#/my-reports");
   assert.match(await U.textContent("#cmp-body"), /اتخذنا إجراءً/);
+  // v2.145.2 regression: a background refresh of the same screen (sync.js re-render, e.g. the «we acted on your report»
+  // notification) never flashes the body back to the skeleton — the fresh answer replaces it in place (slowed so the old gap is certain)
+  const slow = async (r) => { await new Promise((x) => setTimeout(x, 700)); await r.continue(); };
+  await U.route("**/api/me/reports", slow);
+  try {
+    await U.evaluate(() => { window.__cmpSkel = 0; new MutationObserver(() => { if (document.querySelector("#cmp-body .skel")) window.__cmpSkel++; }).observe(document.getElementById("view"), { childList: true, subtree: true }); });
+    const fresh = U.waitForResponse((r) => r.url().endsWith("/api/me/reports"));
+    await U.evaluate(() => rerender());
+    await fresh; await U.waitForTimeout(150);
+    assert.equal(await U.evaluate(() => window.__cmpSkel), 0, "no skeleton flash on a background re-render");
+    assert.match(await U.textContent("#cmp-body"), /اتخذنا إجراءً/);
+  } finally { await U.unroute("**/api/me/reports", slow); }
   // a decision on Noor's own post
   const pu = (await call(U, "POST", "/api/posts", { text: "منشور لنور سيُزال" })).post;
   const r2 = await call(ADM, "POST", "/api/reports", { target: pu.id, kind: "post", reason: "مخالفة للإرشادات" });
   await call(ADM, "POST", `/api/admin/reports/${r2.id}`, { action: "remove" });
   const dec = (await call(U, "GET", "/api/me/account-log")).items.find(i => i.source === "platform");
   await open(U, "#/account-log?appeal=" + dec.id);
-  await U.waitForTimeout(1200); // the realtime «removed» notification re-renders the route once
+  // the ?appeal link opens that decision with its appeal box focused (wait on the app state itself, not a fixed delay; a realtime
+  // re-render while the box has focus is held by sync.js and since v2.145.2 never repaints the body)
+  await until(U, (id) => document.activeElement?.id === "apt-" + id, dec.id);
   assert.equal(await U.evaluate(() => document.activeElement?.tagName), "TEXTAREA", "the appeal box is focused");
   await U.fill(`#apt-${dec.id}`, "كان المنشور نقاشاً مشروعاً");
   await U.click(`[data-cmp-appeal="${dec.id}"]`);
