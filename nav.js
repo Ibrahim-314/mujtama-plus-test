@@ -150,9 +150,13 @@
      * Arabic until the translator's next frame. Translate it now, in the same task, so it is never shown untranslated. */
     if (title.dataset.src !== t || (t && !title.firstChild)) { title.textContent = t; title.dataset.src = t; tr(title); }
     const hd = t ? headingOf() : null;
-    if (hd === watched && (!hd || hd.isConnected)) return;
+    /* v2.145.2: while a lazy screen is still loading (the chunk placeholder, aria-busy), its heading is not there yet — keep the
+     * bar title hidden instead of showing it for the ~250 ms until the next paint finds the heading (it flashed on every first
+     * visit, then hid again). A screen that really has no heading still shows it as soon as its content arrives. */
+    const busy = !hd && !!t && !!view.querySelector(':scope > [aria-busy="true"]');
+    if (hd === watched && (!hd || hd.isConnected) && !busy && (hd || bar.classList.contains("titled") === !!t)) return;
     if (titleObs) titleObs.disconnect(); watched = hd;
-    if (!hd || !("IntersectionObserver" in window)) { bar.classList.toggle("titled", !!t); return; }
+    if (!hd || !("IntersectionObserver" in window)) { bar.classList.toggle("titled", !!t && !busy); return; }
     bar.classList.remove("titled");
     titleObs = new IntersectionObserver((en) => { const x = en[en.length - 1]; if (!x.target.isConnected) return; bar.classList.toggle("titled", !x.isIntersecting && x.boundingClientRect.top < 80); }, { rootMargin: "-60px 0px 0px 0px" });
     titleObs.observe(hd);
