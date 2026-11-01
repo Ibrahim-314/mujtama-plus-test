@@ -249,7 +249,7 @@
   const snapTo = (el, b) => { const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     el.style.left = (cx < (b.l + b.r) / 2 ? b.l : b.r - r.width) + "px"; el.style.top = (cy < (b.t + b.b) / 2 ? b.t : b.b - r.height) + "px";
     try { sessionStorage.setItem("mp-cl-mini", JSON.stringify({ x: cx < (b.l + b.r) / 2 ? 0 : 1, y: cy < (b.t + b.b) / 2 ? 0 : 1 })); } catch { } };
-  function miniBounds() { const nav = document.querySelector(".bottomnav"), navH = nav && getComputedStyle(nav).display !== "none" && innerWidth < 760 ? nav.offsetHeight + 16 : 0; const top = document.querySelector(".topbar"); return { l: 12, r: innerWidth - 12, t: (top?.offsetHeight || 58) + 10, b: innerHeight - 12 - navH }; }
+  function miniBounds() { const nav = document.querySelector(".bottomnav"), navH = nav && getComputedStyle(nav).display !== "none" && innerWidth < 760 ? nav.offsetHeight + 16 : 0; const top = document.querySelector(".topbar"); return { l: 12, r: innerWidth - 12, t: (top && top.offsetHeight ? top.offsetHeight + (parseFloat(getComputedStyle(top).translate.split(" ")[1]) || 0) : 58) + 10, b: innerHeight - 12 - navH }; }
   function dragMini(el) {
     try { const s = JSON.parse(sessionStorage.getItem("mp-cl-mini") || "null"); if (s) requestAnimationFrame(() => { const b = miniBounds(); el.style.left = (s.x ? b.r - el.offsetWidth : b.l) + "px"; el.style.top = (s.y ? b.b - el.offsetHeight : b.t) + "px"; }); } catch { }
     draggable(el, { onTap: expand, bounds: miniBounds, snap: () => snapTo(el, miniBounds()) });
