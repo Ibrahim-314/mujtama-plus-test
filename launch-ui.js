@@ -17,6 +17,9 @@
   const say = (m) => (typeof toast === "function" ? toast(m) : null);
   const $v = (s) => view.querySelector(s) || document.createElement("div"); // a view re-rendered mid-await writes into a detached stub instead of throwing
   const back = (href, label) => [href, label];
+  /* v2.145.2: a screen whose request finishes after the member has already gone to another screen must not paint over it
+   * (a staff reply/status/approve, then a link → the old screen came back on top of the new one) */
+  const here = (at) => location.hash === at;
   const page = (title, body, b) => { view.innerHTML = `<div class="wrap lc-page">${UI.pageHead({ back: b, title, icon: { "مركز المساعدة": "help", "تذاكر الدعم": "ticket", "تذكرة دعم جديدة": "ticket", "سفراء المجتمع": "medal", "طلبات السفراء": "medal", "قائمة الانتظار": "hourglass", "طابور الدعم": "headset", "مقالات مركز المساعدة": "book", "الإطلاق التدريجي": "trendUp" }[title], id: "lc-h" })}${body}</div>`; const t = $v("#lc-h"); if (t) t.focus({ preventScroll: true }); };
   const skel = '<div class="skel"></div><div class="skel"></div>';
   const errBox = (e) => `<div class="empty" role="alert">${h(e?.message || "تعذر الاتصال بالخادم")}</div>`;
@@ -128,9 +131,14 @@
     });
   }
   async function threadView(idv, staffMode) {
-    page("…", `<div id="lc-th">${skel}</div>`, back(staffMode ? "#/staff/tickets" : "#/tickets", staffMode ? "طابور الدعم" : "تذاكري"));
-    let r; try { r = await api("GET", "/api/tickets/" + enc(idv)); } catch (e) { $v("#lc-th").innerHTML = errBox(e); return; }
-    const c = await config(), st = !!c.staff, t = r.ticket, att = [];
+    /* v2.145.2: a background refresh (sync.js re-render, window.__softRender — e.g. the «reply received» notification) of the SAME
+     * ticket no longer repaints the header + skeleton first: the thread stays on screen and is updated in place when the fresh copy
+     * arrives (before, the screen flashed back to «…» + skeleton ~300 ms after it had shown the reply) */
+    const soft = window.__softRender && !!view.querySelector(`#lc-th[data-tid="${CSS.escape(String(idv))}"]`);
+    const at = location.hash;
+    if (!soft) page("…", `<div id="lc-th" data-tid="${h(idv)}">${skel}</div>`, back(staffMode ? "#/staff/tickets" : "#/tickets", staffMode ? "طابور الدعم" : "تذاكري"));
+    let r; try { r = await api("GET", "/api/tickets/" + enc(idv)); } catch (e) { if (!soft) $v("#lc-th").innerHTML = errBox(e); return; } // a failed background refresh keeps the thread shown
+    const c = await config(), st = !!c.staff, t = r.ticket, att = []; if (!here(at)) return;
     $v("#lc-h").innerHTML = `${h(t.subject)} ${badge(t.status)}${t.priority !== "normal" ? `<span class="lc-badge ${h(t.priority)}">${t.priority === "urgent" ? "عاجلة" : "مهمة"}</span>` : ""}`;
     $v("#lc-th").innerHTML = `${st && t.owner ? `<p class="muted">من <a href="#/u/${h(t.owner.handle)}">@${h(t.owner.handle)}</a> · ${h(CAT[t.category] || "")}</p>` : ""}
       ${r.messages.map((m) => `<div class="lc-msg${m.staff ? " staff" : ""}${m.internal ? " internal" : ""}"><div class="muted">${h(m.author?.name || "")}${m.internal ? " · ملاحظة داخلية" : ""} · ${h(day(m.createdAt))}</div><div class="lc-body">${h(m.body)}</div>
@@ -139,7 +147,7 @@
         ${st ? `<label><input type="checkbox" id="lc-ri"> ملاحظة داخلية (لا يراها المستخدم)</label>` : ""}<div class="lc-row"><button class="btn" id="lc-rs">إرسال</button>
         ${st ? `<select id="lc-ss" aria-label="الحالة">${Object.entries(ST).map(([k, v]) => `<option value="${k}"${k === t.status ? " selected" : ""}>${v}</option>`).join("")}</select><select id="lc-sp" aria-label="الأولوية">${[["normal", "عادية"], ["high", "مهمة"], ["urgent", "عاجلة"]].map(([k, v]) => `<option value="${k}"${k === t.priority ? " selected" : ""}>${v}</option>`).join("")}</select><button type="button" class="btn ghost" id="lc-sset">حفظ الحالة</button><button type="button" class="btn ghost" id="lc-sme">إسناد إليّ</button>`
           : `<button type="button" class="btn ghost" id="lc-done">تم حل مشكلتي</button><button type="button" class="btn ghost" id="lc-close">إغلاق التذكرة</button>`}</div></form>`}`;
-    const again = () => threadView(idv, staffMode);
+    const again = () => { if (here(at)) threadView(idv, staffMode); };
     const form = view.querySelector("#lc-rf"); if (!form) return;
     bindAtt("lc-ra", att);
     form.addEventListener("submit", async (e) => { e.preventDefault(); try { await api("POST", `/api/tickets/${enc(idv)}/messages`, { body: $v("#lc-rb").value, attachments: att, internal: !!$v("#lc-ri")?.checked }); say("تم الإرسال ✓"); again(); } catch (er) { say(er.message); } });
@@ -153,9 +161,9 @@
   /* ======================= ambassadors ======================= */
   async function ambassadorsView() {
     page("سفراء المجتمع", `<p class="u-m0 u-mb10 muted">السفراء أعضاء يرحّبون بالقادمين الجدد وينشرون ثقافة الحوار المحترم. يحصل السفير على شارة ورابط دعوة خاص وإحصاءات لمن انضم عن طريقه.</p><div id="lc-am" aria-busy="true">${skel}</div>`, back("#/settings", "الإعدادات"));
-    const box = $v("#lc-am");
+    const box = $v("#lc-am"), at = location.hash, again = () => { if (here(at)) ambassadorsView(); };
     if (!online() || !DB.onboarded) { box.innerHTML = `<div class="empty">سجّل الدخول للتقديم.</div>`; return; }
-    let r; try { r = await api("GET", "/api/ambassadors/me"); } catch (e) { box.innerHTML = errBox(e); return; }
+    let r; try { r = await api("GET", "/api/ambassadors/me"); } catch (e) { box.innerHTML = errBox(e); return; } if (!here(at)) return;
     box.removeAttribute("aria-busy");
     const a = r.ambassador;
     if (a?.status === "approved") {
@@ -164,7 +172,7 @@
         <div class="lc-kpis"><div><b class="num">${s.referrals}</b>انضموا عن طريقك</div><div><b class="num">${s.last30d}</b>آخر 30 يوماً</div><div><b class="num">${s.activeLast30d}</b>نشطون (30 يوماً)</div><div><b class="num">${s.invitesUsed}/${s.invitesIssued}</b>دعوات مستخدمة</div></div>
         <div class="card"><b>رموز الدعوة</b><p class="muted">تفيد عندما يكون التسجيل بالدعوة فقط. كل رمز يصلح لـ5 أشخاص لمدة 30 يوماً.</p>${r.invites.map((i) => `<p><span class="lc-code">${h(i.code)}</span> <span class="muted">${i.uses}/${i.maxUses}${i.revoked ? " · ملغى" : ""}</span></p>`).join("")}<div class="lc-row"><button class="btn ghost" id="lc-inv">رمز دعوة جديد</button></div></div>`;
       $v("#lc-copy").addEventListener("click", () => navigator.clipboard?.writeText(link).then(() => say("تم النسخ ✓"), () => say("انسخ الرابط يدوياً")));
-      $v("#lc-inv").addEventListener("click", () => api("POST", "/api/ambassadors/me/invites").then(ambassadorsView, (er) => say(er.message)));
+      $v("#lc-inv").addEventListener("click", () => api("POST", "/api/ambassadors/me/invites").then(again, (er) => say(er.message)));
       return;
     }
     const status = a ? `<div class="card"><b>حالة طلبك: ${h(AST[a.status] || a.status)}</b>${a.note ? `<p class="muted">${h(a.note)}</p>` : ""}</div>` : "";
@@ -172,7 +180,7 @@
     box.innerHTML = `${status}<form class="card lc-form" id="lc-af"><label for="lc-am1">لماذا تريد أن تكون سفيراً؟</label><textarea id="lc-am1" required minlength="20" maxlength="1500"></textarea>
       <label for="lc-am2">المدينة أو المنطقة (اختياري)</label><input id="lc-am2" maxlength="80"><label for="lc-am3">روابط لحساباتك أو مجتمعاتك (https، اختياري، سطر لكل رابط)</label><textarea id="lc-am3" rows="3" class="u-mh0"></textarea>
       <div class="lc-row"><button class="btn">إرسال الطلب</button></div></form>`;
-    $v("#lc-af").addEventListener("submit", async (e) => { e.preventDefault(); try { await api("POST", "/api/ambassadors/apply", { motivation: $v("#lc-am1").value, region: $v("#lc-am2").value || undefined, links: $v("#lc-am3").value.split(/\s+/).filter(Boolean) }); say("تم إرسال طلبك ✓"); ambassadorsView(); } catch (er) { say(er.message); } });
+    $v("#lc-af").addEventListener("submit", async (e) => { e.preventDefault(); try { await api("POST", "/api/ambassadors/apply", { motivation: $v("#lc-am1").value, region: $v("#lc-am2").value || undefined, links: $v("#lc-am3").value.split(/\s+/).filter(Boolean) }); say("تم إرسال طلبك ✓"); again(); } catch (er) { say(er.message); } });
   }
   let ambSet = null;
   const ambassadors = () => (ambSet ||= (online() ? api("GET", "/api/ambassadors").then((r) => new Set(r.items.map((x) => x.handle))) : Promise.resolve(new Set())).catch(() => new Set()));
@@ -229,9 +237,10 @@
   }
   async function staffHelp(editId) {
     page("مقالات مركز المساعدة", tabs("help") + `<div id="lc-se">${skel}</div>`, back("#/admin", "الإدارة"));
+    const at = location.hash;
     let r; try { r = await api("GET", "/api/helpcenter/articles?all=1"); } catch (e) { $v("#lc-se").innerHTML = errBox(e); return; }
     const cur = r.items.find((x) => x.id === editId);
-    const full = cur ? (await api("GET", "/api/helpcenter/articles/" + enc(cur.slug))).article : null;
+    const full = cur ? (await api("GET", "/api/helpcenter/articles/" + enc(cur.slug))).article : null; if (!here(at)) return;
     $v("#lc-se").innerHTML = `<form class="card lc-form" id="lc-ef"><b>${full ? "تعديل: " + h(full.title) : "مقالة أو سؤال جديد"}</b>
       <label for="lc-e1">العنوان</label><input id="lc-e1" required maxlength="160" value="${h(full?.title)}"><label for="lc-e2">الملخص (للمقالات)</label><input id="lc-e2" maxlength="300" value="${h(full?.summary)}">
       <label for="lc-e3">المحتوى</label><textarea id="lc-e3" required maxlength="20000">${h(full?.body)}</textarea>
@@ -249,17 +258,17 @@
     $v("#lc-edel")?.addEventListener("click", async () => { if (!confirm("حذف هذه المقالة نهائياً؟")) return; try { await api("DELETE", "/api/admin/helpcenter/articles/" + enc(full.id)); location.hash = "#/staff/help"; } catch (er) { say(er.message); } });
   }
   async function staffAmb() {
-    const st = view._lcA ||= "pending";
+    const st = view._lcA ||= "pending", at = location.hash;
     page("طلبات السفراء", tabs("ambassadors") + `<div class="lc-chips">${Object.entries(AST).map(([k, v]) => `<button class="btn ghost" data-as="${k}" aria-pressed="${st === k}">${v}</button>`).join("")}</div><div id="lc-al">${skel}</div>`, back("#/admin", "الإدارة"));
     view.querySelectorAll("[data-as]").forEach((x) => x.addEventListener("click", () => { view._lcA = x.dataset.as; staffAmb(); }));
     try {
-      const r = await api("GET", "/api/admin/ambassadors?status=" + st);
+      const r = await api("GET", "/api/admin/ambassadors?status=" + st); if (!here(at)) return;
       $v("#lc-al").innerHTML = r.items.map((a) => `<div class="card"><b><a href="#/u/${h(a.handle)}">${h(a.name)} @${h(a.handle)}</a></b><p class="lc-body">${h(a.motivation)}</p><p class="muted">${h(a.region || "")} ${a.links.map((l) => `<a href="${h(l)}" target="_blank" rel="noopener nofollow">${h(l)}</a>`).join(" ")}</p>
         ${a.stats ? `<p class="muted">إحالات: ${a.stats.referrals} · نشطون: ${a.stats.activeLast30d} · دعوات: ${a.stats.invitesUsed}/${a.stats.invitesIssued}</p>` : ""}
         <div class="lc-row">${st === "pending" ? `<button class="btn" data-dec="approve" data-u="${h(a.userId)}">قبول</button><button class="btn ghost" data-dec="reject" data-u="${h(a.userId)}">رفض</button>` : st === "approved" ? `<button class="btn ghost" data-dec="revoke" data-u="${h(a.userId)}">إلغاء العضوية</button>` : ""}</div></div>`).join("") || `<div class="empty">لا طلبات.</div>`;
       view.querySelectorAll("[data-dec]").forEach((x) => x.addEventListener("click", async () => {
         const note = x.dataset.dec === "approve" ? undefined : prompt("سبب القرار (يُرسل لصاحب الطلب):"); if (note === null) return;
-        try { await api("POST", `/api/admin/ambassadors/${enc(x.dataset.u)}/review`, { decision: x.dataset.dec, note }); say("تم ✓"); staffAmb(); } catch (er) { say(er.message); }
+        try { await api("POST", `/api/admin/ambassadors/${enc(x.dataset.u)}/review`, { decision: x.dataset.dec, note }); say("تم ✓"); if (here(at)) staffAmb(); } catch (er) { say(er.message); }
       }));
     } catch (e) { $v("#lc-al").innerHTML = errBox(e); }
   }
