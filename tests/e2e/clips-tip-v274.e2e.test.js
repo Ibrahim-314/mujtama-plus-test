@@ -94,7 +94,15 @@ const balOf = async uid => {
 };
 
 test("390 light RTL viewer: tip in place, limits, anonymous, ledger once, history, axe", async () => {
-  const cc = await S.browser.newContext({ ...MOBILE, timezoneId: "Asia/Riyadh" });
+  /* v2.145.2: the creator and the viewer are two different people on two different phones. Before, both contexts were the
+   * same simulated phone (same user agent, traits and network), which the integrity layer rightly links as one device — a tip
+   * between linked accounts is refused (403 linked_accounts, since v2.74). The test only passed when the tip beat the device
+   * report that the app sends ~1.5–3 s after sign-in, so it failed under load. */
+  const cc = await S.browser.newContext({
+    ...MOBILE,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    timezoneId: "Asia/Riyadh"
+  });
   const cp = await cc.newPage();
   await onboard(cp, S.base, "tip_creator", "صانعة اللقطات");
   creator = await meOf(cp);
@@ -113,6 +121,11 @@ test("390 light RTL viewer: tip in place, limits, anonymous, ledger once, histor
   );
   await p.reload();
   await p.waitForSelector(".bottomnav a[data-r=home]");
+  // v2.145.2: both accounts report their device signal now (the app does it ~1.5–3 s after sign-in) so the result never depends on timing
+  for (const pg of [cp, p]) {
+    await pg.waitForFunction(() => !!window.MPIntegrity, null, { timeout: 20000 });
+    assert.ok(await pg.evaluate(() => window.MPIntegrity.reportDevice(true).then((r) => !!r)), "device signal recorded");
+  }
   await openClip(p, "cliptip_0");
   await p.click(R("cliptip_0", "tip"));
   await p.waitForSelector('.cl-tip[role="dialog"]');
