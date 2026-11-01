@@ -34,7 +34,11 @@ test.before(async () => {
   kctx = await S.browser.newContext({ ...MOBILE, reducedMotion: "reduce" });
   const [n, ...v] = learnerCk.split("="); await kctx.addCookies([{ name: n, value: v.join("="), url: S.base }]);
   k = await kctx.newPage(); k.on("pageerror", (e) => errors.push("learner: " + e.message));
-  await k.goto(S.base + "/?nosw#/home"); await k.waitForTimeout(800); await k.evaluate(() => { try { DB.onboarded = true; save?.(); } catch { } });
+  // finish onboarding the way the app does (#n3: DB.onboarded = true; save()) once the app is signed in and hydrated, and wait until
+  // the server has it — a later background refresh re-reads it from the server (was a fixed 800 ms sleep)
+  await k.goto(S.base + "/?nosw#/home"); await until(k, () => typeof Remote !== "undefined" && !!Remote.snap && !!DB.me, null, 30000);
+  const ob = k.waitForResponse((r) => r.request().method() === "PUT" && r.url().endsWith("/api/me/prefs") && /"onboarded":true/.test(r.request().postData() || ""));
+  await k.evaluate(() => { DB.onboarded = true; save(); }); assert.ok((await ob).ok(), "onboarding saved");
   await dismissTour(k); // belt and braces: close the tour if it still rendered
 });
 test.after(async () => { await kctx?.close(); await ctx?.close(); await S?.close(); });
