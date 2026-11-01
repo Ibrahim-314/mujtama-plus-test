@@ -160,6 +160,27 @@ test("collections: grid, create, private note, move between folders, share witho
   assert.ok(!/أرسلها لفريق الواجهات|أطبّق الطريقة الثانية/.test(shared), "private notes are never shared");
 });
 
+/* regression (p74 sync fix, after v2.145.2): the collections sync re-baselined the WHOLE sync diff snapshot when it landed, so a change saved in the
+ * ~60 ms before the next flush (finishing onboarding, a like, a setting) was never sent to the server. Under load the sync lands
+ * inside that window; here the flush timer is held so it deterministically does — the change must still reach the server. */
+/* global flushTimer */ // sync.js: the pending 60 ms flush (null once flushed)
+test("collections sync never swallows a change saved just before it lands (the change still reaches the server)", async () => {
+  await go("#/home", "#d-tabedit");
+  await P.evaluate(() => MPDiscovery.syncNow()); // nothing in flight
+  const probe = "p" + Date.now();
+  const r = await P.evaluate(async (v) => {
+    const st = window.setTimeout;
+    window.setTimeout = (f, ms, ...a) => st(f, ms === 60 ? 3000 : ms, ...a); // the 60 ms flush timer fires after the sync, as under load
+    try { DB.settings = { ...DB.settings, e2eProbe: v }; save(); } finally { window.setTimeout = st; }
+    await MPDiscovery.syncNow();
+    return { flushPending: flushTimer !== null, local: DB.settings.e2eProbe };
+  }, probe);
+  assert.deepEqual(r, { flushPending: true, local: probe }, "the sync landed while the change was still waiting to be flushed");
+  const server = async () => (await call("GET", "/api/bootstrap")).prefs?.settings?.e2eProbe;
+  const end = Date.now() + 10000; let got; while (Date.now() < end && (got = await server()) !== probe) await P.waitForTimeout(200);
+  assert.equal(got, probe, "the setting saved before the sync landed reached the server");
+});
+
 test("thread summary: card on top of a long discussion, labelled AI-generated, citations jump to the source", async () => {
   await go("#/post/" + W.discussion, ".d-sum .d-points");
   const box = ".d-sum";
