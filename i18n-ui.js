@@ -43,7 +43,7 @@
     let i = 0;
     return v.replace(/\{n\}/g, () => nums[i++] ?? "").replace(/\{p:([^|}]*)\|([^}]*)\}/g, (_, one, other) => (n0 === 1 ? one : other));
   }
-  /* templated keys: «اكتب في {name}…» keeps the user-supplied {name} as is; {t} must itself be a UI string (a relative time, a
+  /* templated keys: «اكتب في {name}…» keeps the user-supplied {name} as is (unless it is an exact catalogue string, e.g. «صفحة تقارير الشفافية»); {t} must itself be a UI string (a relative time, a
    * date) or carry no Arabic, so «انضم {t}» never turns unrelated text into «Joined …». Compiled once per catalogue size. */
   const tplCache = {};
   const reEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -68,7 +68,7 @@
       T.vars.forEach((name, i) => {
         const x = m[i + 1];
         if (name === "{n}") nums.push(x);
-        else { const tr = name === "{t}" ? (CAT[L]?.[x] != null || over[L]?.[x] != null || /[0-9٠-٩۰-۹]/.test(x) ? lookup(x, L) : null) : null; if (name === "{t}" && tr == null && AR.test(x)) ok = false; (vals[name] ||= []).push(tr ?? x); }
+        else { const tr = name === "{t}" ? (CAT[L]?.[x] != null || over[L]?.[x] != null || /[0-9٠-٩۰-۹]/.test(x) ? lookup(x, L) : null) : (over[L]?.[x] ?? CAT[L]?.[x] ?? null) /* a {name} that is itself an exact UI string (a page title) is translated too */; if (name === "{t}" && tr == null && AR.test(x)) ok = false; (vals[name] ||= []).push(tr ?? x); }
       });
       if (!ok) continue;
       const used = {}; const v = T.v.replace(/\{(name|t)\}/g, (_, nm) => { const a = vals["{" + nm + "}"] || []; const i = (used[nm] = (used[nm] ?? -1) + 1); return a[i] ?? ""; });
