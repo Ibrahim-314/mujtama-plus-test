@@ -1,5 +1,26 @@
 [
   {
+ "v": "2.145.2",
+ "date": "2026-11-01",
+ "quiet": true,
+ "ar": {
+  "title": "تحسينات في الثبات",
+  "items": [
+   "التنقل بين الصفحات أنعم بدون قفزة في الشاشة",
+   "شاشات الدعم والإرشاد والخصوصية ما عادت ترمش عند التحديث في الخلفية",
+   "زر «سأحضر» يتغير لونه ونصه معاً بوضوح"
+  ]
+ },
+ "en": {
+  "title": "Stability improvements",
+  "items": [
+   "Moving between pages is smoother with no screen jump",
+   "Help, mentoring and privacy screens no longer flicker on background refresh",
+   "The «Going» button changes colour and text together"
+  ]
+ }
+},
+  {
  "v": "2.145.1",
  "date": "2026-10-31",
  "quiet": true,
