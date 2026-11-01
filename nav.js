@@ -71,7 +71,9 @@
     window.MPChunks?.load("i18n").then(() => window.MPI18n && MPI18n.setLang(MPI18n.current() === "en" ? "ar" : "en")).catch(() => { });
   }, true);
   if (acts && !acts.querySelector("#tbHelp")) acts.insertAdjacentHTML("afterbegin", `<button type="button" class="icon-btn hp-slot" id="tbHelp" tabindex="-1" aria-hidden="true" data-noi18n><span class="hp-q" aria-hidden="true">؟</span></button>`);
-  acts?.insertAdjacentHTML("beforeend", `<a href="#/me" class="icon-btn tb-me" id="tbMe" aria-label="${LBL.me}" title="${LBL.me}"><span class="tb-av" aria-hidden="true"></span></a>`);
+  /* v2.145.4 CLS fix: #tbMe ships in index.html (invisible slot, reserved only on a device signed in last time — html.mp-me), so the
+   * bar icons no longer jump 46 px when nav.js runs after the first paint; an old cached shell without it still gets one here */
+  if (acts && !acts.querySelector("#tbMe")) acts.insertAdjacentHTML("beforeend", `<a href="#/me" class="icon-btn tb-me tb-pending" id="tbMe" aria-label="${LBL.me}" title="${LBL.me}"><span class="tb-av" aria-hidden="true"></span></a>`);
   const mt = nav.querySelector('a[data-r="menu"]');
   if (mt) {
     mt.insertAdjacentHTML("beforebegin", `<a href="#/messages" class="side-only" data-side="messages" aria-label="${LBL.messages}"><span>${ic("mail", "ic-off")}${ic("mail", "ic-on")}<i class="badge" id="msgBadgeSide" aria-hidden="true"></i></span><small class="side-label">${LBL.messages}</small></a>` +
@@ -134,8 +136,8 @@
     if (!back.hidden) { const p = parentOf(); const lbl = st.s.length > 1 ? "رجوع" : "رجوع إلى " + (labelFor(p) || "الصفحة السابقة"); if (back.dataset.src !== lbl) { back.setAttribute("aria-label", lbl); back.dataset.src = lbl; tr(back); } }
     // avatar of the signed-in member
     // v2.56: a signed-out visitor has a local placeholder profile — no avatar square (it showed a lone letter in a purple tile)
-    try { const guest = window.MPSession?.state === "out", u = !guest && typeof S !== "undefined" && DB.me ? S.me() : null; const k = u ? (u.handle + "|" + (u.avatar ? (u.avatar["64"] || u.avatar["200"] || "") : "") + "|" + u.color) : "";
-      if (me && me.dataset.k !== k) { me.dataset.k = k; me.hidden = !u; const sp = me.querySelector(".tb-av"); if (u) { sp.style.background = u.color || "var(--accent)"; sp.innerHTML = typeof avSrc === "function" && avSrc(u, "sm") ? `<img src="${esc(avSrc(u, "sm"))}" alt="" decoding="async">` : esc((u.name || "?")[0]); } } } catch { /* not signed in yet */ }
+    try { const ss = window.MPSession?.state, guest = ss === "out", u = !guest && (ss === "in" || !window.MPSession) && typeof S !== "undefined" && DB.me ? S.me() : null; /* v2.145.4: a visitor's local placeholder profile no longer flashes an avatar before the session answers */ const k = u ? (u.handle + "|" + (u.avatar ? (u.avatar["64"] || u.avatar["200"] || "") : "") + "|" + u.color) : "";
+      if (me && (guest || u) && me.dataset.k !== k) { me.dataset.k = k; me.hidden = !u; me.classList.remove("tb-pending"); document.documentElement.classList.toggle("mp-me", !!u); try { if (u) localStorage.setItem("mp.me", "1"); else localStorage.removeItem("mp.me"); } catch { /* private mode */ } const sp = me.querySelector(".tb-av"); if (u) { sp.style.background = u.color || "var(--accent)"; sp.innerHTML = typeof avSrc === "function" && avSrc(u, "sm") ? `<img src="${esc(avSrc(u, "sm"))}" alt="" decoding="async">` : esc((u.name || "?")[0]); } } } catch { /* not signed in yet */ }
     me?.classList.toggle("on", r === "me" && !seg(h)[1]);
     setTitle(root ? "" : titleText());
     // a module that fills its screen deeper than the observed wrapper (e.g. a community page) — look again a few times
