@@ -139,7 +139,9 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
   if (top && !top.querySelector("svg")) top.innerHTML = `
     <a href="#/search" class="icon-btn" aria-label="بحث" title="بحث">${icon("search")}</a>
     <a href="#/messages" class="icon-btn" aria-label="الرسائل" title="الرسائل">${icon("mail")}<span class="badge" id="msgBadge" aria-hidden="true"></span></a>`;
-  const brand = $(".brand"); if (brand) brand.innerHTML = `<span class="logo" aria-hidden="true"></span><span class="brand-text">مجتمع بلس</span>`;
+  /* v2.145.4 CLS fix: index.html now ships this exact brand markup, so it is only rewritten when it differs (an old cached shell) —
+   * replacing it on every boot re-laid the wordmark ~100 ms in and shifted 🌐 and the bar icons 46 px on the first screen */
+  const brand = $(".brand"); if (brand && !brand.querySelector(".brand-text")) brand.innerHTML = `<span class="logo" aria-hidden="true"></span><span class="brand-text">مجتمع بلس</span>`;
   const NAV = { home: ["home", "homeF"], explore: ["compass", "compassF"], communities: ["users", "usersF"], notifications: ["bell", "bellF"], menu: ["menu", "menuF"], me: ["user", "userF"] };
   document.querySelectorAll(".bottomnav a").forEach(a => {
     const [off, on] = NAV[a.dataset.r] || ["home", "homeF"], badge = a.querySelector(".badge");
