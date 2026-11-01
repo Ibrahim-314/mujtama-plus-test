@@ -352,9 +352,16 @@
 
   /* =================== #/msession/:id =================== */
   async function sessionView(id) {
-    page({ title: "جلسة إرشاد", back: ["#/mentors?tab=sessions", "جلساتي"] }, `<div id="mt-s">${skel(3)}</div>`);
-    let d; try { d = await api("GET", "/api/mentor-sessions/" + enc(id)); } catch (e) { const b = $("#mt-s"); if (b) b.innerHTML = errBox(e); return; }
+    /* v2.145.2: a background refresh (sync.js re-render, window.__softRender — e.g. right after a language or settings change) of
+     * the SAME session keeps the screen as it is and updates it in place when the fresh copy arrives: the goals, agenda and resources
+     * sections are carried over and refreshed in place. Before, the screen repainted «…» + skeleton and the shared-goals card stayed
+     * empty until its own request came back (seen as a blank goals card ~1.5 s after switching language). */
+    const at = location.hash, prev = window.__softRender ? $(`#mt-s[data-sid="${CSS.escape(String(id))}"]`) : null;
+    if (!prev) page({ title: "جلسة إرشاد", back: ["#/mentors?tab=sessions", "جلساتي"] }, `<div id="mt-s" data-sid="${h(id)}">${skel(3)}</div>`);
+    let d; try { d = await api("GET", "/api/mentor-sessions/" + enc(id)); } catch (e) { const b = $("#mt-s"); if (b && !prev) b.innerHTML = errBox(e); return; } // a failed background refresh keeps the session shown
+    if (location.hash !== at) return; // the member already moved on: a late answer never paints over the next screen
     const box = $("#mt-s"); if (!box) return;
+    const keep = prev ? { g: box.querySelector("#mt-goals"), a: box.querySelector("#mt-ag"), r: box.querySelector("#mt-sres") } : {};
     const s = d.session, A = s.actions, mine = s.role === "mentor" || s.role === "learner";
     const hd = $("#mt-h"); if (hd) hd.innerHTML = `<span><span>جلسة إرشاد:</span> <span>${h(s.topic.label)}</span></span>`; /* one flex item: the two text nodes translate separately but wrap as one line */
     const back = view.querySelector(".page-head .back"); if (back && s.role === "mentor") { back.href = "#/mentoring?tab=sessions"; back.lastChild.textContent = " لوحة المرشد"; }
@@ -375,8 +382,11 @@
       ${s.role === "guardian" ? `<div class="notice">${ic("shield")}<span>بصفتك وليّ أمر ترى موعد الجلسة وطرفيها، ويمكنك الانضمام إلى غرفتها. الملاحظات خاصة بالطرفين.</span></div>` : ""}
       <div class="mt-acts">${s.status !== "cancelled" ? `<a class="btn ghost sm" href="${h(s.icsUrl)}" download>${ic("cal")}أضف إلى التقويم</a>` : ""}${A.includes("cancel") ? `<button class="btn ghost sm u-c-dg" type="button" id="mt-cx">إلغاء الجلسة</button>` : ""}</div>
       <form class="card f-form u-mt8" id="mt-cf" hidden><label>سبب الإلغاء (يصل للطرف الآخر)<input name="reason" dir="auto" required minlength="3" maxlength="300"></label><div class="mt-acts"><button class="btn" type="submit">تأكيد الإلغاء</button><button class="btn ghost" type="button" id="mt-cf-x">تراجع</button></div></form>`;
-    sessionResources(s, $("#mt-sres-slot"));
-    agendaCard(id, $("#mt-ag")); /* M3-4: own section + own function (no coupling with the goals card) */
+    /* soft refresh: put the sections already on screen back in their places; each one then refreshes itself in place */
+    const carry = (k, sel) => { const n = keep[k], at2 = n && box.querySelector(sel); if (at2) at2.replaceWith(n); return at2 ? n : null; };
+    const gEl = carry("g", "#mt-goals"), aEl = carry("a", "#mt-ag"), rEl = carry("r", "#mt-sres-slot");
+    sessionResources(s, rEl || $("#mt-sres-slot"));
+    agendaCard(id, aEl || $("#mt-ag")); /* M3-4: own section + own function (no coupling with the goals card) */
     const run = (a, body) => busy(box.querySelector(`[data-a="${a}"]`), async () => {
       const r = await api("POST", `/api/mentor-sessions/${enc(id)}/${a}`, body || {});
       if (a === "join") { if (r.roomId) location.hash = "#/room/" + enc(r.roomId); return; }
@@ -384,7 +394,7 @@
       say({ confirm: "أُكّد الموعد", decline: "أُرسل الاعتذار", complete: "اكتملت الجلسة", "no-show": "سُجّل عدم الحضور" }[a] || "تم"); sessionView(id);
     });
     box.querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => run(b.dataset.a)));
-    goalsCard($("#mt-goals"), id);
+    goalsCard(gEl || $("#mt-goals"), id);
     const cf = $("#mt-cf");
     $("#mt-cx")?.addEventListener("click", () => { cf.hidden = false; cf.reason.focus(); });
     $("#mt-cf-x")?.addEventListener("click", () => { cf.hidden = true; $("#mt-cx")?.focus(); });
