@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.145.3 — 2026-11-01 — p74 sync fix (user-approved; no feature removed, no migration, no intended visible change)
+
+- Discovery/collections sync (discovery-ui.js `mirror()`): after `GET /api/collections/sync` it re-took the WHOLE diff snapshot, so any change saved but not yet flushed (60 ms send timer) — e.g. `onboarded:true` when finishing onboarding — was swallowed and never reached the server; a later `/api/bootstrap` then reverted it. It now re-baselines only the collections in `snap.prefs`. Regression test in discovery.e2e (old code fails it).
+- Tests: p74.e2e setup waits for the hydrated app and the onboarding `PUT /api/me/prefs` instead of a fixed 800 ms sleep (no retries).
+
 ## 2.145.2 — 2026-11-01 — «حارس موثوق» (user-approved; no feature removed, no migration, no intended visible change)
 
 - Tests (intended-behaviour update, decision delegated by the user 2026-11-01): nav.e2e test 1 no longer expects a duplicate `aria-label` on bottom-nav links (removed on purpose in 2.145.1, 821d7fe); it now asserts each link's COMPUTED accessible name (Playwright getByRole name) in Arabic and English — visible label, optionally preceded by the unread count — and fails if any link loses its name (mutation-checked).
