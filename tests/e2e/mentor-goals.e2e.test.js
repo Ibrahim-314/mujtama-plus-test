@@ -1,3 +1,4 @@
+/* global rerender */
 /* M3-3 «مطوّر خادم الأهداف» — shared goals card on #/msession/:id + done/total in the mentor dashboard.
  * The mentor adds a goal (empty state → list), edits it, marks it «أُنجز» via the status chips, sees 1/1 on the dashboard row,
  * then deletes it. The learner (second context) reads the same goal with edit access (stranger/guardian rules: API test). axe 0 serious/critical at
@@ -74,6 +75,22 @@ test("learner (second session) reads the same goal with edit access", async () =
   const goals = await q.evaluate(async (sid) => (await (await fetch(`/api/mentor-sessions/${sid}/goals`, { headers: { "X-Requested-With": "mujtama" } })).json()), SID);
   assert.equal(goals.access, "edit"); assert.equal(goals.goals[0].status, "done"); assert.equal(goals.goals[0].title, "أنشر مشروعين على GitHub");
   await c2.close();
+});
+
+test("a background refresh of the same session (sync.js re-render) keeps the goals card on screen — no blank card, no skeleton", async () => {
+  // v2.145.2: a language/settings change saves → the sync refresh re-renders the screen ~1.5 s later; the goals card used to be
+  // repainted empty until its own request returned. Slow both requests so the old gap is wide and certain.
+  await go(p, "#/msession/" + SID, "#mt-goals .mt-g");
+  const slow = async (r) => { await new Promise((x) => setTimeout(x, 700)); await r.continue(); };
+  await p.route(`**/api/mentor-sessions/${SID}`, slow); await p.route(`**/api/mentor-sessions/${SID}/goals`, slow);
+  try {
+    await p.evaluate(() => { window.__gBlank = 0; new MutationObserver(() => { if (!document.querySelector("#mt-goals .mt-g") || document.querySelector("#mt-s .skel")) window.__gBlank++; }).observe(document.getElementById("view"), { childList: true, subtree: true }); });
+    const done = p.waitForResponse((r) => r.url().endsWith(`/api/mentor-sessions/${SID}/goals`));
+    await p.evaluate(() => rerender());
+    await done; await p.waitForTimeout(200);
+    assert.equal(await p.evaluate(() => window.__gBlank), 0, "goals card never went blank / back to skeleton during the background refresh");
+    assert.match(await p.textContent("#mt-goals .mt-g-t"), /أنشر مشروعين على GitHub/);
+  } finally { await p.unroute(`**/api/mentor-sessions/${SID}`, slow); await p.unroute(`**/api/mentor-sessions/${SID}/goals`, slow); }
 });
 
 test("EN 1440 dark (LTR) + UR: translated, axe 0, no overflow; delete returns to empty", async () => {
