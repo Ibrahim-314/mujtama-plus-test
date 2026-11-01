@@ -53,7 +53,10 @@ async function startStack(extra = {}) {
   });
   await new Promise(r => app.server.listen(0, "127.0.0.1", r));
   const base = "http://127.0.0.1:" + app.server.address().port;
-  const browser = await chromium.launch({ ...resolveChromium(), args: ["--no-sandbox", "--disable-gpu", "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"] });
+  /* v2.145.2: no software WebGL. Chrome removed the automatic SwiftShader fallback (deprecated in 130, gone in 139), so a GPU-less
+   * browser gets no WebGL2 — the pinned Chromium 130 here still fell back and ran the Godot game on the CPU, which froze the
+   * page's main thread (~2 s per frame) and made #/city tests time out under load. Now the tests see what real browsers do. */
+  const browser = await chromium.launch({ ...resolveChromium(), args: ["--no-sandbox", "--disable-gpu", "--disable-features=AllowSwiftShaderFallback", "--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"] });
   /* Phase 36b: index.html loads the real Pi SDK (https://sdk.minepi.com/pi-sdk.js). E2E never talks to Pi: every context
    * answers that URL with an empty script (suites that need window.Pi inject a fake one with addInitScript). The app's CSP
    * has no 'unsafe-inline' for scripts, which also blocks page.addScriptTag (axe); contexts bypass CSP by default, a suite
