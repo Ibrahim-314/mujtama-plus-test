@@ -999,7 +999,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   function mirror() {
     if (!SV) return;
     DB.collections = SV.collections.map(c => ({ id: c.id, name: c.name, items: (SV.items[c.id] || []).sort((a, b) => a.position - b.position).map(i => i.postId) }));
-    try { if (typeof snapshot === "function" && Remote.snap) Remote.snap = snapshot(); } catch { /* not hydrated yet */ }
+    /* p74 sync fix (after v2.145.2): the collections now match the server, so only THEY are re-baselined in the sync diff snapshot. Re-taking the whole
+     * snapshot here also swallowed any other change saved in the last ~60 ms but not flushed yet (finishing onboarding, a like, a
+     * follow): diffOps then saw nothing to send and the change never reached the server (root cause of the p74.e2e flake). */
+    try { if (Remote.snap?.prefs && typeof PREF_FIELDS !== "undefined") { const o = JSON.parse(Remote.snap.prefs); Remote.snap.prefs = JSON.stringify(Object.fromEntries(PREF_FIELDS.map((k) => [k, k === "collections" ? DB.collections : o[k]]))); } } catch { /* not hydrated yet */ }
   }
   if (typeof hydrate === "function") { const _hy = hydrate; hydrate = function () { _hy.apply(this, arguments); if (bootedFor !== DB.me) setTimeout(ready); else { mirror(); for (const k in FD.ranked) FD.ranked[k].stale = true; fetchRanked(FD.prefs?.chrono && feedMode === "for" ? "chrono" : feedMode); refreshPrefs(); } }; }
   /* a refresh can carry a newer last-visit mark or a digest that was empty at boot: reload both, but keep the
