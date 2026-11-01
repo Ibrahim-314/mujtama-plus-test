@@ -35,10 +35,20 @@ test.after(async () => { await ctx?.close(); await S?.close(); });
 test("tab bar: five labelled destinations, 44 px targets, active + aria-current, owner tab on deep screens, badges, re-tap scrolls to top", async () => {
   await go("#/home"); await settle();
   const nav = await p.evaluate(() => [...document.querySelectorAll(".bottomnav a[data-r]")].filter((a) => a.offsetParent).map((a) => {
-    const r = a.getBoundingClientRect(); return { r: a.dataset.r, label: a.querySelector("small").textContent.trim(), aria: a.getAttribute("aria-label"), w: r.width, h: r.height, icons: a.querySelectorAll("svg use").length }; }));
+    const r = a.getBoundingClientRect(); return { r: a.dataset.r, label: a.querySelector("small").textContent.trim(), w: r.width, h: r.height, icons: a.querySelectorAll("svg use").length }; }));
   assert.deepEqual(nav.map((x) => x.r), ["home", "explore", "communities", "notifications", "menu"]);
   assert.deepEqual(nav.map((x) => x.label), ["الرئيسية", "استكشف", "المجتمعات", "الإشعارات", "المزيد"]);
-  for (const x of nav) { assert.equal(x.aria, x.label); assert.ok(x.w >= 44 && x.h >= 44, x.r + " target " + x.w + "×" + x.h); assert.equal(x.icons, 2, x.r + " outline + filled icon"); }
+  // v2.145.2: the link's accessible name comes from its visible label (+ the unread count), not a duplicate aria-label (v2.145.1 a11y, axe
+  // label-content-name-mismatch) — so assert the COMPUTED name in Arabic and English; a link that loses its name fails here
+  const names = async (labels) => { for (const [i, l] of labels.entries()) {
+    const esc = l.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), link = p.locator(".bottomnav").getByRole("link", { name: new RegExp("^(\\S+\\s)?" + esc + "$") } /* the unread count, when shown, is read before the label */);
+    assert.equal(await link.count(), 1, "bottom-nav link named «" + l + "»"); assert.equal(await link.getAttribute("data-r"), nav[i].r, "«" + l + "» names the " + nav[i].r + " tab"); } };
+  await names(["الرئيسية", "استكشف", "المجتمعات", "الإشعارات", "المزيد"]);
+  await p.evaluate(() => window.MPI18n.setLang("en")); await until(() => document.documentElement.lang === "en" && document.querySelector(".bottomnav a[data-r=home] small")?.textContent === "Home");
+  assert.deepEqual(await p.$$eval(".bottomnav a[data-r] small", (s) => s.filter((x) => x.offsetParent).map((x) => x.textContent.trim())), ["Home", "Explore", "Communities", "Alerts", "More"]);
+  await names(["Home", "Explore", "Communities", "Alerts", "More"]);
+  await p.evaluate(() => window.MPI18n.setLang("ar")); await until(() => document.documentElement.lang === "ar" && document.querySelector(".bottomnav a[data-r=home] small")?.textContent === "الرئيسية");
+  for (const x of nav) { assert.ok(x.w >= 44 && x.h >= 44, x.r + " target " + x.w + "×" + x.h); assert.equal(x.icons, 2, x.r + " outline + filled icon"); }
   assert.equal(await p.evaluate(() => !!document.querySelector('.bottomnav a[data-r="notifications"] #notifBadge')), true, "notifications badge lives on its tab");
   assert.equal(await p.evaluate(() => !!document.querySelector(".top-actions #msgBadge")), true, "messages badge in the top bar");
   for (const r of ["explore", "communities", "notifications", "menu", "home"]) {
