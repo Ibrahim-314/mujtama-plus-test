@@ -40,6 +40,12 @@ test("#/city mounts the game full screen, bars hidden, exit returns, #/city/<nam
   const box = await p.$eval("#nb-root", (e) => { const r = e.getBoundingClientRect(); return [r.width, r.height, innerWidth, innerHeight]; });
   assert.equal(box[0], box[2]); assert.equal(box[1], box[3]);
   await p.waitForFunction(() => { const f = document.querySelector("#nb-root iframe"); try { return f.contentWindow.document.readyState === "complete" && typeof f.contentWindow.Engine === "function"; } catch { return false; } }, null, { timeout: 30000 });
+  // v2.145.2: the harness browser has no GPU and (like Chrome ≥ 139) no software WebGL, so the game must explain it in Arabic
+  // instead of hanging; wasm itself must still compile on the game page (its CSP) and stay refused on the app shell.
+  await p.waitForFunction(() => /WebGL2/.test(document.querySelector("#nb-root iframe").contentDocument.getElementById("err")?.textContent || ""), null, { timeout: 30000 });
+  const WASM = [0, 97, 115, 109, 1, 0, 0, 0];
+  assert.equal(await p.evaluate((b) => document.querySelector("#nb-root iframe").contentWindow.WebAssembly.compile(new Uint8Array(b)).then(() => "ok", (e) => e.name), WASM), "ok", "wasm compiles on the game page");
+  assert.notEqual(await p.evaluate((b) => WebAssembly.compile(new Uint8Array(b)).then(() => "ok", (e) => e.name), WASM), "ok", "wasm refused on the app shell");
   const ready = await p.waitForFunction(() => document.querySelector("#nb-root.ready"), null, { timeout: 45000 }).then(() => true, () => false);
   console.log("# nabd:ready in headless:", ready);
   assert.deepEqual(viol, [], "no CSP violations");
