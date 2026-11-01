@@ -1,5 +1,24 @@
 [
  {
+  "v": "2.145.4",
+  "date": "2026-11-01",
+  "quiet": true,
+  "ar": {
+   "title": "تحسينات صغيرة",
+   "items": [
+    "الشريط العلوي ثابت من أول لحظة بدون قفزة في الأيقونات",
+    "تصحيح نص كان يظهر نصفه بالعربي في الواجهة الإنجليزية"
+   ]
+  },
+  "en": {
+   "title": "Small improvements",
+   "items": [
+    "The top bar stays still from the first moment, no icon jump",
+    "Fixed a label that showed half in Arabic in the English interface"
+   ]
+  }
+ },
+ {
   "v": "2.145.3",
   "date": "2026-11-01",
   "quiet": true,
