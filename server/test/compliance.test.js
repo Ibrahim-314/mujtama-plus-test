@@ -134,7 +134,7 @@ test("dismissed reports reach the reporter through the scheduled sync; old decis
   assert.equal(v.href, `/#/post/${p2.id}`);
   await db().run(
     "INSERT INTO reports(id,target,kind,reason,by_user,status,resolved_by,resolved_at,created_at) VALUES('r_oldreport1','p_x','post','قديم',$1,'dismissed',$2,$3,$3)",
-    [C.id, ADMIN.id, iso(10 * L.DAY)]
+    [C.id, ADMIN.id, iso(70 * L.DAY) /* older than any "previous month": a 10-day-old row fell inside the transparency period on days 1-10 of a month */]
   );
   const s2 = await svc.syncReportUpdates();
   assert.equal(s2.backfilled, 1);
