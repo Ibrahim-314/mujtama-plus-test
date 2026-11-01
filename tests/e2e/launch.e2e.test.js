@@ -1,3 +1,4 @@
+/* global rerender */
 /* Phase 50 e2e against the REAL server (production build, LAUNCH_MODE unset → open, like production).
  * Help center search → article → open a ticket → staff (admin) replies in the queue → user sees «فريق الدعم» + status «تم الرد»;
  * ambassador apply → staff approve → referral link; signed-out visitor can open /about and the waitlist; settings entry card.
@@ -62,6 +63,25 @@ test("help center → ticket → staff reply; ambassadors; settings card", async
   // settings entry card
   await p.goto(S.base + "/?nosw#/settings?s=help"); // v2.38: help links filed into «المساعدة والقانوني»
   await p.waitForSelector(".set-sec a[href='#/faq']", { timeout: 15000 });
+  assert.deepEqual(errors, []);
+});
+
+test("v2.145.2: a background re-render keeps the ticket thread on screen; a late staff action never paints over the next screen", async () => {
+  const tid = await p.evaluate(async () => (await (await fetch("/api/tickets", { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ subject: "اختبار إعادة الرسم", category: "bug", body: "نص التذكرة للاختبار" }) })).json()).ticket.id);
+  await p.goto(S.base + "/?nosw#/tickets/" + tid); await p.waitForSelector("#lc-sset", { timeout: 25000 });
+  // a background refresh (sync.js → rerender, window.__softRender) of the same ticket: no flash back to «…» + skeleton
+  await p.evaluate(() => { window.__lcSkel = 0; window.__lcUpd = 0; new MutationObserver(() => { window.__lcUpd++; if (document.querySelector("#lc-th .skel") || document.querySelector("#lc-h")?.textContent.trim() === "…") window.__lcSkel++; }).observe(document.getElementById("view"), { childList: true, subtree: true, characterData: true }); rerender(); });
+  await until(() => window.__lcUpd > 0 && /اختبار إعادة الرسم/.test(document.querySelector("#lc-h")?.textContent || "") && !!document.querySelector("#lc-sset")); // the fresh copy was painted
+  assert.equal(await p.evaluate(() => window.__lcSkel), 0, "the thread was never replaced by the skeleton");
+  // the status request answers only after the member has moved on to «السفراء»
+  await p.route("**/api/tickets/*/status", async (r) => { await new Promise((ok) => setTimeout(ok, 1200)); await r.continue(); });
+  const done = p.waitForResponse((r) => /\/api\/tickets\/[^/]+\/status$/.test(r.url()), { timeout: 15000 });
+  await p.click("#lc-sset");
+  await p.goto(S.base + "/?nosw#/ambassadors"); await p.waitForSelector("#lc-am", { timeout: 15000 });
+  await done; await p.unroute("**/api/tickets/*/status");
+  await until(() => !document.querySelector("#lc-am[aria-busy=true]"));
+  await p.waitForTimeout(500); // observation window AFTER the late response: the old code repainted the ticket here
+  assert.equal(await p.evaluate(() => location.hash === "#/ambassadors" && !!document.querySelector("#lc-am") && !document.querySelector("#lc-th")), true, "the ambassadors screen stays");
   assert.deepEqual(errors, []);
 });
 
