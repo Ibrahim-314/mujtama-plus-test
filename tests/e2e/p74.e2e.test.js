@@ -109,7 +109,12 @@ test("mentor: confirm, accept open request, shared summary; learner sees it; can
   await textHas(p, /أهلاً فهد/);
   await go(p, "#/msession/" + sid); await textHas(p, /مؤكدة/);
   assert.deepEqual(await axe(p), []);
-  await p.fill("#mt-nf [name=body]", "الخطوة القادمة: fetch وبناء صفحة"); await p.check("#mt-nf [name=shared]"); await tap(p, "#mt-nf [type=submit]"); await p.waitForTimeout(300);
+  await p.fill("#mt-nf [name=body]", "الخطوة القادمة: fetch وبناء صفحة"); await p.check("#mt-nf [name=shared]");
+  // wait until the note is really saved (the app confirms with «حُفظت الملاحظات») before the learner opens the session — a fixed
+  // 300 ms sleep raced the save under load and the learner's page loaded before the shared summary existed (v2.145.2)
+  const saved = p.waitForResponse((r) => r.request().method() === "PUT" && r.url().endsWith(`/api/mentor-sessions/${sid}/note`));
+  await tap(p, "#mt-nf [type=submit]"); assert.ok((await saved).ok(), "note saved");
+  await until(p, () => /حُفظت الملاحظات/.test(document.querySelector("#toast")?.textContent || ""));
   await go(k, "#/msession/" + sid); await textHas(k, /ملخص المرشد/); await textHas(k, /fetch/);
   await go(k, "#/mentors?tab=requests"); await textHas(k, /ردّ المرشد/);
   // cancel form opens and is labelled (not submitted)
