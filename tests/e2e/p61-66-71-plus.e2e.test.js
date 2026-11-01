@@ -73,7 +73,12 @@ test("P66: place page (open now, hours, stars + review, save → saved list, sha
   await p.goto(S.base + "/?nosw#/places/saved"); await until(() => /مكتبة الحي العامة/.test(document.querySelector("#nb-sv")?.textContent || ""));
   await p.goto(S.base + "/?nosw#/nearby?city=" + encodeURIComponent("جدة") + "&radius=10");
   await until(() => !!document.querySelector("#nb-res [data-rsvp]"));
+  // v2.145.2 regression: the pressed colours apply together — at the moment «سأحضر» flips, the background is already the pressed one
+  // (before, the white text appeared over the light background while it faded: contrast 1.35, the source of the axe flake below)
+  await p.evaluate(() => { const b = document.querySelector("#nb-res [data-rsvp]"); window.__flip = null; new MutationObserver(() => { if (!window.__flip) { const cs = getComputedStyle(b); window.__flip = [cs.backgroundColor, cs.color]; } }).observe(b, { attributes: true, attributeFilter: ["aria-pressed"] }); });
   await p.click("#nb-res [data-rsvp]"); await until(() => document.querySelector("#nb-res [data-rsvp]").getAttribute("aria-pressed") === "true");
+  const settled = await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => { const cs = getComputedStyle(document.querySelector("#nb-res [data-rsvp]")); r([cs.backgroundColor, cs.color]); }))));
+  assert.deepEqual(await p.evaluate(() => window.__flip), settled, "RSVP pressed background + text colour change together");
   assert.ok(await db.get("SELECT 1 x FROM event_rsvps WHERE user_id=$1 AND kind='going'", [me.id]), "RSVP stored");
   assert.deepEqual(await axe(), []); await shot("p66-nearby");
   assert.deepEqual(errors, []);
