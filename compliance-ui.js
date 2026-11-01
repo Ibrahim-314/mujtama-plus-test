@@ -48,7 +48,12 @@
   })();
 
   function frame(title, back = "#/settings", backLabel = "الإعدادات") {
-    V().innerHTML = `<div class="wrap cmp">${UI.pageHead({ back: [back, backLabel], title, id: "cmp-h" })}<p id="cmp-say" class="cmp-sr" role="status" aria-live="polite"></p><div id="cmp-body"><div class="skel"></div><div class="skel"></div></div></div>`;
+    /* v2.145.2: a background refresh (sync.js re-render, window.__softRender — e.g. the «we acted on your report» notification) of
+     * the SAME screen keeps what is shown and the fresh answer replaces the body in place; before, the screen flashed back to the
+     * skeleton (and the heading took focus) every time a notification arrived while it was open */
+    const at = location.hash, w = V().querySelector(":scope > .cmp"), cur = window.__softRender && w && w.dataset.at === at ? w.querySelector("#cmp-body") : null;
+    if (cur) return cur;
+    V().innerHTML = `<div class="wrap cmp" data-at="${h(at)}">${UI.pageHead({ back: [back, backLabel], title, id: "cmp-h" })}<p id="cmp-say" class="cmp-sr" role="status" aria-live="polite"></p><div id="cmp-body"><div class="skel"></div><div class="skel"></div></div></div>`;
     document.getElementById("cmp-h")?.focus({ preventScroll: true });
     return document.getElementById("cmp-body");
   }
