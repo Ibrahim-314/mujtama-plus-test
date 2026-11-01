@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.145.4 — 2026-11-01 — المرحلة 1 من خطة الإصلاحات (user-approved; no feature removed, no migration, no intended visible change beyond the fixes)
+
+- Top bar (index.html, nav.js, ui.js): the member avatar slot `#tbMe` now ships in index.html and is reserved from the first paint on a device that was signed in last time (`html.mp-me` from localStorage `mp.me`); before, it was added after the first paint, so 🌐 + search + messages jumped 46 px on every load (often seen on #/explore). Visitors see no avatar. `.brand` is no longer rewritten when unchanged. Test: tests/e2e/topbar-cls.e2e.test.js (fails on the old code).
+- i18n (i18n-ui.js): a templated string whose {name} is itself an exact UI string is now translated too, so the 1440 English home shows «Transparency Reports page» instead of «تقارير الشفافية page». User-supplied names stay as written. Test: tests/e2e/i18n-tpl-name.e2e.test.js (fails on the old code).
+- Checked, already fixed earlier (no change needed): studio touch drag-to-day (0057d3a, 16acc1a; studio-schedule-touch 3/3) and the community admin panel in English (i18n-cadmin-rest + i18n-moderation-ltr: 0 UI leftovers).
+- Light sweep (29 screens × 390/1440 × ar/en, one at a time): no page errors, no horizontal overflow at 390, no unexpected failed requests; the only English leftover found was the one fixed above.
+
 ## 2.145.3 — 2026-11-01 — p74 sync fix (user-approved; no feature removed, no migration, no intended visible change)
 
 - Discovery/collections sync (discovery-ui.js `mirror()`): after `GET /api/collections/sync` it re-took the WHOLE diff snapshot, so any change saved but not yet flushed (60 ms send timer) — e.g. `onboarded:true` when finishing onboarding — was swallowed and never reached the server; a later `/api/bootstrap` then reverted it. It now re-baselines only the collections in `snap.prefs`. Regression test in discovery.e2e (old code fails it).
