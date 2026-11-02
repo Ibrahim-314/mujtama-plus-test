@@ -2353,6 +2353,7 @@
 "سلاسلي": "My Series",
 "سمعتك المهنية": "Your Professional Reputation",
 "سمعتي كما يراها الآخرون page": "My reputation as others see it",
+"صفحة سمعتي كما يراها الآخرون": "My reputation as others see it",
 "سياسة الإساءة والتحرش": "Abuse & Harassment Policy",
 "سياسة البلاغات": "Reporting Policy",
 "سياسة جديدة": "New policy",
