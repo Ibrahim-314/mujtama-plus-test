@@ -474,10 +474,12 @@
   async function dashboard() {
     if (!signed()) { page({ title: "لوحة المرشد", back: ["#/mentors", "الإرشاد"] }, UI.empty({ title: "سجّل الدخول", text: "لتشارك خبرتك كمرشد.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` })); return; }
     page({ title: "لوحة المرشد", icon: "cap", back: ["#/mentors", "الإرشاد"] }, `<div id="mt-d">${skel(3)}</div>`);
+    /* the learner-only view opens with the saved list on top: fetch it alongside, so it lands with the page instead of pushing «شارك خبرتك» down */
+    const savedP = api("GET", "/api/mentor/saved").catch(() => null);
     let d; try { d = await api("GET", "/api/mentor/me"); } catch (e) { const b = $("#mt-d"); if (b) b.innerHTML = errBox(e); return; }
     const box = $("#mt-d"); if (!box) return;
     if (d.minor) { box.innerHTML = UI.empty({ title: "الإرشاد كمرشد متاح لمن هم ١٨ سنة فأكثر", text: "يمكنك الاستفادة من المرشدين وحجز جلسات مجانية بإشراف وليّ أمرك.", action: `<a class="btn" href="#/mentors">اكتشف المرشدين</a>` }); savedSection(box, true); return; }
-    if (!d.profile) { box.innerHTML = `<section class="f-cover"><h3>شارك خبرتك</h3><small>أنشئ ملفك كمرشد، وحدّد مواعيدك الأسبوعية، واستقبل طلبات المتعلّمين وجلساتهم. مجاني، ويمكنك إيقافه متى شئت.</small></section><div class="f-h">ملفك</div>`; box.append(profileForm(d)); savedSection(box, true); return; }
+    if (!d.profile) { const sv = await Promise.race([savedP, new Promise((r) => setTimeout(() => r(undefined), 2500))]); if (!box.isConnected) return; box.innerHTML = `<section class="f-cover"><h3>شارك خبرتك</h3><small>أنشئ ملفك كمرشد، وحدّد مواعيدك الأسبوعية، واستقبل طلبات المتعلّمين وجلساتهم. مجاني، ويمكنك إيقافه متى شئت.</small></section><div class="f-h">ملفك</div>`; box.append(profileForm(d)); savedSection(box, true, sv); return; }
     const tab = qs().get("tab") || "sessions", p = d.profile;
     box.innerHTML = `${p.status === "suspended" ? `<div class="notice danger">${ic("flag")}<span>ملفك موقوف من فريق المنصة. لا يظهر للمتعلّمين ولا يمكن حجزه.</span></div>` : !p.open ? `<div class="notice warn">${ic("lock")}<span>ملفك متوقف مؤقتاً ولا يظهر في الاكتشاف. فعّله من «الملف».</span></div>` : ""}
       ${p.allowMinors && !p.reviewed && p.status !== "suspended" ? `<div class="notice warn" id="mt-rev-need">${ic("shield")}<span>تقبل متعلّمين دون ١٨ سنة، وهذا يتطلّب مراجعة فريق المنصة لملفك. ملفك يعمل كالمعتاد أثناء المراجعة، وستظهر شارة «مراجَع من الفريق» بعد اعتماده.</span></div>` : ""}
@@ -497,9 +499,9 @@
     savedSection(box, false);
   }
   /* M4-3 «المرشدون المحفوظون» (learner side of #/mentoring): open a mentor, bell = new-slot notice on/off, remove */
-  async function savedSection(box, always) {
+  async function savedSection(box, always, pre) {
     const sec = document.createElement("section"); sec.className = "mt-sec mt-saved"; sec.id = "mt-saved"; sec.setAttribute("aria-labelledby", "mt-saved-h");
-    let d; try { d = await api("GET", "/api/mentor/saved"); } catch { return; }
+    let d = pre; if (!d) { try { d = await api("GET", "/api/mentor/saved"); } catch { return; } }
     if (!box.isConnected || (!d.saved.length && !always)) return;
     const row = (x) => `<li><div class="li">${av(x.mentor.user)}<a class="t u-tdn" href="#/mentor/${enc(x.mentor.user.handle)}"><b>${u(x.mentor.user.name)}</b><small dir="auto" data-noi18n>${h(x.mentor.headline)}</small></a>
       <button class="icon-btn mt-bell" type="button" data-bell="${h(x.mentor.user.handle)}" aria-pressed="${x.notifySlots}" aria-label="تنبيه بالمواعيد الجديدة" title="تنبيه بالمواعيد الجديدة">${ic(x.notifySlots ? "bell" : "bellOff")}</button>
