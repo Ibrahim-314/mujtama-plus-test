@@ -40,7 +40,7 @@ test("feed: server-ranked «لك» with new-first and the caught-up marker; chro
   assert.match(await P.textContent(".d-digest .d-ai"), /مولّد آلياً/);
 
   // chronological tab: strictly newest first
-  await P.click('.tabs [data-mode="chrono"]'); await P.waitForSelector('.tabs [data-mode="chrono"][aria-pressed="true"]');
+  await P.click('#d-tabmore'); await P.click('#sheet [data-mode="chrono"]'); /* v2.148.0: «زمني» lives in «⋯» */ await P.waitForSelector('.tabs [data-mode="chrono"][aria-pressed="true"]');
   await until(() => document.querySelectorAll(".wrap > .post-card").length >= 3);
   const times = await P.evaluate(() => [...document.querySelectorAll(".wrap > .post-card")].map(c => Date.parse(S.post(c.querySelector("[data-more]").dataset.more).createdAt)));
   assert.deepEqual(times, [...times].sort((a, b) => b - a), "chronological order");
