@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.148.0",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "شريط علوي أنحف",
+      "items": [
+        "الشريط العلوي أنحف في كل الصفحات، فتظهر مساحة أكبر للمحتوى",
+        "«زمني» و«الأحدث» و«استكشف» صارت داخل «⋯» بجانب تبويبات الخلاصة"
+      ]
+    },
+    "en": {
+      "title": "A slimmer top bar",
+      "items": [
+        "The top bar is slimmer on every page, leaving more room for content",
+        "Chronological, Latest and Discover now sit in «⋯» next to the feed tabs"
+      ]
+    }
+  },
+  {
     "v": "2.147.1",
     "date": "2026-11-02",
     "ar": {
