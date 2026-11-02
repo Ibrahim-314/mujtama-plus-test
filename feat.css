@@ -68,3 +68,38 @@ form.fx-host>label{font-size:0;gap:0}form.fx-host>label input{font-size:var(--fs
 .seg>button[aria-pressed=true],.seg>button[aria-selected=true]{background:var(--card);box-shadow:var(--sh-1);color:var(--accent-ink);font-weight:700}
 .seg>button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .btn .ix,.btn .ic{flex:none}
+/* v2.147 profile v3 (identity-ui.js profV3; loaded with the feat chunk to keep the core bundle in budget) */
+.pv3 .cover,.pv3 .cover-v2{height:132px}
+@media(min-width:768px){.pv3 .cover,.pv3 .cover-v2{height:180px}}
+.pv3 .profile-top{margin-top:-44px}
+.pv3 .profile-top>.row{align-items:flex-end;gap:8px}
+.pv3 .profile-top .av.lg{width:88px;height:88px;border:4px solid var(--bg);box-sizing:content-box}
+.pv3 .profile-top>.row .btn{height:38px;min-height:38px;border-radius:999px}
+.pv3 .profile-top>.row .btn.icon{width:38px;min-width:38px}
+.pv3 .profile-top>.row [data-follow]:not(.ghost){padding-inline:18px;font-weight:700}
+.pv3 .profile-top>.row .cl-hbs,.pv3 .profile-top>.row [data-call-menu]{display:none!important}
+.cover .pv3-srch{position:absolute;z-index:2;inset-block-start:10px;inset-inline-end:10px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(15,10,30,.38)!important;box-shadow:none!important;backdrop-filter:blur(6px);border:0}
+.pv3-srch .ic{color:var(--on-accent)}
+.pv3 .profile-top>h2{margin-top:10px;font-size:var(--fs-xl)}
+.pv3-fy{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px;margin-inline-start:4px}
+.pv3-addbio{display:flex;align-items:center;gap:8px;width:100%;margin:10px 0 4px;border:1.5px dashed var(--line);border-radius:12px;padding:10px 12px;background:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;min-height:44px}
+.pv3 .pmeta{font-size:var(--fs-sm);margin:6px 0 4px}.pv3 .profile-top>.chips{margin-top:10px}
+.pv3-stats{display:grid!important;grid-template-columns:repeat(4,1fr);background:var(--card);border:1px solid var(--line);border-radius:16px;padding:8px 0;margin-top:10px;gap:0!important}
+.pv3-c{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48px;border:0;background:none;font:inherit;color:var(--text);text-decoration:none;cursor:pointer;border-inline-start:1px solid var(--line)!important;border-radius:0!important;padding:0!important}
+.pv3-c:first-child{border-inline-start:0!important}
+.pv3-c b{font-size:var(--fs-lg);font-weight:800;display:inline-flex;align-items:center;gap:3px;line-height:24px;height:24px}.pv3-c b .ic{width:15px;height:15px}
+.pv3-c small{color:var(--muted);font-size:var(--fs-xs)}
+.pv3-rep{background:none!important}.pv3-rep b{color:var(--warn)}
+.pv3-mut{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:var(--fs-sm);color:var(--muted);text-decoration:none;min-height:24px}
+.pv3-faces{display:flex}.pv3-faces .av{background:var(--accent);width:22px;height:22px;font-size:var(--fs-xs);border:2px solid var(--bg);margin-inline-start:-7px;font-style:normal;color:var(--on-accent);display:grid;place-items:center;border-radius:50%}.pv3-faces .av:first-child{margin:0}
+.pv3-feat h4{margin:16px 4px 8px}
+.pv3-car{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;scroll-snap-type:x mandatory}
+.pv3-card{flex:0 0 200px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;color:var(--text);text-decoration:none;display:flex;flex-direction:column}
+.pv3-card b{padding:8px 10px 10px;font-size:var(--fs-sm);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pv3-th{height:64px;display:flex;align-items:flex-end;padding:6px 8px;background:var(--grad)}
+.pv3-th[data-k=a]{background:linear-gradient(135deg,var(--warn),var(--accent2))}
+.pv3-th span{background:rgba(0,0,0,.35);color:var(--on-accent);font-size:var(--fs-xs);font-weight:700;border-radius:6px;padding:1px 7px}
+.pv3 .wrap>.tabs{display:flex;gap:0;border-bottom:1px solid var(--line);background:none;padding:0;border-radius:0;margin-top:14px}
+.pv3 .wrap>.tabs .tab{flex:1;height:44px;border-radius:0;background:none!important;color:var(--muted);font-weight:700;position:relative;box-shadow:none!important;border:0}
+.pv3 .wrap>.tabs .tab.on{color:var(--text)}
+.pv3 .wrap>.tabs .tab.on::after{content:"";position:absolute;bottom:-1px;inset-inline:calc(50% - 22px);height:3px;border-radius:3px;background:var(--accent)}
