@@ -68,7 +68,7 @@
       T.vars.forEach((name, i) => {
         const x = m[i + 1];
         if (name === "{n}") nums.push(x);
-        else { const tr = name === "{t}" ? (CAT[L]?.[x] != null || over[L]?.[x] != null || /[0-9٠-٩۰-۹]/.test(x) ? lookup(x, L) : null) : (over[L]?.[x] ?? CAT[L]?.[x] ?? null) /* a {name} that is itself an exact UI string (a page title) is translated too */; if (name === "{t}" && tr == null && AR.test(x)) ok = false; (vals[name] ||= []).push(tr ?? x); }
+        else { const tr = name === "{t}" ? (CAT[L]?.[x] != null || over[L]?.[x] != null || /[0-9٠-٩۰-۹]/.test(x) ? lookup(x, L) : null) : (/\s/.test(x.trim()) ? over[L]?.[x] ?? CAT[L]?.[x] ?? null : null) /* a {name} that is itself an exact multi-word UI string (a page title) is translated too; a single word is a person or a community and stays as written (the catalogue also holds words like «سارة», «نور», «ذهبي») */; if (name === "{t}" && tr == null && AR.test(x)) ok = false; (vals[name] ||= []).push(tr ?? x); }
       });
       if (!ok) continue;
       const used = {}; const v = T.v.replace(/\{(name|t)\}/g, (_, nm) => { const a = vals["{" + nm + "}"] || []; const i = (used[nm] = (used[nm] ?? -1) + 1); return a[i] ?? ""; });
