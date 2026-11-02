@@ -226,12 +226,17 @@
     const tab = view._stab || "overview";
     const TABS = [["overview", "نظرة عامة"], ["ai", "الذكاء"], ["calendar", "التقويم"], ["best", "أفضل وقت"], ["recycle", "إعادة النشر"], ["templates", "القوالب"], ["weekly", "التقرير الأسبوعي"]];
     view.innerHTML = `<div class="wrap studio"><header class="page-head row-head"><div class="ph-main"><div><h2>${ic("chart")}استوديو المنشئ</h2></div><div class="acts"><a class="btn outline sm" href="#/analytics">تحليلات متقدمة</a><button class="btn sm" data-ui="compose">${ic("pen", "xs")} إنشاء</button></div></div></header><div class="explore-shortcuts"><a href="#/scheduled">${ic("clock", "sm")}المجدولة</a><a href="#/drafts">${ic("doc", "sm")}المسودات</a><a href="#/series">${ic("book", "sm")}السلاسل</a></div><div class="seg">${TABS.map(([k, l]) => k === "ai" ? `<button class="sai-tab ${tab === k ? "on" : ""}" data-stab="ai" aria-label="${l}" title="${l}">${ic("sparkle", "sm")}</button>` : `<button class="${tab === k ? "on" : ""}" data-stab="${k}">${l}</button>`).join("")}</div><div id="st-body"><div class="skel"></div><div class="skel"></div></div></div>`;
-    view.querySelectorAll("[data-stab]").forEach(b => b.onclick = () => { view._stab = b.dataset.stab; studioView(); });
-    if (online()) startGuideMount(); // v2.61 «ابدأ هنا» (own section below)
-    if (online()) goalsMount(); // v2.61 goals + «روابطك» (own section, below «ابدأ هنا»)
+    view.querySelectorAll("[data-stab]").forEach(b => b.onclick = () => { view._stab = b.dataset.stab; view._stKeep = 1; studioView(); });
     if (!online()) { $("#st-body").innerHTML = `<div class="empty">الاستوديو يتطلب الاتصال</div>`; return; }
+    // v2.145.5: «ابدأ هنا» and the goals section mount above the shortcuts/tabs after their own requests, which pushed everything
+    // under the head down by ~540 px a moment after the page showed (CLS ~0.5 on 390). The part under the head now stays out of
+    // layout (one skeleton in its place) until the first paint of all three is ready (capped at 2.5 s), then shows at once.
+    const wrap = view.querySelector(".studio"), first = !view._stKeep; view._stKeep = 0; // a tab switch re-renders in place: no wait
+    if (first) { wrap.classList.add("st-wait"); wrap.querySelector(".page-head")?.insertAdjacentHTML("afterend", `<div class="skel st-wait-sk"></div>`); }
     const body = $("#st-body");
-    try { await ({ overview: stOverview, ai: stAI, calendar: stCalendar, best: stBest, recycle: stRecycle, templates: stTemplates, weekly: stWeekly })[tab](body); } catch (e) { body.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+    const ready = Promise.allSettled([startGuideMount(), goalsMount(), (async () => { try { await ({ overview: stOverview, ai: stAI, calendar: stCalendar, best: stBest, recycle: stRecycle, templates: stTemplates, weekly: stWeekly })[tab](body); } catch (e) { body.innerHTML = `<div class="empty">${esc(e.message)}</div>`; } })()]);
+    if (first) { await Promise.race([ready, new Promise((r) => setTimeout(r, 2500))]); wrap.querySelector(".st-wait-sk")?.remove(); wrap.classList.remove("st-wait"); }
+    await ready;
   }
 
   /* v2.114 «✨ مساعد الذكاء» — studio AI tools. All AI comes from «مركز الذكاء» (#/aihub): the member's own linked account for the
@@ -602,7 +607,7 @@
     box.querySelector("#sg-show")?.addEventListener("click", async () => { st.dismissed = false; sgSave(st); await startGuideMount(); view.querySelector("#sg-hide")?.focus(); });
     box.querySelectorAll('[data-sg="schedule"]').forEach(b => b.addEventListener("click", () => { const at = sgNextSlot(new Date().getDay(), 20); composer({ data: { publishAt: sgLocalIso(at) } }); }));
     box.querySelectorAll('[data-sg="best"]').forEach(b => b.addEventListener("click", () => composer({ data: { publishAt: sgLocalIso(sgNextSlot(+b.dataset.day, +b.dataset.hour)) } })));
-    box.querySelectorAll('[data-sg="recycle"]').forEach(b => b.addEventListener("click", () => { view._stab = "recycle"; studioView(); }));
+    box.querySelectorAll('[data-sg="recycle"]').forEach(b => b.addEventListener("click", () => { view._stab = "recycle"; view._stKeep = 1; studioView(); }));
   }
 
   MPRoutes.extend((a, b) => ({ studio: () => studioView(), rooms: () => roomsView(), room: () => roomView(a) }));
