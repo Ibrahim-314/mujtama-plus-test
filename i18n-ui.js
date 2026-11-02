@@ -24,6 +24,12 @@
   const over = {}; const misses = new Set(); const sent = new Set();
   const on = () => typeof Remote !== "undefined" && Remote.on;
   const cur = () => { if (typeof DB === "undefined" || !DB.settings) return "ar"; const l = norm(DB.settings.lang); return LANGS[l] ? l : "ar"; };
+  /* v2.146: dates and numbers follow the UI language. Many screens format with a hard-coded Arabic locale («ar», «ar-EG»,
+   * «ar-SA-u-ca-gregory»): outside Arabic that locale is swapped for the UI language, keeping its calendar (-u-ca-…) and
+   * dropping its digit system, so the English UI shows "11 Jan 2027" and "30", never «١١ يناير» or «٣٠». Arabic is untouched. */
+  const locFix = (l) => { const L = cur(); if (L === "ar") return l; const one = (x) => (typeof x === "string" && /^ar\b/i.test(x) ? L + ((/-u-.*$/i.exec(x)?.[0] || "").replace(/-nu-[a-z]+/gi, "").replace(/^-u$/i, "")) : x); return Array.isArray(l) ? l.map(one) : one(l); };
+  for (const K of ["DateTimeFormat", "NumberFormat", "RelativeTimeFormat", "PluralRules"]) { const C = Intl[K]; if (!C) continue; const W = function (l, o) { return new C(locFix(l), o); }; W.prototype = C.prototype; W.supportedLocalesOf = C.supportedLocalesOf; Intl[K] = W; }
+  for (const [P, m] of [[Date.prototype, "toLocaleString"], [Date.prototype, "toLocaleDateString"], [Date.prototype, "toLocaleTimeString"], [Number.prototype, "toLocaleString"]]) { const f = P[m]; P[m] = function (l, o) { return f.call(this, locFix(l), o); }; }
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const NUM = /[0-9٠-٩۰-۹]+(?:[.,٫][0-9٠-٩۰-۹]+)?/g;
   function lookup(s, L = cur()) {
