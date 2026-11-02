@@ -1,5 +1,25 @@
 [
  {
+  "v": "2.146.0",
+  "date": "2026-11-02",
+  "ar": {
+   "title": "الواجهة الإنجليزية كاملة",
+   "items": [
+    "كل الشاشات بالإنجليزي: النصوص، وتلميحات الحقول، وأسماء الأزرار لقارئ الشاشة",
+    "التواريخ والأرقام تتبع لغة الواجهة، والتقويم الهجري بالإنجليزي",
+    "العربية كما هي بدون أي تغيير"
+   ]
+  },
+  "en": {
+   "title": "The English interface, complete",
+   "items": [
+    "Every screen in English: text, field hints and screen-reader button names",
+    "Dates and numbers follow the interface language, including the Hijri calendar",
+    "Arabic stays exactly as it was"
+   ]
+  }
+ },
+ {
   "v": "2.145.7",
   "date": "2026-11-02",
   "quiet": true,
