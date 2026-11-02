@@ -1,5 +1,24 @@
 [
  {
+  "v": "2.145.5",
+  "date": "2026-11-02",
+  "quiet": true,
+  "ar": {
+   "title": "تحسينات صغيرة",
+   "items": [
+    "الأزرار المختارة أوضح في الوضع الداكن",
+    "مركز المساعدة والاستوديو بدون قفزة عند التحميل"
+   ]
+  },
+  "en": {
+   "title": "Small improvements",
+   "items": [
+    "Selected buttons are easier to read in dark mode",
+    "Help centre and Studio no longer jump while loading"
+   ]
+  }
+ },
+ {
   "v": "2.145.4",
   "date": "2026-11-01",
   "quiet": true,
