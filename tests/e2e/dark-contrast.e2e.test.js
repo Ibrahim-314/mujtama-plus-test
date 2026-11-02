@@ -21,8 +21,8 @@ for (const scheme of ["dark", "light"]) {
   test(`${scheme}: selected chips and danger text reach 4.5:1`, async () => {
     const ctx = await S.browser.newContext({ ...MOBILE, colorScheme: scheme }); const p = await ctx.newPage();
     await onboard(p, S.base, "contrast_" + scheme, "فحص التباين");
-    // light #ep-all sits at 4.49:1 (unchanged by this release, left as it was: light mode is out of this fix)
-    for (const [h, sel] of CASES.filter(([h]) => scheme === "dark" || h !== "#/emailprefs")) {
+    // v2.145.6: light #ep-all was 4.49:1 and is now covered too
+    for (const [h, sel] of CASES) {
       await p.evaluate((h) => { location.hash = h; }, h);
       await p.waitForSelector(sel, { timeout: 15000 });
       const c = await p.evaluate(read, sel);
