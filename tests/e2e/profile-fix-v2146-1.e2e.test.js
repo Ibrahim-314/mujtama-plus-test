@@ -14,10 +14,8 @@ test("390: sections list an article once, lone card is full width, EN follow but
   const c = await S.browser.newContext({ ...MOBILE, reducedMotion: "reduce" }); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
   await onboard(p, S.base, "pf_fix", "فاحص"); await seedDiscovery(S.app.ctx, p); await p.evaluate(() => refresh());
   await open(p, "#/u/reem_ai");
-  const secs = await p.$$eval(".psec", (ss) => ss.map((s) => ({ h: s.querySelector("h4").textContent.trim(), items: [...s.querySelectorAll(".mini")].map((m) => m.getAttribute("href")) })));
-  const seen = secs.flatMap((s) => s.items); assert.equal(new Set(seen).size, seen.length, "no post listed in two sections: " + JSON.stringify(secs));
-  const lone = await p.$$eval(".psec .mini-grid", (gs) => gs.filter((g) => g.children.length === 1).map((g) => [Math.round(g.firstElementChild.getBoundingClientRect().width), Math.round(g.getBoundingClientRect().width)]));
-  for (const [w, gw] of lone) assert.ok(w >= gw - 2, `lone card ${w}px fills the ${gw}px row`);
+  // v2.147: works + articles became one «مميّز» row (approved profile v3); still each post once
+  const seen = await p.$$eval(".pv3-card", (cs) => cs.map((c) => c.getAttribute("href"))); assert.ok(seen.length >= 1, "featured cards render"); assert.equal(new Set(seen).size, seen.length, "no post listed twice: " + JSON.stringify(seen));
   await p.evaluate(() => window.MPI18n.setLang("en")); await p.waitForFunction(() => document.documentElement.dir === "ltr");
   await open(p, "#/u/reem_ai");
   const rows = await p.$eval(".profile-top > .row", (r) => { const kids = [...r.children].filter((k) => k.getClientRects().length && !k.classList.contains("grow")); return [...new Set(kids.map((k) => Math.round(k.getBoundingClientRect().bottom / 8)))].length; });
