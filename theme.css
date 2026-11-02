@@ -26,7 +26,7 @@
   --glass: color-mix(in srgb, var(--card) 78%, transparent);
   --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.56, .64, 1);
   --font: -apple-system, "SF Arabic", "Segoe UI", "Noto Sans Arabic", "Noto Kufi Arabic", Tahoma, system-ui, sans-serif;
-  --nav-h: 66px; --top-h: 58px; --col: 600px;
+  --nav-h: 66px; --top-h: 50px; --col: 600px;
   color-scheme: light;
 }
 html:root[data-theme=dark] {
@@ -59,7 +59,7 @@ html:root[data-theme=light] {
   --glass: color-mix(in srgb, var(--card) 78%, transparent);
   --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.56, .64, 1);
   --font: -apple-system, "SF Arabic", "Segoe UI", "Noto Sans Arabic", "Noto Kufi Arabic", Tahoma, system-ui, sans-serif;
-  --nav-h: 66px; --top-h: 58px; --col: 600px;
+  --nav-h: 66px; --top-h: 50px; --col: 600px;
   color-scheme: light;
 }
 
