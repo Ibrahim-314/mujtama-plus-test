@@ -1,5 +1,26 @@
 [
  {
+  "v": "2.146.1",
+  "date": "2026-11-02",
+  "quiet": true,
+  "ar": {
+   "title": "تحسينات الملف الشخصي",
+   "items": [
+    "المقال يظهر مرة واحدة في أقسام الملف",
+    "البطاقة الوحيدة في القسم تأخذ العرض كاملاً",
+    "زر المتابعة يبقى في سطر الصورة على الجوال، واختصارات الملف كلها ظاهرة على الكمبيوتر"
+   ]
+  },
+  "en": {
+   "title": "Profile polish",
+   "items": [
+    "An article now shows once in profile sections",
+    "A lone card in a section spans the full width",
+    "The follow button stays on the avatar row on phones, and every profile shortcut shows on desktop"
+   ]
+  }
+ },
+ {
   "v": "2.146.0",
   "date": "2026-11-02",
   "ar": {
