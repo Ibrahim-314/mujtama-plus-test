@@ -8,7 +8,7 @@ let S; test.before(async () => { S = await startStack(); }); test.after(async ()
 const open = async (p, h) => { await p.evaluate((h) => { location.hash = h; }, h); await p.waitForSelector(".pv3 .pv3-stats", { timeout: 15000 }); await p.waitForTimeout(400); };
 for (const [vw, VP] of [["390", MOBILE], ["1440", DESKTOP]]) test(vw + ": visitor + owner profile v3", async () => {
   const c = await S.browser.newContext({ ...VP, reducedMotion: "reduce" }); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
-  await onboard(p, S.base, "pv3_" + vw, "فاحص"); try { await seedDiscovery(S.app.ctx, p); } catch (e) { if (!/UNIQUE/.test(e.message)) throw e; } await p.evaluate(() => refresh());
+  await onboard(p, S.base, "pv3_" + vw, "فاحص"); await seedDiscovery(S.app.ctx, p); await p.evaluate(() => refresh());
   for (const lang of ["ar", "en"]) {
     if (lang === "en") { await p.evaluate(() => window.MPI18n.setLang("en")); await p.waitForFunction(() => document.documentElement.dir === "ltr"); }
     for (const theme of ["light", "dark"]) {
