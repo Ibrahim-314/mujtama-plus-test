@@ -15,6 +15,14 @@ const AUTHORS = [
 async function seedDiscovery(ctx, page) {
   const { db } = ctx, at = (min) => new Date(Date.now() - min * 60e3).toISOString();
   const call = (m, u, b) => page.evaluate(async ([m, u, b]) => { const r = await fetch(u, { method: m, headers: { "X-Requested-With": "mujtama", "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }); return r.json(); }, [m, u, b]);
+  // the shared world is written once per app: a second viewer in the same server (e.g. the 1440 run after the
+  // 390 run) reuses it instead of re-inserting the same handles (users.handle is UNIQUE)
+  if (!ctx.__discoveryWorld) ctx.__discoveryWorld = seedWorld(ctx, at);
+  const { users, posts, disc } = await ctx.__discoveryWorld;
+  return seedViewer(ctx, call, at, users, posts, disc);
+}
+async function seedWorld(ctx, at) {
+  const { db } = ctx;
   const users = {};
   for (const [handle, name, city, color, bio] of AUTHORS) {
     const uid = id("u"); users[handle] = uid;
@@ -49,6 +57,10 @@ async function seedDiscovery(ctx, page) {
   ctx.cache.del("feed:"); // rows were written directly: drop ranked caches like any new post would
   await ctx.services.search.reindexAll();
   await ctx.services.trends.compute();
+  return { users, posts, disc };
+}
+async function seedViewer(ctx, call, at, users, posts, disc) {
+  const { db } = ctx;
   // the viewer: in Jeddah, follows a few people and a topic, saved items in folders, last visit 2 hours ago
   const me = (await call("GET", "/api/me")).user;
   await db.run("UPDATE users SET location='جدة' WHERE id=$1", [me.id]);
