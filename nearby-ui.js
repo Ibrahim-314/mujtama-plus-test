@@ -152,22 +152,26 @@
 
   /* ---------- #/nearby ---------- */
   async function nearbyView() {
-    const q = qs(), cfg = await config();
+    const q = qs();
+    /* fetch location + results before painting, so the location card and list land in the same frame as the page (no load jump) */
+    const loadP = (async () => { let me = null; if (DB.me) { try { me = await api("GET", "/api/nearby/location"); } catch { me = null; } }
+      try { return { me, d: await api("GET", "/api/nearby?" + params().toString()) }; } catch (err) { return { me, err }; } });
+    const params = () => { const p = qs(), o = new URLSearchParams(); for (const k of ["city", "area", "q", "category", "radius", "kinds", "place"]) if (p.get(k)) o.set(k, p.get(k)); return o; };
+    const h0 = location.hash, [cfg, pre] = await Promise.all([config(), loadP()]);
+    if (location.hash !== h0) return; // the user moved on while loading: never paint over the newer screen
     page("بالقرب منك", `<div id="nb-loc" class="nb-card nb-loc" aria-live="polite"><div class="skel"></div></div>
-      <form id="nb-ff" class="nb-row" role="search"><label>البحث<input name="q" type="search" enterkeyhint="search" value="${h(q.get("q") || "")}" placeholder="اسم مكان أو فعالية" maxlength="60"></label>
+      <form id="nb-ff" class="nb-row" role="search"><label><span class="vh">البحث</span><input name="q" type="search" enterkeyhint="search" value="${h(q.get("q") || "")}" placeholder="اسم مكان أو فعالية" maxlength="60"></label>
         <label>التصنيف<select name="category"><option value="">الكل</option>${cfg.categories.map((c) => `<option value="${c.key}" ${q.get("category") === c.key ? "selected" : ""}>${ICON[c.key] || ""} ${h(c.label)}</option>`).join("")}</select></label>
         <label>المسافة<select name="radius" data-fx-def="10">${[2, 5, 10, 25, 50].map((r) => `<option value="${r}" ${String(r) === (q.get("radius") || "10") ? "selected" : ""}>${r} كم</option>`).join("")}</select></label><button class="btn ghost">تطبيق</button></form>
       <div class="nb-chips f-chips" role="group" aria-label="النوع">${[["", "الكل"], ["events", "فعاليات"], ["places", "أماكن"]].map(([k, l]) => `<button type="button" class="chip f" data-kind="${k}" aria-pressed="${(q.get("kinds") || "") === k}">${l}</button>`).join("")}</div>
       <div id="nb-map"></div><div id="nb-sel"></div><div id="nb-res" aria-live="polite"><div class="skel"></div></div>
       <h3 class="f-h">أماكنك</h3><div class="list">${UI.li({ href: "#/places/saved", icon: "star", title: "المحفوظة" })}${UI.li({ href: "#/places/mine", icon: "mapPin", title: "أماكني" })}${UI.li({ href: "#/cities", icon: "building", title: "المدن" })}</div><a class="btn block" href="#/places/new"><svg class=ix aria-hidden=true><use href=#i-plus /></svg>أضف مكاناً عاماً</a>`, ["#/explore", "استكشف"]);
-    const params = () => { const p = qs(), o = new URLSearchParams(); for (const k of ["city", "area", "q", "category", "radius", "kinds", "place"]) if (p.get(k)) o.set(k, p.get(k)); return o; };
     const go = (patch) => { const p = qs(); for (const [k, v] of Object.entries(patch)) { if (v === null || v === "") p.delete(k); else p.set(k, v); } location.hash = "#/nearby" + (p.toString() ? "?" + p.toString() : ""); };
     { const F = $("#nb-ff"); if (F && window.MPFeat) MPFeat.filters({ host: F, form: F, move: [...F.querySelectorAll(":scope > label:not(:first-child), :scope > button")], defaults: { radius: "10" } }); }
     $("#nb-ff")?.addEventListener("submit", (e) => { e.preventDefault(); const f = new FormData(e.target); go({ q: f.get("q").trim(), category: f.get("category"), radius: f.get("radius") }); });
     view.querySelectorAll("[data-kind]").forEach((b) => b.addEventListener("click", () => go({ kinds: b.dataset.kind })));
     // location card
-    let me = null; if (DB.me) { try { me = await api("GET", "/api/nearby/location"); } catch { me = null; } }
-    let d; try { d = await api("GET", "/api/nearby?" + params().toString()); } catch (e) { if (!$("#nb-res")) return; $("#nb-res").innerHTML = errBox(e); return; }
+    const me = pre.me, d = pre.d; if (pre.err) { if (!$("#nb-res")) return; $("#nb-res").innerHTML = errBox(pre.err); return; }
     const cityOpts = (sel) => d.cities.map((c) => `<option value="${h(c.name)}" ${c.name === sel ? "selected" : ""}>${h(c.name)}</option>`).join("");
     const L = $("#nb-loc"); if (!L) return; // the view changed while loading
     if (!me || !me.allowed) L.innerHTML = `<div class="nb-lh">${UI.icon("mapPin")}<div><b>${me?.minor ? h(me.note) : "اختر مدينة لتصفح ما فيها"}</b></div></div><div class="nb-row"><label>المدينة<select id="nb-city"><option value="">اختر…</option>${cityOpts(d.center?.city)}</select></label></div>`;
