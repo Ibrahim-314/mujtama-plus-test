@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.148.0 — 2026-11-03 — «شريط أنحف» (user approved 2026-11-02 06:33, started 2026-11-03 00:25 «نعم ابدا»; intended visible change, no feature removed, no migration)
+
+- Top bar is 50 px app-wide (was 58 px): `--top-h` in theme.css; sticky tabs, pull-to-refresh and the new-posts pill follow the token.
+- Home feed tabs: «زمني» «الأحدث» «استكشف» moved into a «⋯» button beside the tab editor (a sheet lists them). The tab in use stays visible in the row. Hidden tabs stay hidden; the tab editor still lists all six. Nothing removed.
+- Tests: discovery.e2e opens «⋯» to pick «زمني».
+
 ## 2.147.1 — 2026-11-02 — «نشر لا ينقطع» (user approved 2026-11-02 22:16 «ابدا»; no visible change, no feature removed, no migration)
 
 - E2E: the discovery world (authors, posts, communities) is now written once per app and reused by later viewers in the same server. A second seed (profile v3 at 1440 after 390, tap sweep) used to hit `UNIQUE constraint failed: users.handle`, and two tests swallowed that error. The workaround is gone from both.
