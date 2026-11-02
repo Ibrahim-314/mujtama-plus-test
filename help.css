@@ -36,3 +36,5 @@
 @keyframes hpIn { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .hp-pop.up { animation-name: hpInUp; } @keyframes hpInUp { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .hp-pop { animation: none; } }
+/* v2.145.7: with the help strip first in .wrap, theme.css «.wrap > a.muted:first-child» no longer matches and the «→ parent» link was 16 px tall at 390; a 44 px tap area with no layout change */
+.wrap>.hp-strip:first-child+a.muted{display:inline-block;padding-block:14px;margin-block:-14px}
