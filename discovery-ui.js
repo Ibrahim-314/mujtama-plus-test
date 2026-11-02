@@ -388,12 +388,24 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     const seen = Date.parse(FD.prefs?.seenAt || srv.seenAt || ""), isNew = (p) => Date.parse(p.createdAt) > seen;
     return [...fresh, ...(seen ? [...list.filter(isNew), ...list.filter(p => !isNew(p))] : list)];
   };
+  const MORE_TABS = ["chrono", "latest", "discover"];
+  function tabMoreSheet() {
+    const tab = ([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${h(k)}" aria-pressed="${feedMode === k}">${h(l)}</button>`;
+    const s = sheet(`<div role="dialog" aria-modal="true" aria-labelledby="d-tm-t"><h3 id="d-tm-t" tabindex="-1">المزيد من التبويبات</h3><div class="u-dflex u-fdc u-g8 u-mt10">${(FD.moreTabs || []).map(tab).join("")}</div></div>`);
+    const ret = view.querySelector("#d-tabmore"); s._onclose = () => { if (ret?.isConnected) ret.focus(); };
+    s.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; closeSheet(); rerender(); });
+    setTimeout(() => s.querySelector("#d-tm-t")?.focus(), 30);
+  }
   function tabsHTML() {
     const p = FD.prefs; if (!p) return null;
     const label = (t) => t.label || ({ for: "لك", following: "أتابع", chrono: "زمني", latest: "الأحدث", discover: "استكشف", communities: "مجتمعاتي" }[t.id] || (t.id.startsWith("topic:") ? TOPIC_NAMES[t.id.slice(6)] || t.id.slice(6) : t.id.startsWith("tag:") ? "#" + t.id.slice(4) : "قائمة"));
     const tabs = p.tabs.filter(t => !t.hidden).map(t => [t.id, label(t)]);
     for (const l of DB.lists) if (!tabs.some(([k]) => k === "list:" + l.id)) tabs.push(["list:" + l.id, l.name]);
-    return tabs.map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${h(k)}" aria-pressed="${feedMode === k}">${h(l)}</button>`).join("") +
+    // v2.148.0: «زمني» «الأحدث» «استكشف» moved into «⋯» (approved 2026-11-02; moved, not removed). The one in use stays visible.
+    const more = tabs.filter(([k]) => MORE_TABS.includes(k)); FD.moreTabs = more;
+    const tab = ([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${h(k)}" aria-pressed="${feedMode === k}">${h(l)}</button>`;
+    return tabs.filter(([k]) => !MORE_TABS.includes(k) || k === feedMode).map(tab).join("") +
+      (more.length ? `<button class="d-tabedit" id="d-tabmore" aria-label="المزيد من التبويبات" aria-haspopup="dialog" title="المزيد من التبويبات">${ic("more", "sm")}</button>` : "") +
       `<button class="d-tabedit" id="d-tabedit" aria-label="تخصيص تبويبات الخلاصة وترتيبها" title="تخصيص التبويبات">${ic("sliders", "sm")}</button>`;
   }
   function enhanceHome() {
@@ -405,6 +417,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       tabs.innerHTML = html; tabs.setAttribute("aria-label", "تبويبات الخلاصة");
       tabs.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
       tabs.querySelector("#d-tabedit").onclick = tabEditor;
+      { const m = tabs.querySelector("#d-tabmore"); if (m) m.onclick = tabMoreSheet; }
       { const on = tabs.querySelector(".tab.on"); if (on && on !== tabs.querySelector(".tab")) requestAnimationFrame(() => setTimeout(() => on.isConnected && on.scrollIntoView({ inline: "nearest", block: "nearest" }), 0)); } // v2.52: after the first paint (no forced layout on route change)
     }
     caughtUpMarker(); digestCard(); dwellWatch();
