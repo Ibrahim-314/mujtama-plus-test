@@ -183,7 +183,7 @@
 .nf-banner{display:flex;gap:10px;align-items:center;padding:13px 14px;border-radius:var(--r);margin-bottom:12px;background:color-mix(in srgb,var(--ok) 14%,var(--card));color:var(--text);font-size:14px;line-height:1.55}
 .nf-banner .ic{width:22px;height:22px;color:var(--ok);flex:none}.nf-banner.warn{background:color-mix(in srgb,var(--warn) 16%,var(--card))}.nf-banner.warn .ic{color:var(--warn)}
 .nf-saved{font-size:12.5px;color:var(--ok-ink);min-height:18px;text-align:center;margin:4px 0}
-.nf-danger{width:100%;min-height:48px;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--danger) 45%,transparent);background:none;color:var(--danger-ink,var(--danger));font:inherit;font-weight:700;cursor:pointer}
+.nf-danger{width:100%;min-height:48px;border-radius:14px;border:1.5px solid color-mix(in srgb,var(--danger) 45%,transparent);background:none;color:var(--danger-ink,color-mix(in srgb,var(--danger) 92%,black));font:inherit;font-weight:700;cursor:pointer} /* light falls back to a red with ≥4.5:1 on the page (was --danger, 4.49:1); dark keeps --danger-ink */
 .nf-danger:hover{background:color-mix(in srgb,var(--danger) 8%,transparent)}
 .nf-skel{height:70px;border-radius:14px;margin-bottom:8px;background:linear-gradient(90deg,var(--bg-2),var(--card),var(--bg-2));background-size:200% 100%;animation:nfsk 1.2s linear infinite}
 @keyframes nfsk{to{background-position:-200% 0}}@media (prefers-reduced-motion:reduce){.nf-skel{animation:none}}
