@@ -1,5 +1,25 @@
 [
  {
+  "v": "2.147.0",
+  "date": "2026-11-02",
+  "ar": {
+   "title": "ملف شخصي بتصميم جديد",
+   "items": [
+    "غلاف أقصر وصورة أوضح وزر متابعة بارز",
+    "الأرقام في بطاقة واحدة، وقسم «مميّز» للأعمال والمقالات",
+    "البحث في المنشورات على الغلاف، والاتصال داخل «⋯»"
+   ]
+  },
+  "en": {
+   "title": "A redesigned profile",
+   "items": [
+    "Shorter cover, clearer photo and a bold follow button",
+    "Stats in one card, plus a Featured row for works and articles",
+    "Search posts from the cover; Call now lives in «⋯»"
+   ]
+  }
+ },
+ {
   "v": "2.146.1",
   "date": "2026-11-02",
   "quiet": true,
