@@ -1,5 +1,22 @@
 [
  {
+  "v": "2.145.6",
+  "date": "2026-11-02",
+  "quiet": true,
+  "ar": {
+   "title": "تحسينات صغيرة",
+   "items": [
+    "الإرشاد وبالقرب منك والتحليلات بدون قفزة عند التحميل"
+   ]
+  },
+  "en": {
+   "title": "Small improvements",
+   "items": [
+    "Mentoring, Nearby and Analytics no longer jump while loading"
+   ]
+  }
+ },
+ {
   "v": "2.145.5",
   "date": "2026-11-02",
   "quiet": true,
