@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.145.7 — 2026-11-02 — المرحلة 4 من خطة الإصلاحات (user-approved; no feature removed, no migration; one tiny intended visible change: the light «إلغاء الاشتراك من كل الرسائل» red is a shade darker)
+
+- English templates (i18n-ui.js): since 2.145.4 a {name} that was an exact catalogue string was translated, so a one-word person or community name that is also a UI word was translated too («سارة» → Sarah, «ذهبي» → Gold; a notification read «Sarah opened new mentoring times»). Only multi-word page titles («صفحة تقارير الشفافية») are translated now. Tests: tests/e2e/i18n-tpl-name.e2e.test.js (new cases fail on the old code); tests/e2e/mentor-saves.e2e.test.js #2 passes again.
+- Light contrast (notify-ui.js): #ep-all on #/emailprefs was 4.49:1; the light fallback is now --danger mixed 8% toward black (≈#c32b3a) (dark keeps --danger-ink). Test: tests/e2e/dark-contrast.e2e.test.js now checks it in light too (fails on the old code).
+- Tap size (help.css): when the help strip «i» is first in .wrap, the «→ parent» text link lost its 44 px rule and was 16 px tall at 390 (#/integrity, #/feedprefs, #/investigations, #/admin/market, #/admin/pi). It now has a 44 px tap area through padding with equal negative margin — no layout change. Test: tests/e2e/back-link-tap.e2e.test.js (fails on the old code).
+- Looked at and left: checkboxes under 24 px in #/fund, #/points, #/verify sit inside 44 px labels (the label is the target); #/aihub provider monograms are decorative (aria-hidden) brand colours.
+
 ## 2.145.6 — 2026-11-02 — المرحلة 3 من خطة الإصلاحات (user-approved; no feature removed, no migration, no intended visible change)
 
 - Content jump on load, the three worst left after 2.145.5 (re-measured per screen with a fresh reload; earlier admin/clips numbers were measurement carry-over and are fine):
