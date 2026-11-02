@@ -817,7 +817,7 @@ a.li:hover .chev { color: var(--accent); } .li .ico { background: linear-gradien
 .set-h { display: flex; align-items: center; gap: 8px; } .set-h::before { content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--grad); }
 .notice { border-inline-start: 3px solid var(--info); } .notice.ok { border-color: var(--ok); } .notice.warn { border-color: var(--warn); } .notice.danger { border-color: var(--danger); }
 /* v2.33 settings groups */
-.set-h { margin: var(--s5) var(--s1) var(--s2); font-size: var(--fs-sm); font-weight: 700; color: var(--muted); } .set-grp > .list { margin: 0; } .li.danger, .li.danger .ico { color: var(--danger); } .li.danger .ico { background: var(--danger-soft); } .set-page > .card, .set-card { margin-top: var(--s4); } .set-page > .card > b:first-child, .set-card > b:first-child { display: block; font-size: var(--fs-lg); margin-bottom: var(--s2); }
+.set-h { margin: var(--s5) var(--s1) var(--s2); font-size: var(--fs-sm); font-weight: 700; color: var(--muted); } .set-grp > .list { margin: 0; } .li.danger, .li.danger .ico { color: var(--danger-ink, var(--danger)); } .li.danger .ico { background: var(--danger-soft); } .set-page > .card, .set-card { margin-top: var(--s4); } .set-page > .card > b:first-child, .set-card > b:first-child { display: block; font-size: var(--fs-lg); margin-bottom: var(--s2); }
 /* forms */
 .field { display: grid; gap: 6px; margin-bottom: var(--s4); }
 .field > label, .field > .lbl { font-size: var(--fs-sm); font-weight: 600; color: var(--text-2); }
