@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.146.1 — 2026-11-02 — «الملف الشخصي» profile polish (user asked 2026-11-02 17:31 to review and fix the profile design; no feature removed, no migration)
+
+- Profile sections: an article with images was listed twice, under «أعمال» and again under «مقالات». «أعمال» now excludes articles (server/services/identity.js).
+- A lone card in a profile section sat at half width with an empty half beside it; the mini grid now uses auto-fit, so one card spans the row and two or more share it as before.
+- 390 English: the follow / edit button wrapped to a second line under the avatar; the avatar row no longer wraps on phones and the text button shrinks (ellipsis) when space is tight.
+- 1440: the shortcut chips (lists, events, interests, library, studio) were cut off in a scrolling row; from 768 px up they wrap so every chip is visible. Phones keep the scroll row.
+- Removed two dead rules (.cy-slot / .cy-skel, left over from the city on the profile before v2.84) to keep the core CSS in budget.
+- Test: tests/e2e/profile-fix-v2146-1.e2e.test.js.
+
 ## 2.146.0 — 2026-11-02 — «English everywhere» (user-approved 2026-11-02 06:33; no feature removed, no migration; intended visible change in the English UI only, Arabic unchanged)
 
 - Runtime English sweep (fix5/ensweep.mjs: every route at 390 and 1440, visible text + placeholder / aria-label / title, user content excluded by matching the seeded DB text) found 505 Arabic UI strings on phone and 516 on desktop. After this release the phone sweep shows only user content (names, posts, collection and community names, policy summaries served by the server).
