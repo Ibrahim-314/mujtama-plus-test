@@ -50,7 +50,7 @@
   /* ---------- styles (incl. the design-review pass) ---------- */
   if (!document.getElementById("lc-css")) document.head.insertAdjacentHTML("beforeend", `<style id="lc-css">
 .lc-search{display:flex;gap:6px;margin:0 0 12px}.lc-search input{flex:1}
-.lc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.lc-chips button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lc-chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}.lc-chips button[aria-pressed=true]{background:var(--chip-on-bg,var(--accent));color:var(--chip-on-fg,#fff);border-color:var(--chip-on-bg,var(--accent))}
 .lc-item{display:block;color:inherit;text-decoration:none}.lc-item b{display:block}.lc-faq summary{cursor:pointer;font-weight:700;padding:4px 0;min-height:32px}.lc-faq p{margin:6px 0 2px;white-space:pre-line}
 .lc-body{white-space:pre-line;line-height:1.8}.lc-badge{display:inline-block;font-size:var(--fs-xs);border-radius:999px;padding:2px 8px;border:1px solid var(--line);margin-inline-start:6px;vertical-align:middle}
 .lc-badge.open,.lc-badge.pending{color:var(--accent)}.lc-badge.answered{color:#0a7d3b}.lc-badge.closed,.lc-badge.resolved{color:var(--muted)}.lc-badge.urgent,.lc-badge.high{color:#b42318}
@@ -73,20 +73,22 @@
     page("مركز المساعدة", `<p class="u-m0 u-mb10 muted">ابحث في المقالات والأسئلة الشائعة، أو تواصل مع فريق الدعم.</p>
       <form class="lc-search" id="lc-hs" role="search"><label class="lc-sr" for="lc-hq">ابحث في مركز المساعدة</label><input id="lc-hq" type="search" value="${h(st.q)}" placeholder="مثال: ربط حساب Pi"><button class="btn">بحث</button></form>
       <div class="lc-chips" role="group" aria-label="التصنيفات"><button class="btn ghost" data-cat="" aria-pressed="${!st.cat}">الكل</button>${Object.entries(HCAT).map(([k, v]) => `<button class="btn ghost" data-cat="${k}" aria-pressed="${st.cat === k}">${v}</button>`).join("")}</div>
-      <div id="lc-hl" aria-busy="true" aria-live="polite">${skel}</div>
-      <div class="card lc-row"><a class="btn" href="#/tickets/new">تواصل مع الدعم</a><a class="btn ghost" href="#/tickets">تذاكري</a><a class="btn ghost" href="#/help">موارد الأمان والطوارئ</a></div>`, back("#/settings", "الإعدادات"));
+      <div id="lc-hl" aria-busy="true" aria-live="polite">${skel}</div><div id="lc-sup" hidden></div>`, back("#/settings", "الإعدادات"));
     const t = view._lcT = {};
     $v("#lc-hs").addEventListener("submit", (e) => { e.preventDefault(); st.q = $v("#lc-hq").value.trim(); helpView(); });
     view.querySelectorAll("[data-cat]").forEach((b) => b.addEventListener("click", () => { st.cat = b.dataset.cat; helpView(); }));
     try {
       const r = await api("GET", `/api/helpcenter/articles?q=${enc(st.q)}&category=${enc(st.cat)}`); if (view._lcT !== t) return;
       const arts = r.items.filter((a) => a.kind === "article"), faqs = r.items.filter((a) => a.kind === "faq");
-      const box = $v("#lc-hl"); box.removeAttribute("aria-busy");
+      const box = $v("#lc-hl"); box.removeAttribute("aria-busy"); supCard();
       box.innerHTML = (!r.items.length ? `<div class="empty">لا نتائج${st.q ? ` لـ «${h(st.q)}»` : ""}. جرّب كلمات أخرى أو افتح تذكرة دعم.</div>` : "")
         + (arts.length ? `<h3>مقالات</h3>${arts.map((a) => `<a class="card lc-item" href="#/faq/${enc(a.slug)}"><b>${h(a.title)}</b><span class="muted">${h(a.summary)}</span></a>`).join("")}` : "")
         + (faqs.length ? `<h3>أسئلة شائعة</h3><div class="card">${faqs.map((a) => `<details class="lc-faq"><summary>${h(a.title)}</summary><p>${h(a.body)}</p></details>`).join("")}</div>` : "");
-    } catch (e) { if (view._lcT === t) $v("#lc-hl").innerHTML = errBox(e); }
+    } catch (e) { if (view._lcT === t) { $v("#lc-hl").innerHTML = errBox(e); supCard(); } }
   }
+  // v2.145.5: the support card sat under the 2-line skeleton and jumped ~150 px down when the articles landed (CLS 0.38 on 390):
+  // it is now shown once the list (or its error) is in place, so nothing below the list moves
+  function supCard() { const s = $v("#lc-sup"); if (!s) return; s.outerHTML = `<div class="card lc-row"><a class="btn" href="#/tickets/new">تواصل مع الدعم</a><a class="btn ghost" href="#/tickets">تذاكري</a><a class="btn ghost" href="#/help">موارد الأمان والطوارئ</a></div>`; }
   async function articleView(slug) {
     page("…", `<div id="lc-a">${skel}</div>`, back("#/faq", "مركز المساعدة"));
     try {
