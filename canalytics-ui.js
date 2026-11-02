@@ -117,19 +117,22 @@
   /* ---------- overview ---------- */
   async function overviewView() {
     shell("");
+    /* insights decide whether the hero goes on top: fetch them alongside, so it lands with the numbers instead of pushing them down */
+    const insP = api("GET", "/api/creator/analytics/insights?" + periodQuery()).catch(() => null);
     let d; try { d = await api("GET", "/api/creator/analytics/overview?" + periodQuery()); } catch (e) { if (!$("#ca-b")) return; $("#ca-b").innerHTML = errBox(e); return; }
     const K = d.kpis, D = d.deltas;
-    if (!$("#ca-b")) return; $("#ca-b").innerHTML = `<div class="ca-g">${kpi("المشاهدات", fmt(K.views), D.views)}${kpi("الوصول (أشخاص)", fmt(K.reach), D.reach)}${kpi("معدل التفاعل", fmt(K.engagementRate), D.engagementRate, "%")}${kpi("صافي المتابعين", (K.followersNet > 0 ? "+" : "") + fmt(K.followersNet), D.followersNet)}
+    const html = `<div class="ca-g">${kpi("المشاهدات", fmt(K.views), D.views)}${kpi("الوصول (أشخاص)", fmt(K.reach), D.reach)}${kpi("معدل التفاعل", fmt(K.engagementRate), D.engagementRate, "%")}${kpi("صافي المتابعين", (K.followersNet > 0 ? "+" : "") + fmt(K.followersNet), D.followersNet)}
       ${kpi("متوسط مدة الانتباه", fmt(K.avgAttentionSeconds, 0), D.avgAttentionSeconds, "ث")}${kpi("نسبة الإكمال", fmt(K.completionRate), D.completionRate, "%")}${kpi("دقائق القراءة والمشاهدة", fmt(K.watchMinutes, 0), D.watchMinutes)}${kpi("صافي الأرباح", fmt(K.earningsNet, 4), D.earningsNet, "π")}</div>
       <h3 class="ca-h3">المشاهدات والتفاعل يومياً</h3><div class="ca-leg"><span><i></i>المشاهدات</span><span><i class="b"></i>التفاعل</span></div>${lineChart(d.daily.views, { unit: "مشاهدة", second: d.daily.engagement, label: "المشاهدات اليومية" })}
       <div class="ca-note">${d.weekly.length >= 2 ? `آخر أسبوع: ${deltaTag(d.weekTrend)} مقارنة بالأسبوع الذي قبله.` : "تحتاج أسبوعين على الأقل لعرض الاتجاه الأسبوعي."} الأرقام تقارن بالفترة السابقة بنفس الطول (${fmt(d.previous.views)} مشاهدة).</div>
       ${d.minor ? `<div class="ca-note">حسابات القاصرين لا تستقبل أرباحاً؛ بقية التحليلات متاحة.</div>` : ""}<section id="ca-ins" aria-label="نصائح من أرقامك"></section><section id="ca-gl" aria-labelledby="ca-glh"></section>`;
-    insightsBox(); goalsBox();
+    const ins = await Promise.race([insP, new Promise((r) => setTimeout(() => r(undefined), 2500))]);
+    if (!$("#ca-b")) return; $("#ca-b").innerHTML = html; insightsBox(ins); goalsBox();
   }
 
   /* ---------- insights (plain-language tips from the creator's own numbers) ---------- */
-  async function insightsBox() {
-    let d; try { d = await api("GET", "/api/creator/analytics/insights?" + periodQuery()); } catch { return; }
+  async function insightsBox(pre) {
+    let d = pre; if (pre === null) return; if (d === undefined) { try { d = await api("GET", "/api/creator/analytics/insights?" + periodQuery()); } catch { return; } }
     const box = $("#ca-ins"); if (!box) return;
     if (d.empty) {
       box.parentElement?.prepend(box);
