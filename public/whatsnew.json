@@ -1,5 +1,24 @@
 [
  {
+  "v": "2.145.7",
+  "date": "2026-11-02",
+  "quiet": true,
+  "ar": {
+   "title": "تحسينات صغيرة",
+   "items": [
+    "أسماء الأعضاء تبقى كما هي في الواجهة الإنجليزية",
+    "رابط الرجوع أسهل للمس على الجوال"
+   ]
+  },
+  "en": {
+   "title": "Small improvements",
+   "items": [
+    "Member names stay as written in the English interface",
+    "The back link is easier to tap on phones"
+   ]
+  }
+ },
+ {
   "v": "2.145.6",
   "date": "2026-11-02",
   "quiet": true,
