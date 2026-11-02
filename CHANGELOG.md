@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.146.0 — 2026-11-02 — «English everywhere» (user-approved 2026-11-02 06:33; no feature removed, no migration; intended visible change in the English UI only, Arabic unchanged)
+
+- Runtime English sweep (fix5/ensweep.mjs: every route at 390 and 1440, visible text + placeholder / aria-label / title, user content excluded by matching the seeded DB text) found 505 Arabic UI strings on phone and 516 on desktop. After this release the phone sweep shows only user content (names, posts, collection and community names, policy summaries served by the server).
+- i18n-enextra.js: ~780 new keys (admin ops/pricing/activation/Pi activation/revenue/beta/points/MJT, search placeholders, section tab labels, settings move-up/down labels, emergency numbers, digest, nearby, integrity, Hijri and Gregorian date shapes incl. the &nbsp;هـ hero). The old key "Source: السجل…" had an English source; the real Arabic key is added.
+- i18n-ui.js: outside Arabic, Intl.DateTimeFormat / NumberFormat / RelativeTimeFormat / PluralRules and Date/Number toLocale*String swap a hard-coded Arabic locale for the UI language (calendar kept, digit system dropped). English now shows "Jan 11, 2027" and "30", never Arabic month names or Arabic-Indic digits. Arabic output is byte-identical.
+- notify-ui.js: the 130 per-kind email switches get their name from the visible (translated) label + a hidden «بالبريد» (aria-labelledby) instead of an Arabic-only aria-label.
+- protection-ui.js: a policy's server summary sits in its own span so «· الإصدار n · date» translates.
+- Static guard baseline (tools/i18n-coverage.baseline.json) 616 → 612; most remaining entries are scanner fragments of composed code, not visible text.
+- Test: tests/e2e/en-everywhere-v2146.e2e.test.js (21 flagged screens, text + attributes + digits + month names; Hijri hero reads «3 Shaban 1448 AH» and returns to Arabic on switch back).
+
 ## 2.145.7 — 2026-11-02 — المرحلة 4 من خطة الإصلاحات (user-approved; no feature removed, no migration; one tiny intended visible change: the light «إلغاء الاشتراك من كل الرسائل» red is a shade darker)
 
 - English templates (i18n-ui.js): since 2.145.4 a {name} that was an exact catalogue string was translated, so a one-word person or community name that is also a UI word was translated too («سارة» → Sarah, «ذهبي» → Gold; a notification read «Sarah opened new mentoring times»). Only multi-word page titles («صفحة تقارير الشفافية») are translated now. Tests: tests/e2e/i18n-tpl-name.e2e.test.js (new cases fail on the old code); tests/e2e/mentor-saves.e2e.test.js #2 passes again.
