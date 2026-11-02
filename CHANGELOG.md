@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.145.6 — 2026-11-02 — المرحلة 3 من خطة الإصلاحات (user-approved; no feature removed, no migration, no intended visible change)
+
+- Content jump on load, the three worst left after 2.145.5 (re-measured per screen with a fresh reload; earlier admin/clips numbers were measurement carry-over and are fine):
+  - #/mentoring (mentor-ui.js): the learner-only view prepended «المرشدون المحفوظون» above «شارك خبرتك» after its own request (CLS 0.38 on 390). The saved list is now fetched alongside /api/mentor/me and painted with the page (2.5 s cap).
+  - #/nearby (nearby-ui.js): the location card replaced its skeleton after the page painted, and the «البحث» label text took a row until feat.css arrived (CLS 0.25). Location + results are fetched before painting, the label is visually hidden from the start (same final look), and a render that finishes after the user moved on no longer paints over the newer screen.
+  - #/analytics (canalytics-ui.js): the empty-state hero was moved above the KPI grid after the insights request (CLS 0.25). Insights are fetched alongside the overview and land in the same frame (2.5 s cap).
+- Test: tests/e2e/load-cls.e2e.test.js now covers the three screens (fails on the old code).
+- Known, unchanged: tests/e2e/mentor-saves.e2e.test.js #2 (an English notification keeps the Arabic name «سارة»; it shows «Sarah») fails on 2.145.5 too — not touched here.
+
 ## 2.145.5 — 2026-11-02 — المرحلة 2 من خطة الإصلاحات (user-approved; no feature removed, no migration; one intended visible change: selected chips / danger text in dark mode)
 
 - Deep sweep (158 screens × 390/1440 × ar/en × light/dark, one at a time; axe contrast, layout shift, English leftovers, small targets): 0 page errors, 0 failed requests, 0 horizontal overflow at 390. Top 3 by «breaks a function → distorts a screen → cosmetic» fixed below.
