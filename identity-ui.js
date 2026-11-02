@@ -105,7 +105,7 @@
     if (P.members?.length) top.insertAdjacentHTML("beforeend", `<div class="team-row"><span class="muted">الفريق</span>${P.members.slice(0, 6).map(m => `<a href="#/u/${esc(m.handle)}" class="av sm" style="background:var(--accent)" title="${esc(m.name)}">${m.avatar ? `<img src="${esc(img(m.avatar, "64"))}" alt="">` : esc(m.name[0])}</a>`).join("")}</div>`);
     // locked private account
     const wrap = view.querySelector(".wrap");
-    if (d.locked && wrap) { wrap.innerHTML = `<div class="card locked">${ic("lock")}<h3>هذا الحساب خاص</h3><p class="muted">تابع ${esc(P.name)} لترى منشوراته${d.relationship?.requested ? "، وطلبك قيد المراجعة" : ""}.</p></div>`; return; }
+    if (d.locked && wrap) { profV3(u, d, P, me, top, cover, wrap); wrap.innerHTML = `<div class="card locked">${ic("lock")}<h3>هذا الحساب خاص</h3><p class="muted">تابع ${esc(P.name)} لترى منشوراته${d.relationship?.requested ? "، وطلبك قيد المراجعة" : ""}.</p></div>`; return; }
     if (viewAs && wrap) { wrap.querySelectorAll(".tab").forEach(t => { if (["saved", "creator"].includes(t.dataset.pt)) t.remove(); }); if (P.private) wrap.insertAdjacentHTML("afterbegin", `<div class="u-p18 card locked">${ic("lock")}<b>حسابك خاص</b><p class="u-m0 u-mt4 muted">غير المتابعين يرون اسمك وصورتك ونبذتك فقط.</p></div>`); }
     // pinned (up to 3) + ordered sections on the posts tab
     if (wrap && (view._ptab || "posts") === "posts") {
@@ -121,7 +121,63 @@
     // shortcut chips: icons instead of emoji
     const CHIP_IC = { "القوائم": "users", "الأحداث": "sparkle", "الاهتمامات": "target", "المكتبة": "bookmark" };
     top.querySelectorAll(".chips a.tab").forEach(a => { const label = a.textContent.replace(/[^\u0600-\u06FF\s]/g, "").trim(); if (CHIP_IC[label]) a.innerHTML = `${ic(CHIP_IC[label], "xs")} ${label}`; });
+    profV3(u, d, P, me, top, cover, wrap);
   }
+
+  // v2.147 profile v3 (approved mockup): nothing removed; search → cover, call → «⋯»
+  function profV3(u, d, P, me, top, cover, wrap) {
+    view.classList.add("pv3"); window.MPChunks?.load("feat");
+    const row = top.querySelector(":scope > .row");
+    const srch = row?.querySelector('a[href^="#/search/"]');
+    if (srch && !cover.querySelector(".pv3-srch")) { srch.classList.add("pv3-srch"); srch.classList.remove("ghost"); cover.appendChild(srch); }
+    const fb = row?.querySelector("[data-follow]");
+    if (fb && !fb.classList.contains("ghost") && !fb.querySelector(".ic")) fb.insertAdjacentHTML("afterbegin", ic("plus", "xs") + " ");
+    const more = row?.querySelector("#pmore");
+    if (more && !more._pv3) {
+      more._pv3 = 1; const o = more.onclick;
+      more.onclick = (e) => { o && o.call(more, e); const call = top.querySelector('[data-call="voice"],[data-call-menu]'); const m = document.querySelector("#sheet .menu"); if (!call || !m || m.querySelector("[data-pv3call]")) return;
+        m.insertAdjacentHTML("afterbegin", `<button data-pv3call>${ic("phone", "sm")} <span>اتصال</span></button>`); m.querySelector("[data-pv3call]").onclick = () => { closeSheet(); call.click(); }; };
+    }
+    if (me && row && !row.querySelector(".pv3-share")) {
+      (row.querySelector("#edit2") || row.lastElementChild).insertAdjacentHTML("beforebegin", `<button class="btn ghost icon pv3-share" aria-label="مشاركة الملف">${ic("share", "sm")}</button>`);
+      row.querySelector(".pv3-share").onclick = async () => { const url = location.origin + location.pathname + "#/u/" + encodeURIComponent(u.handle); try { if (navigator.share) await navigator.share({ title: P.name, url }); else { await navigator.clipboard.writeText(url); toast("نُسخ رابط ملفك"); } } catch (e) { } };
+    }
+    const hl = top.querySelector(":scope > h2 + .muted");
+    if (hl && !me && !hl.querySelector(".pv3-fy")) { for (const n of [...hl.childNodes]) if (n.nodeType === 3 && n.textContent.includes("يتابعك")) { n.remove(); hl.insertAdjacentHTML("beforeend", ` <span class="pv3-fy">يتابعك</span>`); } }
+    const bio = top.querySelector(":scope > p");
+    if (bio && !(u.bio || P.bio)) { bio.remove(); if (me && !top.querySelector(".pv3-addbio")) { hl?.insertAdjacentHTML("afterend", `<button class="pv3-addbio">${ic("plus", "xs")} <span>أضف نبذة عنك</span></button>`); top.querySelector(".pv3-addbio").onclick = () => editProfile(P, d); } }
+    const j = String(P.joinedAt || u.joinedAt || "").slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(j) && !top.querySelector(".pv3-joined")) {
+      let pm = top.querySelector(".pmeta"); const item = `<span class="pv3-joined">${ic("calendar", "xs")} <span>عضو منذ</span> <bdi dir="ltr">${j}</bdi></span>`;
+      if (pm) pm.insertAdjacentHTML("beforeend", item); else (top.querySelector(".pv3-addbio") || top.querySelector(":scope > p") || hl)?.insertAdjacentHTML("afterend", `<div class="pmeta">${item}</div>`);
+    }
+    const st = top.querySelector(".stats");
+    if (st && !st.classList.contains("pv3-stats")) {
+      const nPosts = DB.posts.filter(p => p.author === u.id && p.status === "published" && (me || p.visibility === "public")).length;
+      const [fing, fers] = st.querySelectorAll("a");
+      const rep = st.querySelector("#rep");
+      const cell = (el, n, l) => { if (!el) return null; el.className = "pv3-c"; el.innerHTML = `<b>${n}</b><small>${l}</small>`; return el; };
+      const posts = document.createElement("span"); cell(posts, fmtN(nPosts), "المنشورات");
+      cell(fers, fmtN(S.followers(u.id).length), "المتابِعون"); cell(fing, fmtN(S.following(u.id).length), "يتابع");
+      if (rep) { rep.className = "rep-chip pv3-c pv3-rep"; rep.innerHTML = `<b>${ic("star", "xs")} ${fmtN(P.reputation)}</b><small>السمعة</small>`; }
+      st.classList.add("pv3-stats"); st.replaceChildren(...[posts, fers, fing, rep].filter(Boolean));
+    }
+    const sc = [...top.querySelectorAll(":scope > .chips")].find(c => !c.classList.contains("expertise")); if (sc && st && sc.compareDocumentPosition(st) & Node.DOCUMENT_POSITION_FOLLOWING) st.after(sc);
+    if (!me && !top.querySelector(".pv3-mut")) {
+      const mine = new Set(S.following(DB.me)); const mut = S.followers(u.id).filter(id => id !== DB.me && mine.has(id)).map(id => S.user(id)).filter(Boolean);
+      if (mut.length) { const faces = mut.slice(0, 3).map(m => `<i class="av xs">${esc((m.name || "?")[0])}</i>`).join("");
+        st?.insertAdjacentHTML("afterend", `<a class="pv3-mut" href="#/follows/${esc(u.handle)}/followers"><span class="pv3-faces">${faces}</span><span>يتابعه <bdi>${esc(mut[0].name)}</bdi>${mut.length > 1 ? ` و${mut.length - 1} ممن تعرفهم` : ""}</span></a>`); }
+    }
+    if (!wrap || d.locked) return;
+    const tabs = wrap.querySelector(".tabs");
+    const secs = [...wrap.querySelectorAll(".psec")].filter(s => s.querySelector(".mini-grid"));
+    if (secs.length && tabs && !wrap.querySelector(".pv3-feat")) {
+      const seen = new Set(); const cards = [];
+      secs.forEach(s => { const kind = s.querySelector("h4")?.textContent.trim() || ""; s.querySelectorAll("a.mini").forEach(a => { const h = a.getAttribute("href"); if (seen.has(h)) return; seen.add(h); cards.push(`<a class="pv3-card" href="${esc(h)}"><span class="pv3-th" data-k="${kind === "أعمال" ? "w" : "a"}"><span>${kind === "أعمال" ? "عمل" : "مقال"}</span></span><b>${a.innerHTML}</b></a>`); }); s.remove(); });
+      tabs.insertAdjacentHTML("beforebegin", `<div class="pv3-feat"><h4>مميّز</h4><div class="pv3-car">${cards.join("")}</div></div>`);
+    }
+  }
+
   document.addEventListener("click", (e) => { if (e.target.closest("[data-follow]")) { profCache.clear(); cardCache.clear(); } }, true);
   /* parallax: cover drifts and fades as you scroll */
   let raf = 0;
