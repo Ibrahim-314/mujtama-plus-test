@@ -44,7 +44,7 @@ module.exports = (ctx) => {
         orgs: orgs.map(o => ({ id: o.id, name: o.name, handle: o.handle, avatar: o.avatar, role: o.role })), members: u.account_type === "org" ? (await db.all("SELECT u.id, u.name, u.handle, u.avatar, m.role FROM org_members m JOIN users u ON u.id=m.user_id WHERE m.org=$1", [u.id])).map(x => ({ ...x })) : undefined },
       relationship: viewer && !me ? { following: isFollowing, followsYou: await ctx.policy.follows(u.id, viewer.id), requested: !!(await db.get("SELECT 1 x FROM follow_requests WHERE src=$1 AND dst=$2", [viewer.id, u.id])), canMessage: !!(await ctx.policy.messageMode(viewer.id, u)) } : null,
       locked, pinned: pinnedIds.map(i => byId[i]).filter(Boolean).map(p => content().toClient(p, viewer?.id)),
-      sectionsData: { works: posts.filter(p => p.data?.media || p.data?.images || p.type === "video").slice(0, 6).map(p => content().toClient(p, viewer?.id)), articles: posts.filter(p => p.type === "article").slice(0, 6).map(p => content().toClient(p, viewer?.id)), communities: comms },
+      sectionsData: { works: posts.filter(p => p.type !== "article" && (p.data?.media || p.data?.images || p.type === "video")).slice(0, 6).map(p => content().toClient(p, viewer?.id)), articles: posts.filter(p => p.type === "article").slice(0, 6).map(p => content().toClient(p, viewer?.id)), communities: comms },
       completeness: me ? completeness(u) : undefined,
       pro: locked ? null : await ctx.services.proprofile?.badge?.(u, viewer) // phase 76: link to the professional profile (only when the viewer may see it)
     };
