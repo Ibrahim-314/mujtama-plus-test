@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.145.5 — 2026-11-02 — المرحلة 2 من خطة الإصلاحات (user-approved; no feature removed, no migration; one intended visible change: selected chips / danger text in dark mode)
+
+- Deep sweep (158 screens × 390/1440 × ar/en × light/dark, one at a time; axe contrast, layout shift, English leftovers, small targets): 0 page errors, 0 failed requests, 0 horizontal overflow at 390. Top 3 by «breaks a function → distorts a screen → cosmetic» fixed below.
+- Dark-mode contrast (launch-ui.js, discovery-ui.js, canalytics-ui.js, notify-ui.js, theme.css): selected chips in #/faq, #/staff and the search region filter were white on #9a7bff (3.15:1); they now use the theme's dark chip tokens (--chip-on-bg/--chip-on-fg). Sign-out and unsubscribe red use --danger-ink in dark; the analytics hero button text is dark on white. Light mode unchanged. Test: tests/e2e/dark-contrast.e2e.test.js (fails on the old code).
+- English leftover (i18n-enextra.js): «صفحة سمعتي كما يراها الآخرون» on #/reviews showed «سمعتي كما يراها الآخرون page»; exact catalogue entry added. Test: tests/e2e/i18n-reviews-label.e2e.test.js (fails on the old code).
+- Content jump on load (launch-ui.js, creation-ui.js, creation.css): #/faq support card is shown after the list lands (CLS 0.38 → 0); #/studio keeps the part under its head out of layout until «ابدأ هنا», goals and the tab body are ready (2.5 s cap, tab switches unaffected) (CLS 0.70 → 0). Test: tests/e2e/load-cls.e2e.test.js (fails on the old code). #/mentoring (CLS ~0.38) left for a later stage.
+
 ## 2.145.4 — 2026-11-01 — المرحلة 1 من خطة الإصلاحات (user-approved; no feature removed, no migration, no intended visible change beyond the fixes)
 
 - Top bar (index.html, nav.js, ui.js): the member avatar slot `#tbMe` now ships in index.html and is reserved from the first paint on a device that was signed in last time (`html.mp-me` from localStorage `mp.me`); before, it was added after the first paint, so 🌐 + search + messages jumped 46 px on every load (often seen on #/explore). Visitors see no avatar. `.brand` is no longer rewritten when unchanged. Test: tests/e2e/topbar-cls.e2e.test.js (fails on the old code).
