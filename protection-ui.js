@@ -347,7 +347,7 @@
       if (!slug) {
         const d = await api("GET", "/api/policies"); localStorage.setItem("mp_policy_rev", d.revision);
         view.innerHTML = `<div class="wrap"><h2>${ic("flag")} سياسات المحتوى</h2><p class="muted">تُحدَّث مركزياً، ويمكنك الاطلاع على الإصدارات السابقة.</p>
-          <div class="pt-menu">${d.policies.map(p => `<a href="#/policies/${h(p.slug)}"><span>${h(p.title)}<small>${h(p.summary)} · الإصدار ${p.version}${p.publishedAt ? " · " + h(fmt(p.publishedAt)) : ""}</small></span></a>`).join("")}</div>
+          <div class="pt-menu">${d.policies.map(p => `<a href="#/policies/${h(p.slug)}"><span>${h(p.title)}<small><span>${h(p.summary)}</span> · الإصدار ${p.version}${p.publishedAt ? " · " + h(fmt(p.publishedAt)) : ""}</small></span></a>`).join("")}</div>
           ${DB.isAdmin ? `<div class="pt-row"><button class="btn ghost" id="pt-new">${ic("plus", "sm")} سياسة جديدة</button></div>` : ""}</div>`;
         $("#pt-new")?.addEventListener("click", () => policyEditor({}));
         return;
