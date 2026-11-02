@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.147.0 — 2026-11-02 — «الملف الشخصي الجديد» profile v3 (user approved the mockup 2026-11-02 20:34 «ممتاز نفذ»; no feature removed, no migration; intended visible change)
+
+- Shorter cover (132 px phone, 180 px desktop), 88 px avatar, pill buttons; follow shows a + when not following.
+- Profile search moved onto the cover; the call button moved into «⋯» (menu item «اتصال» presses the same call button). Nothing removed.
+- «يتابعك» is a chip beside the handle; «عضو منذ YYYY-MM» added to the meta line.
+- Stats are one four-cell card: posts, followers, following, reputation (reputation still opens its breakdown; follower links unchanged). English reads "Followers" (was "1 followers").
+- Mutual followers line («يتابعه … و{n} ممن تعرفهم») from people you follow.
+- Works + articles fold into one «مميّز» horizontal row above the tabs (each post once); tabs are underline style, 44 px.
+- Owner: share button, «أضف نبذة عنك» line when there is no bio, shortcut chips under the stats card.
+- Tests: tests/e2e/profile-v3-v2147.e2e.test.js (390/1440 × ar/en × light/dark); profile-fix-v2146-1 updated for the «مميّز» row.
+
 ## 2.146.1 — 2026-11-02 — «الملف الشخصي» profile polish (user asked 2026-11-02 17:31 to review and fix the profile design; no feature removed, no migration)
 
 - Profile sections: an article with images was listed twice, under «أعمال» and again under «مقالات». «أعمال» now excludes articles (server/services/identity.js).
