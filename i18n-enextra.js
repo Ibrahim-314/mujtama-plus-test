@@ -3499,5 +3499,13 @@ Object.assign(window.MPI18N.en, {
 "@{name} · مشرف": "@{name} · moderator",
 "@{name} · دعم": "@{name} · support",
 "اتصال بـ {name}: {n}": "Call {name}: {n}",
-"اتصال بـ الشرطة: {n}": "Call Police: {n}"
+"اتصال بـ الشرطة: {n}": "Call Police: {n}",
+"مميّز": "Featured",
+"عمل": "Work",
+"يتابعه": "Followed by",
+"و{n} ممن تعرفهم": "and {n} others you know",
+"عضو منذ": "Member since",
+"أضف نبذة عنك": "Add a bio about you",
+"مشاركة الملف": "Share profile",
+"نُسخ رابط ملفك": "Your profile link was copied"
 });
