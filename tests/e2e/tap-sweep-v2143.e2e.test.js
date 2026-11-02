@@ -97,7 +97,7 @@ test("the audit itself catches a covered control (guards against a check that al
 
 test("explore hero: «ما الذي يدور؟» and the source buttons are tappable (the glow circle sat over them until v2.143)", async () => {
   const { c, p, errors } = await page("m-ar-light", "tap_hero");
-  try { await seedDiscovery(S.app.ctx, p); } catch (e) { if (!/UNIQUE/.test(e.message)) throw e; } // already seeded by an earlier test in this file
+  await seedDiscovery(S.app.ctx, p); // the shared world is written once per app; this only adds the viewer
   await p.evaluate(() => refresh());
   await p.goto(S.base + "/?nosw#/explore"); await p.waitForSelector(".x-hero a.x-go", { timeout: 10000 });
   await p.evaluate(() => document.querySelector(".x-hero").scrollIntoView({ block: "center" }));
