@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.147.1 — 2026-11-02 — «نشر لا ينقطع» (user approved 2026-11-02 22:16 «ابدا»; no visible change, no feature removed, no migration)
+
+- E2E: the discovery world (authors, posts, communities) is now written once per app and reused by later viewers in the same server. A second seed (profile v3 at 1440 after 390, tap sweep) used to hit `UNIQUE constraint failed: users.handle`, and two tests swallowed that error. The workaround is gone from both.
+- Release tool: an interrupted release can resume at the Railway backup when Render already serves the exact tested commit, and the tool warns when the two hosts serve different versions (before and after a release). The visual baseline is only replaced by shots of the shipped commit.
+
 ## 2.147.0 — 2026-11-02 — «الملف الشخصي الجديد» profile v3 (user approved the mockup 2026-11-02 20:34 «ممتاز نفذ»; no feature removed, no migration; intended visible change)
 
 - Shorter cover (132 px phone, 180 px desktop), 88 px avatar, pill buttons; follow shows a + when not following.
