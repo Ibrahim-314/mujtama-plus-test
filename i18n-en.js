@@ -1467,6 +1467,7 @@ Object.assign(window.MPI18N.en, {
   "زمني": "Chronological",
   "تبويبات الخلاصة": "Feed tabs",
   "تخصيص تبويبات الخلاصة وترتيبها": "Customize and reorder feed tabs",
+  "المزيد من التبويبات": "More tabs",
   "تخصيص التبويبات": "Customize tabs",
   "فاتك اليوم": "You missed today",
   "إخفاء ملخص اليوم": "Hide today’s summary",
