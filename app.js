@@ -210,8 +210,21 @@ function homeCompose(k) {
 const homeDigSlot = () => {
   if (feedMode !== "for" || !navigator.onLine || localStorage.getItem("mp_digest_hidden") === new Date().toDateString()) return "";
   try { const c = JSON.parse(localStorage.getItem("mp_digest_cache") || "null"); if (c && c.day === new Date().toDateString() && !(c.d && c.d.summary && c.d.summary.points && c.d.summary.points.length)) return ""; } catch { /* no cache */ }
-  return `<section class="card d-digest d-dig-slot" aria-hidden="true"><div class="skel"></div></section>`;
+  const n = Math.max(0, Math.round(((+localStorage.getItem("mp_dig_h") || 184) - 184) / 22)); /* v2.149.0: 22 px skeleton lines up to the card's last height */
+  return `<section class="card d-digest d-dig-slot" aria-hidden="true"><div class="skel"></div>${'<div class="skel line"></div>'.repeat(Math.min(n, 12))}</section>`;
 };
+/* v2.149.0: the first Home frame draws the tab row the discovery chunk will draw (the user's last tabs, «⋯» and the editor
+ * button), so the pre-2.148 row (with «الأحدث» «استكشف») never shows for a second before it is replaced */
+const HOME_MORE = ["chrono", "latest", "discover"];
+function homeTabs() {
+  let t = null; try { const c = JSON.parse(localStorage.getItem("mp_tabs") || "null"); if (c && c.me === DB.me && Array.isArray(c.tabs)) t = c.tabs; } catch { /* no cache */ }
+  t = (t || [["for", "لك"], ["following", "أتابع"], ["chrono", "زمني"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"]]).slice();
+  for (const l of DB.lists) if (!t.some(([k]) => k === "list:" + l.id)) t.push(["list:" + l.id, l.name]);
+  const ico = (n) => (window.UI ? UI.icon(n, "sm") : ""), more = t.some(([k]) => HOME_MORE.includes(k));
+  return t.filter(([k]) => !HOME_MORE.includes(k) || k === feedMode).map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${esc(k)}" aria-pressed="${feedMode === k}">${esc(l)}</button>`).join("") +
+    (more ? `<button class="d-tabedit" id="d-tabmore" aria-label="المزيد من التبويبات" aria-haspopup="dialog" title="المزيد من التبويبات">${ico("more")}</button>` : "") +
+    `<button class="d-tabedit" id="d-tabedit" aria-label="تخصيص تبويبات الخلاصة وترتيبها" title="تخصيص التبويبات">${ico("sliders")}</button>`;
+}
 const Views = {
   home() { return HomeHooks.run(Views._homeBase, this, arguments); },
   _homeBase() {
@@ -220,7 +233,7 @@ const Views = {
     let html = `<div class="wrap">
       <div class="card composer-bar h2c" id="hcomp"><div class="h2c-r1"><span class="h2c-av">${homeAv()}</span><button type="button" class="fake" id="cbar">ماذا تريد أن تنشر؟</button></div>
       <div class="h2c-q" role="group" aria-label="نوع المنشور">${HOME_Q.map(([k, l, d]) => `<button type="button" class="h2c-b" data-q="${k}" aria-label="${l}" title="${l}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg></button>`).join("")}</div></div>
-      <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>${homeDigSlot()}`;
+      <div class="tabs">${homeTabs()}</div>${homeDigSlot()}`;
     if (!shown.length) html += `${UI.empty({ title: "لا يوجد محتوى هنا بعد", text: "تابع أشخاصاً وانضم إلى مجتمعات لتمتلئ خلاصتك.", action: '<a class="btn" href="#/explore">اكتشف أشخاصاً ومجتمعات</a>' })}`;
     shown.forEach((p, i) => {
       html += postCard(p);
