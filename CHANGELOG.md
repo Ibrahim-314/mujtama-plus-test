@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.149.3 «ما يتحرك تحت إصبعك» — 2026-11-04
+- Settings section title (en): `setView()` compared the Arabic source with the English the i18n layer wrote and re-set it every call → title flipped ar/en and the head jumped 1↔2 lines (CLS 0.64 on `#/settings?s=display`, flash score 91.7 → 6.3). Now compares/sets the translated title.
+- `.page-head` titles reserve the lazy «i» width from first paint (no late wrap).
+- Late chains (safety / minors / calls) re-route only while the view is still the loader skeleton or 404: `#/security` was redrawn from the skeleton ~1 s after it showed (55.6 → 5.3).
+- Help «i» overlay row is no longer put on a loading skeleton (popped in/out; `#/settings?s=notif` 56 → 5, `?s=family` 42 → 5).
+- Shorts tabs labels translated at insert (bar no longer slides 122→92 px in en).
+- tests: `no-flash-v21493` (3); `calls.e2e` opens «اتصال» from the profile «⋯» (moved there in 2.148, approved).
+
 ## 2.149.2 — 2026-11-03 — «ولا ومضة» (user 2026-11-03 21:29 «ابدا لكن بشكل أوسع وعميق»; no feature removed, no migration)
 - Tooling: tools/flash-sweep.mjs records every frame for 3.5 s on cold open and in-app navigation of every route (layout swaps, jumps, redraws, Arabic text in the English UI, CLS); flagged-route score ar/light 1610.7 → 351.4, en/dark 4534.4 → 684.6.
 - Boot: route() waits while the session is unknown, so signed-in pages no longer flash the welcome screen; #/integrity, minors routes and #/calls show the loading skeleton instead of «الصفحة غير موجودة» while their chunk loads.
