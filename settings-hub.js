@@ -142,8 +142,11 @@ function setView(w) {
   w.querySelector(".set-none").hidden = !(mode === "find" && ![...gs.querySelectorAll(".set-sec")].some((x) => !x.hidden));
   w.querySelector(".set-nav").hidden = mode !== "hub"; w.querySelector(".set-me").hidden = mode !== "hub" || !w.querySelector(".set-me > .li"); w.querySelector(".set-hub").hidden = mode === "sec"; w.querySelector(".set-foot").hidden = mode === "sec";
   const h2 = w.querySelector(".page-head h2"), back = w.querySelector(".page-head .back"), title = cur ? cur[1] : "الإعدادات";
-  if (h2 && h2.textContent !== title) h2.textContent = title;
-  if (back) { const want = cur ? ["#/settings", "الإعدادات"] : ["#/menu", "المزيد"]; if (back.getAttribute("href") !== want[0]) { back.setAttribute("href", want[0]); back.innerHTML = `<span class="fwd" aria-hidden="true">→</span> ${want[1]}`; } }
+  // v2.149.3: compare/set the TRANSLATED title — comparing the Arabic source against the English the i18n layer wrote made
+  // every setView() re-write Arabic, i18n flip it back, and the head jump between 1 and 2 lines (CLS 0.64 on #/settings?s=display, en)
+  const trS = (x) => (window.MPI18n?.t ? window.MPI18n.t(x) : x), tt = trS(title);
+  if (h2 && h2.textContent !== tt && h2.textContent !== title) h2.textContent = tt;
+  if (back) { const want = cur ? ["#/settings", "الإعدادات"] : ["#/menu", "المزيد"]; if (back.getAttribute("href") !== want[0]) { back.setAttribute("href", want[0]); back.innerHTML = `<span class="fwd" aria-hidden="true">→</span> ${trS(want[1])}`; } }
   if (view._setsec !== (cur ? s : "")) { view._setsec = cur ? s : ""; scrollTo(0, 0); }
 }
 /* dev mode (no build): this script arrives after the first route() — repaint #/settings once */
