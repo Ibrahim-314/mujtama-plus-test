@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.149.1",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "الملف الشخصي يفتح بتصميمه الجديد مباشرة",
+      "items": [
+        "فتح أي ملف شخصي يظهر التصميم الجديد من أول لحظة، بدون ومضة التصميم القديم"
+      ]
+    },
+    "en": {
+      "title": "Profiles open in the new design right away",
+      "items": [
+        "Opening any profile shows the new design from the first moment, without a flash of the old one"
+      ]
+    }
+  },
+  {
     "v": "2.149.0",
     "date": "2026-11-03",
     "ar": {
