@@ -135,7 +135,7 @@
   const mo = new MutationObserver((list) => {
     if (busy) return;
     for (const r of list) { if (r.type === "characterData") queue.add(r.target); else if (r.type === "attributes") queue.add(r.target); else r.addedNodes.forEach((n) => queue.add(n)); }
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const L = cur(); const q = [...queue]; queue.clear(); if (L === "ar") return; mo.disconnect(); for (const n of q) if (n.isConnected) { if (n.nodeType === 3 && orig.has(n) && n.nodeValue !== orig.get(n) && AR.test(n.nodeValue)) orig.set(n, n.nodeValue); apply(n, L); } watch(); });
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const L = shown; /* v2.149.2: the language on screen, not DB (still "ar" before the account loads) */ const q = [...queue]; queue.clear(); if (L === "ar") return; mo.disconnect(); for (const n of q) if (n.isConnected) { if (n.nodeType === 3 && orig.has(n) && n.nodeValue !== orig.get(n) && AR.test(n.nodeValue)) orig.set(n, n.nodeValue); apply(n, L); } watch(); });
   });
   const watch = () => mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["title", "placeholder", "aria-label", "label"] });
 
@@ -145,7 +145,8 @@
     if (!CAT[L]) await window.MPChunks?.load("i18n-" + L).catch(() => { });
     /* v2.69: the en catalogue is split in two lazy chunks (each under the per-chunk budget); the second merges into the first */
     if (L === "en" && !ensure.plus) { await Promise.all([window.MPChunks?.load("i18n-enplus"), window.MPChunks?.load("i18n-enextra")]).then(() => { ensure.plus = true; tplCache.en = null; }).catch(() => { }); }
-    if (!over[L] && on()) { try { over[L] = (await Remote.api("GET", "/api/i18n/strings?lang=" + L)).strings || {}; } catch { over[L] = {}; } }
+    /* v2.149.2: the server's admin overrides no longer hold the first English paint: the catalogue applies now, overrides re-apply when they land */
+    if (!over[L] && on() && !ensure.ov) { ensure.ov = Remote.api("GET", "/api/i18n/strings?lang=" + L).then((r) => r?.strings || {}, () => ({})).then((o) => { over[L] = o; tplCache[L] = null; if (Object.keys(o).length && shown === L) apply(document.body, L); }).finally(() => { ensure.ov = null; }); }
   }
   function setDir(L) {
     const d = document.documentElement; d.lang = L; d.dir = LANGS[L].dir; d.dataset.lang = L;
@@ -161,7 +162,7 @@
     setDir(L);
     apply(document.body, L);
     if (typeof rerender === "function") try { rerender(); } catch { /* view may not support rerender */ }
-    apply(document.body, L);
+    apply(document.body, L); document.documentElement.classList?.remove("mp-i18n-wait");
   }
   // flush misses every 15 s (signed-in server mode only)
   setInterval(() => {
@@ -233,8 +234,9 @@
 
   window.MPI18n = { t, apply, setLang, lookup, languages: LANGS, current: cur, version: "2.23.0" };
   watch();
-  const L0 = cur();
-  if (L0 !== "ar") ensure(L0).then(() => { shown = L0; setDir(L0); apply(document.body, L0); });
+  const L0 = cur() === "ar" && document.documentElement.lang === "en" ? "en" : cur(); // v2.149.2: before the account loads, the saved shell (mp.shell, set from the account language) says which catalogue to apply
+  if (L0 !== "ar") ensure(L0).then(() => { shown = L0; setDir(L0); apply(document.body, L0); document.documentElement.classList?.remove("mp-i18n-wait"); });
+  else if (document.documentElement.lang !== "en") document.documentElement.classList?.remove("mp-i18n-wait"); // a saved English shell keeps its labels hidden until setLang (account sync) applies the catalogue
   // the account's interface language (users.lang) is the source of truth across devices and reloads
   let tries = 0; const sync = () => {
     if (!(on() && typeof DB !== "undefined" && DB.me)) { if (++tries < 30) setTimeout(sync, 500); return; } // wait for the server hydrate
