@@ -167,7 +167,7 @@
     if (!pop || !openFrom) return;
     if (!openFrom.isConnected) { close(true); return; }
     const r = openFrom.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight, cx = r.left + r.width / 2;
-    let x = Math.max(12, Math.min(cx - w / 2, innerWidth - w - 12));
+    const x = Math.max(12, Math.min(cx - w / 2, innerWidth - w - 12));
     let y = r.bottom - 6, up = false; if (y + h + 8 > innerHeight - 12 && r.top - h > 12) { y = r.top - h + 6; up = true; }
     pop.classList.toggle("up", up);
     pop.style.setProperty("--hp-x", x + "px"); pop.style.setProperty("--hp-y", y + "px"); pop.style.setProperty("--hp-ax", Math.max(14, Math.min(cx - x, w - 14)) + "px");
