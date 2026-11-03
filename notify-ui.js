@@ -504,7 +504,7 @@
     const first = view.querySelector(".wrap .card"); if (!first || view.querySelector("#nf-set")) return;
     first.insertAdjacentHTML("beforebegin", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card row" id="nf-set" href="#/notifsettings">${ic("bell")}<div class="grow"><b>الإشعارات والبريد</b><div class="muted">ما يصلك، أوقات الهدوء، الإشعارات على هذا الجهاز</div></div><span class="fwd" aria-hidden="true">←</span></a>`);
   });
-  if (/^#\/settings/.test(location.hash) && window.__CHUNKS?.notify) route(); // the settings entry appears once the idle-loaded chunk lands
+  if (/^#\/settings\/?(\?|$)/.test(location.hash) && window.__CHUNKS?.notify) route(); // v2.149.2: the hub only (its entry lives there), not every settings/* page // the settings entry appears once the idle-loaded chunk lands
   window.MPChunks?.load("pwa").catch(() => { }); // phase 46: installable-app chunk rides on this idle chunk (0 B in core)
   window.MPNotifyUI = { center, settings: settingsView, email: emailView, toast: showToast, enablePush, version: "__APP_VERSION__" };
 })();
