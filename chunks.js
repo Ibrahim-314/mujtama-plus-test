@@ -40,6 +40,7 @@
     knowledge: ["knowledge", "kb", "admin/knowledge"],
     work: ["cv", "talent", "admin/pro", "jobs", "job", "application", "admin/jobs", "contracts", "contract", "admin/contracts"]
   };
+  ROUTES.feat = ["u", "me"]; // v2.149.1: profile v3 styles ride feat.css — a cold profile waits on the skeleton, never paints the old layout
   ROUTES.mjt = ["mjt", "admin/mjt"]; // v2.47 «مجتمع كوين» wallet + admin (mjt-ui.js + mjt.css)
   ROUTES.proreviews = ["reviews", "admin/reviews"]; // v2.46 phase 80: professional reputation (proreviews-ui.js + proreviews.css), loads after the work chunk
   ROUTES.teams = ["teams", "team"]; // v2.45 phase 79: teams & projects (teams-ui.js + teams.css), loads after the work chunk
