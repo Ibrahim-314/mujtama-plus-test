@@ -149,7 +149,8 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
     a.querySelector("span").innerHTML = icon(off, "ic-off") + icon(on, "ic-on") + (badge ? badge.outerHTML : "");
   });
   const nav = $(".bottomnav");
-  nav.insertAdjacentHTML("afterbegin", `<a href="#/home" class="side-brand" aria-label="مجتمع بلس"><span class="logo brand-logo" aria-hidden="true"></span><span class="brand-text side-label">مجتمع بلس</span></a>`);
+  /* v2.148.1: the side brand ships in index.html so the 1440 rail never jumps 68px on load; insert only if missing */
+  if (!nav.querySelector(".side-brand")) nav.insertAdjacentHTML("afterbegin", `<a href="#/home" class="side-brand" aria-label="مجتمع بلس"><span class="logo brand-logo" aria-hidden="true"></span><span class="brand-text side-label">مجتمع بلس</span></a>`);
   nav.insertAdjacentHTML("beforeend", `<button class="btn block side-compose" id="sideCompose">${icon("pen", "sm")} منشور جديد</button>`);
   $("#sideCompose").onclick = () => $("#fab").click();
   const fab = $("#fab"); fab.innerHTML = icon("pen"); fab.setAttribute("aria-label", "منشور جديد");
