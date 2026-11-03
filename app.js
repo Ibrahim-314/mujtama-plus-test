@@ -1,3 +1,5 @@
+/* v2.148.1: a cold start straight into #/shorts lays out full-screen from the first frame (no 50px drop when the topbar hides) */
+try { if (/^#\/(shorts|clips)(\/|\?|$)/.test(location.hash)) document.body.classList.add("shorts-mode"); } catch { }
 /* ===== UI layer: router + views ===== */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (s = "") => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
@@ -204,6 +206,12 @@ function homeCompose(k) {
     if (k === "ai") { const C = window.MPChunks; (C ? C.load("ai").catch(() => { }).then(() => C.load("assistant")).catch(() => { }) : Promise.resolve()).then(() => inEd(".mp-asb", (b) => b.click())); } /* «✨ المساعد» of the editor */
   });
 }
+/* v2.148.1: «فاتك اليوم» gets its place in the first frame (the discovery chunk fills it later), so the feed never moves down */
+const homeDigSlot = () => {
+  if (feedMode !== "for" || !navigator.onLine || localStorage.getItem("mp_digest_hidden") === new Date().toDateString()) return "";
+  try { const c = JSON.parse(localStorage.getItem("mp_digest_cache") || "null"); if (c && c.day === new Date().toDateString() && !(c.d && c.d.summary && c.d.summary.points && c.d.summary.points.length)) return ""; } catch { /* no cache */ }
+  return `<section class="card d-digest d-dig-slot" aria-hidden="true"><div class="skel"></div></section>`;
+};
 const Views = {
   home() { return HomeHooks.run(Views._homeBase, this, arguments); },
   _homeBase() {
@@ -212,7 +220,7 @@ const Views = {
     let html = `<div class="wrap">
       <div class="card composer-bar h2c" id="hcomp"><div class="h2c-r1"><span class="h2c-av">${homeAv()}</span><button type="button" class="fake" id="cbar">ماذا تريد أن تنشر؟</button></div>
       <div class="h2c-q" role="group" aria-label="نوع المنشور">${HOME_Q.map(([k, l, d]) => `<button type="button" class="h2c-b" data-q="${k}" aria-label="${l}" title="${l}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg></button>`).join("")}</div></div>
-      <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>`;
+      <div class="tabs">${[["for", "لك"], ["following", "أتابع"], ["latest", "الأحدث"], ["discover", "استكشف"], ["communities", "مجتمعاتي"], ...DB.lists.map(l => ["list:" + l.id, l.name])].map(([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${k}">${l}</button>`).join("")}</div>${homeDigSlot()}`;
     if (!shown.length) html += `${UI.empty({ title: "لا يوجد محتوى هنا بعد", text: "تابع أشخاصاً وانضم إلى مجتمعات لتمتلئ خلاصتك.", action: '<a class="btn" href="#/explore">اكتشف أشخاصاً ومجتمعات</a>' })}`;
     shown.forEach((p, i) => {
       html += postCard(p);
@@ -227,7 +235,14 @@ const Views = {
     $("#hcomp").onclick = (e) => { const q = e.target.closest("[data-q]"); if (q) homeCompose(q.dataset.q); else if (!e.target.closest("button")) openComposer(); };
     view.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
     const sen = $("#more-sentinel");
-    if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); sen.classList.add("skel"); setTimeout(() => { feedLimit += 10; const y = scrollY; rerender(); scrollTo(0, y); }, 400); } }).observe(sen);
+    if (sen) new IntersectionObserver((en, ob) => { if (en[0].isIntersecting) { ob.disconnect(); sen.classList.add("skel"); setTimeout(() => {
+      /* v2.148.1: keep the cards already on screen (their images are loaded) so loading more never makes the feed jump */
+      const pid = (c) => c.querySelector("[data-more]")?.dataset.more, kept = new Map();
+      view.querySelectorAll(".wrap > .post-card").forEach(c => { const id = pid(c); if (id && !kept.has(id)) kept.set(id, c); });
+      feedLimit += 10; const y = scrollY; rerender();
+      view.querySelectorAll(".wrap > .post-card").forEach(c => { const id = pid(c), o = id && kept.get(id); if (o && o !== c) { c.replaceWith(o); kept.delete(id); } });
+      scrollTo(0, y);
+    }, 400); } }).observe(sen);
   },
 
   post(id) {
