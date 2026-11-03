@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.149.2 — 2026-11-03 — «ولا ومضة» (user 2026-11-03 21:29 «ابدا لكن بشكل أوسع وعميق»; no feature removed, no migration)
+- Tooling: tools/flash-sweep.mjs records every frame for 3.5 s on cold open and in-app navigation of every route (layout swaps, jumps, redraws, Arabic text in the English UI, CLS); flagged-route score ar/light 1610.7 → 351.4, en/dark 4534.4 → 684.6.
+- Boot: route() waits while the session is unknown, so signed-in pages no longer flash the welcome screen; #/integrity, minors routes and #/calls show the loading skeleton instead of «الصفحة غير موجودة» while their chunk loads.
+- Settings: the hub waits up to 2.5 s for its contributing chunks (minorscore, minors, notify, tips) and draws once instead of up to 4 times.
+- Redraws: pi-ui, notify-ui, minors-ui and ops-ui only re-render the screens they add to (was every #/admin/* and #/settings/* page); ai-ui re-renders only screens with posts ([data-react]) instead of every screen 1–2 s after open.
+- English: a saved English UI loads i18n-en/enplus/enextra in parallel at boot and hides the bottom-bar labels until applied (3 s cap), instead of ~1.5 s of Arabic; server overrides load async and re-apply.
+- Profile: profile-v2/pv3 classes now really leave #view outside #/u and #/me; the edit sheet and photo cropper moved to feat-ui.js (MPProfEdit), app.js 90.2 → 88.6 KB; 2 missing English strings added.
+- Help: the «i» help chunk loads at boot on a signed-in device so the button no longer pops in after first paint.
+- ship.sh: STOP_AFTER=gates|visual|render stages; Render skipped when the same commit is already pushed (render-pushed.sha).
+- Test: tests/e2e/no-flash-v21492 (welcome flash, not-found flash, settings single draw, versions, settings/display, admin/security, admin/finance).
+- Note: in 2.149.1 ship-state/render.sha was written by hand to resume from the Railway stage.
+
 ## 2.149.1 — 2026-11-03 — «الملف بلا ومضة» (user report 19:29 «ملف الشخصي ... التصميم القديم يظهر ثانيه ويختفي»; under the 08:35 standing approval; no feature removed, no migration)
 - Profile: the v3 design was applied only after /api/profiles answered, so the pre-2.147 layout showed for the whole round trip. The last profile seen on this device (per signed-in account, 12 most recent, localStorage mp_prof_v1) now paints in the same frame; with none saved, or before the session is up after a reload, the v3 frame (cover, tabs) is set at once. Fresh data redraws once only when it changed.
 - Profile: the profile-v2/pv3 classes are dropped when leaving the profile (they used to stay on #view for every later page).
