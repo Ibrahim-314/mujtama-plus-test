@@ -143,7 +143,8 @@ const nfmt = (n) => { if (!n) return ""; try { return new Intl.NumberFormat(DB.s
    * replacing it on every boot re-laid the wordmark ~100 ms in and shifted 🌐 and the bar icons 46 px on the first screen */
   const brand = $(".brand"); if (brand && !brand.querySelector(".brand-text")) brand.innerHTML = `<span class="logo" aria-hidden="true"></span><span class="brand-text">مجتمع بلس</span>`;
   const NAV = { home: ["home", "homeF"], explore: ["compass", "compassF"], communities: ["users", "usersF"], notifications: ["bell", "bellF"], menu: ["menu", "menuF"], me: ["user", "userF"] };
-  document.querySelectorAll(".bottomnav a").forEach(a => {
+  /* v2.149.0: index.html ships the same tab SVGs inline (no emoji first paint); here they move onto the sprite. a[data-r] keeps the side logo untouched */
+  document.querySelectorAll(".bottomnav a[data-r]").forEach(a => {
     const [off, on] = NAV[a.dataset.r] || ["home", "homeF"], badge = a.querySelector(".badge");
     /* v2.145.1: no aria-label here — the visible <small> label (+ the unread count) is the name, so axe label-content-name-mismatch holds when a count shows */
     a.querySelector("span").innerHTML = icon(off, "ic-off") + icon(on, "ic-on") + (badge ? badge.outerHTML : "");
