@@ -431,7 +431,7 @@ body.ob .logo { font-size: 0 !important; }
   nav.bottomnav .side-brand { order: -1; } nav.bottomnav .side-only { order: 7; } nav.bottomnav a[data-r=menu] { order: 8; } nav.bottomnav .side-compose { order: 9; } nav.bottomnav .nav-switch { order: 10; }
   .bottomnav a:not(.side-brand) > span { width: 52px; height: 36px; }
   .side-brand { display: grid; place-items: center; height: 56px; margin-bottom: 10px; }
-  .bottomnav .side-brand .logo { width: 42px; height: 42px; border-radius: 14px; }
+  .bottomnav .side-brand .logo { width: 42px; height: 42px; border-radius: 14px; flex: none; } [dir=ltr] .bottomnav .side-brand .logo { width: 36px; height: 36px; }
   .fab { bottom: 28px; }
   body.has-fab { padding-bottom: calc(28px + 58px + 16px); }
   .tabs { margin: 0; padding-inline: 0; }
