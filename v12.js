@@ -76,6 +76,7 @@ function applyShell() {
     H.classList.add("no-tx"); H.dataset.theme = eff;
     requestAnimationFrame(() => requestAnimationFrame(() => H.classList.remove("no-tx")));
   }
+  try { localStorage.setItem("mp.shell", JSON.stringify({ l: L, t: th })); } catch { /* storage off */ } // v2.149.0: index.html applies these before the first paint
 }
 /* v2.64: any data-theme flip that bypasses applyShell (other modules, extensions, automation) gets the same no-transition
    window, so inherited text/background colours never sit mid-transition on the old scheme (axe dark #/msession race). */
@@ -522,5 +523,7 @@ MPRoutes.extend((a, b) => ({
 const _route = route;
 route = function () { _route(); afterRender(); };
 window.addEventListener("hashchange", () => afterRender());
-applyShell();
+/* v2.149.0: served over http, the local DB here is not the account yet (the server hydrate applies it); when the last shell is
+ * known, index.html already painted it, so do not flip it back to the local defaults for a second */
+{ let known = false; try { known = !!localStorage.getItem("mp.shell"); } catch { /* storage off */ } if (!(window.__deferRoute && known)) applyShell(); }
 if (!window.__deferRoute) route();
