@@ -11,7 +11,7 @@
 <style>/* v2.145.4 top-bar avatar slot (kept out of the core CSS budget) */.tb-pending{visibility:hidden}:root:not(.mp-me) .tb-pending{display:none}</style>
   <link rel="stylesheet" href="theme.css">
 <!-- v2.145.4 CLS: a device signed in last time reserves the avatar slot from the first paint (nav.js keeps mp.me in step with the session) -->
-<script>try{if(localStorage.getItem("mp.me")==="1")document.documentElement.classList.add("mp-me")}catch(e){}</script>
+<script>try{var H=document.documentElement;if(localStorage.getItem("mp.me")==="1")H.classList.add("mp-me");var k=JSON.parse(localStorage.getItem("mp.shell")||"null");if(k){if(k.l==="en"){H.lang="en";H.dir="ltr";H.dataset.lang="en"}H.dataset.theme=k.t==="dark"||k.t==="light"?k.t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}}catch(e){}</script>
 <link rel="stylesheet" href="communities.css" data-chunk="communities">
 <link rel="stylesheet" href="creation.css" data-chunk="creation">
 <link rel="stylesheet" href="composer.css" data-chunk="composer">
@@ -64,11 +64,11 @@
      non-focusable trigger so the desktop rail «نشر», the «n» shortcut and in-page «انشر» buttons keep opening the composer. -->
 <button class="fab" id="fab" hidden tabindex="-1" aria-hidden="true" title="منشور جديد">✎</button>
 <nav class="bottomnav" aria-label="التنقل الرئيسي"><a href="#/home" class="side-brand" aria-label="مجتمع بلس"><span class="logo brand-logo" aria-hidden="true"></span><span class="brand-text side-label">مجتمع بلس</span></a>
-  <a href="#/home" data-r="home"><span>🏠</span><small>الرئيسية</small></a>
-  <a href="#/explore" data-r="explore"><span>🔍</span><small>استكشف</small></a>
-  <a href="#/communities" data-r="communities"><span>👥</span><small>المجتمعات</small></a>
-  <a href="#/notifications" data-r="notifications"><span>🔔<i class="badge" id="notifBadge"></i></span><small>الإشعارات</small></a>
-  <a href="#/menu" data-r="menu"><span>☰</span><small>المزيد</small></a>
+  <a href="#/home" data-r="home"><span><svg class="ic ic-off" aria-hidden="true" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><svg class="ic ic-on" aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path stroke="var(--cut, var(--card))" stroke-width="2.2" d="M15 21v-6a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v6"/></svg></span><small>الرئيسية</small></a>
+  <a href="#/explore" data-r="explore"><span><svg class="ic ic-off" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg><svg class="ic ic-on" aria-hidden="true" viewBox="0 0 24 24"><circle fill="currentColor" cx="12" cy="12" r="10"/><path fill="var(--cut, var(--card))" stroke="none" d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></svg></span><small>استكشف</small></a>
+  <a href="#/communities" data-r="communities"><span><svg class="ic ic-off" aria-hidden="true" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg><svg class="ic ic-on" aria-hidden="true" viewBox="0 0 24 24"><path fill="currentColor" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2z"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle fill="currentColor" cx="9" cy="7" r="4"/></svg></span><small>المجتمعات</small></a>
+  <a href="#/notifications" data-r="notifications"><span><svg class="ic ic-off" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><svg class="ic ic-on" aria-hidden="true" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path fill="currentColor" d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg><i class="badge" id="notifBadge"></i></span><small>الإشعارات</small></a>
+  <a href="#/menu" data-r="menu"><span><svg class="ic ic-off" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><svg class="ic ic-on" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor"/><rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor"/></svg></span><small>المزيد</small></a>
 </nav>
 <div id="sheet" class="sheet hidden"></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
