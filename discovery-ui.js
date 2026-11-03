@@ -102,8 +102,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
 .d-points{margin:10px 0 2px;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
 .d-points li{position:relative;padding-inline-start:20px;line-height:1.75;font-size:14.5px}
 .d-points li::before{content:"";position:absolute;inset-inline-start:4px;top:.75em;width:7px;height:7px;border-radius:50%;background:var(--grad)}
-.d-cite{display:inline-flex;align-items:center;margin-inline-start:4px;font-size:11.5px;font-weight:750;color:var(--accent-ink);background:var(--card);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:999px;padding:0 8px;line-height:20px;vertical-align:1px;cursor:pointer}
+.d-cite{display:inline-flex;align-items:center;margin-inline-start:4px;font-size:11.5px;font-weight:750;color:var(--accent-ink);background:var(--card);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:999px;padding:0 8px;line-height:24px;min-width:24px;justify-content:center;vertical-align:1px;cursor:pointer}
 .d-cite:hover{background:var(--accent2)}
+
 .d-sum{border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);background:linear-gradient(160deg,var(--accent2),var(--card) 60%)}
 .d-sum-h{display:flex;align-items:center;gap:8px;justify-content:space-between}
 .d-sum-h b{font-size:15.5px;display:flex;gap:7px;align-items:center}
@@ -488,14 +489,29 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   /* «فاتك اليوم» card on Home (once per day, dismissible) */
   const DIG_KEY = "mp_digest_hidden";
   let digestCache = null;
+  /* v2.148.1: no jump on Home — the card paints from the same-day cache at once; with no cache a fixed-height slot is held
+   * under the tabs until the digest arrives, so the feed below never moves when it lands */
+  const DIG_CACHE = "mp_digest_cache";
+  const digSaved = () => { try { const c = JSON.parse(localStorage.getItem(DIG_CACHE) || "null"); return c && c.day === new Date().toDateString() ? c : null; } catch { return null; } };
   async function digestCard() {
-    if (feedMode !== "for" || view.querySelector(".d-digest") || localStorage.getItem(DIG_KEY) === new Date().toDateString()) return;
-    try { if (!digestCache || Date.now() - digestCache.at > 30 * 60e3) digestCache = { at: Date.now(), d: await api("GET", "/api/digest/daily") }; } catch { return; }
-    const d = digestCache.d; if (!d.summary || !d.summary.points.length || !/home/.test(location.hash || "#/home") || view.querySelector(".d-digest")) return;
-    const anchor = view.querySelector(".tabs"); if (!anchor) return;
-    anchor.insertAdjacentHTML("afterend", `<section class="card d-digest" aria-labelledby="d-dig-h"><button class="d-icon-btn d-x" id="d-dig-x" aria-label="إخفاء ملخص اليوم">${ic("x", "sm")}</button>
+    if (feedMode !== "for" || localStorage.getItem(DIG_KEY) === new Date().toDateString()) { view.querySelectorAll(".d-digest").forEach((x) => x.remove()); return; }
+    if (view.querySelector(".d-digest:not(.d-dig-slot)")) { view.querySelectorAll(".d-dig-slot").forEach((x) => x.remove()); return; } /* the card is kept across soft re-renders (data-keep) */
+    const anchor0 = view.querySelector(".tabs"); if (!anchor0) return;
+    digestCache ||= digSaved();
+    let slot = view.querySelector(".d-dig-slot"); /* app.js paints this slot with the first frame */
+    if (!digestCache && !slot) { anchor0.insertAdjacentHTML("afterend", `<section class="card d-digest d-dig-slot" aria-hidden="true"><div class="skel"></div></section>`); slot = view.querySelector(".d-dig-slot"); }
+    const drop = () => { slot?.remove(); };
+    const hasPts = (c) => !!(c && c.d && c.d.summary && c.d.summary.points && c.d.summary.points.length);
+    const stale = !digestCache || !hasPts(digestCache) || Date.now() - digestCache.at > 30 * 60e3; /* an empty day is never trusted: new posts may land any minute */
+    if (stale && !slot) { /* paint the cached card now, refresh quietly for next time */ const had = hasPts(digestCache); api("GET", "/api/digest/daily").then((d) => { digestCache = { at: Date.now(), day: new Date().toDateString(), d }; try { localStorage.setItem(DIG_CACHE, JSON.stringify(digestCache)); } catch { } if (!had && hasPts(digestCache)) digestCard(); }).catch(() => { }); }
+    else if (stale) { try { digestCache = { at: Date.now(), day: new Date().toDateString(), d: await api("GET", "/api/digest/daily") }; try { localStorage.setItem(DIG_CACHE, JSON.stringify(digestCache)); } catch { } } catch { return drop(); } }
+    const d = digestCache.d; if (!d || !d.summary || !d.summary.points.length || !/home/.test(location.hash || "#/home") || (view.querySelector(".d-digest") && !slot)) return drop();
+    if (slot && !document.body.contains(slot)) return;
+    const anchor = view.querySelector(".tabs"); if (!anchor) return drop();
+    const html = `<section class="card d-digest" data-keep="digest" data-keep-before=".wrap > .tabs + *" aria-labelledby="d-dig-h"><button class="d-icon-btn d-x" id="d-dig-x" aria-label="إخفاء ملخص اليوم">${ic("x", "sm")}</button>
       <h2 id="d-dig-h">${ic("sparkle", "sm")} فاتك اليوم</h2><div class="u-t-sm muted">${nf(d.counts.posts)} منشوراً جديداً من ${nf(d.counts.people)} شخصاً${d.counts.comments ? ` · ${nf(d.counts.comments)} تعليقاً على منشوراتك` : ""}</div>
-      ${points({ points: d.summary.points.slice(0, 3) })}<div class="d-sum-foot">${aiLabel(d.summary)}<a href="#/digest" style="font-weight:800;color:var(--accent-ink)">الملخص كاملاً <span class="fwd" aria-hidden="true">←</span></a></div></section>`);
+      ${points({ points: d.summary.points.slice(0, 3) })}<div class="d-sum-foot">${aiLabel(d.summary)}<a href="#/digest" style="font-weight:800;color:var(--accent-ink)">الملخص كاملاً <span class="fwd" aria-hidden="true">←</span></a></div></section>`;
+    if (slot) slot.outerHTML = html; else anchor.insertAdjacentHTML("afterend", html);
     $("#d-dig-x").onclick = () => { localStorage.setItem(DIG_KEY, new Date().toDateString()); view.querySelector(".d-digest")?.remove(); };
     view.querySelectorAll(".d-digest [data-cite]").forEach(b => b.onclick = () => (location.hash = "#/post/" + b.dataset.cite));
   }
@@ -838,15 +854,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   }
 
   /* =================== Phase 25 — «فاتك اليوم» page =================== */
+  const briefAv = (v) => { if (v !== undefined) { try { localStorage.setItem("mp_brief_av", String(+v || 0)); } catch { } return v; } const x = localStorage.getItem("mp_brief_av"); return x === null ? null : +x; };
   async function digestView() {
     if (!online()) return Views.home();
     const re = loading(3);
     let d; try { d = await api("GET", "/api/digest/daily"); } catch (e) { view.innerHTML = `<div class="wrap">${errBox(e.message, true)}</div>`; return bindRetry(digestView); }
     ensureUsers(d.users);
+    const av = briefAv(); /* v2.148.1: last known AI-brief availability, so its cards hold their place from the first frame */
     view.innerHTML = `<div class="wrap"><header class="tp-head" style="background:linear-gradient(150deg,#4f22d1,#c04cf0)"><span class="x-emo" aria-hidden="true">${ic("sparkle", "lg")}</span><h2>فاتك اليوم</h2><p>خلاصة آخر ٢٤ ساعة ممن تتابعهم ومجتمعاتك ومواضيعك.</p>
       <div class="tp-stats"><span>${nf(d.counts.posts)} منشور</span><span>${nf(d.counts.people)} شخص</span>${d.counts.comments ? `<span>${nf(d.counts.comments)} تعليق عليك</span>` : ""}</div></header>
-      <section class="card dbr" id="dbr" aria-live="polite"></section>
-      <section class="card dbr" id="dask" hidden><div class="dbr-h">${ic("comment", "sm")}<b>اسأل عن يومك</b></div>
+      ${av === 0 ? "" : `<section class="card dbr" id="dbr" aria-live="polite"></section>`}
+      <section class="card dbr" id="dask"${av > 0 ? "" : " hidden"}><div class="dbr-h">${ic("comment", "sm")}<b>اسأل عن يومك</b></div>
         <div class="dbr-c">${["وش أهم شي فاتني؟", "وش قالوا اللي أتابعهم؟", "فيه شي جديد في مجتمعاتي؟"].map(x => `<button data-ask="${h(x)}">${h(x)}</button>`).join("")}</div>
         <form class="dask-f" id="dask-f"><input id="dask-q" maxlength="300" placeholder="اكتب سؤالك عن يومك…" aria-label="سؤالك عن يومك" autocomplete="off"><button class="btn" aria-label="اسأل">${ic("arrowUp", "xs")}</button></form>
         <div id="dask-out" aria-live="polite"></div></section>
@@ -866,7 +884,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   const askLog = [];
   function dayAsk() {
     const box = $("#dask"); if (!box) return;
-    api("GET", "/api/aihub/brief").then((r) => { if (r.available && box.isConnected) box.hidden = false; }).catch(() => {});
+    api("GET", "/api/aihub/brief").then((r) => { briefAv(r.available || 0); if (box.isConnected) box.hidden = !r.available; }).catch(() => {});
     const out = $("#dask-out"), inp = $("#dask-q");
     const paint = () => { out.innerHTML = askLog.map((x) => `<div class="dbr-it dask-a"><b class="u-t-xs muted"><bdi>${h(x.q)}</bdi></b><div>${x.wait ? `<span class="muted">يبحث في يومك…</span><div class="skel"></div>` : x.err ? x.err : `<bdi>${h(x.answer)}</bdi>`}</div>${x.cites ? `<div class="dbr-c">${chips(x.cites, x.sources || {})}</div>` : ""}</div>`).join(""); openCites(out); };
     const ask = async (q) => {
@@ -930,7 +948,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     const intro = (avail) => `<div class="dbr-h">${ic("sparkle", "sm")}<b>نشرتك الذكية</b></div><p class="muted u-m0 u-mt6">يقرأ الذكاء ${avail ? nf(avail) + " منشوراً" : "منشورات يومك"} ويكتب لك نشرة مرتبة: الأبرز، ومن تتابعهم، ومجتمعاتك — وكل نقطة مربوطة بمصدرها.</p><div class="dbr-o">${briefOpts()}</div><button class="btn dbr-go" data-br="make">${ic("sparkle", "xs")} اصنع نشرتي</button>`;
     try {
       if (refresh === undefined) {
-        if (lastBrief && Date.now() - lastBrief.t < 2 * 3600e3) { box.innerHTML = lastBrief.r.brief ? briefHTML(lastBrief.r) : intro(lastBrief.r.available); wire(); } // the page re-renders on sync: paint at once, then confirm
+        if (lastBrief && Date.now() - lastBrief.t < 2 * 3600e3) { box.innerHTML = lastBrief.r.brief ? briefHTML(lastBrief.r) : intro(lastBrief.r.available); wire(); }
+        else if (!box.firstChild && briefAv() > 0) { box.innerHTML = intro(briefAv()); wire(); } /* v2.148.1: paint the intro now, not after the network */ // the page re-renders on sync: paint at once, then confirm
         const r = await api("GET", "/api/aihub/brief");
         if (!box.isConnected) return;
         if (!r.available) { box.remove(); return; }
