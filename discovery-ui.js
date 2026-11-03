@@ -404,6 +404,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     for (const l of DB.lists) if (!tabs.some(([k]) => k === "list:" + l.id)) tabs.push(["list:" + l.id, l.name]);
     // v2.148.0: «زمني» «الأحدث» «استكشف» moved into «⋯» (approved 2026-11-02; moved, not removed). The one in use stays visible.
     const more = tabs.filter(([k]) => MORE_TABS.includes(k)); FD.moreTabs = more;
+    try { localStorage.setItem("mp_tabs", JSON.stringify({ me: DB.me, tabs: tabs.filter(([k]) => !k.startsWith("list:")) })); } catch { /* storage off */ } // v2.149.0: Home's first frame draws these
     const tab = ([k, l]) => `<button class="tab ${feedMode === k ? "on" : ""}" data-mode="${h(k)}" aria-pressed="${feedMode === k}">${h(l)}</button>`;
     return tabs.filter(([k]) => !MORE_TABS.includes(k) || k === feedMode).map(tab).join("") +
       (more.length ? `<button class="d-tabedit" id="d-tabmore" aria-label="المزيد من التبويبات" aria-haspopup="dialog" title="المزيد من التبويبات">${ic("more", "sm")}</button>` : "") +
@@ -414,8 +415,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     if (!online() || !view || !String(location.hash || "#/home").match(/^#?\/?(home)?$|^#\/home/)) return;
     const tabs = view.querySelector(".tabs"); if (!tabs) return;
     const html = tabsHTML();
-    if (html && !tabs.querySelector("#d-tabedit")) {
-      tabs.innerHTML = html; tabs.setAttribute("aria-label", "تبويبات الخلاصة");
+    if (html && tabs.dataset.dg !== "1") {
+      tabs.dataset.dg = "1"; if (tabs.innerHTML !== html) tabs.innerHTML = html; tabs.setAttribute("aria-label", "تبويبات الخلاصة");
       tabs.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { feedMode = b.dataset.mode; feedLimit = 10; rerender(); });
       tabs.querySelector("#d-tabedit").onclick = tabEditor;
       { const m = tabs.querySelector("#d-tabmore"); if (m) m.onclick = tabMoreSheet; }
@@ -512,6 +513,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
       <h2 id="d-dig-h">${ic("sparkle", "sm")} فاتك اليوم</h2><div class="u-t-sm muted">${nf(d.counts.posts)} منشوراً جديداً من ${nf(d.counts.people)} شخصاً${d.counts.comments ? ` · ${nf(d.counts.comments)} تعليقاً على منشوراتك` : ""}</div>
       ${points({ points: d.summary.points.slice(0, 3) })}<div class="d-sum-foot">${aiLabel(d.summary)}<a href="#/digest" style="font-weight:800;color:var(--accent-ink)">الملخص كاملاً <span class="fwd" aria-hidden="true">←</span></a></div></section>`;
     if (slot) slot.outerHTML = html; else anchor.insertAdjacentHTML("afterend", html);
+    requestAnimationFrame(() => { const c = view.querySelector(".d-digest:not(.d-dig-slot)"); if (c) try { localStorage.setItem("mp_dig_h", String(c.offsetHeight)); } catch { /* storage off */ } }); // v2.149.0: Home's slot takes this height
     $("#d-dig-x").onclick = () => { localStorage.setItem(DIG_KEY, new Date().toDateString()); view.querySelector(".d-digest")?.remove(); };
     view.querySelectorAll(".d-digest [data-cite]").forEach(b => b.onclick = () => (location.hash = "#/post/" + b.dataset.cite));
   }
