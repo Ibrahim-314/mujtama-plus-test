@@ -26,7 +26,10 @@
     Clips.onView(() => queueMicrotask(() => { // after shortsView has painted its shell
       const feed = Clips.api.feed(); if (!feed || feed.parentNode.querySelector(".cl-tabs")) return;
       const cur = clipsTab();
-      feed.insertAdjacentHTML("beforebegin", `<div class="cl-tabs" role="tablist" aria-label="أقسام فيديوتك">${TABS.map(([k, l]) => `<button type="button" role="tab" class="cl-tabs-tab" data-cltab="${k}" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}">${l}</button>`).join("")}</div>`);
+      // v2.149.3: labels go in already translated — the bar is centred at max-content, so Arabic first then English a frame
+      // later slid the whole bar sideways (cl-tabs 122→92 px, CLS 0.059 on #/shorts in English)
+      const T = (x) => (window.MPI18n?.t ? window.MPI18n.t(x) : x);
+      feed.insertAdjacentHTML("beforebegin", `<div class="cl-tabs" role="tablist" aria-label="${T("أقسام فيديوتك")}">${TABS.map(([k, l]) => `<button type="button" role="tab" class="cl-tabs-tab" data-cltab="${k}" aria-selected="${k === cur}" tabindex="${k === cur ? 0 : -1}">${T(l)}</button>`).join("")}</div>`);
       const bar = feed.parentNode.querySelector(".cl-tabs");
       bar.addEventListener("click", (e) => { const b = e.target.closest("[data-cltab]"); if (b) go(b.dataset.cltab); });
       bar.addEventListener("keydown", (e) => {
