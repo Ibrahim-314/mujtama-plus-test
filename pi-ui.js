@@ -397,5 +397,5 @@
   window.MPPi = { payButton, paySheet, pay, availability, wallet: walletView, receipt: receiptView, admin: adminView, linkState: () => ({ ...link }),
     refresh() { if (A()) { A().cfg = null; A().ready = false; } link.piUsername = undefined; authed = false; }, version: "2.13.0" };
   if (document.getElementById("a-go")) authButton();
-  if (/^#\/(wallet|receipt|admin|settings)/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+  if (/^#\/(wallet|receipt)|^#\/admin(\/pi)?\/?(\?|$)|^#\/settings\/?(\?|$)/.test(location.hash) /* v2.149.2: only the screens this chunk adds to (was every admin/* and settings/* page: a redraw ~0.5 s after open) */ && typeof DB !== "undefined" && DB.onboarded) route();
 })();
