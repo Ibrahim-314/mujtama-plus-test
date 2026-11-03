@@ -165,5 +165,5 @@ ${m.zeroQueries.length ? `<div class="ops-x"><table class="ops-tbl"><thead><tr><
     } };
   };
   window.MPOps = { ops: opsView, product: productView, qoe: qoeCard, line, bars, version: "2.23.0" };
-  if (/^#\/admin(\/ops)?(\/|$|\?)/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+  if (/^#\/admin(\/ops(\/product)?)?\/?(\?|$)/.test(location.hash) /* v2.149.2: «(\/|$|\?)» also matched every #/admin/<page>, redrawing it when this script landed */ && typeof DB !== "undefined" && DB.onboarded) route();
 })();
