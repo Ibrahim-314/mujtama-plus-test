@@ -424,7 +424,7 @@
       if (!a) loadAge().then(x => { if (x && /^#\/settings/.test(location.hash) && (x.staff || !x.declared)) { view.querySelector("#mn-set")?.remove(); view.querySelector("#mn-fam")?.remove(); Views.settings(); } });
     });
   }
-  const ageBoot = () => loadAge().then(() => { if (/^#\/(age|family|urgent|safety-cases|settings)/.test(location.hash) || document.querySelector(".card [data-more]")) route(); });
+  const ageBoot = () => loadAge().then(() => { if (/^#\/(age|family|urgent|safety-cases)|^#\/settings\/?(\?|$)/.test(location.hash) /* v2.149.2: the settings hub only */ || document.querySelector(".card [data-more]")) route(); });
   if (window.MPSession) MPSession.whenIn(ageBoot); else ageBoot(); // v2.51: after sign-in, not for guests
   window.MPMinorsUI = { age: ageView, family: familyView, cases: casesView, urgent: urgentSheet, labels: labelSheet, coverState, reveal: (id) => st.revealed.add(id), version: "2.8.0" };
 })();
