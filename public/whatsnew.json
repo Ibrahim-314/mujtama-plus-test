@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.149.3",
+    "date": "2026-11-04",
+    "ar": {
+      "title": "ما يتحرك شيء تحت إصبعك",
+      "items": [
+        "عنوان صفحات الإعدادات ما عاد يرتجف بين العربي والإنجليزي",
+        "مركز الأمان وصفحات مشابهة تنرسم مرة وحدة بدل ما ترجع للتحميل",
+        "تبويبات اللقطات ثابتة من أول لحظة"
+      ]
+    },
+    "en": {
+      "title": "Nothing moves under your finger",
+      "items": [
+        "Settings page titles no longer flicker between Arabic and English",
+        "The security center and similar pages draw once instead of going back to loading",
+        "The shorts tabs stay put from the very first moment"
+      ]
+    }
+  },
+  {
     "v": "2.149.2",
     "date": "2026-11-03",
     "ar": {
