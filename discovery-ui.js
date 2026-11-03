@@ -858,10 +858,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
   async function digestView() {
     if (!online()) return Views.home();
     const re = loading(3);
-    let d; try { d = await api("GET", "/api/digest/daily"); } catch (e) { view.innerHTML = `<div class="wrap">${errBox(e.message, true)}</div>`; return bindRetry(digestView); }
+    let d; try { d = await api("GET", "/api/digest/daily"); } catch (e) { view.innerHTML = `<div class="wrap dg-pg">${errBox(e.message, true)}</div>`; return bindRetry(digestView); }
     ensureUsers(d.users);
     const av = briefAv(); /* v2.148.1: last known AI-brief availability, so its cards hold their place from the first frame */
-    view.innerHTML = `<div class="wrap"><header class="tp-head" style="background:linear-gradient(150deg,#4f22d1,#c04cf0)"><span class="x-emo" aria-hidden="true">${ic("sparkle", "lg")}</span><h2>فاتك اليوم</h2><p>خلاصة آخر ٢٤ ساعة ممن تتابعهم ومجتمعاتك ومواضيعك.</p>
+    view.innerHTML = `<div class="wrap dg-pg"><header class="tp-head" style="background:linear-gradient(150deg,#4f22d1,#c04cf0)"><span class="x-emo" aria-hidden="true">${ic("sparkle", "lg")}</span><h2>فاتك اليوم</h2><p>خلاصة آخر ٢٤ ساعة ممن تتابعهم ومجتمعاتك ومواضيعك.</p>
       <div class="tp-stats"><span>${nf(d.counts.posts)} منشور</span><span>${nf(d.counts.people)} شخص</span>${d.counts.comments ? `<span>${nf(d.counts.comments)} تعليق عليك</span>` : ""}</div></header>
       ${av === 0 ? "" : `<section class="card dbr" id="dbr" aria-live="polite"></section>`}
       <section class="card dbr" id="dask"${av > 0 ? "" : " hidden"}><div class="dbr-h">${ic("comment", "sm")}<b>اسأل عن يومك</b></div>
