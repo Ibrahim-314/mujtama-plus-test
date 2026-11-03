@@ -266,6 +266,6 @@
   addEventListener("hashchange", dev); dev();
   if (typeof DB !== "undefined" && DB.onboarded) {
     if (/^#\/(ai|settings\/translate|admin\/ai)(\/|$|\?)/.test(location.hash) && typeof route === "function") route();
-    else { if (/^#\/settings\/?(\?|$)/.test(location.hash)) setCard(); if (typeof rerender === "function" && document.getElementById("sheet")?.classList.contains("hidden") && !(window.formDirty && window.formDirty())) try { rerender(); } catch { /* ok */ } } // v2.52: never wipe a form the member started (e.g. the ad wizard)
+    else { if (/^#\/settings\/?(\?|$)/.test(location.hash)) setCard(); /* v2.149.2: only a screen that shows posts needs the redraw (their translate button); every other screen (settings, versions, calls, trust…) was redrawn whole ~1–2 s after opening, a visible flicker */ if (typeof rerender === "function" && view.querySelector("[data-react]") && document.getElementById("sheet")?.classList.contains("hidden") && !(window.formDirty && window.formDirty())) try { rerender(); } catch { /* ok */ } } // v2.52: never wipe a form the member started (e.g. the ad wizard)
   }
 })();
