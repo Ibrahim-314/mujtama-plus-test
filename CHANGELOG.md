@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.148.1 — 2026-11-03 — «راحة العين» (part 1: no more jumping; user approved 2026-11-03 01:43 «ابدا», home jump raised 01:54; no intended visible change, no feature removed, no migration)
+- #/digest: AI-brief cards keep their place from the first frame (layout shift 0.147→0.001); source chips are 24px tap targets.
+- #/shorts: a cold start lays out full-screen from the first frame (0.059→0).
+- #/aihub: provider monograms meet WCAG AA contrast in light and dark.
+- «فاتك اليوم»: a day that was empty earlier is re-checked instead of cached.
+
+- Home no longer jumps while scrolling: `.post-card` lost `content-visibility:auto` (its 340 px placeholder resized cards as they scrolled in), and loading 10 more posts keeps the cards already on screen instead of re-rendering them. Measured CLS on Home scroll: 0.22 → 0 at 390, 0.06 → 0 at 1440.
+- «فاتك اليوم» on Home: paints at once from a same-day cache; on the first visit of the day a fixed slot is held under the tabs, so the feed never moves when it arrives.
+- 1440 side rail: the brand link ships in index.html, so the rail no longer drops 68 px on every page load.
+- #/shorts: full-screen class set before the clips chunk loads (the top bar no longer flashes).
+- Tests: tests/e2e/home-cls-v21481.e2e.test.js (scroll + load-more, late digest + cached visit, 1440 rail); tests/e2e/cls-probe.e2e.test.js reports shifts with their sources.
+
 ## 2.148.0 — 2026-11-03 — «شريط أنحف» (user approved 2026-11-02 06:33, started 2026-11-03 00:25 «نعم ابدا»; intended visible change, no feature removed, no migration)
 
 - Top bar is 50 px app-wide (was 58 px): `--top-h` in theme.css; sticky tabs, pull-to-refresh and the new-posts pill follow the token.
