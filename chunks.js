@@ -71,11 +71,20 @@
     if ((name === "teams" || name === "proreviews") && !loaded.work && has("work")) return load("work").then(() => load(name)); // v2.45: reuses the wk-* styles
     if (name === "cadmin" && !loaded.communities && has("communities")) return load("communities").then(() => load("cadmin")); // v2.57: the panel hosts the moderation/health/channels screens
     if (name === "composer" && !loaded.composercore && has("composercore")) return load("composercore").then(() => load("composer")); // v2.50: both editors share the core
+    // v2.149.2: the settings hub waits (max 2.5 s) for the chunks that add its rows (age/family, notifications, Pi/tips), so it paints once instead of being redrawn three times
+    if (name === "setx" && !load.sx && has("setx")) { load.sx = 1; const w = (n) => load(n).catch(() => { }); return Promise.race([Promise.all([w("minorscore").then(() => w("minors")), w("notify"), w("tips")]), new Promise((r) => setTimeout(r, 2500))]).then(() => load("setx")); }
     const src = (window.__CHUNKS || {})[name]; if (loaded[name] || !has(name)) return Promise.resolve();
     // stylesheet first: a chunk may enhance the current screen as soon as its script runs
     return pending[name] ||= css(name).then(() => src && new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.dataset.chunk = name; s.onload = res; s.onerror = () => { delete pending[name]; failed[name] = true; rej(new Error("chunk " + name)); }; document.head.appendChild(s); })).then(() => { loaded[name] = true; });
   }
   window.MPChunks = { load, loaded, reroute: (n) => rerouteAfter(n) };
+  /* v2.149.2 «ولا ومضة»: a saved English UI fetches its whole catalogue (three parts + the language module) in parallel at boot,
+   * and screens wait on the loading skeleton until it is in, so a cold open never paints Arabic text first (it used to for
+   * ~1.5 s: language module → catalogue → its two halves → the server's overrides, one after another) */
+  let langGate = null;
+  { let L = null; try { const k = JSON.parse(localStorage.getItem("mp.shell") || "null"); if (k && k.l) L = k.l; } catch { /* private mode */ }
+    if (!L && typeof DB !== "undefined" && DB.settings) L = DB.settings.lang;
+    if (L === "en" && has("i18n-en")) { const t = new Promise((res) => setTimeout(res, 4000)); langGate = Promise.race([t, Promise.all(["i18n-en", "i18n-enplus", "i18n-enextra", "i18n"].map((n) => load(n).catch(() => { })))]).then(() => { langGate = null; }); } }
   // v2.52: the hub is one tap away for every signed-in member — warm it (and the feat icons it uses) once the first screen is idle
   if (window.MPSession) MPSession.whenIn(() => (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 3000 }) : (f) => setTimeout(f, 1500))(() => load("menu").catch(() => { })));
   /* v2.51: guests (auth screen) do not preload feature chunks — a guest only downloads what its screen needs (the route's own
@@ -89,7 +98,13 @@
   const rerouteAfter = (n) => (rr[n] ||= load(n).then(() => { delete rr[n]; route(); }, (e) => { delete rr[n]; throw e; }));
   const _route = route;
   route = function () {
-    const self = this, args = arguments, need = needFor();
+    const self = this, args = arguments;
+    /* v2.149.2: a chunk that lands before the account has loaded (/api/bootstrap) re-routed with an empty store, so a cold
+     * #/shorts showed the welcome/onboarding screen (and hid the bottom bar) for ~150 ms. Until the session is known the
+     * skeleton stays; sync.js start() routes once the account is in. */
+    if (window.__deferRoute && window.MPSession && MPSession.state === "unknown") return;
+    if (langGate) { if (typeof view !== "undefined" && view && !view.querySelector(".skel")) view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="Loading…"><div class="skel"></div><div class="skel"></div></div>`; if (!langGate.r) langGate.r = langGate.then(() => route()); return; }
+    const need = needFor();
     /* v2.81 («first clip opens twice»): a chunk ends with its own «if this is my route, route()» for development. In
      * production that call ran while the chunk was still executing, so it painted the skeleton and queued a second render
      * beside the loader's own re-route: the screen (the clips viewer, its first video) was built twice. While the chunk this
@@ -107,13 +122,18 @@
   /* v2.55: the app's own hashchange listener runs the original route() first; for a screen whose chunk is still on its way
    * that drew «الصفحة غير موجودة» until the chunk arrived (a 404 flash, and a race in nav-routes.e2e). Show the loading
    * skeleton instead while a chunk for this route is pending; ensure() re-renders once it lands. */
-  if (typeof Views !== "undefined" && Views.notFound) { const _nf = Views.notFound; Views.notFound = function () { const n = needFor(); if (n && !failed[n] && typeof view !== "undefined" && view) { view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`; return; } return _nf.apply(this, arguments); }; }
+  /* v2.149.2: the trust & safety, minors and calls screens load through their own chains (below), not ROUTES; a cold open of
+   * #/integrity or #/calls drew «الصفحة غير موجودة» for ~0.5 s before the screen. While their chunk is on its way: skeleton. */
+  const LATE = { integrity: ["help", "policies", "protection", "integrity", "investigation", "investigations", "inv-user"], minors: ["age", "family", "urgent", "safety-cases"], callsui: ["calls"] };
+  const lateRoute = () => { const r = (location.hash.split("/")[1] || "").split("?")[0]; return Object.keys(LATE).some((n) => LATE[n].includes(r) && has(n === "integrity" ? "protection" : n) && !loaded[n] && !failed[n]); };
+  if (typeof Views !== "undefined" && Views.notFound) { const _nf = Views.notFound; Views.notFound = function () { const n = needFor(); if (((n && !failed[n]) || lateRoute()) && typeof view !== "undefined" && view) { view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`; return; } return _nf.apply(this, arguments); }; }
   addEventListener("hashchange", ensure); ensure();
   // warm both chunks when the browser is idle so the first tap is instant; the discovery chunk also
   // enhances Home (feed tabs, caught-up marker, digest) and post pages (summary card) in place once loaded
   whenIn(() => (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => load("composer").catch(() => { }).then(() => load("discovery")).catch(() => { }).then(() => load("communities")).catch(() => { }).then(() => load("comms")).catch(() => { }).then(() => load("notify")).catch(() => { }).then(() => load("compliance")).catch(() => { }))); // notify-ui also shows in-app toasts
   // v2.61: page help «؟» (help-ui.js + help.css, registry help-content.js) — tiny, warmed once the first screen is idle
-  whenIn(() => idle(2000, 400)(() => load("help").catch(() => { })));
+  // v2.149.2: on a signed-in device (html.mp-me) it loads at boot, so the «i» is there with the screen's first paint instead of popping in ~1 s later on every inner page
+  (document.documentElement.classList.contains("mp-me") ? (f) => f() : (f) => whenIn(() => idle(2000, 400)(f)))(() => { load("help").catch(() => { }); if (document.documentElement.classList.contains("mp-me")) load("helpcontent").catch(() => { }); });
   whenIn(() => idle(4000, 2000)(() => load("v12x").catch(() => { }).then(() => load("setx")).catch(() => { }))); // v2.81: the v1.2 screens (lists, events, admin…) warm once idle, so the first tap stays instant
   // calls (phase 30): the engine ("calls", calls-core.js) must be listening before the first ring, so it loads
   // early, then the call screens ("callsui"); #/calls (history) waits for both
