@@ -1,0 +1,3 @@
+/* v2.148.2: #/digest tap targets reach 24px without moving anything (an invisible hit area around the small post links) */
+.dg-pg .post-card :is(a.name,a.time,a.tag,a.chip){position:relative}
+.dg-pg .post-card :is(a.name,a.time,a.tag,a.chip)::after{content:"";position:absolute;inset-inline:0;top:50%;height:24px;min-width:24px;transform:translateY(-50%)}
