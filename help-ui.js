@@ -123,6 +123,9 @@
       (inl ? head : h2.parentElement).classList.add(inl ? "hp-inl" : "hp-has"); h2.insertAdjacentHTML("afterend", btnHtml(false));
     } else {
       // no page head (Home, legacy screens): the reserved top-bar slot when the bar shows it (desktop), else the overlay row
+      // v2.149.3: a loading skeleton is not a screen yet — an overlay row put on it was torn down a moment later when the screen's
+      // own page head arrived (the «i» row popped in and out, and every element below it shifted index: restyle/swap on cold opens)
+      const w0 = v.querySelector(":scope > .wrap"); if (w0 && (w0.getAttribute("aria-busy") === "true" || ![...w0.children].some((c) => !c.classList.contains("skel") && !c.classList.contains("hp-strip")))) { w0.querySelector(":scope > .hp-strip")?.remove(); return; }
       if ((onTop() || v.querySelector(".hp-strip")) && lastKey === key) return;
       let ok = false;
       if (slot && top && getComputedStyle(slot).display !== "none") {
