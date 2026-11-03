@@ -784,6 +784,9 @@ body:has(#story-viewer) #sheet { z-index: 120 !important; }
 .page-head.row-head .ph-main { flex-wrap: wrap; row-gap: var(--s2); }
 .page-head.row-head .ph-main > div:first-child { flex: 1 0 auto; max-width: 100%; padding-inline-end: calc(44px + var(--s1)); }
 /* with «؟» the reservation stays and the button sits inside it (negative end margin), so the group's width is identical either way */
+/* v2.149.3: the lazy «i» (help chunk) narrows a page title to 100% - 44px when it lands; reserve that width from first paint so a long
+ * (en/fr) title wraps once, not one line → two lines ~80 ms later (CLS 0.64 on #/settings?s=display, en 390) */
+.page-head:not(.row-head) .ph-main > div:first-child > h2 { max-width: calc(100% - 44px - var(--s1)); }
 .page-head.row-head .ph-main > div.hp-has:first-child > h2 { max-width: 100%; }
 .page-head.row-head .ph-main > div.hp-has:first-child > .hp-btn { margin-inline-end: calc(-44px - var(--s1)); }
 /* fix-layout-small (kept): on narrow phones the wrapped actions row never exceeds the head width */
