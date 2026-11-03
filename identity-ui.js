@@ -74,6 +74,9 @@
     }).catch(() => { });
   };
   const pv3On = () => view.querySelector(".profile-top") && view.classList.add("profile-v2", "pv3");
+  /* v2.149.2: the profile classes lived on #view itself and stayed after leaving the profile (since 2.147), so any later screen
+   * with «.wrap>.tabs» took the profile's underline tabs — but only after a profile visit. They now leave with the profile. */
+  addEventListener("hashchange", () => { if (!/^#\/(u|me)(\/|$|\?)/.test(location.hash)) view.classList.remove("profile-v2", "pv3"); });
   function enhanceProfile(u, d, viewAs) {
     const P = d.profile, me = u.id === DB.me && !viewAs, top = view.querySelector(".profile-top"), cover = view.querySelector(".cover"); if (!top || !cover) return;
     view.classList.add("profile-v2");
@@ -158,7 +161,7 @@
     if (bio && !(u.bio || P.bio)) { bio.remove(); if (me && !top.querySelector(".pv3-addbio")) { hl?.insertAdjacentHTML("afterend", `<button class="pv3-addbio">${ic("plus", "xs")} <span>أضف نبذة عنك</span></button>`); top.querySelector(".pv3-addbio").onclick = () => editProfile(P, d); } }
     const j = String(P.joinedAt || u.joinedAt || "").slice(0, 7);
     if (/^\d{4}-\d{2}$/.test(j) && !top.querySelector(".pv3-joined")) {
-      let pm = top.querySelector(".pmeta"); const item = `<span class="pv3-joined">${ic("calendar", "xs")} <span>عضو منذ</span> <bdi dir="ltr">${j}</bdi></span>`;
+      const pm = top.querySelector(".pmeta"); const item = `<span class="pv3-joined">${ic("calendar", "xs")} <span>عضو منذ</span> <bdi dir="ltr">${j}</bdi></span>`;
       if (pm) pm.insertAdjacentHTML("beforeend", item); else (top.querySelector(".pv3-addbio") || top.querySelector(":scope > p") || hl)?.insertAdjacentHTML("afterend", `<div class="pmeta">${item}</div>`);
     }
     const st = top.querySelector(".stats");
@@ -196,73 +199,9 @@
   const ACH = { first_post: "pen", first_comment: "comment", followers_10: "users", followers_100: "usersF", helpful_10: "star", helpful_100: "award", profile_complete: "check", community_member: "community", secure: "shield", conversation_starter: "fire" };
   const achIcon = (k) => ic(ACH[k] || "award", "sm");
 
-  /* ---------- Edit profile ---------- */
-  function editProfile(P, d) {
-    const me = S.me();
-    const linkRow = (l = {}) => `<div class="u-g6 u-mt6 row link-row"><input class="l-label" placeholder="الاسم" value="${esc(l.label || "")}" style="flex:0 0 32%"><input class="l-url" dir="ltr" placeholder="https://" value="${esc(l.url || "")}"><button class="btn ghost l-del" aria-label="حذف">${ic("x", "xs")}</button></div>`;
-    const myPosts = DB.posts.filter(p => p.author === DB.me && p.status === "published").slice(0, 30);
-    const pins = new Set((d.pinned || []).map(p => p.id));
-    sheet(`<h4 class="u-mt0">تعديل الملف الشخصي</h4>
-      <div class="edit-images"><div class="cover-prev" style="${P.cover ? `background-image:url('${esc(img(P.cover, "600"))}')` : "background:var(--grad)"}"><button class="btn ghost" data-pick="cover">${ic("camera", "xs")} الغلاف</button></div>
-        <div class="av lg" style="background:${me.color}">${P.avatar ? `<img src="${esc(img(P.avatar, "200"))}" alt="">` : esc(me.name[0])}<button class="av-cam" data-pick="avatar" aria-label="الصورة">${ic("camera", "xs")}</button></div></div>
-      <label class="muted">الاسم</label><input id="ep-name" value="${esc(me.name)}" maxlength="50">
-      <label class="muted">نبذة</label><textarea id="ep-bio" maxlength="300" class="u-mh70">${esc(me.bio || "")}</textarea>
-      <label class="muted">الموقع</label><input id="ep-loc" value="${esc(P.location || "")}" maxlength="60" placeholder="جدة، السعودية">
-      <label class="muted">مجالات الخبرة <span class="muted">(افصل بفاصلة)</span></label><input id="ep-exp" value="${esc(P.expertise.join("، "))}" placeholder="تطوير الويب، التصميم">
-      <label class="muted">روابط (حتى ٥)</label><div id="ep-links">${(P.links.length ? P.links : [{}]).map(linkRow).join("")}</div><button class="u-mt6 btn ghost" id="ep-addlink">${ic("plus", "xs")} رابط</button>
-      <label class="u-db u-mt12 muted">ترتيب الأقسام</label><div id="ep-secs">${P.sections.map(s => `<div class="sec-row" data-s="${s}"><span class="grow">${SECTION_LABEL[s]}</span><button class="btn ghost" data-up aria-label="أعلى">↑</button><button class="btn ghost" data-down aria-label="أسفل">↓</button></div>`).join("")}</div>
-      <label class="u-db u-mt12 muted">المنشورات المثبتة (حتى ٣)</label><div class="pin-list">${myPosts.map(p => `<label class="pin-opt"><input type="checkbox" value="${p.id}" ${pins.has(p.id) ? "checked" : ""}> <span>${esc((p.title || p.text).slice(0, 70))}</span></label>`).join("") || '<div class="muted">انشر أولاً لتتمكن من التثبيت</div>'}</div>
-      <p class="u-c-dg u-mh1e muted" id="ep-err"></p><button class="btn block" id="ep-save">حفظ</button>`);
-    const panel = $("#sheet .panel");
-    panel.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => pickImage(b.dataset.pick));
-    $("#ep-addlink").onclick = () => { if (panel.querySelectorAll(".link-row").length < 5) $("#ep-links").insertAdjacentHTML("beforeend", linkRow()); };
-    panel.addEventListener("click", (e) => { if (e.target.closest(".l-del")) e.target.closest(".link-row").remove(); const r = e.target.closest(".sec-row"); if (!r) return; if (e.target.closest("[data-up]") && r.previousElementSibling) r.parentNode.insertBefore(r, r.previousElementSibling); if (e.target.closest("[data-down]") && r.nextElementSibling) r.parentNode.insertBefore(r.nextElementSibling, r); });
-    panel.querySelectorAll(".pin-opt input").forEach(cb => cb.onchange = () => { if (panel.querySelectorAll(".pin-opt input:checked").length > 3) { cb.checked = false; toast("يمكن تثبيت ٣ منشورات كحد أقصى"); } });
-    $("#ep-save").onclick = async () => {
-      const name = $("#ep-name").value.trim(), bio = $("#ep-bio").value.trim();
-      try {
-        if (name !== me.name || bio !== (me.bio || "")) { await api("PATCH", "/api/me", { name, bio }); me.name = name; me.bio = bio; }
-        await api("PATCH", "/api/profile", { location: $("#ep-loc").value.trim(), expertise: $("#ep-exp").value.split(/[,،]/).map(x => x.trim()).filter(Boolean), links: [...panel.querySelectorAll(".link-row")].map(r => ({ label: r.querySelector(".l-label").value.trim(), url: r.querySelector(".l-url").value.trim() })).filter(l => l.url),
-          sections: [...panel.querySelectorAll(".sec-row")].map(r => r.dataset.s), pinnedPosts: [...panel.querySelectorAll(".pin-opt input:checked")].map(c => c.value) });
-        closeSheet(); toast("✓ حُفظ ملفك"); profCache.clear(); rerender();
-      } catch (e) { $("#ep-err").textContent = e.message; }
-    };
-  }
-
-  /* ---------- Image cropper (pan, zoom, rotate) → WebP/JPEG upload ---------- */
-  function pickImage(kind) {
-    const inp = Object.assign(document.createElement("input"), { type: "file", accept: "image/*" });
-    inp.onchange = () => { const f = inp.files[0]; if (f) cropper(f, kind); }; inp.click();
-  }
-  function cropper(file, kind) {
-    const W = 320, H = kind === "avatar" ? 320 : 120, OUT = kind === "avatar" ? [800, 800] : [1800, 675];
-    sheet(`<h4 class="u-mt0">${kind === "avatar" ? "الصورة الشخصية" : "صورة الغلاف"}</h4><div class="crop-wrap ${kind}"><canvas id="crop" width="${W * 2}" height="${H * 2}" style="width:${W}px;height:${H}px;max-width:100%"></canvas></div>
-      <div class="u-g10 u-my12 row"><span class="muted">${ic("search", "xs")}</span><input type="range" id="cz" min="1" max="4" step="0.01" value="1" class="grow" aria-label="تكبير"><button class="btn ghost" id="cr" aria-label="تدوير">${ic("rotate", "sm")}</button></div>
-      <p class="u-tc u-m0 u-mb10 muted">اسحب لتحريك الصورة</p><button class="btn block" id="cs">حفظ</button>`);
-    const cv = $("#crop"), g = cv.getContext("2d"), im = new Image(); let z = 1, rot = 0, ox = 0, oy = 0, base = 1;
-    const draw = () => {
-      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); g.fillStyle = "#111"; g.fillRect(0, 0, cv.width, cv.height);
-      g.translate(cv.width / 2 + ox, cv.height / 2 + oy); g.rotate(rot * Math.PI / 2); const s = base * z; g.drawImage(im, -im.width * s / 2, -im.height * s / 2, im.width * s, im.height * s);
-    };
-    const fit = () => { const sw = rot % 2 ? im.height : im.width, sh = rot % 2 ? im.width : im.height; base = Math.max(cv.width / sw, cv.height / sh); };
-    im.onload = () => { fit(); draw(); }; im.src = URL.createObjectURL(file);
-    $("#cz").oninput = (e) => { z = +e.target.value; draw(); };
-    $("#cr").onclick = () => { rot = (rot + 1) % 4; ox = oy = 0; fit(); draw(); };
-    let drag = null;
-    cv.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, ox, oy }; cv.setPointerCapture(e.pointerId); });
-    cv.addEventListener("pointermove", (e) => { if (!drag) return; const k = cv.width / cv.clientWidth; ox = drag.ox + (e.clientX - drag.x) * k; oy = drag.oy + (e.clientY - drag.y) * k; draw(); });
-    cv.addEventListener("pointerup", () => drag = null);
-    $("#cs").onclick = async () => {
-      const out = Object.assign(document.createElement("canvas"), { width: OUT[0], height: OUT[1] }), o = out.getContext("2d"), k = OUT[0] / cv.width;
-      o.fillStyle = "#111"; o.fillRect(0, 0, OUT[0], OUT[1]); o.translate(OUT[0] / 2 + ox * k, OUT[1] / 2 + oy * k); o.rotate(rot * Math.PI / 2); const s = base * z * k; o.drawImage(im, -im.width * s / 2, -im.height * s / 2, im.width * s, im.height * s);
-      const blob = await new Promise(r => out.toBlob(r, "image/jpeg", 0.9));
-      $("#cs").disabled = true; $("#cs").textContent = "جارٍ الرفع…";
-      try {
-        const r = await api("POST", "/api/profile/image?kind=" + kind, null, blob);
-        const me = S.me(); me[kind] = r[kind]; closeSheet(); toast("✓ حُدّثت الصورة"); profCache.clear(); rerender();
-      } catch (e) { toast(e.message); $("#cs").disabled = false; $("#cs").textContent = "حفظ"; }
-    };
-  }
+  /* v2.149.2: the edit sheet and the image cropper moved to feat-ui.js (the profile route already waits for the feat chunk):
+   * 2.6 KB out of the core bundle, same behaviour */
+  const editProfile = (P, d) => window.MPProfEdit?.edit(P, d), pickImage = (k) => window.MPProfEdit?.pick(k);
 
   /* ---------- Hover card (desktop) ---------- */
   let hoverT = 0, cardEl = null;
@@ -286,7 +225,7 @@
   document.addEventListener("mouseout", (e) => { const a = e.target.closest('a.name[href^="#/u/"], .rail-row a[href^="#/u/"]'); if (!a) return; clearTimeout(hoverT); setTimeout(() => { if (cardEl && !cardEl.matches(":hover")) { cardEl.remove(); cardEl = null; } }, 250); });
 
   const roleName = (r) => ({ owner: "مالك", admin: "مدير", editor: "محرر" }[r] || r);
-  window.MPId = { ic, online, api, fmtN, img, vtick, profCache, roleName, VERIFIED, ACT_KEY }; // privacy / verification / trust / organisations screens: lazy "secx" chunk (secx-ui.js)
+  window.MPId = { ic, online, api, fmtN, img, vtick, profCache, roleName, VERIFIED, ACT_KEY, SECTION_LABEL }; // privacy / verification / trust / organisations screens: lazy "secx" chunk (secx-ui.js)
 
   /* ---------- Account switcher ---------- */
   async function switcher() {
