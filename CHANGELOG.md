@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.149.1 — 2026-11-03 — «الملف بلا ومضة» (user report 19:29 «ملف الشخصي ... التصميم القديم يظهر ثانيه ويختفي»; under the 08:35 standing approval; no feature removed, no migration)
+- Profile: the v3 design was applied only after /api/profiles answered, so the pre-2.147 layout showed for the whole round trip. The last profile seen on this device (per signed-in account, 12 most recent, localStorage mp_prof_v1) now paints in the same frame; with none saved, or before the session is up after a reload, the v3 frame (cover, tabs) is set at once. Fresh data redraws once only when it changed.
+- Profile: the profile-v2/pv3 classes are dropped when leaving the profile (they used to stay on #view for every later page).
+- Test: tests/e2e/profile-first-paint-v21491 (repeat visit with a slow API and reload: no old-layout frame).
+
 ## 2.149.0 — 2026-11-03 — «بداية نظيفة» (user approved 2026-11-03 06:15 cleanup of old designs + 08:35 «نفذ كل شيء»; no feature removed, no migration)
 - Bottom nav: index.html ships the current SVG tab icons inline, so the old emoji icons (🏠🔍👥🔔☰) never paint before the scripts run; ui.js only touches tabs with data-r (the 1440 side logo no longer receives tab icons).
 - Home: the first frame draws the current tab row (last-known tabs, «⋯», tab editor) instead of the pre-2.148 row with «الأحدث» «استكشف»; the discovery chunk now enhances it in place (data-dg) instead of replacing it.
