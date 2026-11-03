@@ -11,7 +11,8 @@
 <style>/* v2.145.4 top-bar avatar slot (kept out of the core CSS budget) */.tb-pending{visibility:hidden}:root:not(.mp-me) .tb-pending{display:none}</style>
   <link rel="stylesheet" href="theme.css">
 <!-- v2.145.4 CLS: a device signed in last time reserves the avatar slot from the first paint (nav.js keeps mp.me in step with the session) -->
-<script>try{var H=document.documentElement;if(localStorage.getItem("mp.me")==="1")H.classList.add("mp-me");var k=JSON.parse(localStorage.getItem("mp.shell")||"null");if(k){if(k.l==="en"){H.lang="en";H.dir="ltr";H.dataset.lang="en"}H.dataset.theme=k.t==="dark"||k.t==="light"?k.t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}}catch(e){}</script>
+<script>try{var H=document.documentElement;if(localStorage.getItem("mp.me")==="1")H.classList.add("mp-me");var k=JSON.parse(localStorage.getItem("mp.shell")||"null");if(k){if(k.l==="en"){H.lang="en";H.dir="ltr";H.dataset.lang="en";H.classList.add("mp-i18n-wait");setTimeout(function(){H.classList.remove("mp-i18n-wait")},3000)}H.dataset.theme=k.t==="dark"||k.t==="light"?k.t:(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")}}catch(e){}</script>
+<style>html.mp-i18n-wait .bottomnav small,html.mp-i18n-wait .brand-text,html.mp-i18n-wait .side-label{visibility:hidden}</style>
 <link rel="stylesheet" href="communities.css" data-chunk="communities">
 <link rel="stylesheet" href="creation.css" data-chunk="creation">
 <link rel="stylesheet" href="composer.css" data-chunk="composer">
