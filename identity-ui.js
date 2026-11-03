@@ -49,7 +49,7 @@
     // showed «الصفحة غير موجودة» and the profile badge (#/cv link) never rendered. Fetch the public profile once, add the
     // public user to the store and render again; a handle the server does not know stays on the not-found page.
     if (handle && !S.byHandle(handle) && online()) {
-      _profile(handle);
+      _profile(handle); pv3On();
       const want = location.hash;
       loadProfile(handle).then(d => {
         const P = d?.profile; if (!P?.id || P.handle !== handle || S.byHandle(handle) || location.hash !== want) return;
@@ -58,12 +58,22 @@
       }).catch(() => { });
       return;
     }
-    _profile(handle);
+    _profile(handle); pv3On(); const want0 = location.hash;
     const u = handle ? S.byHandle(handle) : S.me(); if (!u || !online()) return;
     const viewAs = /[?&]as=public/.test(location.hash) && u.id === DB.me;
     const renderToken = Symbol(); view._prof = renderToken;
-    loadProfile(u.handle).then(d => { if (d && view._prof === renderToken) enhanceProfile(u, d, viewAs); }).catch(() => { });
+    // v2.149.1: the old profile layout showed for the whole API round trip («التصميم القديم يظهر ثانية ويختفي»). The v3 frame
+    // (cover, tabs) is set with the first render (pv3On) and the last profile seen on this device paints in the same frame.
+    const pc = !viewAs && window.MPProfCache, saved = pc && pc.r(u.handle); let shown = null;
+    if (saved) { try { enhanceProfile(u, saved, false); shown = JSON.stringify(saved); } catch (e) { shown = null; } }
+    loadProfile(u.handle).then(d => {
+      if (!d || view._prof !== renderToken) return;
+      pc && pc.w(u.handle, d);
+      if (shown === null) return enhanceProfile(u, d, viewAs);
+      if (JSON.stringify(d) !== shown && location.hash === want0) Views.profile(handle); // changed since last visit: one redraw
+    }).catch(() => { });
   };
+  const pv3On = () => view.querySelector(".profile-top") && view.classList.add("profile-v2", "pv3");
   function enhanceProfile(u, d, viewAs) {
     const P = d.profile, me = u.id === DB.me && !viewAs, top = view.querySelector(".profile-top"), cover = view.querySelector(".cover"); if (!top || !cover) return;
     view.classList.add("profile-v2");
