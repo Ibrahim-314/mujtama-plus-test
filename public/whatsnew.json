@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.148.1",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "صفحة رئيسية ثابتة",
+      "items": [
+        "الخلاصة ما تنطّ وأنت تمرّر أو يتحمّل المزيد",
+        "«فاتك اليوم» يظهر بمكانه بدون ما يدفع المنشورات"
+      ]
+    },
+    "en": {
+      "title": "A steadier Home",
+      "items": [
+        "The feed no longer jumps while you scroll or more posts load",
+        "«Missed today» appears in place without pushing posts down"
+      ]
+    }
+  },
+  {
     "v": "2.148.0",
     "date": "2026-11-03",
     "ar": {
