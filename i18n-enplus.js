@@ -3477,5 +3477,7 @@
 "التذكرة مغلقة.": "This ticket is closed.",
 "افتح تذكرة جديدة": "Open a new ticket",
 "مهمة": "High",
-"تم الإرسال ✓": "Sent ✓"
+"تم الإرسال ✓": "Sent ✓",
+"اسحب لتحريك الصورة": "Drag to move the photo",
+"✓ حُدّثت الصورة": "✓ Photo updated"
 });
