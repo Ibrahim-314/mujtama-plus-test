@@ -53,3 +53,9 @@
   }
   window.MPFeat = { ico, filters, icons: Object.keys(P) };
 })();
+
+/* v2.149.1: the last 12 profiles this account opened on this device, so the profile paints in its first frame (identity-ui) */
+window.MPProfCache = (() => {
+  const all = () => { try { const o = JSON.parse(localStorage.mp_prof_v1); if (o.me === DB.me) return o; } catch (e) { } return { me: DB.me, p: {} }; };
+  return { r: (h) => all().p[h], w(h, d) { const o = all(), p = o.p; delete p[h]; p[h] = d; const k = Object.keys(p); while (k.length > 12) delete p[k.shift()]; try { localStorage.mp_prof_v1 = JSON.stringify(o); } catch (e) { } } };
+})();
