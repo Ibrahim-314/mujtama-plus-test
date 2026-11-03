@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.149.2",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "كل صفحة تفتح مرة وحدة بشكلها الصحيح",
+      "items": [
+        "الصفحات ما عاد تعرض شاشة الترحيب أو رسالة «غير موجود» لحظة قبل ما تظهر",
+        "الإعدادات وبقية الصفحات ما تنرسم من جديد بعد ثانية من فتحها",
+        "الواجهة الإنجليزية تفتح بالإنجليزي مباشرة بدل ثانية ونص بالعربي"
+      ]
+    },
+    "en": {
+      "title": "Every page opens once, looking right",
+      "items": [
+        "Pages no longer flash the welcome screen or «page not found» for a moment before showing",
+        "Settings and other pages are no longer redrawn a second after they open",
+        "The English interface opens in English right away instead of Arabic for a second and a half"
+      ]
+    }
+  },
+  {
     "v": "2.149.1",
     "date": "2026-11-03",
     "ar": {
