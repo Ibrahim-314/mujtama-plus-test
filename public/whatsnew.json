@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.148.2",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "لمس أسهل في ملخّصك",
+      "items": [
+        "روابط المنشورات في «ملخّصك» صارت أسهل للضغط بدون ما يتغيّر شكلها"
+      ]
+    },
+    "en": {
+      "title": "Easier taps in your digest",
+      "items": [
+        "Post links in your digest are easier to tap, with no change to how they look"
+      ]
+    }
+  },
+  {
     "v": "2.148.1",
     "date": "2026-11-03",
     "ar": {
