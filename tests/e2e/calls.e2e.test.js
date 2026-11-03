@@ -51,8 +51,9 @@ test("permission rules: strangers and blocked users cannot ring; the engine surf
 
 test("1:1 video call from the profile menu: incoming sheet, real two-way media, mute/camera state, screen share, hang-up", async () => {
   await A.goto(S.base + "/?nosw#/u/badr_cl"); await until(A, () => !!window.MPCalls);
-  await A.waitForSelector("[data-call-menu]", { timeout: 15000 });
-  await A.click("[data-call-menu]"); await A.click("#sheet [data-call=video]");
+  // v2.148 profile redesign (approved 2026-11-02): «اتصال» moved into the profile's «⋯» sheet (moved, not removed)
+  await A.waitForSelector("[data-call-menu]", { state: "attached", timeout: 15000 });
+  await A.click("#pmore"); await A.click("#sheet [data-pv3call]"); await A.click("#sheet [data-call=video]");
   await B.waitForSelector(".cl-in.on", { timeout: 15000 });
   assert.match(await B.textContent(".cl-in"), /أمل/);
   assert.equal(await A.evaluate(() => MPCalls.state), "outgoing");
