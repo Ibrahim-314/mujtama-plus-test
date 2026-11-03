@@ -135,13 +135,18 @@
   // v2.149.2: on a signed-in device (html.mp-me) it loads at boot, so the «i» is there with the screen's first paint instead of popping in ~1 s later on every inner page
   (document.documentElement.classList.contains("mp-me") ? (f) => f() : (f) => whenIn(() => idle(2000, 400)(f)))(() => { load("help").catch(() => { }); if (document.documentElement.classList.contains("mp-me")) load("helpcontent").catch(() => { }); });
   whenIn(() => idle(4000, 2000)(() => load("v12x").catch(() => { }).then(() => load("setx")).catch(() => { }))); // v2.81: the v1.2 screens (lists, events, admin…) warm once idle, so the first tap stays instant
+  /* v2.149.3: a late chain (safety, minors, calls) re-routes when it lands so a screen that waited for it gets drawn. A screen its
+   * own chunk already drew (#/security comes from secx, long before the safety chain lands ~1 s later) was redrawn from its
+   * skeleton — the whole page flashed back to grey bars and rebuilt (en 390 cold). Re-route only while the view is still the
+   * loader's skeleton or the 404 page. */
+  const waiting = () => typeof view === "undefined" || !view || !!view.querySelector(':scope > .wrap[aria-busy="true"], :scope > .nf-page') || !view.firstElementChild;
   // calls (phase 30): the engine ("calls", calls-core.js) must be listening before the first ring, so it loads
   // early, then the call screens ("callsui"); #/calls (history) waits for both
   // phase 32/33: trust & safety screens + post safety menu load right after first paint (kept out of the core budget)
   (function safetyChunks() {
     const R = ["help", "policies", "protection", "integrity", "investigation", "investigations", "inv-user", "security"];
     const want = () => R.includes((location.hash.split("/")[1] || "").split("?")[0]);
-    const go = () => load("protcore").then(() => load("protection")).then(() => load("integrity")).then(() => { if (want()) route(); }).catch(() => { });
+    const go = () => load("protcore").then(() => load("protection")).then(() => load("integrity")).then(() => { if (want() && waiting()) route(); }).catch(() => { });
     addEventListener("hashchange", () => { if (want() && (window.__CHUNKS || {}).protection && !loaded.integrity) go(); });
     whenIn(() => (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 600 }) : (f) => setTimeout(f, 200))(go));
   })();
@@ -149,7 +154,7 @@
   (function minorsChunks() {
     const R = ["age", "family", "urgent", "safety-cases"];
     const want = () => R.includes((location.hash.split("/")[1] || "").split("?")[0]);
-    const go = () => load("minorscore").then(() => load("minors")).then(() => { if (want()) route(); }).catch(() => { });
+    const go = () => load("minorscore").then(() => load("minors")).then(() => { if (want() && waiting()) route(); }).catch(() => { });
     addEventListener("hashchange", () => { if (want() && (window.__CHUNKS || {}).minors && !loaded.minors) go(); });
     (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 800 }) : (f) => setTimeout(f, 300))(go);
   })();
@@ -164,7 +169,7 @@
   if (typeof DB !== "undefined" && DB.settings && DB.settings.lang && DB.settings.lang !== "ar") load("i18n").catch(() => { }); if (typeof DB !== "undefined" && DB.settings && DB.settings.hijri) (window.requestIdleCallback || setTimeout)(() => load("hijri").catch(() => { })); // phase 68: Hijri labels with sighting overrides // phase 41: non-Arabic UI right away // phase 37: "tips" pulls "pi" first (tip buttons, #/me/supporting, #/admin/tips)
   (function callsChunks() {
     const want = () => (location.hash.split("/")[1] || "").split("?")[0] === "calls";
-    const go = () => load("calls").then(() => load("callsui")).then(() => { if (want()) route(); }).catch(() => { });
+    const go = () => load("calls").then(() => load("callsui")).then(() => { if (want() && waiting()) route(); }).catch(() => { });
     addEventListener("hashchange", () => { if (want() && (window.__CHUNKS || {}).callsui && !loaded.callsui) go(); });
     whenIn(() => (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 1500 }) : (f) => setTimeout(f, 800))(go));
   })();
