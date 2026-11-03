@@ -368,7 +368,7 @@
   let celebrated = null, chState = null, chAt = 0, chLoading = null;
   async function loadChallenges() {
     if (chState && Date.now() - chAt < 30e3) return chState;
-    if (!chLoading) chLoading = api("GET", "/api/onboarding").then(st => { chState = st; chAt = Date.now(); return st; }).finally(() => { chLoading = null; });
+    if (!chLoading) chLoading = api("GET", "/api/onboarding").then(st => { chState = st; chAt = Date.now(); try { localStorage.setItem("mp_ch_cache", JSON.stringify({ me: DB.me, st: { challenges: st.challenges } })); } catch { /* storage off */ } return st; }).finally(() => { chLoading = null; });
     return chLoading;
   }
   function paintChallenges(st) {
@@ -400,7 +400,9 @@
     if (c.completed === c.items.length && !celebrated.has("ch:all")) { celebrated.add("ch:all"); api("POST", "/api/onboarding/celebrated", { key: "ch:all" }).catch(() => { }); if (!firstLoad) celebrate("أكملت تحديات الأسبوع الأول"); }
     paintChallenges(st);
   }
-  HomeHooks.section("challenges", 20, function () { if (chState) paintChallenges(chState); challengesCard(); });
+  /* v2.149.0: before the first fetch of this visit, paint the last known bar in the same frame as Home so it never pushes the feed down */
+  const chCached = () => { try { const c = JSON.parse(localStorage.getItem("mp_ch_cache") || "null"); return c && c.me === DB.me && c.st && c.st.challenges ? c.st : null; } catch { return null; } };
+  HomeHooks.section("challenges", 20, function () { const st = chState || (online() && DB.onboarded && !actAs() ? chCached() : null); if (st) paintChallenges(st); challengesCard(); });
   /* any action that may complete a challenge refreshes the card soon after */
   document.addEventListener("click", (e) => { if (e.target.closest("#pub, [data-follow], [data-join]")) setTimeout(() => challengesCard(true), 1200); }, true);
   function celebrate(text) {
