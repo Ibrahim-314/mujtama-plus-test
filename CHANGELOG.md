@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.149.0 — 2026-11-03 — «بداية نظيفة» (user approved 2026-11-03 06:15 cleanup of old designs + 08:35 «نفذ كل شيء»; no feature removed, no migration)
+- Bottom nav: index.html ships the current SVG tab icons inline, so the old emoji icons (🏠🔍👥🔔☰) never paint before the scripts run; ui.js only touches tabs with data-r (the 1440 side logo no longer receives tab icons).
+- Home: the first frame draws the current tab row (last-known tabs, «⋯», tab editor) instead of the pre-2.148 row with «الأحدث» «استكشف»; the discovery chunk now enhances it in place (data-dg) instead of replacing it.
+- Home: the first-week challenges bar paints from its last-known state in the same frame, so it no longer pushes the feed down ~0.5 s after open.
+- Shell: the last language/theme (mp.shell) is applied in <head> before the first paint, and the boot no longer flips it to local defaults before the account loads (no light→dark or RTL→LTR flash).
+- Home: the «فاتك اليوم» placeholder takes the card's last height (22 px skeleton lines), so swapping it for the card no longer pushes the feed ~37 px on every open (was the intermittent home-cls cached-visit failure).
+- 1440: the side-rail logo keeps its 42px size on its own (flex: none; 36px in English so «Mujtama Plus» fits the rail); in 2.148.2 English it was squeezed by the tab icons ui.js wrongly put inside it.
+- Test: tests/e2e/first-paint-v21490 (scripts-off nav, one icon pair per tab, no old tabs and no theme flip on Home's first frame).
+
 ## 2.148.2 — 2026-11-03 — «راحة العين» (part 2; user approved 2026-11-03 06:10 «كمل الإصدار القادم»; no intended visible change, no feature removed)
 - #/digest: every post link (name, time, topic chip, hashtag) now has a 24px tap area through an invisible hit box; nothing on screen moves (new lazy `discovery.css` chunk, core app.css untouched at its 16 KB budget).
 - Navigation sweep (390, 17 routes from Home): all 0 except #/mjt 0.001; entering #/shorts drops the top bar by design (full-screen video), which counts as 0.059 only when the hash changes without a tap.
