@@ -520,7 +520,7 @@ function route() {
   const [r, a, b] = h.split("/");
   if (window.MPSession?.state === "out" && typeof showAuth === "function") return showAuth(view._authMode || "login"); /* v2.140: a signed-out visitor keeps the sign-in screen (re-render, language switch, deep links) instead of the onboarding gate */
   if (!DB.onboarded) { $(".bottomnav").style.display = "none"; $("#fab").style.display = "none"; document.body.classList.remove("has-fab"); return Views.onboarding(view._ob || 1); }
-  $(".bottomnav").style.display = ""; { const fabOn = ["home", "communities", "c", "u", "me", "topic", "tag", "list", "events"].includes(r); void fabOn; document.body.classList.remove("has-fab"); } /* v2.139: no floating button */
+  $(".bottomnav").style.display = ""; document.body.classList.remove("has-fab"); /* v2.139: no floating button */
   if (window.MPNav) MPNav.paint(); else document.querySelectorAll(".bottomnav a[data-r]").forEach(x => x.classList.toggle("active", x.dataset.r === r));
   if (view._route !== h) { view._ctab = view._ptab = view._csort = view._ltab = null; if (r !== "explore") view._q = ""; scrollTo(0, 0); }
   view._route = h;
