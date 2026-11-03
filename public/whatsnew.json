@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.149.0",
+    "date": "2026-11-03",
+    "ar": {
+      "title": "فتح نظيف بدون التصميم القديم",
+      "items": [
+        "أول ما تفتح التطبيق يظهر التصميم الحالي مباشرة، بدون ومضة الأيقونات والتبويبات القديمة",
+        "الوضع الداكن واللغة الإنجليزية يظهران من أول لحظة بدل ما يبدأ فاتح وعربي"
+      ]
+    },
+    "en": {
+      "title": "A clean start, no old design",
+      "items": [
+        "Opening the app shows the current design right away, without a flash of the old icons and tabs",
+        "Dark mode and English show from the first moment instead of starting light and Arabic"
+      ]
+    }
+  },
+  {
     "v": "2.148.2",
     "date": "2026-11-03",
     "ar": {
