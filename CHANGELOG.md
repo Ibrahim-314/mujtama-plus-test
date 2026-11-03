@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.148.2 — 2026-11-03 — «راحة العين» (part 2; user approved 2026-11-03 06:10 «كمل الإصدار القادم»; no intended visible change, no feature removed)
+- #/digest: every post link (name, time, topic chip, hashtag) now has a 24px tap area through an invisible hit box; nothing on screen moves (new lazy `discovery.css` chunk, core app.css untouched at its 16 KB budget).
+- Navigation sweep (390, 17 routes from Home): all 0 except #/mjt 0.001; entering #/shorts drops the top bar by design (full-screen video), which counts as 0.059 only when the hash changes without a tap.
+- ship.sh: every stage stamps start/ok/STOPPED in ship-state/stages.tsv; `ship.sh --status` shows where a run stopped.
+
 ## 2.148.1 — 2026-11-03 — «راحة العين» (part 1: no more jumping; user approved 2026-11-03 01:43 «ابدا», home jump raised 01:54; no intended visible change, no feature removed, no migration)
 - #/digest: AI-brief cards keep their place from the first frame (layout shift 0.147→0.001); source chips are 24px tap targets.
 - #/shorts: a cold start lays out full-screen from the first frame (0.059→0).
