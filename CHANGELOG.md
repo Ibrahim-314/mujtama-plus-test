@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.149.5 «الإدارة ترسم مرة» — 2026-11-04
+- `#/admin` (cold): the hub waited for nothing, so the ten modules that add a row (pi, tips, paid, ads, ai, aihub, i18n, launch, market, transfers + /ops-ui.js) landed after it was drawn — rows popped in or never showed until the next visit, and the hub was redrawn when ops-ui landed. chunks.js now holds the hub on its skeleton (max 3 s, once) until they are in; their hooks insert in a microtask (not a timer); the launch row draws from the config the hub waited for. Flash score 68.5 → 0, CLS 0.5355 → 0.
+- `#/admin` rows: the page head wraps its title (`.ph-main > .hp-has`), so «right after the title» was inside the head — every module row stayed there as a loose card and never reached the «أدوات الإدارة» list. adminTools() collects them from beside the title too, and keeps the list in ADM_ORDER. Server KPI tiles are reserved («—») and filled in place.
+- `#/me/paid-posts`, `#/admin/paid`, `#/admin/tips` (cold): the loader did not know these routes, so the profile / admin hub drew first and was swapped for the real screen. chunks.js maps them to the paid / tips chunks (paid after tips); paid-ui no longer re-routes on its own in production. Scores 40.6 / 20.5 / 17.5 → 0.
+- Full EN sweep (m-en-dark cold, 159 screens) before: total 548.2, 48 screens ≥ 3.
+- tests: `no-flash-v21495` (4); `clean-v21451` reads the rows from `#adm-tools` (they were never in the list before — it failed on 2.149.4 too).
+
 ## 2.149.4 «بالإنجليزي من أول إطار» — 2026-11-04
 - i18n: the DOM translator now runs in the MutationObserver microtask instead of the next rAF, so a screen drawn (or redrawn by a background refresh) never paints a frame in Arabic first. `#/digest` (en, cold) flash score 51.8 → 7, CLS 0.18 → 0, Arabic-in-chrome 523 ms → 0.
 - Help «i»: the overlay row is never put into an empty `#view` or directly into `#view` (only into the screen's `.wrap`), waits 700 ms of the same headless screen before going in, and a full redraw of `#view` is decorated in the observer microtask (no frame without it). `#/settings?s=help` 44.8 → 5.6, `#/post/{post}` 46.2 → 21.9.
