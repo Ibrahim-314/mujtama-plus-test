@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.149.4 «بالإنجليزي من أول إطار» — 2026-11-04
+- i18n: the DOM translator now runs in the MutationObserver microtask instead of the next rAF, so a screen drawn (or redrawn by a background refresh) never paints a frame in Arabic first. `#/digest` (en, cold) flash score 51.8 → 7, CLS 0.18 → 0, Arabic-in-chrome 523 ms → 0.
+- Help «i»: the overlay row is never put into an empty `#view` or directly into `#view` (only into the screen's `.wrap`), waits 700 ms of the same headless screen before going in, and a full redraw of `#view` is decorated in the observer microtask (no frame without it). `#/settings?s=help` 44.8 → 5.6, `#/post/{post}` 46.2 → 21.9.
+- tests: `no-flash-v21494` (3).
+- Note: earlier same-session sweeps ran on a stale dist/ (flash-sweep does not rebuild); measured after `node tools/build.mjs`.
+
 ## 2.149.3 «ما يتحرك تحت إصبعك» — 2026-11-04
 - Settings section title (en): `setView()` compared the Arabic source with the English the i18n layer wrote and re-set it every call → title flipped ar/en and the head jumped 1↔2 lines (CLS 0.64 on `#/settings?s=display`, flash score 91.7 → 6.3). Now compares/sets the translated title.
 - `.page-head` titles reserve the lazy «i» width from first paint (no late wrap).
