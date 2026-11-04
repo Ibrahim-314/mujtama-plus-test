@@ -809,7 +809,9 @@ body:has(#story-viewer) #sheet { z-index: 120 !important; }
 .li .chev { color: var(--muted); } [dir=ltr] .li .chev { transform: scaleX(-1); }
 a.li:hover, button.li:hover { background: var(--bg); }
 .li + .li:not(:has(> .ico))::before { inset-inline-start: var(--s4); } .list.flat { box-shadow: none; background: var(--bg-2); margin: var(--s2) 0; }
-.comment.accepted { border-color: var(--accent); } .cm-hd h2 { margin: 0; font-size: var(--fs-lg); } .cm-empty { padding: 14px 0; margin: 0; } .cm-pad { height: 60px; } .cact button .ic { vertical-align: -3px; }
+.comment.accepted { border-color: var(--accent); } .cm-hd h2 { margin: 0; font-size: var(--fs-lg); } /* v2.149.6: a post's comments card keeps the look it settled into (it used to get it ~1 s late from the messages module's styles): rounded card, centred empty state — now from the first frame */
+.card.cm-sec{border-radius:20px;padding:6px 14px;margin:12px 0}#clist>.cm-empty{text-align:center;padding:48px 16px;margin:0}
+ .cm-pad { height: 60px; } .cact button .ic { vertical-align: -3px; }
 .ell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: match-parent; }
 /* v2.33 polish: hairline borders, quieter shadows, clear states, section labels with an accent tick */
 .card, .list, .kpi-tile { border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
@@ -895,7 +897,6 @@ h4 .muted, h3.sh4 .muted { font-weight: 600; }
 .page-head h2, .wrap .page-head h2 { font-size: var(--fs-3xl); }
 /* cards: hairline + layered shadow, press feedback on tappable cards */
 .card, .list, .kpi-tile, .kpi > div { border: 1px solid var(--card-bd); }
-.card { border-radius: var(--r); }
 a.card, button.card, .card.post-open { transition: box-shadow .2s, transform .18s var(--ease); }
 a.card:active, button.card:active { transform: scale(.985); }
 @media (hover: hover) { a.card:hover, button.card:hover, .post-card:hover { box-shadow: var(--sh-2); } }
