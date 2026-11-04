@@ -300,11 +300,15 @@ function wrapRender() {
   });
   // Admin dashboard enriched with server KPIs (retention, online)
   const admin = V12.admin;
+  // v2.149.5: the three server tiles are drawn with the hub («—» until the numbers arrive) and filled in place — appending them
+  // after the request grew the KPI grid by a row and pushed the whole hub down (CLS 0.055 on a cold #/admin)
+  const srvTiles = (d) => `<div class="kpi-srv"><b>${d ? d.users : "—"}</b>مستخدم</div><div class="kpi-srv"><b>${d ? d.online : "—"}</b>متصل الآن</div><div class="kpi-srv"><b>${d ? (d.retention7d ?? "—") + (d.retention7d != null ? "%" : "") : "—"}</b>الاحتفاظ 7 أيام</div>`;
   V12.admin = async function () {
     admin();
     if (!Remote.on || !DB.isAdmin) return;
+    { const k0 = view.querySelector(".kpi"); if (k0 && !k0.querySelector(".kpi-srv")) k0.insertAdjacentHTML("beforeend", srvTiles(null)); }
     try { const d = await Remote.api("GET", "/api/admin/dashboard"); const k = view.querySelector(".kpi");
-      if (k) { k.children[0].innerHTML = `<b>${d.dau}</b>نشط يومياً (DAU)`; k.children[1].innerHTML = `<b>${d.mau}</b>نشط شهرياً (MAU)`; k.querySelectorAll(".kpi-srv").forEach((x) => x.remove()); /* v2.55: two overlapping renders appended the server tiles twice */ k.insertAdjacentHTML("beforeend", `<div class="kpi-srv"><b>${d.users}</b>مستخدم</div><div class="kpi-srv"><b>${d.online}</b>متصل الآن</div><div class="kpi-srv"><b>${d.retention7d ?? "—"}${d.retention7d != null ? "%" : ""}</b>الاحتفاظ 7 أيام</div>`); }
+      if (k) { k.children[0].innerHTML = `<b>${d.dau}</b>نشط يومياً (DAU)`; k.children[1].innerHTML = `<b>${d.mau}</b>نشط شهرياً (MAU)`; const t = k.querySelectorAll(".kpi-srv"), fresh = document.createElement("div"); fresh.innerHTML = srvTiles(d); /* v2.55: two overlapping renders appended the server tiles twice — fill the reserved tiles in place */ if (t.length === 3) t.forEach((x, n) => { x.innerHTML = fresh.children[n].innerHTML; }); else { t.forEach((x) => x.remove()); k.insertAdjacentHTML("beforeend", srvTiles(d)); } }
     } catch (e) { }
   };
   // Creator analytics from the server (reach, best hours in the viewer's timezone, sources)
