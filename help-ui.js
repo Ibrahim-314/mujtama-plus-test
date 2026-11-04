@@ -102,7 +102,7 @@
     b.setAttribute("aria-label", T().btn); b.title = T().btn; b.removeAttribute("aria-hidden"); b.removeAttribute("tabindex");
     const q = b.querySelector(".hp-q"); if (q && q.textContent !== glyph()) q.textContent = glyph();
   }
-  let lastKey = "";
+  let lastKey = "", stripWait = "", stripReady = "", stripT = 0;
   function decorate() {
     const v = document.getElementById("view"); if (!v) return;
     // page heads: UI.pageHead / .page-head, and the hand-built heads of Notifications (.nf-head) and Messages (.cm-head)
@@ -126,6 +126,9 @@
       // v2.149.3: a loading skeleton is not a screen yet — an overlay row put on it was torn down a moment later when the screen's
       // own page head arrived (the «i» row popped in and out, and every element below it shifted index: restyle/swap on cold opens)
       const w0 = v.querySelector(":scope > .wrap"); if (w0 && (w0.getAttribute("aria-busy") === "true" || ![...w0.children].some((c) => !c.classList.contains("skel") && !c.classList.contains("hp-strip")))) { w0.querySelector(":scope > .hp-strip")?.remove(); return; }
+      // v2.149.4: an empty #view (the route has not drawn yet) is not a screen either — the row went straight into #view and
+      // was replaced a moment later by the screen's .wrap (cold #/post, #/settings?s=help: swap + restyle on first paint)
+      if (!w0) { v.querySelector(":scope > .hp-strip")?.remove(); if (![...v.children].some((c) => !c.classList.contains("skel") && !c.classList.contains("hp-strip"))) return; }
       if ((onTop() || v.querySelector(".hp-strip")) && lastKey === key) return;
       let ok = false;
       if (slot && top && getComputedStyle(slot).display !== "none") {
@@ -134,7 +137,14 @@
       }
       setSlot(ok);
       if (ok) v.querySelector(".hp-strip")?.remove();
-      else if (!v.querySelector(".hp-strip") || lastKey !== key) { v.querySelector(".hp-strip")?.remove(); (v.querySelector(".wrap") || v).insertAdjacentHTML("afterbegin", `<div class="hp-strip">${btnHtml(false)}</div>`); }
+      else if (!v.querySelector(".hp-strip") || lastKey !== key) {
+        // v2.149.4: screens that draw their page head a beat after the body (post, late chains) got the overlay row first and then
+        // lost it to the head (row in → row out → head «i»: three shifts). The overlay row is the fallback, so it waits 700 ms of
+        // the same screen still having no head before it goes in.
+        if (stripWait !== key) { stripWait = key; clearTimeout(stripT); stripT = setTimeout(() => { if (stripWait === key) { stripReady = key; decorate(); } }, 700); return; }
+        if (stripReady !== key) return;
+        v.querySelector(".hp-strip")?.remove(); const wr = v.querySelector(":scope > .wrap") || v.querySelector(".wrap"); if (!wr) return; wr.insertAdjacentHTML("afterbegin", `<div class="hp-strip">${btnHtml(false)}</div>`);
+      }
     }
     lastKey = key;
   }
@@ -184,7 +194,10 @@
 
   document.addEventListener("click", (ev) => { const b = ev.target.closest?.("[data-help]"); if (!b) return; ev.preventDefault(); if (pop && openFrom === b) close(); else open(b); });
   let raf = 0; const soon = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; decorate(); }); };
-  const v = document.getElementById("view"); if (v) new MutationObserver(soon).observe(v, { childList: true, subtree: true });
+  // v2.149.4: a full redraw of #view (its own children replaced, e.g. the post screen re-rendering on every comment/sort) is
+  // decorated in the observer's microtask, before the frame paints — through rAF the screen painted one frame without its «i»
+  // and the next frame with it (a flip on every redraw). Smaller subtree changes keep the rAF batching.
+  const v = document.getElementById("view"); if (v) new MutationObserver((recs) => { if (recs.some((r) => r.target === v && r.addedNodes.length)) { try { decorate(); } catch { /* next rAF retries */ } } soon(); }).observe(v, { childList: true, subtree: true });
   addEventListener("hashchange", () => { close(true); soon(); });
   // the language can change without a route change (#/settings/language): redraw the button label/glyph
   new MutationObserver(() => { lastKey = ""; ensureLang(); soon(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["lang", "dir"] });
