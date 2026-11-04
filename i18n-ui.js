@@ -135,7 +135,10 @@
   const mo = new MutationObserver((list) => {
     if (busy) return;
     for (const r of list) { if (r.type === "characterData") queue.add(r.target); else if (r.type === "attributes") queue.add(r.target); else r.addedNodes.forEach((n) => queue.add(n)); }
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const L = shown; /* v2.149.2: the language on screen, not DB (still "ar" before the account loads) */ const q = [...queue]; queue.clear(); if (L === "ar") return; mo.disconnect(); for (const n of q) if (n.isConnected) { if (n.nodeType === 3 && orig.has(n) && n.nodeValue !== orig.get(n) && AR.test(n.nodeValue)) orig.set(n, n.nodeValue); apply(n, L); } watch(); });
+    // v2.149.4: translate in the observer's own microtask, before the browser can paint. Through rAF a screen drawn inside a
+    // frame callback (or a refresh landing late in a frame) painted one frame in Arabic, and the Arabic lines — longer or
+    // shorter than the English — moved everything under them (digest header, settings rows: CLS + «Arabic flash»).
+    if (!raf) raf = 1, (() => { raf = 0; const L = shown; /* v2.149.2: the language on screen, not DB (still "ar" before the account loads) */ const q = [...queue]; queue.clear(); if (L === "ar") return; mo.disconnect(); for (const n of q) if (n.isConnected) { if (n.nodeType === 3 && orig.has(n) && n.nodeValue !== orig.get(n) && AR.test(n.nodeValue)) orig.set(n, n.nodeValue); apply(n, L); } watch(); })();
   });
   const watch = () => mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["title", "placeholder", "aria-label", "label"] });
 
