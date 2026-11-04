@@ -123,8 +123,16 @@ function adminTools(w) {
     const h2 = w.querySelector(":scope > .page-head, :scope > h2"), kpi = w.querySelector(":scope > .kpi"); if (!h2 || !kpi) return;
     const got = [];
     for (let n = h2.nextElementSibling; n && n !== kpi; n = n.nextElementSibling) got.push(n);
+    // v2.149.5: since the page head wraps its title (.ph-main > .hp-has), «right after the title» is inside the head — the module
+    // rows stayed there as loose cards in the header and never reached this list. Collect them from beside the title too.
+    const t2 = w.querySelector(".page-head h2"); if (t2) for (let n = t2.nextElementSibling; n; n = n.nextElementSibling) if (n.matches("a[href^='#/'], div[id]") && !n.matches(".hp-btn, [data-help]")) got.push(n);
     got.forEach((n) => { if (n.matches("a")) { fix(n); list.appendChild(n); } else { n.querySelectorAll("a[href^='#/']").forEach(fix); n.classList.add("adm-grp"); list.appendChild(n); } });
     [...list.children].forEach((n) => { if (n.matches("a:not(.li)")) fix(n); else if (n.matches("div")) n.querySelectorAll("a:not(.li)").forEach(fix); });
+    // v2.149.5: rows reach the list as their modules land, so the list keeps ADM_ORDER itself: the known rows are put back in that
+    // order in the slots they hold (unknown rows stay put); moves only when it differs
+    const kids = [...list.children], idx = (n) => ADM_ORDER.indexOf(n.id || n.getAttribute("href") || ""), slots = kids.filter((n) => idx(n) >= 0);
+    const sorted = [...slots].sort((x, y) => idx(x) - idx(y));
+    if (sorted.some((n, i) => n !== slots[i])) { const marks = slots.map((n) => { const c = document.createComment("s"); n.before(c); return c; }); sorted.forEach((n, i) => marks[i].replaceWith(n)); }
   };
   const mo = new MutationObserver(sweep); mo.observe(w, { childList: true, subtree: true }); sweep();
 }
