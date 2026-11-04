@@ -161,7 +161,7 @@ ${m.zeroQueries.length ? `<div class="ops-x"><table class="ops-tbl"><thead><tr><
     return { ...prev, admin: () => {
       if ((a || "").split("?")[0] === "ops") { if (!DB.isAdmin) return Views.notFound(); return (b || "").split("?")[0] === "product" ? productView() : opsView(); }
       (prev.admin || Views.notFound)();
-      if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("ops-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card); }, 0);
+      if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("ops-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card); });
     } };
   };
   window.MPOps = { ops: opsView, product: productView, qoe: qoeCard, line, bars, version: "2.23.0" };
