@@ -33,7 +33,7 @@ const probe = () => {
   window.__fs = st;
   const sig = () => {
     const v = document.getElementById("view"); if (!v) return null;
-    const els = [v, ...v.querySelectorAll("*")].slice(0, 61), boxes = [], cls = [];
+    const els = [v, ...[...v.querySelectorAll("*")].filter((e) => !e.closest(".hp-strip"))].slice(0, 61) /* v2.149.6: the «i» help row (height 0 in the layout) shifted every index after it */, boxes = [], cls = [];
     for (const e of els) { const r = e.getBoundingClientRect(); boxes.push([Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)]); cls.push((e.getAttribute("class") || "").split(/\s+/).filter((c) => c && !/^(on|active|focus|hover|is-|in$|show$|vis|enter$)/.test(c)).sort().join(".")); }
     let ar = 0;
     if (document.documentElement.lang === "en") for (const e of document.querySelectorAll(CHROME)) { if (e.closest(USER) || !e.getClientRects().length) continue; for (const n of e.childNodes) if (n.nodeType === 3) ar += (n.nodeValue.match(AR) || []).length; }
