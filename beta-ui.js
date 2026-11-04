@@ -87,7 +87,7 @@
       document.getElementById("bt-fab").addEventListener("click", () => feedbackSheet());
     };
     put(); addEventListener("hashchange", () => setTimeout(put, 400));
-    if (typeof Views !== "undefined" && Views.settings) { MPSettings.add(function () { setTimeout(put, 0); }); }
+    if (typeof Views !== "undefined" && Views.settings) { MPSettings.add(function () { queueMicrotask(put); }); /* v2.149.6: was setTimeout 0 — one frame of «المساعدة» without this row, then the cards under it jumped down */ }
   }
   /* v2.51: starts only for a signed-in session (MPSession.whenIn — guests never poll); a 401/403 answer stops for good (until the
    * next sign-in), other failures retry with backoff 2 s → 4 s → 8 s … capped at 60 s, at most 6 tries (was: 40 tries every 1.5 s). */
