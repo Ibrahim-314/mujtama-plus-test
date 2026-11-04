@@ -304,7 +304,7 @@
   MPRoutes.add("admin", (a, b, next) => {
     if (a === "aihub") return adminView();
     next();
-    if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("ah-adm-link")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="ah-adm-link" href="#/admin/aihub">${ic("sparkle")} <b>${esc(t("admin"))}</b></a>`); }, 0);
+    if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("ah-adm-link")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="ah-adm-link" href="#/admin/aihub">${ic("sparkle")} <b>${esc(t("admin"))}</b></a>`); });
   });
   window.MPAIHub = { view: view0, adminView, version: "2.77.0" };
   if (typeof DB !== "undefined" && DB.onboarded && /^#\/(aihub|admin\/aihub)(\/|$|\?)/.test(location.hash) && typeof route === "function") route();
