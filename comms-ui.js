@@ -93,8 +93,9 @@
 .cm-req{border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:10px;background:var(--card)}
 .cm-req .cm-acts{display:flex;gap:8px;margin-top:10px}.cm-req .btn{flex:1;min-height:44px}
 .cm-note{font-size:var(--fs-sm);color:var(--muted);line-height:1.7}
-.cm-empty{text-align:center;padding:48px 16px;color:var(--muted)}
-.cm-empty .ic{width:44px;height:44px;color:var(--accent);margin-bottom:8px}
+/* v2.149.6: .cm-sec / .cm-empty are also the post page's comments section (theme.css) — scoped with :where (no extra weight) so loading messages no longer restyles a post's comments ~1 s after it opened */
+.cm-empty:where(:not(#clist > *)){text-align:center;padding:48px 16px;color:var(--muted)}
+.cm-empty:where(:not(#clist > *)) .ic{width:44px;height:44px;color:var(--accent);margin-bottom:8px}
 body.cm-chat .bottomnav,body.cm-chat #fab{display:none!important}
 body.cm-chat .topbar{display:none}
 .cm-chat-head{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:6px;padding:6px 4px;background:color-mix(in srgb,var(--card) 95%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--line)}
@@ -174,10 +175,10 @@ body.cm-chat .topbar{display:none}
 .cm-pick button{width:44px;height:44px;border-radius:50%;border:0;background:var(--bg-2);font-size:24px;cursor:pointer;transition:transform .15s var(--spring)}
 .cm-pick button:hover,.cm-pick button:focus-visible{transform:scale(1.15);outline:2px solid var(--accent)}
 .cm-pick button[aria-pressed=true]{background:var(--accent2);box-shadow:inset 0 0 0 2px var(--accent)}
-.cm-sec{background:var(--card);border-radius:20px;padding:6px 14px;margin:12px 0;box-shadow:var(--sh-1)}
-.cm-sec h3{font-size:13px;color:var(--muted);margin:10px 0 4px;font-weight:700}
+.cm-sec:where(:not(.card)){background:var(--card);border-radius:20px;padding:6px 14px;margin:12px 0;box-shadow:var(--sh-1)}
+.cm-sec:where(:not(.card)) h3{font-size:13px;color:var(--muted);margin:10px 0 4px;font-weight:700}
 .cm-li{display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 0;border-top:1px solid var(--line);color:inherit;text-decoration:none;width:100%;background:none;border-inline:0;border-bottom:0;font:inherit;text-align:start;cursor:pointer}
-.cm-sec h3+.cm-li,.cm-sec>.cm-li:first-child{border-top:0}
+.cm-sec:where(:not(.card)) h3+.cm-li,.cm-sec:where(:not(.card))>.cm-li:first-child{border-top:0}
 .cm-li>.ic{width:22px;height:22px;color:var(--accent);flex:none}
 .cm-li .cm-mid small{display:block;color:var(--muted);font-size:12.5px}
 .cm-li.danger,.cm-li.danger>.ic{color:var(--danger)}
@@ -221,16 +222,16 @@ body.cm-chat .topbar{display:none}
 .cm-row.unread .cm-name>span{color:var(--text)}
 .cm-row.unread .cm-un{box-shadow:0 0 0 3px var(--card)}
 .cm-req{border-color:var(--card-bd,var(--line));box-shadow:var(--sh-1);border-radius:20px}
-.cm-empty .ic{width:28px;height:28px;margin:0;color:var(--accent)}
-.cm-empty .cm-eic{width:64px;height:64px;border-radius:20px;margin:0 auto 14px;display:grid;place-items:center;background:var(--accent-soft)}
-.cm-empty b{display:block;color:var(--text);font-size:var(--fs-lg,18px);margin-bottom:4px}
-.cm-empty p{margin:0 0 16px}
+.cm-empty:where(:not(#clist > *)) .ic{width:28px;height:28px;margin:0;color:var(--accent)}
+.cm-empty:where(:not(#clist > *)) .cm-eic{width:64px;height:64px;border-radius:20px;margin:0 auto 14px;display:grid;place-items:center;background:var(--accent-soft)}
+.cm-empty:where(:not(#clist > *)) b{display:block;color:var(--text);font-size:var(--fs-lg,18px);margin-bottom:4px}
+.cm-empty:where(:not(#clist > *)) p{margin:0 0 16px}
 .cm-wrap>.cm-li{background:var(--card);border:1px solid var(--card-bd,var(--line));border-radius:20px;box-shadow:var(--sh-1);padding:10px 14px;margin-top:16px}
 .cm-li>.ic{width:36px;height:36px;padding:8px;border-radius:12px;background:var(--accent-soft);color:var(--accent-ink);box-sizing:border-box}
 .cm-li.danger>.ic{background:var(--danger-soft,var(--bg-2))}
 .cm-li .cm-mid{font-weight:600}
 .cm-li .cm-mid small{font-weight:400}
-.cm-sec{border:1px solid var(--card-bd,var(--line))}
+.cm-sec:where(:not(.card)){border:1px solid var(--card-bd,var(--line))}
 .cm-m.me .cm-b{background:linear-gradient(135deg,var(--brand-1),color-mix(in srgb,var(--brand-1) 82%,var(--brand-2)))}
 .cm-m.them .cm-b{border:1px solid var(--card-bd,var(--line));box-shadow:none}
 .cm-chat-head{padding:8px 6px;gap:4px}
