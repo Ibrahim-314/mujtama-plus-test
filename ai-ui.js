@@ -186,7 +186,9 @@
   }
   document.addEventListener("click", (e) => { const b = e.target.closest?.(".mp-trb[data-aitr]"); if (!b) return; e.preventDefault(); e.stopPropagation(); translateBtn(b); }, true);
   let t0 = 0;
-  new MutationObserver(() => { if (!t0) t0 = setTimeout(() => { t0 = 0; decorate(); }, 60); }).observe(document.getElementById("view") || document.body, { childList: true, subtree: true });
+  // v2.149.6: decorate in the observer's microtask (before the next paint) — the 60 ms timer let a redrawn post show one or more
+  // frames without its translate button, then pushed its actions row down when the button landed (cold #/post en)
+  new MutationObserver(() => { if (!t0) { t0 = 1; queueMicrotask(() => { try { decorate(); } finally { t0 = 0; } }); } }).observe(document.getElementById("view") || document.body, { childList: true, subtree: true });
 
   /* ---------- #/ai, #/settings/translate, #/admin/ai ---------- */
   async function subView() {
