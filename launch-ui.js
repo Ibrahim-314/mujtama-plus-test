@@ -300,7 +300,8 @@
   });
   MPRoutes.add("admin", (a, b, next) => {
         next();
-        if (!a) config(true).then((c) => { if (c.staff && location.hash === "#/admin" && !document.getElementById("lc-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card("lc-adm", "#/staff/tickets", "<svg class=ei aria-hidden=true><use href=#i-headset /></svg>", "الدعم والإطلاق", "طابور التذاكر، مقالات المساعدة، السفراء، قائمة الانتظار والدعوات")); });
+        // v2.149.5: the row goes in with the hub from the config the hub waited for; the fresh copy only adds it if staff just changed
+        if (!a) (cfg ? [Promise.resolve(cfg), config(true)] : [config(true)]).forEach((pc) => pc.then((c) => { if (c.staff && location.hash === "#/admin" && !document.getElementById("lc-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card("lc-adm", "#/staff/tickets", "<svg class=ei aria-hidden=true><use href=#i-headset /></svg>", "الدعم والإطلاق", "طابور التذاكر، مقالات المساعدة، السفراء، قائمة الانتظار والدعوات")); }));
       });
   /* signed-out visitors (onboarding screen) can still open the landing page, the waitlist and the help center */
   const PUBLIC = /^#\/(about|waitlist|faq)(\/|$|\?)/;
