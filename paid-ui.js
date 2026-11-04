@@ -329,7 +329,7 @@
   MPRoutes.add("admin", (a, b, next) => {
         if (a === "paid") return adminRefunds();
         next();
-        if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("pd-adm")) (view.querySelector("#tp-adm") || view.querySelector(".wrap h2"))?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="pd-adm" href="#/admin/paid"><span aria-hidden="true" class="u-t-3xl"><svg class=ei aria-hidden=true><use href=#i-undo /></svg></span><span class="u-f1"><b>استرداد المحتوى المدفوع</b><span class="u-db muted">مراجعة طلبات الاسترداد للمنشورات المدفوعة</span></span><span class="fwd" aria-hidden="true">←</span></a>`); }, 0);
+        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("pd-adm")) (view.querySelector("#tp-adm") || view.querySelector(".wrap h2"))?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="pd-adm" href="#/admin/paid"><span aria-hidden="true" class="u-t-3xl"><svg class=ei aria-hidden=true><use href=#i-undo /></svg></span><span class="u-f1"><b>استرداد المحتوى المدفوع</b><span class="u-db muted">مراجعة طلبات الاسترداد للمنشورات المدفوعة</span></span><span class="fwd" aria-hidden="true">←</span></a>`); });
       });
   MPRoutes.add("creator", (a, b, next) => { next(); addLink("#/creator", "pd-crl", `<a class="u-dflex u-aic u-g12 u-ci u-tdn u-mt12 card" id="pd-crl" href="#/me/paid-posts"><span aria-hidden="true" class="u-c-ac">${UI.icon("wallet")}</span><span class="u-f1"><b>منشوراتي المدفوعة</b><span class="u-db muted">منشورات الداعمين والمدفوعة: مرات الفتح والإيراد</span></span><span class="fwd" aria-hidden="true">←</span></a>`); });
   MPRoutes.add("me", (a, b, next) => (a === "purchases" ? hub() : a === "paid-posts" ? paidPostsView() : next()));
@@ -346,7 +346,8 @@
   window.MPPaid = { unlock: unlockSheet, refresh: refreshPaid, purchases: purchasesView, paidPosts: paidPostsView, admin: adminRefunds, version: "2.11.0" };
   refreshPaid().then(() => {
     const hasLocked = typeof DB !== "undefined" && (DB.posts || []).some(p => p.locked || p.paid?.mode);
-    if (/^#\/(me\/purchases|me\/paid-posts|admin\/paid)/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+    // v2.149.5: in production the chunk loader owns these routes and draws them once when this chunk lands; a second route() here redrew the screen
+    if (/^#\/(me\/purchases|me\/paid-posts|admin\/paid)/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded && !(window.__CHUNKS || {}).paid) route();
     else if (hasLocked && DB.onboarded && typeof rerender === "function" && document.getElementById("sheet")?.classList.contains("hidden")) rerender();
   });
 })();
