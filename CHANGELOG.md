@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.149.6 «المنشور يرسم مرة» — 2026-11-04
+- `#/post/:id` (cold): the post drew before the modules that decorate it (protection 🛡, ai translate, assistant, tips, series, discovery summary) — ~0.4–0.9 s later the «⋯» slot was taken by the shield and the author line shrank 220 → 173 px. chunks.js holds a signed-in post on its skeleton (max 1.5 s, once) until they are in. ai-ui decorates in the observer microtask instead of a 60 ms timer. Sweep 21.9 → 5.6 (en), 21.2 → 6.2 (ar).
+- Real bug: comms-ui (messages) styled `.cm-sec` / `.cm-empty` globally — the same classes as a post's comments section — so ~1 s after a post opened (when messages warmed) its comments card changed padding and the empty state grew 50 → 118 px. Scoped with `:where(...)` (no extra weight); theme.css gives the post's comments card that same settled look from the first frame (visual diff identical). Post CLS ar 0.0219 → 0.0018.
+- `#/settings?s=help` (cold): the hub's gate now also waits for paid, ai/beta, launch, dev, ads and secx (the anchor of privacy/verify/orgs/tour rows); beta's feedback row is filed in a microtask (was setTimeout 0). CLS 0.246 → 0.018.
+- tools/flash-sweep.mjs ignores the «i» help row (`.hp-strip`, height 0) that shifted every element index after it. Test: no-flash-v21496.
+
 ## 2.149.5 «الإدارة ترسم مرة» — 2026-11-04
 - `#/admin` (cold): the hub waited for nothing, so the ten modules that add a row (pi, tips, paid, ads, ai, aihub, i18n, launch, market, transfers + /ops-ui.js) landed after it was drawn — rows popped in or never showed until the next visit, and the hub was redrawn when ops-ui landed. chunks.js now holds the hub on its skeleton (max 3 s, once) until they are in; their hooks insert in a microtask (not a timer); the launch row draws from the config the hub waited for. Flash score 68.5 → 0, CLS 0.5355 → 0.
 - `#/admin` rows: the page head wraps its title (`.ph-main > .hp-has`), so «right after the title» was inside the head — every module row stayed there as a loose card and never reached the «أدوات الإدارة» list. adminTools() collects them from beside the title too, and keeps the list in ADM_ORDER. Server KPI tiles are reserved («—») and filled in place.
