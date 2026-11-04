@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.149.6",
+    "date": "2026-11-04",
+    "ar": {
+      "title": "المنشور يفتح مرة وحدة",
+      "items": [
+        "صفحة المنشور تفتح بأزرارها كاملة، بدون ما يتحرك اسم الكاتب أو زر «⋯»",
+        "قسم التعليقات ما يتغير شكله بعد ثانية من فتح المنشور",
+        "قسم «المساعدة» في الإعدادات يفتح بكل صفوفه بدون ما تنزل البطاقات تحته"
+      ]
+    },
+    "en": {
+      "title": "Posts open in one go",
+      "items": [
+        "A post page opens with all its buttons, without the author line or «⋯» moving",
+        "The comments section no longer changes look a second after a post opens",
+        "Settings «Help» opens with all its rows, without the cards below jumping down"
+      ]
+    }
+  },
+  {
     "v": "2.149.5",
     "date": "2026-11-04",
     "ar": {
