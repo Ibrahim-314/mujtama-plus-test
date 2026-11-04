@@ -17,7 +17,8 @@ import path from "node:path";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const { startStack, onboard, dismissTour, MOBILE, DESKTOP } = require(path.join(ROOT, "tests/e2e/harness.js"));
+const { ensureBuild, startStack, onboard, dismissTour, MOBILE, DESKTOP } = require(path.join(ROOT, "tests/e2e/harness.js"));
+ensureBuild(); // v2.149.4: measure the current sources — a stale dist/ made a whole round of sweeps measure the old build
 const { seedDiscovery } = require(path.join(ROOT, "tests/e2e/discovery-seed.js"));
 const args = process.argv.slice(2); const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : null; };
 const OUT = args[0] && !args[0].startsWith("--") ? args[0] : "/workspace/work/flash-sweep.json";
