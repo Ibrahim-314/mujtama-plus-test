@@ -227,7 +227,7 @@
   MPRoutes.add("admin", (a, b, next) => {
         if (a && a.split("?")[0] === "i18n") return adminView();
         next();
-        if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("mp-adm-i18n")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-i18n" href="#/admin/i18n"><svg class=ei aria-hidden=true><use href=#i-globe /></svg> <b>إدارة نصوص الواجهة</b></a>`); }, 0);
+        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("mp-adm-i18n")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-i18n" href="#/admin/i18n"><svg class=ei aria-hidden=true><use href=#i-globe /></svg> <b>إدارة نصوص الواجهة</b></a>`); });
       });
   MPRoutes.add("settings", (a, b, next) => (a === "language" ? languageView() : next()));
   if (typeof Views !== "undefined" && Views.settings) { MPSettings.add(function () { enhanceSettings(); }); }
