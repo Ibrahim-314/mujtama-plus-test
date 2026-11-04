@@ -9,7 +9,8 @@
     notify: ["notifications", "notifsettings", "nsettings", "emailprefs", "email-prefs", "unsubscribe", "reset"],
     compliance: ["mydata", "my-reports", "account-log", "legal", "transparency", "compliance", "decisions"],
     pi: ["wallet", "receipt", "admin"],
-    tips: ["support", "supporting", "creator", "earnings"],
+    tips: ["support", "supporting", "creator", "earnings", "admin/tips"],
+    paid: ["me/purchases", "me/paid-posts", "admin/paid"], // v2.149.5: these screens drew the profile / admin hub first, then swapped
     market: ["market", "admin/market"],
     ads: ["ads", "admin/ads", "settings/ads"],
     ai: ["ai", "admin/ai", "settings/translate"],
@@ -65,6 +66,7 @@
   }
   const failed = {}; // v2.55: chunks whose script failed to load (the not-found guard below then lets the 404 through)
   function load(name) {
+    if (name === "paid" && !loaded.tips && has("tips")) return load("tips").then(() => load("paid")); // v2.149.5: paid wraps MPTips (it used to arrive only through the tips chunk)
     if (name === "tips" && !loaded.pi && (window.__CHUNKS || {}).pi) return load("pi").then(() => load("tips")); // phase 37: tips wraps the pi routes + pay flow
     if (name === "comms" && !loaded["comms-core"] && (window.__CHUNKS || {})["comms-core"]) return load("comms-core").then(() => load("comms")); // the screens need MPComms first
     if (FEAT.includes(name) && !loaded.feat && has("feat")) return load("feat").then(() => load(name)); // v2.34: shared icons + module styles first
@@ -95,6 +97,9 @@
   /* v2.81: one re-route per landing chunk — the route() wrapper and the hashchange ensure() both asked for one, so the
    * first visit to every lazy screen rendered it twice */
   const rr = {};
+  // the operations row comes from /ops-ui.js (served by the API, injected by the pi chunk for admins): the hub waits for it too
+  const admOps = () => (window.MPOps ? Promise.resolve() : new Promise((res) => { let s = document.getElementById("ops-js"); if (!s) { s = Object.assign(document.createElement("script"), { id: "ops-js", src: "/ops-ui.js" }); document.head.appendChild(s); } s.addEventListener("load", res); s.addEventListener("error", res); }));
+  const ADM_HUB = ["pi", "tips", "paid", "ads", "ai", "aihub", "i18n", "launch", "market", "transfers"]; let admGate = null, admDone = false; // v2.149.5: modules that add a row to the #/admin hub
   const rerouteAfter = (n) => (rr[n] ||= load(n).then(() => { delete rr[n]; route(); }, (e) => { delete rr[n]; throw e; }));
   const _route = route;
   route = function () {
@@ -104,6 +109,14 @@
      * skeleton stays; sync.js start() routes once the account is in. */
     if (window.__deferRoute && window.MPSession && MPSession.state === "unknown") return;
     if (langGate) { if (typeof view !== "undefined" && view && !view.querySelector(".skel")) view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="Loading…"><div class="skel"></div><div class="skel"></div></div>`; if (!langGate.r) langGate.r = langGate.then(() => route()); return; }
+    /* v2.149.5 «الإدارة ترسم مرة»: ten modules add their shortcut to the #/admin hub from their own route hook. A cold #/admin drew the
+     * hub before they landed, so their rows popped in one by one (CLS 0.54) or never appeared at all until the next visit. The
+     * hub waits (max 3 s, once) on the loading skeleton until those modules are in, then draws once with every row. */
+    if (!admDone && /^#\/admin\/?$/.test(location.hash.split("?")[0]) && typeof DB !== "undefined" && DB.isAdmin && ADM_HUB.some((n) => has(n) && !loaded[n] && !failed[n])) {
+      if (typeof view !== "undefined" && view && !view.querySelector(".skel")) view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`;
+      admGate ||= Promise.race([Promise.all([...ADM_HUB.map((n) => load(n).catch(() => { })), admOps(), load("launch").then(() => window.MPLaunch?.config?.()).catch(() => { })]), new Promise((r) => setTimeout(r, 3000))]).then(() => { admDone = true; admGate = null; route(); });
+      return;
+    }
     const need = needFor();
     /* v2.81 («first clip opens twice»): a chunk ends with its own «if this is my route, route()» for development. In
      * production that call ran while the chunk was still executing, so it painted the skeleton and queued a second render
