@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.149.5",
+    "date": "2026-11-04",
+    "ar": {
+      "title": "لوحة الإدارة ترسم مرة",
+      "items": [
+        "لوحة الإدارة تفتح كاملة مرة وحدة، وكل أدواتها داخل القائمة",
+        "«منشوراتي المدفوعة» ما تعرض ملفك الشخصي لحظة قبل ما تفتح",
+        "صفحتا الاسترداد والإكراميات في الإدارة تفتح مباشرة بدون صفحة ثانية قبلها"
+      ]
+    },
+    "en": {
+      "title": "The admin hub draws once",
+      "items": [
+        "The admin dashboard opens complete in one go, with every tool in its list",
+        "«My paid posts» no longer shows your profile for a moment first",
+        "The admin refunds and tips pages open directly, without another page first"
+      ]
+    }
+  },
+  {
     "v": "2.149.4",
     "date": "2026-11-04",
     "ar": {
