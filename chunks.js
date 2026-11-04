@@ -73,8 +73,8 @@
     if ((name === "teams" || name === "proreviews") && !loaded.work && has("work")) return load("work").then(() => load(name)); // v2.45: reuses the wk-* styles
     if (name === "cadmin" && !loaded.communities && has("communities")) return load("communities").then(() => load("cadmin")); // v2.57: the panel hosts the moderation/health/channels screens
     if (name === "composer" && !loaded.composercore && has("composercore")) return load("composercore").then(() => load("composer")); // v2.50: both editors share the core
-    // v2.149.2: the settings hub waits (max 2.5 s) for the chunks that add its rows (age/family, notifications, Pi/tips), so it paints once instead of being redrawn three times
-    if (name === "setx" && !load.sx && has("setx")) { load.sx = 1; const w = (n) => load(n).catch(() => { }); return Promise.race([Promise.all([w("minorscore").then(() => w("minors")), w("notify"), w("tips")]), new Promise((r) => setTimeout(r, 2500))]).then(() => load("setx")); }
+    // v2.149.2: the settings hub waits (max 2.5 s) for the chunks that add its rows (age/family, notifications, Pi/tips); v2.149.6: + paid, ai/beta, launch (FAQ, tickets, ambassadors), developers, ads, secx (#/security, the anchor of the privacy/verify/orgs/tour rows) — their rows filled «المساعدة» one by one (CLS 0.24), so it paints once instead of being redrawn three times
+    if (name === "setx" && !load.sx && has("setx")) { load.sx = 1; const w = (n) => load(n).catch(() => { }); return Promise.race([Promise.all([w("minorscore").then(() => w("minors")), w("notify"), w("tips").then(() => w("paid")), w("ai").then(() => w("beta")), w("launch"), w("dev"), w("ads"), w("secx")]), new Promise((r) => setTimeout(r, 2500))]).then(() => load("setx")); }
     const src = (window.__CHUNKS || {})[name]; if (loaded[name] || !has(name)) return Promise.resolve();
     // stylesheet first: a chunk may enhance the current screen as soon as its script runs
     return pending[name] ||= css(name).then(() => src && new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.dataset.chunk = name; s.onload = res; s.onerror = () => { delete pending[name]; failed[name] = true; rej(new Error("chunk " + name)); }; document.head.appendChild(s); })).then(() => { loaded[name] = true; });
@@ -99,7 +99,8 @@
   const rr = {};
   // the operations row comes from /ops-ui.js (served by the API, injected by the pi chunk for admins): the hub waits for it too
   const admOps = () => (window.MPOps ? Promise.resolve() : new Promise((res) => { let s = document.getElementById("ops-js"); if (!s) { s = Object.assign(document.createElement("script"), { id: "ops-js", src: "/ops-ui.js" }); document.head.appendChild(s); } s.addEventListener("load", res); s.addEventListener("error", res); }));
-  const ADM_HUB = ["pi", "tips", "paid", "ads", "ai", "aihub", "i18n", "launch", "market", "transfers"]; let admGate = null, admDone = false; // v2.149.5: modules that add a row to the #/admin hub
+  const ADM_HUB = ["pi", "tips", "paid", "ads", "ai", "aihub", "i18n", "launch", "market", "transfers"]; let admGate = null, admDone = false;
+  const POST_DECOR = ["protcore", "protection", "ai", "assistant", "tips", "series", "discovery"]; let postGate = null, postDone = false; // v2.149.6: modules that decorate a post page // v2.149.5: modules that add a row to the #/admin hub
   const rerouteAfter = (n) => (rr[n] ||= load(n).then(() => { delete rr[n]; route(); }, (e) => { delete rr[n]; throw e; }));
   const _route = route;
   route = function () {
@@ -115,6 +116,15 @@
     if (!admDone && /^#\/admin\/?$/.test(location.hash.split("?")[0]) && typeof DB !== "undefined" && DB.isAdmin && ADM_HUB.some((n) => has(n) && !loaded[n] && !failed[n])) {
       if (typeof view !== "undefined" && view && !view.querySelector(".skel")) view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`;
       admGate ||= Promise.race([Promise.all([...ADM_HUB.map((n) => load(n).catch(() => { })), admOps(), load("launch").then(() => window.MPLaunch?.config?.()).catch(() => { })]), new Promise((r) => setTimeout(r, 3000))]).then(() => { admDone = true; admGate = null; route(); });
+      return;
+    }
+    /* v2.149.6 «المنشور يرسم مرة»: a cold post page drew the post before the modules that decorate it (the safety 🛡 button from
+     * protection, the translate button from ai, tip/series rows) had landed; ~0.4–0.9 s later the «⋯» slot was taken by the
+     * shield and the author line shrank (220 → 173 px). The post waits (max 1.5 s, once) on the skeleton until they are in. */
+    if (!postDone && /^#\/post\//.test(location.hash) && !(window.MPSession && !MPSession.signedIn()) && POST_DECOR.some((n) => has(n) && !loaded[n] && !failed[n])) {
+      if (typeof view !== "undefined" && view && !view.querySelector(".skel")) view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`;
+      const w = (n) => load(n).catch(() => { });
+      postGate ||= Promise.race([Promise.all([w("protcore").then(() => w("protection")), w("ai").then(() => w("assistant")), w("tips"), w("series"), w("discovery")]), new Promise((r) => setTimeout(r, 1500))]).then(() => { postDone = true; postGate = null; route(); });
       return;
     }
     const need = needFor();
