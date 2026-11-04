@@ -255,7 +255,7 @@
   MPRoutes.add("admin", (a, b, next) => {
         if (a === "ai") return adminView();
         next();
-        if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("mp-adm-ai")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-ai" href="#/admin/ai"><svg class=ei aria-hidden=true><use href=#i-sparkle /></svg> <b>إدارة الذكاء</b></a>`); }, 0);
+        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("mp-adm-ai")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-ai" href="#/admin/ai"><svg class=ei aria-hidden=true><use href=#i-sparkle /></svg> <b>إدارة الذكاء</b></a>`); });
       });
   MPRoutes.add("settings", (a, b, next) => (a === "translate" ? prefsView() : next()));
   const setCard = () => { if (/^#\/settings\/?(\?|$)/.test(location.hash) && !document.getElementById("mp-ai-set")) (view.querySelector(".wrap") || view).insertAdjacentHTML("beforeend", `<div class="card" id="mp-ai-set"><h3 class="u-m0 u-mb8 u-t-lg"><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>مجتمع+ ذكاء</h3><a class="btn ghost" href="#/ai">اشتراكي</a> <a class="btn ghost" href="#/settings/translate">تفضيلات الترجمة</a> <a class="btn ghost" href="#/settings/language">اللغة</a></div>`); };
