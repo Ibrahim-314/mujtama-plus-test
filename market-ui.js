@@ -655,7 +655,7 @@
   MPRoutes.add("admin", (a, b, next) => {
         if (a === "market") return b === "disputes" || !b ? adminDisputes() : Views.notFound();
         next();
-        if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("mk-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="mk-adm" href="#/admin/market/disputes"><span aria-hidden="true" class="u-t-3xl"><svg class=ix aria-hidden=true><use href=#i-shield /></svg></span><span class="u-f1"><b>نزاعات السوق</b><span class="u-db muted">مراجعة النزاعات وحسمها: إعادة المبلغ أو تحريره أو تقسيمه</span></span><span class="fwd" aria-hidden="true">←</span></a>`); }, 0);
+        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("mk-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="mk-adm" href="#/admin/market/disputes"><span aria-hidden="true" class="u-t-3xl"><svg class=ix aria-hidden=true><use href=#i-shield /></svg></span><span class="u-f1"><b>نزاعات السوق</b><span class="u-db muted">مراجعة النزاعات وحسمها: إعادة المبلغ أو تحريره أو تقسيمه</span></span><span class="fwd" aria-hidden="true">←</span></a>`); });
       });
   window.MPMarket = { grid: gridView, item: itemView, form: formView, orders: ordersView, order: orderView, seller: sellerView, admin: adminDisputes, lightbox, filters: G, version: "2.12.0" };
   piCfg().catch(() => { }); mkCfg().catch(() => { });
