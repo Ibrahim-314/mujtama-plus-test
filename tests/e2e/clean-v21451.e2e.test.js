@@ -17,7 +17,8 @@ async function axe(page) {
   const r = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.filter(v => ["serious", "critical"].includes(v.impact)).map(v => v.id + ": " + v.nodes.slice(0, 2).map(n => n.target.join(" ")).join(" | ")));
   return r;
 }
-const adminIds = page => page.evaluate(() => { const h = document.querySelector("#view .page-head h2"); const out = []; for (let n = h?.nextElementSibling; n; n = n.nextElementSibling) out.push(n.id || n.getAttribute("href")); return out; });
+// v2.149.5: module rows live in the «أدوات الإدارة» list (#adm-tools) — before, they stayed loose in the page head (the head wraps its title)
+const adminIds = page => page.evaluate(() => [...document.querySelectorAll("#adm-tools a[href]")].map(n => n.id || n.getAttribute("href")));
 
 test.before(async () => {
   S = await startStack();
@@ -44,7 +45,7 @@ test("a+b: admin cards in a fixed order; ops card English + .fwd arrow in LTR", 
   const order = ["lc-adm", "ops-adm", "mp-adm-ai", "ah-adm-link", "mp-adm-i18n", "ad-adm", "tp-adm", "pd-adm", "mk-adm", "tr-adm", "pi-adm", "bz-adm", "fn-adm"];
   const known = runs[0].filter(id => order.includes(id));
   assert.deepEqual(known, [...known].sort((x, y) => order.indexOf(x) - order.indexOf(y)), "known cards follow the fixed order: " + runs[0].join(","));
-  assert.equal(await p.locator("#ops-adm .fwd").count(), 1, "ops card arrow is .fwd");
+  assert.equal(await p.locator("#adm-tools #ops-adm .chev").count(), 1, "ops row has the list chevron (flipped in LTR like every row)");
   assert.equal(await p.getAttribute("#ops-adm", "style"), null, "no inline style on the ops card");
   assert.deepEqual(await axe(p), [], "axe #/admin 390 ar");
   await p.evaluate(() => window.MPI18n.setLang("en"));
@@ -55,10 +56,10 @@ test("a+b: admin cards in a fixed order; ops card English + .fwd arrow in LTR", 
   assert.match(t, /Operations & Monitoring/);
   assert.doesNotMatch(t, /[\u0600-\u06FF]/, "no Arabic left in the EN ops card: " + t);
   assert.equal(await p.evaluate(() => document.documentElement.dir), "ltr");
-  assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector("#ops-adm .fwd")).transform !== "none"), true, "arrow flipped in LTR");
+  assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector("#ops-adm .chev")).transform !== "none"), true, "arrow flipped in LTR");
   for (const h of ["#/trust", "#/investigations"]) {
-    const n = p.locator(`#view .page-head a[href="${h}"] .fwd`);
-    if (await p.locator(`#view .page-head a[href="${h}"]`).count()) assert.equal(await n.count(), 1, h + " arrow is .fwd");
+    const n = p.locator(`#adm-tools a[href="${h}"] .chev`);
+    if (await p.locator(`#adm-tools a[href="${h}"]`).count()) assert.equal(await n.count(), 1, h + " row has the list chevron");
   }
   assert.deepEqual(await axe(p), [], "axe #/admin 390 en");
   await p.evaluate(() => window.MPI18n.setLang("ar"));
