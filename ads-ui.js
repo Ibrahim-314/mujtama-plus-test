@@ -560,7 +560,7 @@
   MPRoutes.add("admin", (a, b, next) => {
         if (a === "ads") return !b || b.split("?")[0] === "review" ? reviewView() : Views.notFound();
         next();
-        if (!a && DB.isAdmin) setTimeout(() => { if (location.hash === "#/admin" && !document.getElementById("ad-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card("ad-adm", "#/admin/ads/review", "doc", "مراجعة الإعلانات", "الموافقة على الحملات الإعلانية أو رفضها قبل النشر")); }, 0);
+        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("ad-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card("ad-adm", "#/admin/ads/review", "doc", "مراجعة الإعلانات", "الموافقة على الحملات الإعلانية أو رفضها قبل النشر")); });
       });
   MPRoutes.add("settings", (a, b, next) => (a === "ads" ? prefsView() : next()));
   window.MPAds = { list: listView, wizard, dashboard, prefs: prefsView, review: reviewView, why, mark, bucketText, kv, version: "2.13.0" };
