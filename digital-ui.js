@@ -134,14 +134,21 @@
    * #/me/purchases (paid chunk) and notification links (/#/purchases) both land here. */
   async function libraryView() {
     const tok = (view._pu = { h: location.hash });
+    /* v2.149.7: both sections (paid content, digital products) fill from their own requests; drawn as they arrived, the first one
+     * growing pushed the second down twice (CLS 0.127 cold). They are filled while hidden and shown together (max 3 s). */
     view.innerHTML = `<div class="wrap dg-page pd-page">${UI.pageHead({ back: ["#/me", "حسابي"], title: "مشترياتي", sub: "المحتوى المدفوع الذي فتحته والمنتجات الرقمية التي اشتريتها.", id: "pd-h" })}
+      <div class="pu-wait" aria-busy="true"><div class="skel"></div><div class="skel"></div></div><div id="pu-body" hidden>
       <section aria-labelledby="pu-h1"><h3 class="set-h" id="pu-h1">المحتوى المدفوع</h3><div id="pd-sec"><div class="skel"></div></div></section>
-      <section aria-labelledby="pu-h2"><h3 class="set-h" id="pu-h2">المنتجات الرقمية</h3><div id="dg-lib" aria-busy="true"><div class="skel"></div></div></section></div>`;
+      <section aria-labelledby="pu-h2"><h3 class="set-h" id="pu-h2">المنتجات الرقمية</h3><div id="dg-lib" aria-busy="true"><div class="skel"></div></div></section></div></div>`;
     view.querySelector("#pd-h")?.focus({ preventScroll: true });
-    libraryInto(view.querySelector("#dg-lib"), tok);
-    try { if (!window.MPPaid && window.MPChunks) { await MPChunks.load("tips"); await MPChunks.load("paid"); } } catch { /* paid section shows its fallback */ }
-    const box = view._pu === tok && view.querySelector("#pd-sec"); if (!box) return;
-    if (window.MPPaid?.purchases) MPPaid.purchases(box); else box.innerHTML = `<div class="card">${UI.empty({ title: "تعذّر تحميل المحتوى المدفوع", text: "أعد فتح الصفحة بعد قليل." })}</div>`;
+    const show = () => { if (view._pu !== tok) return; view.querySelector(".pu-wait")?.remove(); const b = view.querySelector("#pu-body"); if (b) b.hidden = false; };
+    const lib = libraryInto(view.querySelector("#dg-lib"), tok).catch(() => { });
+    const paid = (async () => {
+      try { if (!window.MPPaid && window.MPChunks) { await MPChunks.load("tips"); await MPChunks.load("paid"); } } catch { /* paid section shows its fallback */ }
+      const box = view._pu === tok && view.querySelector("#pd-sec"); if (!box) return;
+      if (window.MPPaid?.purchases) await MPPaid.purchases(box); else box.innerHTML = `<div class="card">${UI.empty({ title: "تعذّر تحميل المحتوى المدفوع", text: "أعد فتح الصفحة بعد قليل." })}</div>`;
+    })().catch(() => { });
+    await Promise.race([Promise.all([lib, paid]), new Promise((r) => setTimeout(r, 3000))]); show();
   }
   async function libraryInto(host, tok) {
     let d; try { d = await api("GET", "/api/me/digital/library"); } catch (e) { if (host.isConnected) host.outerHTML = errBox(e); return; }
