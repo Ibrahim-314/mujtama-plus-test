@@ -329,7 +329,7 @@
       g = d.graph;
     v.querySelector(".wrap").innerHTML = `<a href="#/investigations" class="muted">→ التحقيقات</a>
       <h2>${esc(d.user.name)} <span class="u-t-md muted">@${esc(d.user.handle)}</span></h2>
-      <div class="ig-kpi"><div><b>${ar(s.score)}</b>درجة الثقة</div><div><b>${ar(s.ageDays)}</b>يوم</div><div><b>${s.phone.verified ? "✓" : "—"}</b>جوال</div><div><b>${s.pi.status === "verified" ? "✓" : s.pi.status ? "مرتبط" : "—"}</b>Pi</div><div><b>${ar(s.openFlags)}</b>حالة مفتوحة</div><div><b>${ar(s.hiddenFollowers)}</b>متابع مخفي</div></div>
+      <div class="ig-kpi"><div><b>${ar(s.score)}</b>درجة الثقة</div><div><b>${ar(s.ageDays)}</b>يوم‌</div><div><b>${s.phone.verified ? "✓" : "—"}</b>جوال</div><div><b>${s.pi.status === "verified" ? "✓" : s.pi.status ? "مرتبط" : "—"}</b>Pi</div><div><b>${ar(s.openFlags)}</b>حالة مفتوحة</div><div><b>${ar(s.hiddenFollowers)}</b>متابع مخفي</div></div>
       <div class="card"><div class="u-g8 row"><label for="ig-lvl" class="grow"><b>القيود</b><div class="muted">${s.limit ? esc(LEVEL[s.limit.level]) + " · " + esc(s.limit.reason || "") : "لا قيود"}</div></label>
         <select id="ig-lvl" class="u-wa"><option value="none">بلا قيود</option><option value="limited" ${s.limit?.level === "limited" ? "selected" : ""}>قيود خفيفة</option><option value="restricted" ${s.limit?.level === "restricted" ? "selected" : ""}>قيود مشددة</option></select><button class="btn ig-btn" id="ig-setl">حفظ</button></div></div>
       <h4>حسابات على الجهاز نفسه <span class="muted">(${ar(d.linked.length)})</span></h4><div class="card">${d.linked.map(m => memRow(m).replace("</div></div></div>", ` · ${m.via === "device" ? "معرّف جهاز" : "بصمة + شبكة"}</div></div></div>`)).join("") || `<div class="muted">لا شيء</div>`}</div>
