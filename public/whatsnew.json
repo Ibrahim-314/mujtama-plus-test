@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.149.7",
+    "date": "2026-11-16",
+    "ar": {
+      "title": "إعدادات المجتمع أدق",
+      "items": [
+        "مدة «يوم» تظهر «1 day» بالإنجليزي، ورسائل أزرار الذكاء في المجتمع مترجمة",
+        "زر «تثبيت» البوت يوضّح لك إذا كان حقل معرّف التطبيق فاضي",
+        "أزرار ترتيب القواعد تتعطّل عند أول وآخر قاعدة، وقسم القواعد يفتح عادي للمجتمع اللي ما فيه قواعد"
+      ]
+    },
+    "en": {
+      "title": "Sharper community settings",
+      "items": [
+        "«1 day» now reads in English, and the community AI buttons' messages are translated",
+        "The bot «Install» button tells you when the app ID field is empty",
+        "Rule move buttons are off at the first and last rule, and the rules section opens for a community with no rules"
+      ]
+    }
+  },
+  {
     "v": "2.149.6",
     "date": "2026-11-04",
     "ar": {
