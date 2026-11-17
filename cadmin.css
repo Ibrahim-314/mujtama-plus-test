@@ -493,3 +493,11 @@ html:root[data-theme=dark] .ca .btn.danger { background: color-mix(in srgb, var(
 .cai-note { border-top: 1px dashed var(--line); padding-top: 6px; margin-top: 6px; }
 .cai-dr { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: var(--s3); }
 .cai-dr .btn, .cai-b { min-height: 44px; }
+/* v2.149.8 touch 44 (design A): on phones small buttons, section chips and colour swatches keep their look; an invisible layer extends the touch area to 44px. The strip gets 4px more room each side (offset by margin) so the layer is not clipped by its scroller. */
+@media (max-width: 1179px) {
+  .ca .btn.sm, .ca .ca-chip, .ca .ca-swb, .ca .ca-swc { position: relative; }
+  .ca .btn.sm::after, .ca .ca-chip::after { content: ""; position: absolute; left: 0; right: 0; top: -4px; bottom: -4px; }
+  .ca .ca-chip::after { left: -1px; right: -1px; top: -5px; bottom: -5px; } /* chip has a 1px border */
+  .ca .ca-swb::after, .ca .ca-swc::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; } /* swatches sit 8px apart: 40px each, meeting with no overlap */
+  .ca .ca-strip { padding-top: 6px; padding-bottom: calc(var(--s1) + 4px); margin-top: -4px; margin-bottom: calc(var(--s3) - 4px); }
+}
