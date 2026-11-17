@@ -347,7 +347,7 @@
           ${ul("ما أعجبهم", x.liked)}${ul("ما انتقدوه", x.criticized)}${ul("أسئلة تستحق الرد", x.questions)}
           ${(x.replies || []).length ? `<b>ردود مقترحة</b>${x.replies.map((rp) => `<div class="sai-reply" data-cid="${esc(rp.id)}"><div class="muted u-t-xs"><bdi>${esc(rp.comment)}</bdi></div>
             <textarea class="sai-in sai-rin" rows="2" maxlength="2000" aria-label="الرد المقترح">${esc(rp.reply)}</textarea>
-            <div class="row"><button class="btn sm" data-send="${esc(x.post)}">أرسل الرد</button><button class="btn ghost sm" data-skip>تجاهل</button></div></div>`).join("")}` : ""}</div>${free}`);
+            <div class="row"><button class="btn sm" data-send="${esc(x.post)}">أرسل الرد</button><button class="btn ghost sm" data-skip>تجاهل‌</button></div></div>`).join("")}` : ""}</div>${free}`);
       }
     } catch (e) {
       const link = /اربط|غير مفعّل|مجاناً اليوم/.test(e.message || "") || e.status === 503 || e.status === 429;
