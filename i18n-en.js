@@ -903,7 +903,6 @@
 "ملاحظة": "Note",
 "ملاحظة تظهر للعضو": "Note shown to the member",
 "ملخص الطابور": "Queue summary",
-"من": "of",
 "من عضو جديد": "From a new member",
 "منح دور": "Role granted",
 "منشور معلّق": "Pending post",
