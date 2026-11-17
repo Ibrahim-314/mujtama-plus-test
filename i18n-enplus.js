@@ -3312,7 +3312,7 @@
 "أسئلة تستحق الرد": "Questions worth answering",
 "ردود مقترحة": "Suggested replies",
 "جرّب هذا الأسبوع": "Try this week",
-"تجاهل": "Skip",
+"تجاهل‌": "Skip",
 "✓ أُرسل ردّك": "✓ Reply sent",
 "ردّك بانتظار موافقة المشرفين": "Your reply is awaiting moderator approval",
 "الرد المقترح": "Suggested reply",
