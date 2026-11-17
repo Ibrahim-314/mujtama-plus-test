@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.149.8",
+    "date": "2026-11-17",
+    "ar": {
+      "title": "إعدادات المجتمع أسهل باللمس",
+      "items": [
+        "أزرار إعدادات المجتمع الصغيرة وشريط الأقسام صار لمسها أسهل على الجوال بنفس شكلها",
+        "زر «تجاهل» في شريط التغييرات غير المحفوظة يظهر «Discard» بالإنجليزي"
+      ]
+    },
+    "en": {
+      "title": "Community settings, easier to tap",
+      "items": [
+        "Small buttons and the section bar in community settings are easier to tap on phones, same look",
+        "The unsaved-changes bar now says «Discard» in English"
+      ]
+    }
+  },
+  {
     "v": "2.149.7",
     "date": "2026-11-16",
     "ar": {
