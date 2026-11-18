@@ -14,7 +14,8 @@
 const PiAdapter = {
   ready: false, cfg: null,
   available() { return typeof window.Pi !== "undefined"; },
-  inPiBrowser() { return /PiBrowser/i.test(navigator.userAgent) || !!window.MP_PI_BROWSER; },
+  // v2.149.12: the real Pi Browser UA ends with a bare " Pi" token (or "Pi/x.y"), not always "PiBrowser"
+  inPiBrowser() { return /PiBrowser|(?:^|\s)Pi(?:\/[\d.]+)?\s*$/.test(navigator.userAgent || "") || !!window.MP_PI_BROWSER; },
   async config() {
     if (!this.cfg) try { const r = await fetch("/api/pi/config", { credentials: "same-origin" }); this.cfg = r.ok ? await r.json() : { enabled: false }; } catch { return { enabled: false }; }
     return this.cfg;
@@ -49,15 +50,23 @@ const PiAdapter = {
   boot() { return (this._boot ||= this.init().catch(() => false)); },
   host() { return this.inPiBrowser() || this.available(); }, // the sign-in button is usable: Pi Browser UA or the SDK is present
   framed() { try { return window.self !== window.top; } catch { return true; } },
+  // v2.149.12: the framing parent's host only (no path): location.ancestorOrigins[0], else the referrer; "" when top-level
+  parent() {
+    if (!this.framed()) return "";
+    const host = (u) => (/^[a-z][a-z0-9+.-]*:\/\/(?:[^@/?#]*@)?([^/?#:]+)/i.exec(String(u || ""))?.[1] || "").toLowerCase();
+    try { const a = window.location?.ancestorOrigins; if (a && a.length) return host(a[0]); } catch { /* not available */ }
+    try { return host(document.referrer || ""); } catch { return ""; }
+  },
   // v2.149.11: step beacons for Render logs (no token, no PII) — only in a Pi host or during a sign-in attempt
   diag(step, msg, t0, force) {
     if (!force && !this.inPiBrowser() && !this.framed() && !/^auth|^server/.test(step)) return;
     if ((this._dn = (this._dn || 0) + 1) > 40) return;
-    try { fetch("/api/pi/diag", { method: "POST", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ step, msg: String(msg || "").slice(0, 200), ua: navigator.userAgent.slice(0, 160), framed: this.framed(), ms: t0 ? Date.now() - t0 : 0 }) }).catch(() => { }); } catch { /* no fetch */ }
+    try { fetch("/api/pi/diag", { method: "POST", keepalive: true, credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ step, msg: String(msg || "").slice(0, 200), ua: navigator.userAgent.slice(0, 160), framed: this.framed(), parent: this.parent(), ms: t0 ? Date.now() - t0 : 0 }) }).catch(() => { }); } catch { /* no fetch */ }
   },
   scopes(c) { return c?.enabled ? ["username", "payments"] : ["username"]; }, // v2.149.11: payments scope only while Pi payments are on
-  // v2.149.10: sandbox mode only inside the sandbox.minepi.com frame — in Pi Browser (or a top-level tab) it waits forever for a parent
-  useSandbox(c) { return !!c?.sdkSandbox && this.framed() && !this.inPiBrowser(); },
+  // v2.149.10: sandbox mode only inside the sandbox.minepi.com frame — in Pi Browser (or a top-level tab) it waits forever for a parent;
+  // v2.149.12: the parent must BE sandbox.minepi.com (the official *.pinet.com URL also frames the app, inside Pi Browser)
+  useSandbox(c) { return !!c?.sdkSandbox && !this.inPiBrowser() && this.parent() === "sandbox.minepi.com"; },
   serverCall(path, body) { return Remote.api("POST", path, body); },
   async authenticate() {
     if (!(await this.init())) return null;
