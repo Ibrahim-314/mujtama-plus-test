@@ -569,5 +569,5 @@ window.App = App;
 window.addEventListener("hashchange", route);
 // Scheduled posts publisher hook (future: server cron)
 setInterval(() => { let ch = false; DB.posts.forEach(p => { if (p.status === "scheduled" && new Date(p.publishAt) <= new Date()) { p.status = "published"; p.createdAt = now(); ch = true; } }); if (ch) save(); }, 30e3);
-PiAdapter.init();
+PiAdapter.boot(); // v2.149.11: eager Pi.init at app start
 // route() is started by v12.js after extensions load
