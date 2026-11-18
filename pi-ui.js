@@ -169,16 +169,27 @@
     const go = document.getElementById("a-go"); if (!go || document.getElementById("pi-signin")) return;
     document.getElementById("pi-login")?.remove(); // the pre-phase-36 button
     const cfg = await A().config(); if (!authOn(cfg) || !document.getElementById("a-go") || document.getElementById("pi-signin")) return;
-    const inPi = A().inPiBrowser() || !!A().useSandbox?.(cfg); // v2.149.10: also inside the Pi Developers Sandbox frame
+    // v2.149.10: also inside the Pi Developers Sandbox frame · v2.149.11: usable whenever the Pi SDK is present (not the UA alone)
+    const piUA = () => A().inPiBrowser() || !!A().useSandbox?.(cfg), usable = () => piUA() || !!A().host?.();
+    const inPi = usable();
     go.insertAdjacentHTML("afterend", `<div class="pi-auth"><div class="pi-or" aria-hidden="true"><span>أو</span></div>
       <button type="button" class="pi-btn" id="pi-signin" aria-describedby="pi-signin-n" ${inPi ? "" : "disabled"}><span class="pi-logo" aria-hidden="true">π</span><span class="pi-lbl">الدخول بحساب Pi</span><span class="pi-spin" aria-hidden="true"></span></button>
-      <p class="pi-note" id="pi-signin-n" role="status">${inPi ? (cfg.network !== "mainnet" ? "الشبكة التجريبية (Testnet)" : "") : "الدخول بحساب Pi متاح عند فتح مجتمع بلس من متصفح Pi."}</p></div>`);
+      <p class="pi-note" id="pi-signin-n" role="status">${piUA() ? (cfg.network !== "mainnet" ? "الشبكة التجريبية (Testnet)" : "") : "الدخول بحساب Pi متاح عند فتح مجتمع بلس من متصفح Pi."}</p></div>`);
     const b = document.getElementById("pi-signin"), n = document.getElementById("pi-signin-n"), box = b.parentNode;
+    if (!inPi) A().sdk?.().then(() => { if (b.isConnected && usable() && box.dataset.state !== "loading") b.disabled = false; }, () => { }); // the async SDK arrived after this screen
+    const step = (t) => { n.className = "pi-note"; n.setAttribute("role", "status"); n.textContent = t; };
     b.onclick = async () => {
-      b.disabled = true; box.dataset.state = "loading"; b.setAttribute("aria-busy", "true"); n.className = "pi-note"; n.textContent = "جارٍ التحقق من حساب Pi…";
+      b.disabled = true; box.dataset.state = "loading"; b.setAttribute("aria-busy", "true"); step("جارٍ تجهيز Pi…");
+      const t0 = Date.now();
       try {
+        // v2.149.11: progress states; an SDK that never initialises says where to open the app instead of waiting
+        if (!(await A().init())) throw new Error("تعذّر تشغيل Pi هنا. افتح التطبيق من متصفح Pi.");
+        step("أكّد الدخول في نافذة Pi…");
         const auth = await A().authenticate(); if (!auth?.accessToken) throw new Error("تعذّر التحقق من حساب Pi.");
-        const r = await api("POST", "/api/pi/auth", { accessToken: auth.accessToken });
+        step("جارٍ تسجيل الدخول…");
+        let r;
+        try { r = await api("POST", "/api/pi/auth", { accessToken: auth.accessToken }); A().diag?.("server_ok", r?.created ? "created" : r?.needsLink ? "needsLink" : "", t0); }
+        catch (e) { A().diag?.("server_err", (e?.status || "") + " " + (e?.code || e?.message || ""), t0); throw e; }
         if (r.needsLink) {
           pendingLink = { accessToken: auth.accessToken, username: r.username };
           n.className = "pi-note err"; n.setAttribute("role", "alert");
@@ -188,7 +199,7 @@
           document.getElementById("pi-new").onclick = async () => { try { await api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); pendingLink = null; authed = true; await start(); await flushIncomplete(); } catch (e) { n.textContent = e.message; } };
           return;
         }
-        authed = true; n.textContent = "تم الدخول"; await start(); await flushIncomplete();
+        authed = true; step(r.created ? "أُنشئ حسابك بحساب Pi" : "تم الدخول"); await start(); await flushIncomplete();
       } catch (e) { n.className = "pi-note err"; n.setAttribute("role", "alert"); n.textContent = e.message; }
       finally { if (b.isConnected) { b.disabled = false; b.removeAttribute("aria-busy"); box.dataset.state = ""; } }
     };
@@ -221,7 +232,7 @@
     const cfg = await A().config(); if (online() && link.piUsername === undefined && authOn(cfg)) await loadLink();
     const card = document.getElementById("pi")?.closest(".card") || document.getElementById("pi-set"); if (!card) return;
     if (!authOn(cfg) || link.off) { card.remove(); return; } // Pi sign-in off: hide the Pi UI (payments alone are gated by cfg.enabled)
-    const inPi = A().inPiBrowser(), on = online();
+    const inPi = A().inPiBrowser() || !!A().host?.(), on = online(); // v2.149.11: also when the Pi SDK is present
     let body;
     if (!on) body = `<p class="pi-note" id="pi-set-n">${!online() ? "ربط Pi يحتاج الاتصال بالخادم." : "مدفوعات Pi وتسجيل الدخول بها غير مفعّلة بعد."}</p>`;
     else if (link.piUsername) body = `<p class="u-m0 u-mt10">مربوط بحساب Pi <b><bdi>@${h(link.piUsername)}</bdi></b></p>
