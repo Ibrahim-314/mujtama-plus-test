@@ -58,7 +58,12 @@ module.exports = (ctx, opts = {}) => {
     try { const u = new URL(raw); if (u.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(u.hostname)) return u.toString(); } catch { /* fall through */ }
     logger.warn?.("PI_APPSTUDIO_URL ignored: must be an https URL"); return APPSTUDIO_LOGIN;
   })();
-  const publicConfig = () => ({ enabled, authEnabled, network, sandbox, ...(appId ? { appId } : {}) });
+  // v2.149.9: Pi Developers (developers.minepi.com) apps verify the sign-in token with the Platform API (GET /v2/me with the
+  // user's own token, no API key) — PI_AUTH_VERIFY=platform; the App Studio exchange stays the default. PI_SDK_SANDBOX=1
+  // (testnet only) tells the client to call Pi.init({sandbox:true}) so the app runs inside sandbox.minepi.com.
+  const verifyMode = env.PI_AUTH_VERIFY === "platform" ? "platform" : "appstudio";
+  const sdkSandbox = network === "testnet" && env.PI_SDK_SANDBOX === "1";
+  const publicConfig = () => ({ enabled, authEnabled, network, sandbox, ...(sdkSandbox ? { sdkSandbox } : {}), ...(appId ? { appId } : {}) });
 
   const requireOn = () => { if (!enabled) throw E.off(OFF); };
   const requireAuthOn = () => { if (!authEnabled) throw E.off(AUTH_OFF); };
@@ -88,6 +93,20 @@ module.exports = (ctx, opts = {}) => {
   async function verify(accessToken) {
     const key = tokenKey(accessToken), t = Date.now(), hit = verified.get(key);
     if (hit && hit.exp > t) return hit.who;
+    if (verifyMode === "platform") {
+      let p;
+      try { p = await fetchImpl(apiUrl + "/v2/me", { method: "GET", headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" }, signal: AbortSignal.timeout(10e3) }); }
+      catch { logger.warn?.("pi platform /v2/me unreachable"); throw upstream(); }
+      const st = p.status || (p.ok ? 200 : 500);
+      if (st === 401 || st === 403) throw new HttpError(401, "تعذر التحقق من حساب Pi، أعد المحاولة من متصفح Pi", "pi_invalid");
+      if (st !== 200) { logger.warn?.("pi platform /v2/me failed", { status: st }); throw upstream(); }
+      const me = await Promise.resolve(p.json ? p.json() : null).catch(() => null);
+      if (!me || typeof me.uid !== "string" || !me.uid) { logger.warn?.("pi platform /v2/me: unexpected response"); throw upstream(); }
+      const who = { uid: me.uid.slice(0, 200), username: typeof me.username === "string" && me.username ? me.username.slice(0, 100) : null };
+      if (verified.size >= 5000) { for (const [k, v] of verified) if (v.exp <= t) verified.delete(k); if (verified.size >= 5000) verified.clear(); }
+      verified.set(key, { who, exp: t + VERIFIED_TTL_MS });
+      return who;
+    }
     let r;
     try { r = await fetchImpl(appStudioUrl, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ accessToken }), signal: AbortSignal.timeout(10e3) }); }
     catch { logger.warn?.("pi app studio unreachable"); throw upstream(); }
