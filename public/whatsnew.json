@@ -1,5 +1,22 @@
 [
   {
+    "v": "2.149.12",
+    "date": "2026-11-18",
+    "quiet": true,
+    "ar": {
+      "title": "Pi Browser يتعرّف صح",
+      "items": [
+        "التطبيق يتعرّف على متصفح Pi بشكل صحيح، والدخول بحساب Pi يشتغل من رابط التطبيق الرسمي على شبكة Pi"
+      ]
+    },
+    "en": {
+      "title": "Pi Browser recognised correctly",
+      "items": [
+        "The app now recognises the Pi Browser correctly, and Pi sign-in works from the app's official Pi link"
+      ]
+    }
+  },
+  {
     "v": "2.149.11",
     "date": "2026-11-18",
     "ar": {
