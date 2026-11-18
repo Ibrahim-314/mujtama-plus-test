@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.149.9",
+    "date": "2026-11-18",
+    "ar": {
+      "title": "تجهيز تجربة Pi",
+      "items": [
+        "تجهيز داخلي لتجربة الدخول بحساب Pi في بيئة الاختبار، ولا تغيير عليك"
+      ]
+    },
+    "en": {
+      "title": "Getting ready for Pi testing",
+      "items": [
+        "Behind-the-scenes prep for testing Pi sign-in on the test environment, nothing changes for you"
+      ]
+    }
+  },
+  {
     "v": "2.149.8",
     "date": "2026-11-17",
     "ar": {
