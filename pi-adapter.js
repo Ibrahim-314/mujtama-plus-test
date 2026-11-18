@@ -35,15 +35,19 @@ const PiAdapter = {
   async init() {
     if (this.ready) return true;
     const c = await this.config(); if (!c.enabled && !c.authEnabled) return false;
-    try { await this.sdk(); await (this._init ||= Promise.resolve(window.Pi.init(c.sdkSandbox ? { version: "2.0", sandbox: true } : { version: "2.0" }))); this.ready = true; } catch (e) { this._init = null; console.warn("Pi init failed", e?.message); }
+    try { await this.sdk(); await (this._init ||= Promise.resolve(window.Pi.init(this.useSandbox(c) ? { version: "2.0", sandbox: true } : { version: "2.0" }))); this.ready = true; } catch (e) { this._init = null; console.warn("Pi init failed", e?.message); }
     return this.ready;
   },
+  // v2.149.10: sandbox mode only inside the sandbox.minepi.com frame — in Pi Browser (or a top-level tab) it waits forever for a parent
+  useSandbox(c) { let framed = false; try { framed = window.self !== window.top; } catch { framed = true; } return !!c?.sdkSandbox && framed && !this.inPiBrowser(); },
   serverCall(path, body) { return Remote.api("POST", path, body); },
   async authenticate() {
     if (!(await this.init())) return null;
     // fires during authenticate, before our session may exist: queued, sent by flushIncomplete() after /api/pi/auth
     const onIncompletePaymentFound = (payment) => { if (payment) this.incomplete.push(payment); };
-    const r = await window.Pi.authenticate(["username", "payments"], onIncompletePaymentFound);
+    // v2.149.10: never spin forever — a Pi sign-in that does not answer in 90 s ends with a clear message
+    let to; const timeout = new Promise((_, rej) => { to = setTimeout(() => rej(new Error("انتهت مهلة الدخول بحساب Pi. افتح مجتمع بلس من متصفح Pi وحاول مرة أخرى.")), 90e3); });
+    const r = await Promise.race([window.Pi.authenticate(["username", "payments"], onIncompletePaymentFound), timeout]).finally(() => clearTimeout(to));
     return r?.accessToken ? { accessToken: r.accessToken } : null; // only the token goes to POST /api/pi/auth
   },
   incomplete: [],
