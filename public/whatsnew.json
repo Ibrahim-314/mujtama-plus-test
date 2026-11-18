@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.149.10",
+    "date": "2026-11-18",
+    "ar": {
+      "title": "إصلاح الدخول بحساب Pi",
+      "items": [
+        "الدخول بحساب Pi ما يعلق بعد الآن في متصفح Pi، ولو تأخر تظهر رسالة واضحة"
+      ]
+    },
+    "en": {
+      "title": "Pi sign-in fix",
+      "items": [
+        "Pi sign-in no longer hangs in the Pi Browser, and a clear message shows if it takes too long"
+      ]
+    }
+  },
+  {
     "v": "2.149.9",
     "date": "2026-11-18",
     "ar": {
