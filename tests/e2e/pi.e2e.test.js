@@ -73,9 +73,9 @@ const until = async (fn, arg, timeout = 12000, page = P) => { const end = Date.n
 const calls = (p, m) => st.calls.filter(c => c.p === p && (!m || c.m === m));
 /* the app's real CSP stays enforced in this suite; any violation is recorded and fails the run */
 const CSP_WATCH = () => { window.__csp = []; document.addEventListener("securitypolicyviolation", (e) => window.__csp.push(e.violatedDirective + " " + (e.blockedURI || "inline") + " " + (e.sample || ""))); };
-async function newCtx(ua = PI_UA) {
+async function newCtx(ua = PI_UA, { noSdk = false } = {}) { // noSdk: a plain browser without the Pi SDK (v2.149.11: the SDK alone enables the button)
   const ctx = await S.browser.newContext({ ...MOBILE, userAgent: ua, reducedMotion: "reduce", bypassCSP: false });
-  await stubPi(ctx); await ctx.addInitScript(FAKE_PI); await ctx.addInitScript(CSP_WATCH);
+  await stubPi(ctx); if (!noSdk) await ctx.addInitScript(FAKE_PI); await ctx.addInitScript(CSP_WATCH);
   return ctx;
 }
 async function axeOn(page, sel) {
@@ -108,8 +108,8 @@ test("adapter: Pi.init({version:\"2.0\"}) with no sandbox option; authenticate a
   await P.evaluate(() => { window.__piIncomplete = null; });
 });
 
-test("sign-in screen: «الدخول بحساب Pi» is disabled with a note outside Pi Browser, hidden when Pi sign-in is off", async () => {
-  const ctx = await newCtx(MOBILE.userAgent); const Q = await ctx.newPage(); Q.on("pageerror", e => errors.push("plain: " + e.message));
+test("sign-in screen: «الدخول بحساب Pi» is disabled with a note outside Pi Browser (no Pi SDK), hidden when Pi sign-in is off", async () => {
+  const ctx = await newCtx(MOBILE.userAgent, { noSdk: true }); const Q = await ctx.newPage(); Q.on("pageerror", e => errors.push("plain: " + e.message));
   await Q.goto(S.base + "/?nosw");
   await Q.waitForSelector("#pi-signin", { timeout: 15000 });
   assert.equal(await Q.isDisabled("#pi-signin"), true);
