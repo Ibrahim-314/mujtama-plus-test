@@ -541,3 +541,16 @@ test("v2.149.11: POST /api/pi/diag logs one «pi diag» info line (no token, no 
     assert.equal(last, 429, "rate-limited");
   } finally { process.stdout.write = orig; if (silent !== undefined) process.env.LOG_SILENT = silent; H.app.ctx.rl.w.clear(); }
 });
+
+test("v2.149.12: /api/pi/diag logs the framed parent host only (sanitised, no path)", async () => {
+  const lines = [], orig = process.stdout.write.bind(process.stdout), silent = process.env.LOG_SILENT;
+  delete process.env.LOG_SILENT; H.app.ctx.rl.w.clear();
+  process.stdout.write = (c, ...a) => { if (String(c).includes("pi diag")) lines.push(String(c)); return orig(c, ...a); };
+  try {
+    const raw = (body) => fetch(H.base + "/api/pi/diag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    assert.equal((await raw({ step: "init_ok", ua: "Mozilla/5.0 Mobile Safari/537.36 Pi", framed: true, parent: "MujtamaKT6955.pinet.com/<x>?a=1" })).status, 200);
+    const line = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).find(l => l?.msg === "pi diag" && l.step === "init_ok");
+    assert.ok(line, "logged"); assert.equal(line.framed, true); assert.equal(line.parent, "mujtamakt6955.pinet.com");
+    assert.doesNotMatch(line.parent, /[/<>?=]/, "no path or query characters");
+  } finally { process.stdout.write = orig; if (silent !== undefined) process.env.LOG_SILENT = silent; H.app.ctx.rl.w.clear(); }
+});
