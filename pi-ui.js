@@ -169,7 +169,7 @@
     const go = document.getElementById("a-go"); if (!go || document.getElementById("pi-signin")) return;
     document.getElementById("pi-login")?.remove(); // the pre-phase-36 button
     const cfg = await A().config(); if (!authOn(cfg) || !document.getElementById("a-go") || document.getElementById("pi-signin")) return;
-    const inPi = A().inPiBrowser();
+    const inPi = A().inPiBrowser() || !!A().useSandbox?.(cfg); // v2.149.10: also inside the Pi Developers Sandbox frame
     go.insertAdjacentHTML("afterend", `<div class="pi-auth"><div class="pi-or" aria-hidden="true"><span>أو</span></div>
       <button type="button" class="pi-btn" id="pi-signin" aria-describedby="pi-signin-n" ${inPi ? "" : "disabled"}><span class="pi-logo" aria-hidden="true">π</span><span class="pi-lbl">الدخول بحساب Pi</span><span class="pi-spin" aria-hidden="true"></span></button>
       <p class="pi-note" id="pi-signin-n" role="status">${inPi ? (cfg.network !== "mainnet" ? "الشبكة التجريبية (Testnet)" : "") : "الدخول بحساب Pi متاح عند فتح مجتمع بلس من متصفح Pi."}</p></div>`);
