@@ -2,7 +2,8 @@
  * • config(): GET /api/pi/config (public) → {enabled (payments), authEnabled (sign-in), network, sandbox}.
  * • init(): the Pi SDK is loaded by index.html (<script src="https://sdk.minepi.com/pi-sdk.js" async id="pi-sdk">; v2.51: async,
  *   so a slow minepi.com never blocks the first paint; sdk() waits for that tag, an on-demand load stays as the fallback) and
- *   initialised once with await Pi.init({version:"2.0"}) — no sandbox option (App Studio requirement).
+ *   initialised once with await Pi.init({version:"2.0"}) — no sandbox option (App Studio requirement); v2.149.9: sandbox:true
+ *   only when the server says sdkSandbox (PI_SDK_SANDBOX=1, testnet; Pi Developers Sandbox).
  * • authenticate(): scopes username + payments; resolves with { accessToken } only (the SDK's user object is dropped:
  *   the server learns uid/username from its own App Studio exchange). An incomplete payment found by the SDK is
  *   queued and handed to the server (POST /api/pi/payments/incomplete) only after /api/pi/auth succeeds.
@@ -34,7 +35,7 @@ const PiAdapter = {
   async init() {
     if (this.ready) return true;
     const c = await this.config(); if (!c.enabled && !c.authEnabled) return false;
-    try { await this.sdk(); await (this._init ||= Promise.resolve(window.Pi.init({ version: "2.0" }))); this.ready = true; } catch (e) { this._init = null; console.warn("Pi init failed", e?.message); }
+    try { await this.sdk(); await (this._init ||= Promise.resolve(window.Pi.init(c.sdkSandbox ? { version: "2.0", sandbox: true } : { version: "2.0" }))); this.ready = true; } catch (e) { this._init = null; console.warn("Pi init failed", e?.message); }
     return this.ready;
   },
   serverCall(path, body) { return Remote.api("POST", path, body); },
