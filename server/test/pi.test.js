@@ -483,3 +483,19 @@ test("static: /pi-app-validation.txt is a plain static file, byte-exact, text/pl
     const spa = await fetch(H.base + "/some/spa/route"); assert.match(spa.headers.get("content-type"), /text\/html/, "unknown paths still get the SPA");
   } finally { cfg.webRoot = prevRoot; }
 });
+
+test("v2.149.9: PI_AUTH_VERIFY=platform verifies the token with GET /v2/me (Bearer, no key); PI_SDK_SANDBOX=1 exposes sdkSandbox on testnet only", async () => {
+  const seen = []; const spy = (url, o = {}) => { seen.push({ url, method: o.method || "GET", auth: o.headers?.Authorization }); return fakeFetch(url, o); };
+  const mk = (env) => { const router = new Router(); require("../services/pi")({ db: null, bus: { on() { }, emit() { } }, rl: { hit: () => true }, router, config: {}, requireUser: (fn) => fn, services: {} }, { env, fetch: spy, jobs: false }); return router; };
+  const stub = { get: async () => null, run: async () => ({}) };
+  const mkDb = (env) => { const router = new Router(); require("../services/pi")({ db: stub, bus: { on() { }, emit() { } }, rl: { hit: () => true }, router, config: {}, requireUser: (fn) => fn, services: {} }, { env, fetch: spy, jobs: false }); return router; };
+  const r = mkDb({ PI_AUTH_VERIFY: "platform" });
+  const ok = await r.match("POST", "/api/pi/auth").handler({ body: { accessToken: TOKEN("pl1", "plat_pi") }, ip: "1", csrfOk: true }, {});
+  assert.deepEqual(ok, { needsLink: true, username: "plat_pi", linked: false });
+  const call = seen.find(c => c.url.endsWith("/v2/me"));
+  assert.ok(call, "called /v2/me"); assert.equal(call.auth, "Bearer " + TOKEN("pl1", "plat_pi")); assert.ok(!seen.some(c => c.url === APPSTUDIO), "no App Studio call");
+  await assert.rejects(() => r.match("POST", "/api/pi/auth").handler({ body: { accessToken: "forged" }, ip: "1", csrfOk: true }, {}), (e) => e.status === 401 && e.code === "pi_invalid");
+  assert.equal((await mk({ PI_SDK_SANDBOX: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, true);
+  assert.equal((await mk({}).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
+  assert.equal((await mk({ PI_SDK_SANDBOX: "1", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
+});
