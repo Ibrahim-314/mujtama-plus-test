@@ -34,7 +34,7 @@ const piOf = (u) => Math.round(Number(u || 0)) / U;
 
 /** device class from a User-Agent (coarse on purpose) */
 function deviceOf(ua = "") {
-  if (/PiBrowser/i.test(ua)) return "pi";
+  if (/PiBrowser|(?:^|\s)Pi(?:\/[\d.]+)?\s*$/.test(ua)) return "pi"; // v2.149.12: the real Pi Browser UA ends with " Pi"
   if (/iPad|Tablet|Nexus (7|9|10)|SM-T\d/i.test(ua)) return "tablet";
   if (/Mobi|Android|iPhone|iPod/i.test(ua)) return "mobile";
   return "desktop";
