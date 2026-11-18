@@ -1,5 +1,23 @@
 [
   {
+    "v": "2.149.11",
+    "date": "2026-11-18",
+    "ar": {
+      "title": "دخول Pi سلس",
+      "items": [
+        "الدخول بحساب Pi صار بلمسة واحدة: لو ما عندك حساب في مجتمع بلس ينشأ لك ويدخلك مباشرة",
+        "يظهر لك وين وصل الدخول خطوة بخطوة، ولو ما اشتغل Pi تظهر لك نصيحة تفتح التطبيق من متصفح Pi"
+      ]
+    },
+    "en": {
+      "title": "Smooth Pi sign-in",
+      "items": [
+        "Pi sign-in now takes one tap: if you have no Mujtama+ account yet, one is created and you are signed in right away",
+        "You see each sign-in step, and if Pi cannot start you get a hint to open the app in the Pi Browser"
+      ]
+    }
+  },
+  {
     "v": "2.149.10",
     "date": "2026-11-18",
     "ar": {
