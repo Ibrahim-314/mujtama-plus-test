@@ -102,7 +102,8 @@ module.exports = (ctx) => {
   async function piAuth(req, res) {
     const pi = ctx.services.pi;
     let me; // { uid, username } — from the server-side App Studio exchange only (phase 36b), never from the request
-    if (pi?.verify) {
+    if (req.__piVerified) me = req.__piVerified; // v2.149.11: one-tap create from POST /api/pi/auth (already verified + rate-counted)
+    else if (pi?.verify) {
       if (!pi.authEnabled()) throw E.off("تسجيل الدخول بـ Pi غير مفعّل بعد");
       if (!rl.hit("login", req.ip)) throw E.rate();
       me = await pi.verify(str(req.body.accessToken, 4000, { required: true }));
