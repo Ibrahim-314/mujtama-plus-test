@@ -3,9 +3,10 @@
 const test = require("node:test"); const assert = require("node:assert/strict");
 const fs = require("node:fs"); const path = require("node:path"); const vm = require("node:vm");
 const src = fs.readFileSync(path.join(__dirname, "../../pi-adapter.js"), "utf8");
-function load({ ua = "Mozilla/5.0", framed = false } = {}) {
+function load({ ua = "Mozilla/5.0", framed = false, parentOrigin = "https://sandbox.minepi.com" } = {}) {
   const win = {}; win.self = win; win.top = framed ? {} : win;
-  const ctx = { window: win, navigator: { userAgent: ua }, console, setTimeout, clearTimeout, Promise, fetch: async () => ({ ok: false }) };
+  win.location = { ancestorOrigins: framed ? [parentOrigin] : [] }; // v2.149.12: sandbox needs the sandbox.minepi.com parent
+  const ctx = { window: win, document: { referrer: "" }, navigator: { userAgent: ua }, console, setTimeout, clearTimeout, Promise, fetch: async () => ({ ok: false }) };
   vm.createContext(ctx); vm.runInContext(src + "\n;this.__A = PiAdapter;", ctx); return ctx.__A;
 }
 test("useSandbox: only framed, not Pi Browser, and only when the server says sdkSandbox", () => {
