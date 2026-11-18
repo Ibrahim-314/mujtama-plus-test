@@ -113,6 +113,7 @@ const LIMITS = {
   ai_hub_link: [10, 600e3], // v2.77: link attempts (key checks / one-tap starts) per member per 10 min
   clip_draft: [30, 60e3], // v2.80: Vidtik draft saves per member per minute
   game_mission: [30, 60e3], // Phase 2D-A: game mission completions per member per minute
+  pi_diag: [40, 60e3], // v2.149.11: Pi sign-in step beacons per IP per minute
   default: [120, 60e3]
 };
 class RateLimiter {
