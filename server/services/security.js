@@ -43,7 +43,7 @@ module.exports = (ctx) => {
   }
   const describeUA = (ua = "") => {
     const os = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "جهاز";
-    const br = /PiBrowser/i.test(ua) ? "Pi Browser" : /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "متصفح";
+    const br = /PiBrowser|(?:^|\s)Pi(?:\/[\d.]+)?\s*$/.test(ua) ? /* v2.149.12 */ "Pi Browser" : /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "متصفح";
     return `${br} على ${os}`;
   };
 
