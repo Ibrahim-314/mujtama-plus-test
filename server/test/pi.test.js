@@ -115,20 +115,22 @@ test("sign-in works with payments off (PI_ENABLED unset, no API key): App Studio
   assert.deepEqual(seen, ["https://studio.example/pi/auth/v1/login", APPSTUDIO]);
 });
 
-test("auth: token exchanged once with Pi App Studio, needsLink for unknown uid, link to the signed-in account, then Pi sign-in", async () => {
+test("auth: token exchanged once with Pi App Studio, one-tap account for an unknown uid (v2.149.11), link to the signed-in account, then Pi sign-in", async () => {
   const anon = new H.Client();
   const bad = await anon.req("POST", "/api/pi/auth", { accessToken: "forged" });
   assert.equal(bad.status, 401); assert.equal(bad.code, "pi_invalid"); assert.match(bad.error, /[\u0600-\u06FF]/, "Arabic error");
   assert.equal((await anon.req("POST", "/api/pi/auth", {})).status, 400);
   const n0 = studioCalls.length;
-  const nl = await anon.req("POST", "/api/pi/auth", { accessToken: TOKEN("a1", "alice_pi") });
-  assert.equal(nl.status, 200); assert.equal(nl.needsLink, true); assert.equal(nl.username, "alice_pi"); assert.equal(anon.cookie, "", "no session for an unlinked Pi account");
+  const nl = await anon.req("POST", "/api/pi/auth", { accessToken: TOKEN("n1", "newbie_pi") });
+  assert.equal(nl.status, 200, nl.error); assert.equal(nl.needsLink, undefined, "no needsLink dead end");
+  assert.equal(nl.created, true); assert.equal(nl.linked, true); assert.equal(nl.piUsername, "newbie_pi"); assert.ok(anon.cookie.startsWith("mp_session="), "signed in in one tap");
+  assert.equal(studioCalls.length, n0 + 1, "the one-tap account reuses the verified token: a single App Studio exchange");
   const call = studioCalls.at(-1);
-  assert.deepEqual([call.method, call.contentType, call.body, call.auth], ["POST", "application/json", { accessToken: TOKEN("a1", "alice_pi") }, undefined], "POST {accessToken} JSON, nothing else");
+  assert.deepEqual([call.method, call.contentType, call.body, call.auth], ["POST", "application/json", { accessToken: TOKEN("n1", "newbie_pi") }, undefined], "POST {accessToken} JSON, nothing else");
   assert.equal(piCalls.filter(c => c.path === "/v2/me").length, 0, "sign-in no longer calls /v2/me");
   assert.ok(!("sessionToken" in nl.body) && !JSON.stringify(nl.body).includes("st-secret"), "App Studio sessionToken never returned");
   const l = await alice.req("POST", "/api/pi/auth", { accessToken: TOKEN("a1", "alice_pi"), link: true });
-  assert.equal(studioCalls.length, n0 + 1, "needsLink → link:true with the same token: a single App Studio exchange");
+  assert.equal(studioCalls.length, n0 + 2, "linking from Settings: one exchange for the new token");
   assert.equal(l.status, 200); assert.equal(l.linked, true); assert.equal(l.piUsername, "alice_pi"); assert.equal(l.user.id, alice.id); alice.uid = "uid_a1";
   assert.equal((await db().get("SELECT pi_uid FROM users WHERE id=$1", [alice.id])).pi_uid, "uid_a1", "users.pi_uid kept in sync for older services");
   assert.equal((await db().get("SELECT status FROM pi_kyc WHERE user_id=$1", [alice.id]))?.status, "linked");
@@ -148,8 +150,9 @@ test("auth: uid/username supplied by the browser (body, query, headers) are igno
   // eve owns Pi uid_e1 and tries to pass as alice's Pi account (uid_a1)
   const eve = new H.Client();
   const r = await eve.req("POST", "/api/pi/auth?uid=uid_a1&username=alice_pi", { accessToken: TOKEN("e1", "eve_pi"), uid: "uid_a1", username: "alice_pi", user: { uid: "uid_a1", username: "alice_pi" } }, { "X-Pi-Uid": "uid_a1", "X-Pi-Username": "alice_pi" });
-  assert.equal(r.status, 200); assert.equal(r.needsLink, true); assert.equal(r.username, "eve_pi"); assert.equal(eve.cookie, "", "not signed in as alice");
-  assert.equal((await eve.req("GET", "/api/me")).status, 401);
+  assert.equal(r.status, 200); assert.equal(r.created, true); assert.equal(r.piUsername, "eve_pi"); assert.notEqual(r.user.id, alice.id, "not signed in as alice");
+  assert.equal((await eve.req("GET", "/api/me")).user.id, r.user.id, "eve gets her own new account");
+  assert.equal((await db().get("SELECT user_id FROM pi_links WHERE pi_uid='uid_e1'")).user_id, r.user.id);
   // linking also uses App Studio's uid, not the body's
   const carolLink = await carol.req("POST", "/api/pi/auth", { accessToken: TOKEN("c9", "carol_pi"), link: true, uid: "uid_a1", username: "alice_pi" });
   assert.equal(carolLink.status, 200); assert.equal(carolLink.piUsername, "carol_pi");
@@ -383,7 +386,7 @@ test("unlink: refused for a Pi-only account without a password, otherwise clears
   const u = await bob.req("DELETE", "/api/pi/link"); assert.equal(u.status, 200); assert.equal(u.linked, false);
   assert.equal((await db().get("SELECT pi_uid FROM users WHERE id=$1", [bob.id])).pi_uid, null);
   assert.equal((await bob.req("GET", "/api/pi/wallet")).piUsername, null);
-  assert.equal((await new H.Client().req("POST", "/api/pi/auth", { accessToken: TOKEN("b1", "pi_bob") })).needsLink, true);
+  assert.ok(!(await db().get("SELECT 1 x FROM pi_links WHERE pi_uid='uid_b1'")), "the link is gone");
   assert.equal((await bob.req("DELETE", "/api/pi/link")).status, 200, "unlink twice is harmless");
   const re = await bob.req("POST", "/api/pi/auth", { accessToken: TOKEN("b1", "pi_bob"), link: true }); assert.equal(re.status, 200, "can link again");
 });
@@ -498,4 +501,43 @@ test("v2.149.9: PI_AUTH_VERIFY=platform verifies the token with GET /v2/me (Bear
   assert.equal((await mk({ PI_SDK_SANDBOX: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, true);
   assert.equal((await mk({}).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
   assert.equal((await mk({ PI_SDK_SANDBOX: "1", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
+});
+
+test("v2.149.11: one tap — an unknown Pi account is created + signed in, the next tap signs into the same account; PI_AUTH_AUTOCREATE=0 keeps needsLink", async () => {
+  const a = new H.Client();
+  const r1 = await a.req("POST", "/api/pi/auth", { accessToken: TOKEN("ot1", "one_tap") });
+  assert.equal(r1.status, 200, r1.error); assert.equal(r1.created, true); assert.equal(r1.linked, true); assert.equal(r1.piUsername, "one_tap");
+  assert.ok(!JSON.stringify(r1.body).includes("at-secret"), "token never echoed");
+  const me = await a.req("GET", "/api/me"); assert.equal(me.status, 200); assert.equal(me.user.id, r1.user.id); assert.equal(me.user.handle, "one_tap");
+  const link = await db().get("SELECT user_id, pi_username FROM pi_links WHERE pi_uid='uid_ot1'"); assert.equal(link.user_id, r1.user.id); assert.equal(link.pi_username, "one_tap");
+  const b = new H.Client();
+  const r2 = await b.req("POST", "/api/pi/auth", { accessToken: TOKEN("ot1", "one_tap") });
+  assert.equal(r2.status, 200); assert.equal(r2.created, undefined); assert.equal(r2.user.id, r1.user.id, "same account, no duplicate");
+  assert.equal((await db().get("SELECT COUNT(*) n FROM users WHERE pi_uid='uid_ot1'")).n, 1);
+  // a password user still links from Settings with link:true
+  const pw = await mk("pi_pw_user"); const lk = await pw.req("POST", "/api/pi/auth", { accessToken: TOKEN("pw1", "pw_pi"), link: true });
+  assert.equal(lk.status, 200); assert.equal(lk.user.id, pw.id);
+  // opt-out keeps the old answer
+  const stubDb = { get: async () => null, run: async () => ({ changes: 0 }), all: async () => [] };
+  const router = new Router(); router.post("/api/auth/pi", async () => { throw new Error("must not create"); });
+  require("../services/pi")({ db: stubDb, bus: { on() { }, emit() { } }, rl: { hit: () => true }, router, config: {}, requireUser: (fn) => fn, services: {} }, { env: { PI_AUTH_AUTOCREATE: "0" }, fetch: fakeFetch, jobs: false });
+  assert.deepEqual(await router.match("POST", "/api/pi/auth").handler({ body: { accessToken: TOKEN("x9", "x") }, ip: "1", csrfOk: true }, {}), { needsLink: true, username: "x", linked: false });
+});
+
+test("v2.149.11: POST /api/pi/diag logs one «pi diag» info line (no token, no CSRF header needed), validates the step, rate-limited per IP", async () => {
+  const lines = [], orig = process.stdout.write.bind(process.stdout), silent = process.env.LOG_SILENT;
+  delete process.env.LOG_SILENT;
+  process.stdout.write = (c, ...a) => { if (String(c).includes("pi diag")) lines.push(String(c)); return orig(c, ...a); };
+  try {
+    const raw = (body) => fetch(H.base + "/api/pi/diag", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const ok = await raw({ step: "auth_err", msg: "boom at-secret-" + "x".repeat(60), ua: "Mozilla/5.0 PiBrowser/2.0", framed: false, ms: 1234 });
+    assert.equal(ok.status, 200);
+    const line = lines.map(l => { try { return JSON.parse(l); } catch { return null; } }).find(l => l?.msg === "pi diag" && l.step === "auth_err");
+    assert.ok(line, "logged"); assert.equal(line.level, "info"); assert.equal(line.ms, 1234); assert.equal(line.framed, false); assert.match(line.ua, /PiBrowser/);
+    assert.ok(!JSON.stringify(line).includes("x".repeat(60)), "long token-like strings redacted"); assert.match(line.note, /^boom /); assert.ok(line.note.length <= 200);
+    assert.equal((await raw({ step: "evil" })).status, 400);
+    H.app.ctx.rl.w.clear();
+    let last = 200; for (let i = 0; i < 45; i++) last = (await raw({ step: "init_ok" })).status;
+    assert.equal(last, 429, "rate-limited");
+  } finally { process.stdout.write = orig; if (silent !== undefined) process.env.LOG_SILENT = silent; H.app.ctx.rl.w.clear(); }
 });
