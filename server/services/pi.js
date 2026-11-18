@@ -207,7 +207,7 @@ module.exports = (ctx, opts = {}) => {
     const b = req.body || {}, step = String(b.step || "");
     if (!DIAG_STEPS.has(step)) throw E.bad("step");
     const clean = (v, n) => [...String(v ?? "")].map(ch => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? " " : ch)).join("").replace(/[A-Za-z0-9_\-.]{40,}/g, "[redacted]").slice(0, n);
-    logger.info?.("pi diag", { step, note: clean(b.msg, 200), ua: clean(b.ua, 160), framed: b.framed === true, ms: Math.max(0, Math.min(3600e3, Math.round(+b.ms || 0))) });
+    logger.info?.("pi diag", { step, note: clean(b.msg, 200), ua: clean(b.ua, 160), framed: b.framed === true, parent: /^[a-z0-9.-]{0,80}/.exec(String(b.parent || "").toLowerCase())[0], /* v2.149.12: framing parent host only */ ms: Math.max(0, Math.min(3600e3, Math.round(+b.ms || 0))) });
     return { ok: true };
   }
   async function unlink(user) {
