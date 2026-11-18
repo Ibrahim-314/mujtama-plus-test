@@ -1,6 +1,6 @@
 {
   "name": "mujtama-plus-server",
-  "version": "2.149.8",
+  "version": "2.149.9",
   "description": "مجتمع بلس — Social Platform Layer backend (services + event bus + SQL)",
   "main": "server.js",
   "type": "commonjs",
