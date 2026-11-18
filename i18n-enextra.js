@@ -491,6 +491,7 @@
 "قيد التحقق": "Verifying",
 "الدخول بحساب Pi": "Sign In with Pi",
 "جارٍ التحقق من حساب Pi…": "Verifying Pi account…",
+"انتهت مهلة الدخول بحساب Pi. افتح مجتمع بلس من متصفح Pi وحاول مرة أخرى.": "Pi sign-in timed out. Open Mujtama+ in the Pi Browser and try again.",
 "حساب Pi": "Pi account",
 "غير مربوط بعد. ادخل بكلمة مرور حسابك في مجتمع بلس (أو أنشئ حساباً جديداً) وسنربطه تلقائياً.": "Not linked yet. Sign in with your Mujtama Plus password (or create a new account) and we'll link it automatically.",
 "إنشاء حساب جديد بحساب Pi": "Create New Account with Pi",
