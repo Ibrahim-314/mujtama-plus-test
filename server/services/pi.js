@@ -175,13 +175,40 @@ module.exports = (ctx, opts = {}) => {
       return { user: users().pub(u), piUsername: who.username, linked: true };
     }
     const l = await linkByUid(who.uid);
-    if (!l) return { needsLink: true, username: who.username, linked: false };
-    const u = await db.get("SELECT * FROM users WHERE id=$1", [l.user_id]);
-    if (!u) return { needsLink: true, username: who.username, linked: false };
+    const u = l ? await db.get("SELECT * FROM users WHERE id=$1", [l.user_id]) : null;
+    if (!u) return createFor(req, res, who, l);
     if (u.status !== "active") throw E.forbid("الحساب موقوف");
     await db.run("UPDATE pi_links SET pi_username=$1, last_auth_at=$2 WHERE user_id=$3", [who.username, now(), u.id]);
     if (!req.user || req.user.id !== u.id) await users().sessionFor(res, u, req);
     return { user: users().pub(u), piUsername: who.username, linked: true };
+  }
+  /* v2.149.11: one tap — a Pi account with no Mujtama+ account gets one and is signed in (no needsLink dead end). The account
+   * is made by the /api/auth/pi route itself (looked up at request time) so its launch hooks (invite mode, referrals) still
+   * apply; the token was already verified above and is not exchanged again. Without that route (bare test mounts) or with
+   * PI_AUTH_AUTOCREATE=0 the old needsLink answer stays (password users then link from Settings or after a password sign-in). */
+  async function createFor(req, res, who, stale) {
+    const route = env.PI_AUTH_AUTOCREATE === "0" ? null : R.routes?.find(r => r.method === "POST" && r.re.test("/api/auth/pi"));
+    if (!route) return { needsLink: true, username: who.username, linked: false };
+    if (stale) await db.run("DELETE FROM pi_links WHERE pi_uid=$1", [who.uid]); // a link left by a deleted account
+    req.__piVerified = who; // users.piAuth: reuse this identity, the login rate limit was already counted
+    const out = await route.handler(req, res);
+    const uid = out?.user?.id;
+    if (uid) {
+      await linkByUid(who.uid);
+      await db.run("UPDATE pi_links SET pi_username=$1, last_auth_at=$2 WHERE pi_uid=$3", [who.username, now(), who.uid]);
+      logger.info?.("pi diag", { step: "server_created" });
+    }
+    return { ...out, piUsername: who.username, linked: !!uid, created: !!uid };
+  }
+  /* v2.149.11: sign-in step beacons from the client (POST /api/pi/diag) → one info log line; no token, no IP, no account id */
+  const DIAG_STEPS = new Set(["sdk_loaded", "init_ok", "init_err", "auth_start", "auth_ok", "auth_err", "auth_timeout", "server_ok", "server_err"]);
+  async function diagBeacon(req) {
+    if (!rl.hit("pi_diag", req.ip || "anon")) throw E.rate();
+    const b = req.body || {}, step = String(b.step || "");
+    if (!DIAG_STEPS.has(step)) throw E.bad("step");
+    const clean = (v, n) => [...String(v ?? "")].map(ch => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? " " : ch)).join("").replace(/[A-Za-z0-9_\-.]{40,}/g, "[redacted]").slice(0, n);
+    logger.info?.("pi diag", { step, note: clean(b.msg, 200), ua: clean(b.ua, 160), framed: b.framed === true, ms: Math.max(0, Math.min(3600e3, Math.round(+b.ms || 0))) });
+    return { ok: true };
   }
   async function unlink(user) {
     requireAuthOn();
@@ -520,6 +547,7 @@ module.exports = (ctx, opts = {}) => {
   const dateQ = (v) => { const d = v ? String(v) : ymd(clock()); if (!DATE_RE.test(d) || isNaN(Date.parse(d + "T00:00:00Z"))) throw E.bad("تاريخ غير صالح"); return d; };
   R.get("/api/pi/config", async () => publicConfig());
   R.post("/api/pi/auth", auth, { piLogin: true }); // no CSRF header required: the Pi token itself authenticates this call
+  R.post("/api/pi/diag", diagBeacon, { piLogin: true, beacon: true }); // v2.149.11: sign-in step beacons (rate-limited per IP)
   R.get("/api/pi/link", A(async (req) => linkState(req.user)));
   R.del("/api/pi/link", A(async (req) => unlink(req.user)));
   R.get("/api/pi/wallet", A(whenReady(async (req) => wallet(req.user, req.query || {}))));
