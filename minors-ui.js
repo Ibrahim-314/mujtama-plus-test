@@ -166,7 +166,7 @@
     anchor.insertAdjacentHTML("afterend", `<label for="mn-dob" class="u-db u-mt10 muted">تاريخ الميلاد</label><input type="date" id="mn-dob" max="${todayIso()}" min="1900-01-01" aria-describedby="mn-dob-h" autocomplete="bday"><div id="mn-dob-h" class="u-mt4 muted">لا يظهر لأحد. نستخدمه لحماية من هم دون ١٨ سنة.</div>`);
     document.getElementById("mn-dob").addEventListener("change", (e) => { const a = C()?.ageOn(e.target.value); const hint = document.getElementById("mn-dob-h"); if (a !== null && a !== undefined && a < (st.age?.minAge || 13)) hint.textContent = `مجتمع بلس لمن هم ${st.age?.minAge || 13} سنة فأكثر.`; else if (a !== null && a < 18) hint.textContent = "سيكون حسابك خاصاً ومحميّاً بإعدادات إضافية حتى تبلغ ١٨ سنة."; else hint.textContent = "لا يظهر لأحد. نستخدمه لحماية من هم دون ١٨ سنة."; });
   }
-  if (typeof showAuth === "function") { const _sa = showAuth; showAuth = function (mode) { const r = _sa.apply(this, arguments); if (mode === "register") injectDob(); return r; }; }
+  document.addEventListener("mp:auth", (e) => { if (e.detail?.mode === "register") injectDob(); }); // v2.149.13: the gate draws the form after its chunk arrives
   injectDob();
   function showGate(msg) {
     if (document.querySelector(".mn-gate")) return;
