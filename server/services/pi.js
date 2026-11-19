@@ -22,6 +22,7 @@ const STATUSES = ["created", "approved", "completed", "cancelled", "refunded", "
 const DEFAULT_PURPOSES = ["tip", "donation", "subscription", "boost", "purchase", "event_ticket", "ppv", "market", "ads", "ai", "transfer", "mentor", "fund", "charity", "jobs", "contract", "test"]; // fund: phase 65 creator support fund donations · charity: phase 70 charity campaign donations · transfer: phase 56 user-to-user transfers · ai: phase 41 AI subscriptions · ppv: phase 38 paid posts · market: phase 39 marketplace orders · ads: phase 40 ad budgets · mentor: phase 74 paid mentorship sessions
 const OFF = "مدفوعات Pi غير مفعّلة بعد";
 const AUTH_OFF = "تسجيل الدخول بحساب Pi غير مفعّل";
+const PI_TEST_URL = "https://mujtamakt6955.pinet.com"; // v2.149.13: the testnet app «Mujtama+» in Pi Browser (Render test default only)
 const APPSTUDIO_LOGIN = "https://backend.appstudio-u7cm9zhmha0ruwv8.piappengine.com/pi/auth/v1/login";
 const VERIFIED_TTL_MS = 10 * 60e3; // an exchanged token is remembered (by hash) so needsLink → link:true does not exchange it twice
 const ymd = (d) => d.toISOString().slice(0, 10);
@@ -63,7 +64,14 @@ module.exports = (ctx, opts = {}) => {
   // (testnet only) tells the client to call Pi.init({sandbox:true}) so the app runs inside sandbox.minepi.com.
   const verifyMode = env.PI_AUTH_VERIFY === "platform" ? "platform" : "appstudio";
   const sdkSandbox = network === "testnet" && env.PI_SDK_SANDBOX === "1";
-  const publicConfig = () => ({ enabled, authEnabled, network, sandbox, ...(sdkSandbox ? { sdkSandbox } : {}), ...(appId ? { appId } : {}) });
+  // v2.149.13 «بوابة Pi»: the app's official Pi Browser address for «افتح في متصفح Pi» outside Pi Browser. PI_APP_URL (https)
+  // wins; only the Render test copy falls back to the testnet app URL — production never gets a hard-coded default.
+  const piUrl = (() => {
+    const raw = String(env.PI_APP_URL || "").trim();
+    if (raw) { try { const u = new URL(raw); if (u.protocol === "https:") return u.origin; } catch { /* fall through */ } logger.warn?.("PI_APP_URL ignored: must be an https URL"); return null; }
+    return env.RENDER && !require("../lib/prod-guard").isProduction(env) ? PI_TEST_URL : null;
+  })();
+  const publicConfig = () => ({ enabled, authEnabled, network, sandbox, ...(sdkSandbox ? { sdkSandbox } : {}), ...(appId ? { appId } : {}), ...(piUrl ? { piUrl } : {}) });
 
   const requireOn = () => { if (!enabled) throw E.off(OFF); };
   const requireAuthOn = () => { if (!authEnabled) throw E.off(AUTH_OFF); };
