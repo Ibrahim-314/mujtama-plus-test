@@ -37,8 +37,15 @@ test("host(): the sign-in button is usable when the Pi SDK is present even if th
   assert.equal(load({ pi: fakePi() }).A.host(), true);
   assert.equal(load({ ua: "Mozilla/5.0 PiBrowser/2.0" }).A.host(), true);
   assert.equal(load({}).A.host(), false);
-  const ui = fs.readFileSync(path.join(root, "pi-ui.js"), "utf8");
-  assert.match(ui, /usable = \(\) => piUA\(\) \|\| !!A\(\)\.host\?\.\(\)/);
+  // v2.149.13: the Pi sign-in button lives in the gate screen (gate-ui.js); outside the detected Pi Browser it is «داخل متصفح Pi؟»,
+  // usable whenever the SDK is present (and enabled once the async SDK arrives), and it runs the same MPPi.signIn flow
+  const ui = fs.readFileSync(path.join(root, "gate-ui.js"), "utf8");
+  assert.match(ui, /usable = \(c\) => inPi\(c\) \|\| !!PiAdapter\.host\?\.\(\)/);
+  assert.match(ui, /id="gt-pi-try"[^`]*\$\{usable\(c\) \? "" : "disabled"\}/);
+  assert.match(ui, /tb\.onclick = piGo\(tb\)/);
+  assert.match(ui, /PiAdapter\.sdk\?\.\(\)\.then\(\(\) => \{ if \(tb\.isConnected && usable\(cfg\)[^}]*tb\.disabled = false/);
+  assert.match(ui, /MPPi\.signIn\(pb, n,/);
+  assert.match(fs.readFileSync(path.join(root, "pi-ui.js"), "utf8"), /async function signIn\(b, n, opts = \{\}\)/);
 });
 
 test("diag beacons: init_ok + auth_start/auth_ok in Pi Browser, never the access token; nothing on a plain page load", async () => {
