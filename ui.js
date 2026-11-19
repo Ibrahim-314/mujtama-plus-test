@@ -322,17 +322,6 @@ if (typeof connectStream === "function") {
   connectStream = function () { _cs(); try { Remote.es.addEventListener("changed", e => { const d = JSON.parse(e.data || "{}"); if (d.scope === "POST_PUBLISHED" && scrollY > 400 && /home/.test(location.hash)) $("#newPill").classList.add("on"); }); } catch { } };
 }
 
-/* ---------- Auth screen visual upgrade (remote mode) ---------- */
-if (typeof showAuth === "function") {
-  const _sa = showAuth;
-  showAuth = function (mode) {
-    _sa(mode);
-    const hero = $("#view .logo")?.parentElement;
-    if (hero) hero.outerHTML = `<div class="auth-hero"><div class="mark brandmark" aria-hidden="true"></div><h1>مجتمع بلس</h1><p class="u-t-md u-mt6 muted">مساحة تجمع الناس حول ما يهمهم.<br>اكتشف، تابع، وشارك.</p></div>`;
-    $("#view .card")?.style.setProperty("padding", "20px");
-  };
-}
-
 /* ---------- Settings: appearance preview + version ---------- */
 MPSettings.add(function () { const ver = $("#ver"); if (ver && !ver.textContent.includes(UI_VERSION)) ver.textContent = ver.textContent.replace(/^[\d.]+/, UI_VERSION); });
 
