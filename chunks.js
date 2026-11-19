@@ -79,7 +79,7 @@
     // stylesheet first: a chunk may enhance the current screen as soon as its script runs
     return pending[name] ||= css(name).then(() => src && new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.dataset.chunk = name; s.onload = res; s.onerror = () => { delete pending[name]; failed[name] = true; rej(new Error("chunk " + name)); }; document.head.appendChild(s); })).then(() => { loaded[name] = true; });
   }
-  window.MPChunks = { load, loaded, reroute: (n) => rerouteAfter(n) };
+  window.MPChunks = { load, loaded, reroute: (n) => rerouteAfter(n), lang: () => langGate }; // lang(): the saved English catalogue still loading (the sign-in gate waits on it too)
   /* v2.149.2 «ولا ومضة»: a saved English UI fetches its whole catalogue (three parts + the language module) in parallel at boot,
    * and screens wait on the loading skeleton until it is in, so a cold open never paints Arabic text first (it used to for
    * ~1.5 s: language module → catalogue → its two halves → the server's overrides, one after another) */
@@ -184,6 +184,8 @@
   // phase 36: Pi screens + sign-in/settings/pay button load right after first paint (auth screen needs it early); phase 45: wellbeing first (usage tracker, count hiding)
   (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 400 }) : (f) => setTimeout(f, 100))(() => load("a11y").catch(() => { })); // phase 43: keyboard/screen-reader fixes for everyone
   whenIn(() => (window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 700 }) : (f) => setTimeout(f, 250))(() => load("wellbeing").catch(() => { }).then(() => load("tips")).catch(() => { }).then(() => load("ads")).catch(() => { }).then(() => load("i18n")).catch(() => { }).then(() => load("ai")).catch(() => { }).then(() => load("prefs")).catch(() => { }).then(() => load("transfers")).catch(() => { }).then(() => load("attn")).catch(() => { })));
+  // v2.149.13 «بوابة Pi»: a device not signed in last time fetches the sign-in screen chunk right away (it renders after /api/bootstrap answers 401)
+  if (!document.documentElement.classList.contains("mp-me")) load("gate").catch(() => { });
   // guests: the sign-up helpers (launch: invite/referral code carried into sign-up, about/waitlist/help landings), the app-install
   // helper (was riding on the notify chunk) and, only when Pi sign-in/payments are on, the Pi chunk (its button on the auth screen)
   idle(1200, 600)(() => { if (window.MPSession && MPSession.signedIn()) return; load("launch").catch(() => { }); load("pwa").catch(() => { }); if (typeof PiAdapter !== "undefined") PiAdapter.config().then((c) => { if (c && (c.authEnabled ?? c.enabled) && !(window.MPSession && MPSession.signedIn())) load("pi").catch(() => { }); }).catch(() => { }); });
