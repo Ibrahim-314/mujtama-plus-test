@@ -1,6 +1,6 @@
 /* =====================================================================
  * مجتمع بلس — Phase 36 UI: full Pi integration (lazy "pi" chunk; the small PiAdapter stays in the core).
- * • «الدخول بحساب Pi» on the sign-in screen and «ربط حساب Pi» in Settings (POST /api/pi/auth {accessToken, link}).
+ * • «الدخول بحساب Pi» on the sign-in screen (v2.149.13: MPPi.signIn, called by the gate screen) and «ربط حساب Pi» in Settings (POST /api/pi/auth {accessToken, link}).
  * • One unified pay button: MPPi.payButton({amount, memo, purpose, refId, onDone}) → local intent
  *   (POST /api/pi/payments) → Pi.createPayment → server approve / complete (cancel on cancel/error),
  *   with loading / done / error states, and disabled with a clear Arabic note when Pi is off, the app is
@@ -66,7 +66,6 @@
 .pi-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.pi-acts>*{flex:1 1 140px;text-align:center;text-decoration:none}
 .pi-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.pi-kpi div{background:var(--card);border-radius:14px;padding:10px;text-align:center;box-shadow:var(--sh-1)}.pi-kpi b{display:block;font-size:20px}
 .pi-kpi .bad b{color:#a11616}[data-theme=dark] .pi-kpi .bad b{color:#ff9a9a}
-.pi-or{display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:var(--muted);font-size:var(--fs-sm)}.pi-or:before,.pi-or:after{content:"";flex:1;height:1px;background:var(--line)}
 .pi-set .row{display:flex;align-items:center;gap:12px}.pi-set .grow{flex:1;min-width:0}
 </style>`);
 
@@ -164,45 +163,36 @@
     });
   }
 
-  /* ---------- sign in with Pi (auth screen) ---------- */
-  async function authButton() {
-    const go = document.getElementById("a-go"); if (!go || document.getElementById("pi-signin")) return;
-    document.getElementById("pi-login")?.remove(); // the pre-phase-36 button
-    const cfg = await A().config(); if (!authOn(cfg) || !document.getElementById("a-go") || document.getElementById("pi-signin")) return;
-    // v2.149.10: also inside the Pi Developers Sandbox frame · v2.149.11: usable whenever the Pi SDK is present (not the UA alone)
-    const piUA = () => A().inPiBrowser() || !!A().useSandbox?.(cfg), usable = () => piUA() || !!A().host?.();
-    const inPi = usable();
-    go.insertAdjacentHTML("afterend", `<div class="pi-auth"><div class="pi-or" aria-hidden="true"><span>أو</span></div>
-      <button type="button" class="pi-btn" id="pi-signin" aria-describedby="pi-signin-n" ${inPi ? "" : "disabled"}><span class="pi-logo" aria-hidden="true">π</span><span class="pi-lbl">الدخول بحساب Pi</span><span class="pi-spin" aria-hidden="true"></span></button>
-      <p class="pi-note" id="pi-signin-n" role="status">${piUA() ? (cfg.network !== "mainnet" ? "الشبكة التجريبية (Testnet)" : "") : "الدخول بحساب Pi متاح عند فتح مجتمع بلس من متصفح Pi."}</p></div>`);
-    const b = document.getElementById("pi-signin"), n = document.getElementById("pi-signin-n"), box = b.parentNode;
-    if (!inPi) A().sdk?.().then(() => { if (b.isConnected && usable() && box.dataset.state !== "loading") b.disabled = false; }, () => { }); // the async SDK arrived after this screen
+  /* ---------- sign in with Pi (v2.149.13: the gate screen's button, gate-ui.js) ---------- */
+  /* signIn(button, note, { onNeedsLink }): progress states in the note, one-tap account, errors in place; a Pi account that the
+   * server says still needs linking opens the owner form (onNeedsLink) and is linked right after the password sign-in */
+  async function signIn(b, n, opts = {}) {
+    const box = b.parentNode;
     const step = (t) => { n.className = "pi-note"; n.setAttribute("role", "status"); n.textContent = t; };
-    b.onclick = async () => {
-      b.disabled = true; box.dataset.state = "loading"; b.setAttribute("aria-busy", "true"); step("جارٍ تجهيز Pi…");
-      const t0 = Date.now();
-      try {
-        // v2.149.11: progress states; an SDK that never initialises says where to open the app instead of waiting
-        if (!(await A().init())) throw new Error("تعذّر تشغيل Pi هنا. افتح التطبيق من متصفح Pi.");
-        step("أكّد الدخول في نافذة Pi…");
-        const auth = await A().authenticate(); if (!auth?.accessToken) throw new Error("تعذّر التحقق من حساب Pi.");
-        step("جارٍ تسجيل الدخول…");
-        let r;
-        try { r = await api("POST", "/api/pi/auth", { accessToken: auth.accessToken }); A().diag?.("server_ok", r?.created ? "created" : r?.needsLink ? "needsLink" : "", t0); }
-        catch (e) { A().diag?.("server_err", (e?.status || "") + " " + (e?.code || e?.message || ""), t0); throw e; }
-        if (r.needsLink) {
-          pendingLink = { accessToken: auth.accessToken, username: r.username };
-          n.className = "pi-note err"; n.setAttribute("role", "alert");
-          n.innerHTML = `حساب Pi <bdi>@${h(r.username)}</bdi> غير مربوط بعد. ادخل بكلمة مرور حسابك في مجتمع بلس (أو أنشئ حساباً جديداً) وسنربطه تلقائياً.
-            <button type="button" class="u-mt8 u-w100 btn ghost" id="pi-new">إنشاء حساب جديد بحساب Pi</button>`;
-          document.getElementById("a-handle")?.focus();
-          document.getElementById("pi-new").onclick = async () => { try { await api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); pendingLink = null; authed = true; await start(); await flushIncomplete(); } catch (e) { n.textContent = e.message; } };
-          return;
-        }
-        authed = true; step(r.created ? "أُنشئ حسابك بحساب Pi" : "تم الدخول"); await start(); await flushIncomplete();
-      } catch (e) { n.className = "pi-note err"; n.setAttribute("role", "alert"); n.textContent = e.message; }
-      finally { if (b.isConnected) { b.disabled = false; b.removeAttribute("aria-busy"); box.dataset.state = ""; } }
-    };
+    if (box.dataset.state === "loading") return;
+    b.disabled = true; box.dataset.state = "loading"; b.setAttribute("aria-busy", "true"); step("جارٍ تجهيز Pi…");
+    const t0 = Date.now();
+    try {
+      // v2.149.11: progress states; an SDK that never initialises says where to open the app instead of waiting
+      if (!(await A().init())) throw new Error("تعذّر تشغيل Pi هنا. افتح التطبيق من متصفح Pi.");
+      step("أكّد الدخول في نافذة Pi…");
+      const auth = await A().authenticate(); if (!auth?.accessToken) throw new Error("تعذّر التحقق من حساب Pi.");
+      step("جارٍ تسجيل الدخول…");
+      let r;
+      try { r = await api("POST", "/api/pi/auth", { accessToken: auth.accessToken }); A().diag?.("server_ok", r?.created ? "created" : r?.needsLink ? "needsLink" : "", t0); }
+      catch (e) { A().diag?.("server_err", (e?.status || "") + " " + (e?.code || e?.message || ""), t0); throw e; }
+      if (r.needsLink) {
+        pendingLink = { accessToken: auth.accessToken, username: r.username };
+        n.className = "pi-note err"; n.setAttribute("role", "alert");
+        n.innerHTML = `حساب Pi <bdi>@${h(r.username)}</bdi> غير مربوط بعد. ادخل بكلمة مرور حسابك في مجتمع بلس (أو أنشئ حساباً جديداً) وسنربطه تلقائياً.
+          <button type="button" class="u-mt8 u-w100 btn ghost" id="pi-new">إنشاء حساب جديد بحساب Pi</button>`;
+        document.getElementById("pi-new").onclick = async () => { try { await api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); pendingLink = null; authed = true; await start(); await flushIncomplete(); } catch (e) { n.textContent = e.message; } };
+        opts.onNeedsLink?.();
+        return;
+      }
+      authed = true; step(r.created ? "أُنشئ حسابك بحساب Pi" : "تم الدخول"); await start(); await flushIncomplete();
+    } catch (e) { n.className = "pi-note err"; n.setAttribute("role", "alert"); n.textContent = e.message; }
+    finally { if (b.isConnected) { b.disabled = false; b.removeAttribute("aria-busy"); box.dataset.state = ""; } }
   }
 
   /* after a password sign-in that followed a needsLink answer, link the Pi account with the same token */
@@ -401,12 +391,10 @@
     return { wallet: () => walletView(), receipt: () => receiptView(a) };
   });
   MPRoutes.add("admin", (a, b, next) => { if (DB.isAdmin && !document.getElementById("ops-js")) document.head.appendChild(Object.assign(document.createElement("script"), { id: "ops-js", src: "/ops-ui.js" })); /* phase 49: admin-only ops UI, served by the API (not in core) */ if (a === "pi") return adminView(); next(); if (DB.isAdmin && !a && !document.getElementById("fn-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn u-mh44 card" id="fn-adm" href="#/admin/finance"><span aria-hidden="true"><svg class=ei aria-hidden=true><use href=#i-receipt /></svg></span><span class="u-f1"><b>التقارير المالية والمطابقة</b><span class="u-db muted">السجل مقابل مدفوعات Pi، التقارير السنوية</span></span><span class="fwd" aria-hidden="true">←</span></a>`); if (DB.isAdmin && !a && !document.getElementById("bz-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn u-mh44 card" id="bz-adm" href="#/admin/biz"><span aria-hidden="true"><svg class=ei aria-hidden=true><use href=#i-tag /></svg></span><span class="u-f1"><b>طلبات إدارة الأنشطة التجارية</b><span class="u-db muted">توثيق ملكية الأنشطة في دليل الأعمال</span></span><span class="fwd" aria-hidden="true">←</span></a>`); /* phase 67 */ if (DB.isAdmin && A()?.cfg?.enabled && !document.getElementById("pi-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-dflex u-aic u-g12 u-ci u-tdn card" id="pi-adm" href="#/admin/pi"><span class="pi-logo" aria-hidden="true">π</span><span class="u-f1"><b>مطابقة مدفوعات Pi</b><span class="u-db muted">تقرير يومي ومطابقة فورية مع Pi</span></span><span class="fwd" aria-hidden="true">←</span></a>`); });
-  if (typeof showAuth === "function") { const _sa = showAuth; showAuth = function () { const r = _sa.apply(this, arguments); authButton(); return r; }; }
   if (typeof Views !== "undefined" && Views.settings) {
     MPSettings.add(function () { settingsCard(); });
   }
-  window.MPPi = { payButton, paySheet, pay, availability, wallet: walletView, receipt: receiptView, admin: adminView, linkState: () => ({ ...link }),
+  window.MPPi = { payButton, paySheet, pay, availability, signIn, wallet: walletView, receipt: receiptView, admin: adminView, linkState: () => ({ ...link }),
     refresh() { if (A()) { A().cfg = null; A().ready = false; } link.piUsername = undefined; authed = false; }, version: "2.13.0" };
-  if (document.getElementById("a-go")) authButton();
   if (/^#\/(wallet|receipt)|^#\/admin(\/pi)?\/?(\?|$)|^#\/settings\/?(\?|$)/.test(location.hash) /* v2.149.2: only the screens this chunk adds to (was every admin/* and settings/* page: a redraw ~0.5 s after open) */ && typeof DB !== "undefined" && DB.onboarded) route();
 })();
