@@ -74,7 +74,7 @@ const calls = (p, m) => st.calls.filter(c => c.p === p && (!m || c.m === m));
 /* the app's real CSP stays enforced in this suite; any violation is recorded and fails the run */
 const CSP_WATCH = () => { window.__csp = []; document.addEventListener("securitypolicyviolation", (e) => window.__csp.push(e.violatedDirective + " " + (e.blockedURI || "inline") + " " + (e.sample || ""))); };
 async function newCtx(ua = PI_UA, { noSdk = false } = {}) { // noSdk: a plain browser without the Pi SDK (v2.149.11: the SDK alone enables the button)
-  const ctx = await S.browser.newContext({ ...MOBILE, userAgent: ua, reducedMotion: "reduce", bypassCSP: false });
+  const ctx = await S.browser.newContext({ ...MOBILE, userAgent: ua, reducedMotion: "reduce", bypassCSP: false, gate: true }); // v2.149.13: the real Pi gate
   await stubPi(ctx); if (!noSdk) await ctx.addInitScript(FAKE_PI); await ctx.addInitScript(CSP_WATCH);
   return ctx;
 }
@@ -108,19 +108,19 @@ test("adapter: Pi.init({version:\"2.0\"}) with no sandbox option; authenticate a
   await P.evaluate(() => { window.__piIncomplete = null; });
 });
 
-test("sign-in screen: «الدخول بحساب Pi» is disabled with a note outside Pi Browser (no Pi SDK), hidden when Pi sign-in is off", async () => {
+test("sign-in screen (v2.149.13 gate): outside Pi Browser there is no Pi sign-in button, only where to open the app; Pi sign-in off → the password form", async () => {
   const ctx = await newCtx(MOBILE.userAgent, { noSdk: true }); const Q = await ctx.newPage(); Q.on("pageerror", e => errors.push("plain: " + e.message));
   await Q.goto(S.base + "/?nosw");
-  await Q.waitForSelector("#pi-signin", { timeout: 15000 });
-  assert.equal(await Q.isDisabled("#pi-signin"), true);
+  await Q.waitForSelector("#pi-signin-n", { timeout: 15000 });
+  assert.equal(await Q.$("#pi-signin"), null, "no Pi sign-in button outside Pi Browser");
   assert.match(await Q.textContent("#pi-signin-n"), /متصفح Pi/);
-  assert.equal(await Q.getAttribute("#pi-signin", "aria-describedby"), "pi-signin-n");
-  await Q.click("[data-m=register]"); await Q.waitForSelector("#a-name");
-  await Q.waitForSelector("#pi-signin"); // re-added on every auth render
-  assert.equal(await Q.$$eval("#pi-signin", n => n.length), 1);
-  st.enabled = false; st.authEnabled = false; await Q.evaluate(() => { MPPi.refresh(); showAuth("login"); });
-  await Q.waitForTimeout(400);
+  assert.equal(await Q.isVisible("#a-handle"), false, "the password form stays in the hidden owner sheet");
+  st.enabled = false; st.authEnabled = false; await Q.evaluate(() => { PiAdapter.cfg = null; MPPi.refresh(); }); await Q.evaluate(() => PiAdapter.config()); await Q.evaluate(() => showAuth("login"));
+  await Q.waitForSelector("[data-gt-rec]");
   assert.equal(await Q.$("#pi-signin"), null, "no Pi button while Pi sign-in is off");
+  assert.equal(await Q.$(".gt-net"), null, "no testnet badge while Pi is off");
+  await Q.click("[data-gt-rec]"); await Q.waitForSelector("#a-handle", { state: "visible" });
+  await Q.click("[data-m=register]"); await Q.waitForSelector("#a-name", { state: "visible" });
   st.enabled = true; st.authEnabled = true; await ctx.close();
 });
 
