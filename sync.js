@@ -198,43 +198,28 @@ const _closeSheet = closeSheet;
 closeSheet = function () { _closeSheet(); if (Remote.pendingRender && DB.onboarded) { Remote.pendingRender = false; setTimeout(rerender, 0); } };
 
 /* ---------- Auth screen ---------- */
+/* v2.149.13 «بوابة Pi»: the signed-out screen is the lazy "gate" chunk (gate-ui.js + gate.css): Pi-only, with the original
+ * username/password form kept in a hidden owner-recovery sheet. Until the chunk (and the Pi config it reads) arrive the
+ * screen is an empty full-height placeholder, so nothing paints and then jumps. */
 function showAuth(mode = "login") {
   view._authMode = mode;
   window.MPSession?.set("out"); // v2.51: guests never start the protected modules (see chunks.js / MPSession)
-  document.body.classList.add("ob"); $(".bottomnav").style.display = "none"; $("#fab").style.display = "none";
-  const piBtn = Remote.health?.pi && PiAdapter.available() ? `<button class="u-mt10 btn ghost block" id="pi-login">الدخول بحساب Pi</button>` : "";
-  view.innerHTML = `<div class="wrap" style="max-width:420px;margin:auto;padding-top:40px">
-    <div class="u-tc"><div class="logo" style="font-size:44px">✦</div><h1 class="u-my8">مجتمع بلس</h1><p class="muted">نظام اجتماعي يجمع الناس حول ما يهمهم</p></div>
-    <div class="u-my18 seg"><button data-m="login" class="${mode === "login" ? "on" : ""}">تسجيل الدخول</button><button data-m="register" class="${mode === "register" ? "on" : ""}">حساب جديد</button></div>
-    <div class="card">
-      ${mode === "register" ? `<label class="muted">الاسم</label><input id="a-name" autocomplete="name" placeholder="اسمك كما يظهر للناس">` : ""}
-      <label class="u-db u-mt8 muted">اسم المستخدم</label><input id="a-handle" dir="ltr" autocomplete="username" placeholder="username">
-      <label class="u-db u-mt8 muted">كلمة المرور</label><input id="a-pass" type="password" dir="ltr" autocomplete="${mode === "register" ? "new-password" : "current-password"}" placeholder="8 أحرف على الأقل">
-      <button class="u-mt14 btn block" id="a-go">${mode === "register" ? "إنشاء الحساب" : "دخول"}</button>${piBtn}
-      ${Remote.health?.demo ? `<button class="u-mt10 btn ghost block" id="demo-login">دخول تجريبي</button><p class="muted u-tc" style="font-size:12px;margin:6px 0 0">حساب وهمي لنسخة التجربة فقط، وبياناته مؤقتة وقد تُمسح.</p>` : ""}
-      <p class="u-c-dg u-mh1e muted" id="a-err"></p></div>
-    <p class="u-tc muted">الإصدار <bdi>${verLabel(Remote.health?.version || APP_VERSION)}</bdi></p></div>`;
-  view.querySelectorAll("[data-m]").forEach(b => b.onclick = () => showAuth(b.dataset.m));
-  $("#a-go").onclick = async () => {
-    const body = { handle: $("#a-handle").value.trim(), password: $("#a-pass").value, name: $("#a-name")?.value.trim() };
-    try { await Remote.api("POST", mode === "register" ? "/api/auth/register" : "/api/auth/login", body); await start(); }
-    catch (e) { $("#a-err").textContent = e.message; }
-  };
-  if ($("#demo-login")) $("#demo-login").onclick = async (ev) => {
-    ev.currentTarget.disabled = true;
-    try { await Remote.api("POST", "/api/auth/demo", {}); await start(); }
-    catch (e) { $("#a-err").textContent = e.message; ev.currentTarget.disabled = false; }
-  };
-  if ($("#pi-login")) $("#pi-login").onclick = async () => {
-    try { const auth = await PiAdapter.authenticate(); if (!auth) throw new Error("تعذر الدخول بـ Pi"); await Remote.api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); await start(); }
-    catch (e) { $("#a-err").textContent = e.message; }
-  };
+  document.body.classList.add("ob", "gate-on"); $(".bottomnav").style.display = "none"; $("#fab").style.display = "none";
+  /* paint at once only when everything the gate reads is in (its chunk, the Pi config, the Pi chunk when Pi sign-in is on, a saved
+   * English catalogue); otherwise wait for them, so it never paints «Pi sign-in unavailable» or Arabic first and then swaps */
+  const pc = PiAdapter.cfg;
+  if (window.MPGate && pc && (!(pc.authEnabled ?? pc.enabled) || window.MPPi) && !window.MPChunks?.lang?.()) return MPGate.render(mode);
+  if (!view.querySelector(".gt")) view.innerHTML = `<div class="gt gt-wait" aria-busy="true"></div>`;
+  const cfg = PiAdapter.config().then((c) => ((c.authEnabled ?? c.enabled) ? window.MPChunks?.load("pi") : null)).catch(() => { });
+  Promise.all([window.MPChunks ? MPChunks.load("gate") : null, window.MPChunks?.lang?.(), Promise.race([cfg, new Promise((r) => setTimeout(r, 4000))])])
+    .then(() => { if (window.MPSession?.state === "out" && view._authMode === mode && window.MPGate) MPGate.render(mode); })
+    .catch(() => { view.innerHTML = `<div class="wrap u-tc"><p class="muted">تعذّر تحميل شاشة الدخول.</p><button type="button" class="btn" id="gt-retry">إعادة المحاولة</button></div>`; $("#gt-retry").onclick = () => showAuth(mode); });
 }
 async function start() {
   const b = await Remote.api("GET", "/api/bootstrap");
-  document.body.classList.remove("ob"); $(".bottomnav").style.display = ""; $("#fab").style.display = "";
+  document.body.classList.remove("ob", "gate-on"); $(".bottomnav").style.display = ""; $("#fab").style.display = "";
   hydrate(b); window.MPSession?.set("in"); connectStream(); applyShell(); App.refreshBadges && App.refreshBadges();
-  if (!location.hash || location.hash === "#/") location.hash = "#/home";
+  if (!location.hash || location.hash === "#/" || /^#\/login\b/.test(location.hash)) location.hash = "#/home"; // v2.149.13: #/login?recover=1 is the sign-in screen only
   route();
   dailyCheckin();
 }
