@@ -1,5 +1,24 @@
 [
   {
+    "v": "2.149.13",
+    "date": "2026-11-19",
+    "quiet": true,
+    "ar": {
+      "title": "بوابة Pi",
+      "items": [
+        "شاشة دخول جديدة: تعرّف على مجتمع بلس في ثلاث شرائح، وادخل بحسابك في Pi بضغطة واحدة",
+        "خارج متصفح Pi: زر «افتح في متصفح Pi» مع نسخ الرابط ورمز QR على الشاشات الكبيرة"
+      ]
+    },
+    "en": {
+      "title": "Pi gate",
+      "items": [
+        "A new sign-in screen: get to know Mujtama Plus in three slides, then sign in with your Pi account in one tap",
+        "Outside the Pi Browser: an «Open in Pi Browser» button with copy link, and a QR code on large screens"
+      ]
+    }
+  },
+  {
     "v": "2.149.12",
     "date": "2026-11-18",
     "quiet": true,
