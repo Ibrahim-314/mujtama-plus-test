@@ -1,4 +1,8 @@
 /* en UI catalogue (phase 41): Arabic source string → en. Admin overrides from /api/i18n/strings win. */
+/* v2.149.13: a saved English UI loads the catalogue parts in parallel (chunks.js langGate), so i18n-enplus / i18n-enextra can
+ * land first; this file used to replace their keys with a fresh object (the gate showed Arabic now and then). Their keys are
+ * put back on top afterwards, the same result as the usual order (main first, then the parts). */
+(function (pre) {
 (window.MPI18N = window.MPI18N || {}).en = {
 "الرئيسية": "Home",
 "استكشف": "Explore",
@@ -3058,3 +3062,5 @@ Object.assign(window.MPI18N.en, {
   "يصلك إشعار": "you’ll get a notification"
 });
 /* cadmin-en-b end */
+if (pre) Object.assign(window.MPI18N.en, pre);
+})(window.MPI18N && window.MPI18N.en);
