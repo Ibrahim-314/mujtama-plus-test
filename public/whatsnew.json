@@ -1,5 +1,22 @@
 [
   {
+    "v": "2.149.14",
+    "date": "2026-11-19",
+    "quiet": true,
+    "ar": {
+      "title": "المالية بلا قفزة",
+      "items": [
+        "صفحة التقارير المالية في الإدارة لم تعد تقفز عند ظهور نتيجة المطابقة"
+      ]
+    },
+    "en": {
+      "title": "Steady finance page",
+      "items": [
+        "The admin finance reports page no longer jumps when the reconciliation result appears"
+      ]
+    }
+  },
+  {
     "v": "2.149.13",
     "date": "2026-11-19",
     "quiet": true,
