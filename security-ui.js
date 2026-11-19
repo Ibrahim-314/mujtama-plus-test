@@ -24,10 +24,11 @@
   }
 
   /* ---------- Sign-in: second factor + passkeys ---------- */
-  if (typeof showAuth === "function") {
-    const _sa = showAuth;
-    showAuth = function (mode = "login") {
-      _sa(mode);
+  /* v2.149.13: the sign-in form lives in the owner-recovery sheet of the lazy gate screen, drawn after the chunk arrives —
+   * the gate fires `mp:auth` once the form is in the DOM (was a synchronous showAuth wrapper) */
+  {
+    document.addEventListener("mp:auth", (ev) => {
+      const mode = ev.detail?.mode || "login";
       const go = $("#a-go"); if (!go) return;
       const err = $("#a-err");
       if (mode === "login" && passkeysSupported() && MP.flag("passkeys", true)) go.insertAdjacentHTML("afterend", `<button class="u-mt10 btn ghost block" id="pk-login">${ic("lock", "sm")} الدخول بمفتاح المرور</button>`);
@@ -46,7 +47,7 @@
         try { await loginWithPasskey($("#a-handle").value.trim() || undefined); await start(); }
         catch (e) { err.textContent = e.name === "NotAllowedError" ? "أُلغيت العملية" : e.message; }
       });
-    };
+    });
   }
 
   /* security notification text */
