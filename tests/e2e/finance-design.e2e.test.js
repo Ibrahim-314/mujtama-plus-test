@@ -56,7 +56,11 @@ test("P60: wallet → statement (filter, CSV) → invoice (print) → annual →
   await p.goto(S.base + "/?nosw#/admin");
   await p.waitForSelector("#fn-adm", { timeout: 20000 });
   await p.click("#fn-adm");
+  await p.waitForSelector("#fn-af", { timeout: 20000 });
+  const yAf = () => p.evaluate(() => Math.round(document.querySelector("#fn-af").getBoundingClientRect().top + scrollY));
+  const y0 = await yAf(); // 2.149.14: the annual form must not jump down when the reconciliation result lands
   await until(() => /السجل متوازن: نعم/.test(document.querySelector("#fn-rr")?.textContent || ""));
+  assert.equal(await yAf(), y0, "annual section stays put when the reconciliation result lands (no layout shift)");
   await p.fill('#fn-af input[name="user"]', "@fn_e2e"); await p.click("#fn-af .btn");
   await until(() => /ما دفعته في/.test(document.querySelector("#fn-ar")?.textContent || ""));
   const ssr = await p.request.get(S.base + "/transparency/finance"); assert.equal(ssr.status(), 200); assert.match(await ssr.text(), /الشفافية المالية/);
