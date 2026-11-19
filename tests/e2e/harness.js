@@ -62,8 +62,13 @@ async function startStack(extra = {}) {
    * has no 'unsafe-inline' for scripts, which also blocks page.addScriptTag (axe); contexts bypass CSP by default, a suite
    * that wants the real policy enforced passes { bypassCSP: false } (pi.e2e does). */
   const newContext = browser.newContext.bind(browser);
+  /* v2.149.13 «بوابة Pi»: the signed-out screen is Pi-only and the username/password form sits in the hidden owner-recovery
+   * sheet. Suites that sign in with a password get that sheet open from the start (window.MP_PASSWORD_FORM); a context made
+   * with { gate: true } sees the real gate (the gate e2e suite and the Pi sign-in suite). */
   browser.newContext = async (opts = {}) => {
-    const ctx = await newContext({ bypassCSP: true, ...opts });
+    const { gate, ...rest } = opts;
+    const ctx = await newContext({ bypassCSP: true, ...rest });
+    if (!gate) await ctx.addInitScript(() => { window.MP_PASSWORD_FORM = 1; });
     await ctx.route("https://sdk.minepi.com/**", route => route.fulfill({ status: 200, contentType: "text/javascript", body: "/* Pi SDK stub (e2e) */" }));
     return ctx;
   };
@@ -87,7 +92,7 @@ const MOBILE = {
 };
 const DESKTOP = { viewport: { width: 1440, height: 900 }, locale: "ar-SA" };
 async function onboard(page, base, handle, name = "مستخدم تجريبي") {
-  await page.goto(base + "/?nosw");
+  await page.goto(base + "/?nosw#/login?recover=1"); // v2.149.13: the password form is the gate's owner-recovery sheet
   await page.click("[data-m=register]");
   await page.fill("#a-name", name);
   await page.fill("#a-handle", handle);
