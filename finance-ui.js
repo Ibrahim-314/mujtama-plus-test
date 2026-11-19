@@ -26,7 +26,7 @@
 .fn-f label{display:flex;flex-direction:column;gap:4px;font-size:13px;flex:1;min-width:130px}.fn-f input,.fn-f select{min-height:44px;width:100%;box-sizing:border-box}
 .fn-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:10px 0}.fn-s{padding:12px;border-radius:14px;background:#8881}.fn-s b{display:block;font-size:20px}.fn-s span{font-size:13px;color:var(--muted,#666)}
 .fn-list{list-style:none;padding:0;margin:0}.fn-list li{display:flex;gap:10px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line,#eee);min-height:44px}.fn-list .grow{flex:1;min-width:0}.fn-in{color:var(--ok-ink,#0f7a4a)}.fn-out{color:inherit}
-.fn-note{padding:10px 12px;border-radius:12px;background:#8881;font-size:14px;margin:8px 0}.fn-chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0}.fn-chips a{white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
+.fn-note{padding:10px 12px;border-radius:12px;background:#8881;font-size:14px;margin:8px 0}.fn-ph,.fn-ph *{color:transparent!important}.fn-chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0}.fn-chips a{white-space:nowrap;min-height:44px;display:inline-flex;align-items:center}
 .fn-t{width:100%;border-collapse:collapse;font-size:14px}.fn-t th,.fn-t td{padding:8px 6px;border-bottom:1px solid var(--line,#eee);text-align:start}.fn-t td.n{text-align:end}
 .fn-bars{display:flex;gap:4px;align-items:flex-end;height:120px;margin:10px 0}.fn-bars div{flex:1;background:var(--accent,#5b2bd6);border-radius:6px 6px 0 0;min-height:2px}.fn-bl{display:flex;gap:4px;font-size:10px;color:var(--muted,#666)}.fn-bl span{flex:1;text-align:center}
 .fn-doc{padding:20px;border:1px solid var(--line,#eee);border-radius:16px;background:var(--card,var(--white))}.fn-doc .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--accent,#5b2bd6);padding-bottom:10px;margin-bottom:10px}.fn-mono{font-family:ui-monospace,monospace;direction:ltr;unicode-bidi:isolate}
@@ -110,15 +110,19 @@
   }
 
   /* ---------- #/admin/finance ---------- */
+  /* 2.149.14: the loading placeholder is the reconciliation summary's own shape while Pi payments are off (status line,
+   * the server's «Pi off» note, 4 cards), invisible, so the annual section below no longer jumps when the result lands
+   * (was CLS 0.10 phone / 0.03 desktop). */
+  const PH = `<div class="fn-ph" aria-hidden="true"><div class="fn-note">&nbsp;</div><div class="empty">مدفوعات Pi غير مفعّلة بعد، لذلك لا توجد حركات مالية. ستظهر هنا تلقائياً فور تفعيلها.</div><div class="fn-g">${'<div class="fn-s"><b>&nbsp;</b><span>&nbsp;</span></div>'.repeat(4)}</div></div>`;
   async function adminView() {
     const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10), today = new Date().toISOString().slice(0, 10);
     page("التقارير المالية والمطابقة", `<form id="fn-rf" class="fn-row fn-f"><label>من<input type="date" name="from" value="${since}"></label><label>إلى<input type="date" name="to" value="${today}"></label><button class="btn">مطابقة السجل مع مدفوعات Pi</button></form>
-      <div id="fn-rr" aria-live="polite"></div>
+      <div id="fn-rr" aria-live="polite">${PH}</div>
       <h3 class="u-t-lg">التقرير السنوي لعضو أو مبدع</h3><form id="fn-af" class="fn-row fn-f"><label>اسم المستخدم<input name="user" required placeholder="@handle" dir="ltr"></label><label>السنة<input type="number" name="year" value="${new Date().getUTCFullYear()}" min="2020" max="2100"></label><button class="btn ghost">عرض</button></form><div id="fn-ar"></div>
       <div class="fn-row"><button type="button" class="btn ghost" id="fn-iss">إصدار المستندات المتأخرة الآن</button><a class="btn ghost" href="#/finance-report">التقرير العام</a></div>`, ["#/admin", "الإدارة"]);
     const TYPES = { missing_journal: "دفعة مكتملة بلا قيد", amount_mismatch: "اختلاف في المبلغ", refunded_not_reversed: "مُستردّة دون عكس القيد", orphan_journal: "قيد بلا دفعة", journal_for_unfinished_payment: "قيد لدفعة غير مكتملة", unledgered: "غرض لا يُقيَّد (للعلم)" };
     async function run(from, to) {
-      const out = $("#fn-rr"); if (out) out.innerHTML = `<div class="skel"></div>`;
+      const out = $("#fn-rr"); if (out) out.innerHTML = PH;
       if (!out) return;
       let r; try { r = await api("GET", `/api/admin/finance/reconcile?from=${enc(from)}&to=${enc(to)}`); } catch (e) { if (out.isConnected) out.innerHTML = errBox(e); return; }
       if (!out.isConnected) return; /* stale-route guard (fast navigation) */
