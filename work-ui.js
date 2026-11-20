@@ -285,9 +285,22 @@
     const q = qs(), tab = q.get("tab") === "mine" ? "mine" : "browse";
     const tiles = [signed() && ["#/contracts", "doc", "العقود"], signed() && ["#/teams", "users", "الفرق"], ["#/talent", "star", "دليل المواهب"]].filter(Boolean);
     page({ title: "الوظائف والعمل الحر", icon: "brief", sub: "فرص عمل ومشاريع بأجر بالـ Pi، تتقدّم لها بملفك المهني.", actions: signed() ? `<a class="btn sm wk-add" href="#/jobs/new">${ic("plus")}<span>أضف فرصة</span></a>` : "" }, `<nav class="wk-qk" aria-label="أدوات العمل">${tiles.map(([href, i, t]) => `<a href="${href}">${ic(i)}<span>${t}</span></a>`).join("")}</nav><nav class="seg u-mb12" aria-label="الأقسام"><a href="#/jobs" ${tab === "browse" ? 'aria-current="page"' : ""}>تصفّح الفرص</a><a href="#/jobs?tab=mine" ${tab === "mine" ? 'aria-current="page"' : ""}>إعلاناتي وطلباتي</a></nav><div id="wk-j">${skel(4)}</div>`);
-    const box = $("#wk-j");
-    try { await (tab === "mine" ? jobsMine(box) : jobsBrowse(box, q)); } catch (e) { box.innerHTML = errBox(e); }
+    const box = $("#wk-j"); const my = ++swapTok;
+    try { await (tab === "mine" ? jobsMine(box) : jobsBrowse(box, q)); } catch (e) { if (my === swapTok) box.innerHTML = errBox(e); }
   }
+  /* v2.151.1 «الصفحة لا تُهدم»: a filter, the search, «المزيد», a kind chip or a section tab rewrites the URL in place (no history entry,
+   * so back leaves jobs in one step) and swaps only #wk-j / the results list; the header, the tiles and the search form stay. */
+  let swapTok = 0;
+  const jobsHref = (o) => { const p = qs(); p.delete("tab"); for (const [k, x] of Object.entries(o)) p.set(k, x); for (const [k, x] of [...p]) if (!x) p.delete(k); const s = p.toString(); return "#/jobs" + (s ? "?" + s : ""); };
+  async function jobsSwap(hash) {
+    const box = $("#wk-j"); if (!box) { location.hash = hash; return; }
+    if (hash === location.hash) return;
+    history.replaceState(history.state, "", hash);
+    const q = qs(), tab = q.get("tab") === "mine" ? "mine" : "browse", my = ++swapTok;
+    document.querySelectorAll("#view .seg a").forEach((a) => { if (a.getAttribute("href") === (tab === "mine" ? "#/jobs?tab=mine" : "#/jobs")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    try { await (tab === "mine" ? jobsMine(box) : jobsBrowse(box, q)); } catch (e) { if (my === swapTok && box.isConnected) { box.classList.remove("wk-busy"); box.innerHTML = errBox(e); } }
+  }
+  const settle = (el) => { if (!el) return; const t = el.getBoundingClientRect().top; if (t < 0) scrollBy(0, t - 72); }; // results start above the screen → bring their top in; otherwise the reader stays put
   async function jobsBrowse(box, q) {
     const f = { q: q.get("q") || "", kind: q.get("kind") || "", category: q.get("category") || "", mode: q.get("mode") || "", city: q.get("city") || "", skill: q.get("skill") || "", minPay: q.get("minPay") || "", sort: q.get("sort") || "" };
     const key = "list:" + new URLSearchParams({ ...f, page: q.get("page") || "0" });
@@ -297,7 +310,7 @@
       <p class="f-hint u-mb8 wk-cnt"><b>${num(d.total)} فرصة متاحة</b><span>${f.sort === "pay" ? "الأعلى أجراً" : "الأحدث أولاً"}</span></p>
       ${d.jobs.length ? `<ul class="f-grid wk-grid">${d.jobs.map(jobCard).join("")}</ul>${d.more ? `<p class="u-mt12"><a class="btn ghost sm" href="${url({ page: String(d.page + 1) })}">المزيد</a></p>` : ""}`
         : UI.empty({ title: Object.values(f).some(Boolean) ? "لا فرص مطابقة" : "لا فرص بعد", text: Object.values(f).some(Boolean) ? "جرّب تصفية أوسع." : "كن أول من ينشر فرصة عمل في مجتمع بلس.", action: signed() ? `<a class="btn" href="#/jobs/new">أضف فرصة</a>` : "" })}`; };
-    const paint = (d) => { const O = d.options; box.innerHTML = `${d.minor ? `<div class="notice">${ic("shield")}<span>تظهر لك الفرص التطوعية المناسبة لمن هم دون ١٨ سنة فقط.</span></div>` : ""}
+    const paint = (d) => { const O = d.options; box.classList.remove("wk-busy"); box.dataset.tab = "browse"; box.innerHTML = `${d.minor ? `<div class="notice">${ic("shield")}<span>تظهر لك الفرص التطوعية المناسبة لمن هم دون ١٨ سنة فقط.</span></div>` : ""}
       <form class="fx-q u-mb12" id="wk-jf" role="search"><label><span class="vh">ابحث في الفرص</span><input type="search" name="q" value="${h(f.q)}" maxlength="80" placeholder="مسمى، مهارة، أو كلمة"></label>
         ${sel("category", "التصنيف", O.categories, f.category)}${sel("mode", "مكان العمل", O.modes, f.mode)}<label id="wk-f-city">المدينة<input name="city" value="${h(f.city)}" maxlength="60"></label><label id="wk-f-skill">المهارة<input name="skill" value="${h(f.skill)}" maxlength="40"></label><label id="wk-f-min">أقل أجر (π)<input name="minPay" type="number" min="0" inputmode="decimal" value="${h(f.minPay)}"></label>
         <label id="wk-f-sort">الترتيب<select name="sort"><option value="">الأحدث</option><option value="pay" ${f.sort === "pay" ? "selected" : ""}>الأعلى أجراً</option></select></label><button class="btn" type="submit">بحث</button></form>
@@ -305,14 +318,19 @@
       <p class="f-hint u-mt12 wk-safe">${ic("shield", "xs")} لا تدفع أي مبلغ للتقديم على عمل، ولا تشارك عبارة مرور محفظتك أبداً.</p>`;
       wireSave(box);
       const jf = $("#wk-jf");
-      jf.addEventListener("submit", (e) => { e.preventDefault(); const fd = new FormData(jf); location.hash = url({ ...Object.fromEntries([...fd].map(([k, x]) => [k, String(x).trim()])), page: "" }); });
+      jf.addEventListener("submit", (e) => { e.preventDefault(); const fd = new FormData(jf); jobsSwap(jobsHref({ ...Object.fromEntries([...fd].map(([k, x]) => [k, String(x).trim()])), page: "" })); }); // v2.151.1: from the live URL (the kind chip may have changed since this form was drawn)
       window.MPFeat?.filters?.({ host: jf, move: ["category", "mode", "city", "skill", "min", "sort"].map((k) => $("#wk-f-" + k)), form: jf, title: "تصفية", defaults: { category: "", mode: "", city: "", skill: "", minPay: "", sort: "" } });
     };
-    const c = cGet(key); if (c) paint(c); // from memory in the same task as the tap: no skeleton frame, back lands on the exact scroll
-    let d; try { d = await api("GET", "/api/jobs?" + key.slice(5)); } catch (e) { if (c) return; throw e; }
-    if (!box.isConnected) return; cSet(key, d);
-    if (!c) paint(d);
-    else if (JSON.stringify(c) !== JSON.stringify(d)) { const l = $("#wk-jl"); if (l) { l.innerHTML = listHtml(d); wireSave(l); } } // quiet refresh: only the list, the form the reader may be typing in stays
+    const my = swapTok, soft = box.dataset.tab === "browse" && !!$("#wk-jf") && !!$("#wk-jl"); // v2.151.1: already on browse → swap the results only
+    const list = (d) => { const l = $("#wk-jl"); if (!l) return paint(d); l.innerHTML = listHtml(d); l.classList.remove("wk-busy"); l.removeAttribute("aria-busy"); wireSave(l); };
+    const c = cGet(key);
+    if (c) { if (soft) { list(c); settle($("#wk-jl")); } else paint(c); } // from memory in the same task as the tap: no skeleton frame, back lands on the exact scroll
+    else if (soft) { const l = $("#wk-jl"); l.classList.add("wk-busy"); l.setAttribute("aria-busy", "true"); } // the old results dim in place while the new ones load
+    else if (box.dataset.tab) box.classList.add("wk-busy");
+    let d; try { d = await api("GET", "/api/jobs?" + key.slice(5)); } catch (e) { if (c || my !== swapTok) return; throw e; }
+    if (!box.isConnected || my !== swapTok) return; cSet(key, d);
+    if (!c) { if (soft) { list(d); settle($("#wk-jl")); } else { paint(d); if (box.dataset.tab) settle(box); } }
+    else if (JSON.stringify(c) !== JSON.stringify(d)) list(d); // quiet refresh: only the list, the form the reader may be typing in stays
   }
   async function jobsMine(box) {
     if (!signed()) { box.innerHTML = UI.empty({ title: "سجّل الدخول", text: "لتتابع إعلاناتك وطلباتك.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` }); return; }
@@ -320,6 +338,7 @@
     const sum = (c) => Object.entries(c).filter(([k]) => k !== "withdrawn").reduce((s, [, v]) => s + v, 0);
     const STEPS = ["submitted", "viewed", "shortlisted", "interview", "offered"];
     const prog = (st) => { const i = st === "hired" ? STEPS.length : STEPS.indexOf(st) + 1; return i > 0 ? `<span class="wk-prog" role="img" aria-label="مرحلة الطلب ${num(i)} من ${num(STEPS.length)}">${STEPS.map((_, k) => `<i class="${k < i ? "f" : ""}"></i>`).join("")}</span>` : ""; };
+    box.classList.remove("wk-busy"); box.dataset.tab = "mine";
     box.innerHTML = `<div class="wk-stats"><button type="button" data-to="wk-mp"><b>${num(d.postings.length)}</b><small>إعلاناتي</small></button><button type="button" data-to="wk-ma"><b>${num(d.applications.length)}</b><small>طلباتي</small></button><button type="button" data-to="wk-ms"><b>${num(d.saved.length)}</b><small>المحفوظة</small></button></div>
       <div class="f-h wk-mh" id="wk-mp"><span>إعلاناتي</span>${d.minor ? "" : `<a href="#/jobs/new">${ic("plus", "xs")}<span>أضف فرصة</span></a>`}</div>${d.postings.length ? `<ul class="list card wk-ml">${d.postings.map((j) => `<li><a class="li" href="#/job/${enc(j.id)}"><span class="ico">${ic(j.kind.key === "job" ? "brief" : "pen")}</span><span class="t"><b>${h(j.title)}</b><small>${num(sum(j.counts))} طلب · ${num(j.views)} مشاهدة</small></span>${badge(j.status, j.statusLabel)}</a></li>`).join("")}</ul>` : `<p class="wk-none">${d.minor ? "نشر الفرص متاح لمن هم ١٨ سنة فأكثر." : "لم تنشر فرصاً بعد."}</p>`}
       <div class="f-h wk-mh" id="wk-ma"><span>طلباتي</span></div>${d.applications.length ? `<ul class="list card wk-ml">${d.applications.map((a) => `<li><a class="li" href="#/application/${enc(a.id)}">${av(a.job.poster)}<span class="t"><b>${h(a.job.title)}</b><small>${h(a.job.poster?.name || "")} · ${h(a.job.kind)}</small>${prog(a.status)}</span>${badge(a.status, a.statusLabel)}</a></li>`).join("")}</ul>` : `<p class="wk-none">لم تتقدّم لأي فرصة بعد. <a class="u-fw7" href="#/jobs">تصفّح الفرص</a></p>`}
@@ -327,10 +346,11 @@
     wireSave(box);
     box.querySelectorAll(".wk-stats [data-to]").forEach((b) => b.addEventListener("click", () => box.querySelector("#" + b.dataset.to)?.scrollIntoView({ behavior: "smooth", block: "start" })));
     };
-    const c = cGet("mine"); if (c) paint(c);
-    let d; try { d = await api("GET", "/api/jobs/me"); } catch (e) { if (c) return; throw e; }
-    if (!box.isConnected) return; cSet("mine", d);
-    if (!c || JSON.stringify(c) !== JSON.stringify(d)) { const y = scrollY; paint(d); if (c) scrollTo(0, y); }
+    const my = swapTok, was = box.dataset.tab;
+    const c = cGet("mine"); if (c) { paint(c); if (was) settle(box); } else if (was) box.classList.add("wk-busy");
+    let d; try { d = await api("GET", "/api/jobs/me"); } catch (e) { if (c || my !== swapTok) return; throw e; }
+    if (!box.isConnected || my !== swapTok) return; cSet("mine", d);
+    if (!c || JSON.stringify(c) !== JSON.stringify(d)) { const y = scrollY; paint(d); if (c) scrollTo(0, y); else if (was) settle(box); }
   }
 
   async function jobView(jid) {
@@ -590,6 +610,25 @@
       contracts: () => (a === "new" ? contractForm() : contractsHub()), contract: () => contractView(a) };
   });
   MPRoutes.add("admin", (a, b, next) => (a === "pro" ? adminView() : a === "jobs" ? adminJobs() : a === "contracts" ? adminContracts() : next()));
-  window.MPWork = { cache: { size: () => [...JC.keys()].filter((k) => cGet(k)).length, forUser: (who) => { for (const [k, e] of JC) if (e.who !== who) JC.delete(k); } }, editorView, profileView, talentView, adminView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, adminJobs, contractsHub, contractForm, contractView, adminContracts };
+  /* v2.151.1: in-page jobs links (kind chips, «المزيد», section tabs, the empty state's «تصفّح الفرص») swap in place */
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest?.("a[href]"), href = a?.getAttribute("href") || "", box = $("#wk-j");
+    if (!box || !/^#\/jobs(\?|$)/.test(href) || !(box.contains(a) || a.closest("#view .seg"))) return;
+    e.preventDefault(); jobsSwap(href);
+  });
+  /* v2.151.1: prefetch a job the finger rests on for 80 ms (not a scroll), one request at a time, ?peek=1 so it is not a view */
+  let pfT = 0, pfOn = false, pfX = 0, pfY = 0; const pfStop = () => { clearTimeout(pfT); pfT = 0; };
+  document.addEventListener("pointerdown", (e) => {
+    pfStop(); const a = e.isPrimary && e.target.closest?.('a[href^="#/job/"]'); if (!a) return;
+    const id = decodeURIComponent(a.getAttribute("href").slice(6)); if (!id || id.includes("/") || pfOn || cGet("job:" + id)) return;
+    pfX = e.clientX; pfY = e.clientY;
+    pfT = setTimeout(() => { pfT = 0; if (pfOn || cGet("job:" + id)) return; pfOn = true; Remote.api("GET", `/api/jobs/${enc(id)}?peek=1`).then((d) => { if (!cGet("job:" + id)) cSet("job:" + id, d); }).catch(() => {}).finally(() => { pfOn = false; }); }, 80);
+  }, { passive: true });
+  document.addEventListener("pointermove", (e) => { if (pfT && Math.hypot(e.clientX - pfX, e.clientY - pfY) > 10) pfStop(); }, { passive: true });
+  for (const t of ["pointerup", "pointercancel"]) document.addEventListener(t, pfStop, { passive: true });
+  addEventListener("scroll", pfStop, { passive: true });
+
+  window.MPWork = { cache: { has: (k) => !!cGet(k), size: () => [...JC.keys()].filter((k) => cGet(k)).length, forUser: (who) => { for (const [k, e] of JC) if (e.who !== who) JC.delete(k); } }, editorView, profileView, talentView, adminView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, adminJobs, contractsHub, contractForm, contractView, adminContracts };
   if (!window.__deferRoute && /^#\/(cv|talent|jobs|job|application|contracts|contract|admin\/(pro|jobs|contracts))(\/|\?|$)/.test(location.hash)) route();
 })();
