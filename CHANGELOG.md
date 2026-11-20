@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.151.2 «اللمسة الأخيرة» — 2026-11-20
+- Jobs: card → job view transition (card title morphs into the job title, 0.24 s) only where document.startViewTransition exists and motion is welcome; the page's own enter animation is held off during it; plain navigation elsewhere.
+- The «تصفّح الفرص / إعلاناتي وطلباتي» bar sticks under the top bar (follows it when it hides on phones); tapping the current section scrolls to the top without touching the filters or history.
+- Tests: e2e jobs-nav 7–8.
+
 ## 2.151.1 «الصفحة لا تُهدم» — 2026-11-20
 - Jobs: kind chips, search/filter sheet, «المزيد» and the browse/mine tabs rewrite the URL in place (history.replaceState) and swap only the results / section; header, tiles and search form stay; old results dim while loading (no skeleton); the view only scrolls when the results start above the screen.
 - Back leaves Jobs in one step after any number of filters; a job opened from a filtered list returns to that list.
