@@ -1,5 +1,26 @@
 [
   {
+    "v": "2.149.16",
+    "date": "2026-11-20",
+    "quiet": true,
+    "ar": {
+      "title": "الوظائف والعمل الحر أرتب",
+      "items": [
+        "لا نقاط زائدة بجانب إعلاناتك وطلباتك",
+        "أزرار أعلى الصفحة كلها ظاهرة على الجوال",
+        "الأجر يظهر بترتيبه الصحيح مثل 300–500 π"
+      ]
+    },
+    "en": {
+      "title": "Tidier Jobs & Freelance",
+      "items": [
+        "No stray bullets next to your postings and applications",
+        "All top buttons stay visible on phones",
+        "Pay ranges read in the right order, like 300–500 π"
+      ]
+    }
+  },
+  {
     "v": "2.149.15",
     "date": "2026-11-20",
     "quiet": true,
