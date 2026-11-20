@@ -172,3 +172,13 @@ iframe.wk-print{position:fixed;inset-inline-start:-10000px;top:0;width:1px;heigh
 /* v2.151.1: results being swapped dim in place (no skeleton, no jump) */
 .wk-busy{opacity:.55;pointer-events:none;transition:opacity .12s ease-out}
 @media (prefers-reduced-motion:reduce){.wk-busy{transition:none}}
+
+/* v2.151.2 «اللمسة الأخيرة»: the section bar sticks under the top bar (and follows it when it hides on phones) */
+.wk-tabs{position:sticky;top:calc(var(--top-h) + env(safe-area-inset-top));z-index:6;background:linear-gradient(var(--surface-sunken),var(--surface-sunken)),var(--bg);transition:top .3s var(--ease)}
+@media (max-width:759px){body.bars-off .wk-tabs{top:env(safe-area-inset-top)}}
+@media (prefers-reduced-motion:reduce){.wk-tabs{transition:none}}
+/* card → job morph (view transitions only; reduced motion never starts one) */
+.wk-vt .wk-jhero .wk-jt{view-transition-name:wk-jt}
+.wk-vt #view.enter>*{animation:none!important}
+::view-transition-group(wk-jt){animation-duration:.24s;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+::view-transition-old(root),::view-transition-new(root){animation-duration:.18s}
