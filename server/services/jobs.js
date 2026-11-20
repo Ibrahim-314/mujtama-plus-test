@@ -119,9 +119,9 @@ module.exports = (ctx, opts = {}) => {
     const page = Math.max(0, Math.min(50, Number(q.page) || 0)), per = 20;
     const rows = await db.all("SELECT * FROM jobs WHERE status='open' ORDER BY published_at DESC LIMIT 3000");
     const flagged = new Set((await db.all("SELECT job_id FROM job_reports WHERE status='open' GROUP BY job_id HAVING COUNT(*) >= $1", [FLAG_AT])).map((r) => r.job_id));
-    const minor = viewer ? await isMinor(viewer.id) : false, out = [];
+    const minor = viewer ? await isMinor(viewer.id) : false, out = [], kindCounts = {};
     for (const j of rows) {
-      if (flagged.has(j.id) || expired(j) || (kind && j.kind !== kind) || (cat && j.category !== cat) || (mode && j.mode !== mode)) continue;
+      if (flagged.has(j.id) || expired(j) || (cat && j.category !== cat) || (mode && j.mode !== mode)) continue;
       if (minor && !Number(j.minors_ok)) continue;
       if (minPay && Number(j.pay_max || 0) < minPay) continue;
       const sks = parse(j.skills, []).map((s) => normalize(s).toLowerCase());
@@ -130,13 +130,15 @@ module.exports = (ctx, opts = {}) => {
       let s = 1;
       if (text) { const terms = text.split(/\s+/).filter(Boolean), t = normalize(j.title).toLowerCase(), b = normalize(j.body).toLowerCase(), k = sks.join(" "); s = 0; for (const w of terms) { if (t.includes(w)) s += 5; if (k.includes(w)) s += 4; if (b.includes(w)) s += 1; } if (!s) continue; }
       if (viewer && (await blockedBetween(viewer.id, j.poster_id))) continue;
+      kindCounts[j.kind] = (kindCounts[j.kind] || 0) + 1; // v2.150.0: per-kind counts for the «الكل / وظائف / عمل حر» chips (every filter but kind)
+      if (kind && j.kind !== kind) continue;
       out.push({ j, s });
     }
     const feat = (j) => (ts(j.featured_until) > clock() ? 1 : 0);
     out.sort((a, b) => feat(b.j) - feat(a.j) || (text ? b.s - a.s : 0) || (sort === "pay" ? Number(b.j.pay_max || 0) - Number(a.j.pay_max || 0) : 0) || ts(b.j.published_at) - ts(a.j.published_at));
     const slice = out.slice(page * per, (page + 1) * per), us = await usersOf(slice.map((x) => x.j.poster_id)), saved = await savedSet(viewer?.id, slice.map((x) => x.j.id));
     const counts = {}; for (const { j } of out) counts[j.category] = (counts[j.category] || 0) + 1;
-    return { jobs: slice.map(({ j }) => card(j, us.get(j.poster_id), saved)), total: out.length, page, more: out.length > (page + 1) * per, counts, options: options(), minor, piEnabled: piOn() };
+    return { jobs: slice.map(({ j }) => card(j, us.get(j.poster_id), saved)), total: out.length, page, more: out.length > (page + 1) * per, counts, kindCounts, options: options(), minor, piEnabled: piOn() };
   }
   const options = () => ({ kinds: KIND, categories: CATS, modes: MODES, employment: EMPLOY, pay: PAY, reasons: REASONS, boostDays: BOOST_DAYS, boostPerDay: pi(BOOST_PER_DAY) });
   const jobRow = (jid) => db.get("SELECT * FROM jobs WHERE id=$1", [String(jid)]);
