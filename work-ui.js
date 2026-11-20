@@ -284,7 +284,7 @@
   async function jobsHub() {
     const q = qs(), tab = q.get("tab") === "mine" ? "mine" : "browse";
     const tiles = [signed() && ["#/contracts", "doc", "العقود"], signed() && ["#/teams", "users", "الفرق"], ["#/talent", "star", "دليل المواهب"]].filter(Boolean);
-    page({ title: "الوظائف والعمل الحر", icon: "brief", sub: "فرص عمل ومشاريع بأجر بالـ Pi، تتقدّم لها بملفك المهني.", actions: signed() ? `<a class="btn sm wk-add" href="#/jobs/new">${ic("plus")}<span>أضف فرصة</span></a>` : "" }, `<nav class="wk-qk" aria-label="أدوات العمل">${tiles.map(([href, i, t]) => `<a href="${href}">${ic(i)}<span>${t}</span></a>`).join("")}</nav><nav class="seg u-mb12" aria-label="الأقسام"><a href="#/jobs" ${tab === "browse" ? 'aria-current="page"' : ""}>تصفّح الفرص</a><a href="#/jobs?tab=mine" ${tab === "mine" ? 'aria-current="page"' : ""}>إعلاناتي وطلباتي</a></nav><div id="wk-j">${skel(4)}</div>`);
+    page({ title: "الوظائف والعمل الحر", icon: "brief", sub: "فرص عمل ومشاريع بأجر بالـ Pi، تتقدّم لها بملفك المهني.", actions: signed() ? `<a class="btn sm wk-add" href="#/jobs/new">${ic("plus")}<span>أضف فرصة</span></a>` : "" }, `<nav class="wk-qk" aria-label="أدوات العمل">${tiles.map(([href, i, t]) => `<a href="${href}">${ic(i)}<span>${t}</span></a>`).join("")}</nav><nav class="seg u-mb12 wk-tabs" aria-label="الأقسام"><a href="#/jobs" ${tab === "browse" ? 'aria-current="page"' : ""}>تصفّح الفرص</a><a href="#/jobs?tab=mine" ${tab === "mine" ? 'aria-current="page"' : ""}>إعلاناتي وطلباتي</a></nav><div id="wk-j">${skel(4)}</div>`);
     const box = $("#wk-j"); const my = ++swapTok;
     try { await (tab === "mine" ? jobsMine(box) : jobsBrowse(box, q)); } catch (e) { if (my === swapTok) box.innerHTML = errBox(e); }
   }
@@ -615,7 +615,27 @@
     if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest?.("a[href]"), href = a?.getAttribute("href") || "", box = $("#wk-j");
     if (!box || !/^#\/jobs(\?|$)/.test(href) || !(box.contains(a) || a.closest("#view .seg"))) return;
-    e.preventDefault(); jobsSwap(href);
+    e.preventDefault();
+    if (a.closest("#view .wk-tabs") && a.getAttribute("aria-current") === "page") { scrollTo({ top: 0, behavior: calm() ? "auto" : "smooth" }); return; } // v2.151.2: re-tap the current section → top (filters stay), like X
+    jobsSwap(href);
+  });
+  /* v2.151.2: card → job morphs (the card title flies into the job title) where the browser has view transitions and motion is
+   * welcome; anywhere else the tap is a plain navigation. The page's own enter animation is held off during the morph. */
+  const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !document.startViewTransition || calm()) return;
+    const a = e.target.closest?.('#view a.wk-job[href^="#/job/"]'); if (!a) return;
+    e.preventDefault(); const href = a.getAttribute("href"), t = a.querySelector(".wk-ttl"), root = document.documentElement;
+    if (t) t.style.viewTransitionName = "wk-jt";
+    root.classList.add("wk-vt");
+    let vt; try {
+      vt = document.startViewTransition(() => new Promise((res) => {
+        let n = 0; const ready = () => !!document.querySelector("#view .wk-jhero, #view #wk-jv");
+        const tick = () => (ready() || ++n > 18 ? res() : requestAnimationFrame(tick)); // the hero from the card is drawn on the route; ~300 ms cap
+        addEventListener("hashchange", () => requestAnimationFrame(tick), { once: true }); location.hash = href;
+      }));
+    } catch { root.classList.remove("wk-vt"); if (location.hash !== href) location.hash = href; return; }
+    vt.finished.catch(() => {}).finally(() => { root.classList.remove("wk-vt"); if (t) t.style.viewTransitionName = ""; });
   });
   /* v2.151.1: prefetch a job the finger rests on for 80 ms (not a scroll), one request at a time, ?peek=1 so it is not a view */
   let pfT = 0, pfOn = false, pfX = 0, pfY = 0; const pfStop = () => { clearTimeout(pfT); pfT = 0; };
