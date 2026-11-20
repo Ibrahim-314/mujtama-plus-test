@@ -30,6 +30,7 @@ async function stubPi(ctx) {
     if (p === "/api/pi/auth") {
       if (body?.link) { st.linked = "pi_amal"; return json(route, 200, { user: { id: "u" }, piUsername: "pi_amal", linked: true }); }
       if (st.authMode === "needsLink") return json(route, 200, { needsLink: true, username: "pi_amal" });
+      if (st.authMode === "created") return json(route, 200, { user: { id: "u" }, piUsername: "pi_new", linked: true, created: true });
       return json(route, 200, { user: { id: "u" }, piUsername: "pi_amal", linked: true });
     }
     if (p === "/api/pi/link" && m === "DELETE") { st.linked = null; return json(route, 200, { ok: true }); }
@@ -202,6 +203,35 @@ test("sign-in screen inside Pi Browser: a linked Pi account signs straight in, t
   const inc = calls("/api/pi/payments/incomplete").slice(nInc);
   assert.equal(inc.length, 1); assert.equal(inc[0].body.payment.identifier, "pay_old2"); assert.equal(inc[0].xrw, "mujtama", "CSRF header like other routes");
   assert.ok(st.calls.indexOf(calls("/api/pi/auth")[nAuth]) < st.calls.indexOf(inc[0]), "only after /api/pi/auth");
+  assert.equal(await Q.$(".piw"), null, "an existing account gets no first-sign-in welcome");
+  await ctx.close();
+});
+
+test("v2.149.15 first Pi sign-in: a new account is welcomed by Pi username with one step (photo → first post), «لاحقاً» closes it for good, no tour over it", async () => {
+  const ctx = await newCtx(); const Q = await ctx.newPage(); Q.on("pageerror", e => errors.push("welcome: " + e.message));
+  await Q.goto(S.base + "/?nosw");
+  await Q.waitForSelector("#pi-signin:not([disabled])", { timeout: 15000 });
+  st.authMode = "created";
+  const reg = await Q.evaluate(async () => (await fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ handle: "pi_new1", password: "secret1234", name: "جديد بـ Pi" }) })).status);
+  assert.equal(reg, 200);
+  await Q.click("#pi-signin");
+  await Q.waitForSelector(".piw[role=dialog][aria-modal=true]", { timeout: 10000 });
+  assert.match(await Q.textContent("#piw-h"), /أهلاً\s*@pi_new/);
+  assert.match(await Q.textContent(".piw-step"), /أضف صورتك/);
+  assert.equal(await Q.evaluate(() => document.activeElement.id), "piw-go", "focus on the one step");
+  await Q.waitForTimeout(1500); assert.equal(await Q.$(".tour"), null, "the home tour waits while the welcome is open");
+  assert.deepEqual(await axeOn(Q, ".piw"), []);
+  // the photo lands (cropper upload sets S.me().avatar) → step 2: first post
+  await Q.evaluate(() => { S.me().avatar = { "200": "data:image/gif;base64,R0lGODlhAQABAAAAACw=", "400": "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }; });
+  await until(() => /اكتب أول منشور/.test(document.querySelector(".piw-step")?.textContent || ""), null, 4000, Q);
+  assert.ok(await Q.$(".piw-av.done img"));
+  await shot("piw-done", Q);
+  await Q.click("#piw-later");
+  assert.equal(await Q.$(".piw"), null);
+  assert.equal(await Q.evaluate(() => localStorage.getItem("mp.piwelcome")), null, "shown once");
+  st.authMode = "linked";
+  await Q.reload(); await Q.waitForLoadState("load"); await until(() => !!window.MPPi, null, 15000, Q); await Q.waitForTimeout(1500);
+  assert.equal(await Q.$(".piw"), null, "not again after a reload");
   await ctx.close();
 });
 
@@ -309,6 +339,7 @@ test("pay button is hidden when Pi is off, disabled with a clear note outside Pi
   await P.waitForSelector("#pay-test .pi-pay[data-state=off]", { state: "attached" });
   assert.equal(await P.$eval("#pay-test .pi-pay", n => n.hidden), true, "Pi off: the button is not shown at all");
   st.enabled = true; await P.evaluate(() => { MPPi.refresh(); window.MP_PI_BROWSER = false; });
+  S.app.ctx.rl.w.clear(); // the per-IP sign-up limit: earlier tests in this file already registered several accounts
   const ctx = await newCtx(MOBILE.userAgent); const Q = await ctx.newPage(); Q.on("pageerror", e => errors.push("plain2: " + e.message));
   await onboard(Q, S.base, "plain_pi", "عادي"); await until(() => !!window.MPPi, null, 15000, Q);
   await Q.evaluate(() => { const d = document.createElement("div"); d.id = "pay-test"; document.querySelector("#view").prepend(d); d.appendChild(MPPi.payButton({ amount: 1, memo: "x" })); });
