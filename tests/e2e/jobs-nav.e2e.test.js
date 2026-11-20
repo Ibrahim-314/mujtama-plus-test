@@ -144,3 +144,36 @@ test("prefetch: a finger resting 80 ms on a card fetches it once (not a view); a
   await ev(3, "pointerup"); p.off("request", on);
   assert.deepEqual(errors, []);
 });
+
+/* ---------- v2.151.2 «اللمسة الأخيرة» (stage 3) ---------- */
+test("card → job morphs with a view transition when motion is welcome, never with reduced motion", async () => {
+  await p.emulateMedia({ reducedMotion: "no-preference" });
+  try {
+    await p.evaluate(() => { location.hash = "#/jobs"; }); await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+    assert.equal(await p.evaluate(() => typeof document.startViewTransition), "function", "this Chromium supports view transitions");
+    await p.evaluate(() => { window.__vt = 0; const o = document.startViewTransition.bind(document); document.startViewTransition = (cb) => { window.__vt++; return o(cb); }; });
+    const title = await p.evaluate(() => { const c = document.querySelectorAll("#view .wk-card")[1]; const t = c.querySelector(".wk-ttl").textContent; c.click(); return t; });
+    await until(p, () => !!document.querySelector("#view .wk-jhero .wk-jt"));
+    assert.equal(await p.evaluate(() => document.querySelector("#view .wk-jhero .wk-jt").textContent), title);
+    assert.equal(await p.evaluate(() => window.__vt), 1, "one view transition");
+    await until(p, () => !document.documentElement.classList.contains("wk-vt"), null, 3000);
+    await p.goBack(); await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+  } finally { await p.emulateMedia({ reducedMotion: "reduce" }); }
+  await p.evaluate(() => document.querySelectorAll("#view .wk-card")[2].click()); await until(p, () => !!document.querySelector("#view .wk-jhero"));
+  assert.equal(await p.evaluate(() => window.__vt || 0), 1, "reduced motion: no transition");
+  await p.goBack(); await until(p, () => !!document.querySelector("#view .wk-card"));
+});
+
+test("the section bar sticks under the top bar; tapping the current section scrolls to the top in place", async () => {
+  await p.evaluate(() => { location.hash = "#/jobs?kind=freelance"; }); await until(p, () => document.querySelectorAll("#view .wk-card").length === 5);
+  await p.evaluate(() => scrollTo(0, 700)); await p.waitForTimeout(200);
+  const r = await p.evaluate(() => { const s = document.querySelector("#view .wk-tabs"); if (!s) return null; const b = s.getBoundingClientRect(); return { pos: getComputedStyle(s).position, top: Math.round(b.top), y: Math.round(scrollY) }; });
+  assert.ok(r, ".wk-tabs present"); assert.equal(r.pos, "sticky"); assert.ok(r.y > 300, "scrolled " + r.y);
+  assert.ok(r.top >= 0 && r.top <= 52, "stuck at the top: " + r.top);
+  const len = await p.evaluate(() => history.length);
+  await p.evaluate(() => document.querySelector('#view .wk-tabs a[aria-current="page"]').click());
+  await until(p, () => scrollY < 4, null, 3000);
+  assert.match(await p.evaluate(() => location.hash), /kind=freelance/, "filters kept");
+  assert.equal(await p.evaluate(() => history.length), len);
+  assert.deepEqual(errors, []);
+});
