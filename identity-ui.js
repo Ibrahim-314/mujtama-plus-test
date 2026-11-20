@@ -285,7 +285,7 @@
 
   const TOUR = [["#cbar", "انشر من هنا", "منشور، استطلاع، مقال أو فيديو. لمسة واحدة."], [".tabs", "خلاصتك", "«لك» مرتبة حسب اهتماماتك، و«الأحدث» بالترتيب الزمني."], ['.bottomnav a[data-r="explore"]', "استكشف", "الرائج والمجتمعات والأشخاص الذين قد يهمّونك."], ['.bottomnav a[data-r="notifications"]', "الإشعارات", "التفاعلات والإشارات وطلبات المتابعة."], ['.bottomnav a[data-r="menu"]', "المزيد", "كل الميزات في مكان واحد: ملفك، المحفوظات، المحفظة، التعلّم، العمل والإعدادات — مع بحث سريع."], ["#tbMe", "ملفك", "صورتك أعلى الشاشة تفتح ملفك. أكمله لتظهر للأشخاص المناسبين."]];
   async function startTour(force) {
-    if (document.querySelector(".tour")) return;
+    if (document.querySelector(".tour,.piw")) return; // v2.149.15: never over the Pi welcome
     let st = { tourDone: localStorage.getItem("mp_tour") === "1", experiments: {} };
     if (online()) { try { st = await api("GET", "/api/onboarding"); experiments = st.experiments; } catch { } }
     if (st.tourDone && !force) return;
