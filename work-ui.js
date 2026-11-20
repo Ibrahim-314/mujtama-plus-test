@@ -253,7 +253,7 @@
   }
 
   /* =================== Phase 77 — jobs & freelance =================== */
-  const payTxt = (p) => (!p || p.type === "none" ? "بدون أجر" : `${p.min === p.max ? num(p.min, { maximumFractionDigits: 2 }) : `${num(p.min, { maximumFractionDigits: 2 })}–${num(p.max, { maximumFractionDigits: 2 })}`} π · ${p.label}`);
+  const payTxt = (p) => (!p || p.type === "none" ? "بدون أجر" : `\u2066${p.min === p.max ? num(p.min, { maximumFractionDigits: 2 }) : `${num(p.min, { maximumFractionDigits: 2 })}–${num(p.max, { maximumFractionDigits: 2 })}`} π\u2069 · ${p.label}`); // v2.149.16: LRI…PDI keeps «300–500 π» in reading order inside RTL
   const TONE = { open: "ok", review: "info", paused: "warn", closed: "", filled: "ok", removed: "bad", submitted: "info", viewed: "info", shortlisted: "warn", interview: "warn", offered: "ok", hired: "ok", rejected: "bad", withdrawn: "" };
   const badge = (st, label) => `<span class="sbadge ${TONE[st] || ""}">${h(label)}</span>`;
   const day = (s) => { try { return new Intl.DateTimeFormat("ar", { numberingSystem: "latn", day: "numeric", month: "long", year: "numeric" }).format(new Date(s)); } catch { return String(s || "").slice(0, 10); } };
