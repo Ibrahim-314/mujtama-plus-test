@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.150.0 — 2026-11-20
+- Jobs design v2: job hero (pay, applicants, deadline), icon fact list (valid dt/dd), sticky apply/save bar, owner «Manage listing» panel, featured listing stays locked «غير مفعّل بعد» (Pi off).
+- Server: `kindCounts` in jobs list response for filter chip counts.
+- Tests: unit jobs-design-v2150 (failing-first), e2e p77 passes incl. axe.
+
 ## 2.149.6 «المنشور يرسم مرة» — 2026-11-04
 - `#/post/:id` (cold): the post drew before the modules that decorate it (protection 🛡, ai translate, assistant, tips, series, discovery summary) — ~0.4–0.9 s later the «⋯» slot was taken by the shield and the author line shrank 220 → 173 px. chunks.js holds a signed-in post on its skeleton (max 1.5 s, once) until they are in. ai-ui decorates in the observer microtask instead of a 60 ms timer. Sweep 21.9 → 5.6 (en), 21.2 → 6.2 (ar).
 - Real bug: comms-ui (messages) styled `.cm-sec` / `.cm-empty` globally — the same classes as a post's comments section — so ~1 s after a post opened (when messages warmed) its comments card changed padding and the empty state grew 50 → 118 px. Scoped with `:where(...)` (no extra weight); theme.css gives the post's comments card that same settled look from the first frame (visual diff identical). Post CLS ar 0.0219 → 0.0018.
