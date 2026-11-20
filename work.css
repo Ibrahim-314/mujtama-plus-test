@@ -112,3 +112,6 @@ iframe.wk-print{position:fixed;inset-inline-start:-10000px;top:0;width:1px;heigh
 .wk-rep .btn{min-height:44px;margin-inline-start:auto}
 .wk-rep .wk-chips{margin:0;flex-basis:100%}
 .wk-rt{display:inline-flex;align-items:center;gap:4px;font-weight:700}.wk-rt .ic{color:var(--warn)}
+/* v2.149.16: list rows without stray bullets; header actions wrap on phones instead of scrolling off-screen */
+.wk-page ul.list,.wk-page ol.list{list-style:none;padding:0;margin-inline:0}.wk-page .list .li .t{min-width:0}
+@media (max-width:599px){.wk-page .page-head .acts{flex-wrap:wrap;overflow-x:visible;margin-inline:0;padding:2px 0 4px}}
