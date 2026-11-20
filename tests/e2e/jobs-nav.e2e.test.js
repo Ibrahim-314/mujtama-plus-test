@@ -85,3 +85,62 @@ test("memory never acts: inert action bar until fresh, dropped after a change an
   assert.equal(await p.evaluate(() => window.MPWork.cache.size()), 0, "another account sees nothing");
   assert.deepEqual(errors, []);
 });
+
+/* ---------- v2.151.1 «الصفحة لا تُهدم» (stage 2) ---------- */
+const cards = () => p.evaluate(() => [...document.querySelectorAll("#view .wk-card")].map((c) => c.querySelector(".wk-kp")?.classList.contains("fr") ? "fr" : "jb"));
+
+test("filters and tabs swap only the list: the form stays, no jump to the top, no history entries", async () => {
+  await p.evaluate(() => { location.hash = "#/jobs"; }); await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+  await p.evaluate(() => { document.querySelector("#wk-jf").__keep = 1; document.querySelector(".wk-qk").__keep = 1; scrollTo(0, 120); });
+  const len = await p.evaluate(() => history.length);
+  const now = await p.evaluate(() => { document.querySelector('.wk-kc a[href*="kind=freelance"]').click(); return { form: document.querySelector("#wk-jf")?.__keep === 1, skel: !!document.querySelector("#view .skel, #view .sk") }; });
+  assert.deepEqual(now, { form: true, skel: false }, "the form is the same element and no skeleton replaces the page");
+  await until(p, () => { const k = [...document.querySelectorAll("#view .wk-card .wk-kp")]; return k.length > 0 && k.every((x) => x.classList.contains("fr")); });
+  assert.ok((await cards()).length === 5, "5 freelance");
+  assert.match(await p.evaluate(() => location.hash), /kind=freelance/);
+  assert.equal(await p.evaluate(() => history.length), len, "the filter replaced the URL, it did not push");
+  assert.ok(await p.evaluate(() => scrollY) > 0, "no jump to the top");
+  assert.equal(await p.evaluate(() => document.querySelector("#wk-jf").__keep), 1, "form kept after the fresh list");
+  // the search form (and the sheet's apply) swap the list too
+  await p.evaluate(() => { const f = document.querySelector("#wk-jf"); f.q.value = "رقم 2"; f.requestSubmit(); });
+  await until(p, () => /رقم 2 /.test(document.querySelector("#view .wk-card .wk-ttl")?.textContent || "")); // search ORs its words and ranks title hits first
+  assert.equal(await p.evaluate(() => document.querySelector("#wk-jf").__keep), 1, "search kept the form");
+  assert.equal(await p.evaluate(() => new URLSearchParams(location.hash.split("?")[1]).get("q")), "رقم 2");
+  // browse ↔ mine: the header and its tiles stay, only the section below changes
+  await p.evaluate(() => document.querySelector('.seg a[href="#/jobs?tab=mine"]').click());
+  await until(p, () => !!document.querySelector("#view .wk-stats"));
+  assert.equal(await p.evaluate(() => document.querySelector(".wk-qk").__keep), 1, "header tiles kept");
+  assert.equal(await p.evaluate(() => document.querySelector('.seg a[aria-current="page"]').getAttribute("href")), "#/jobs?tab=mine");
+  assert.equal(await p.evaluate(() => history.length), len, "tabs replace too");
+  await p.evaluate(() => document.querySelector('.seg a[href="#/jobs"]').click());
+  await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+  assert.equal(await p.evaluate(() => location.hash), "#/jobs");
+});
+
+test("back after filtering leaves the jobs page in one step; a job opened from a filtered list comes back to it", async () => {
+  await p.evaluate(() => { location.hash = "#/home"; }); await p.waitForTimeout(300);
+  await p.evaluate(() => { location.hash = "#/jobs"; }); await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+  await p.evaluate(() => document.querySelector('.wk-kc a[href*="kind=freelance"]').click()); await until(p, () => (document.querySelector('.wk-kc a[aria-current]')?.getAttribute("href") || "").includes("freelance"));
+  await p.evaluate(() => document.querySelector('.wk-kc a[href*="kind=job"]').click()); await until(p, () => (document.querySelector('.wk-kc a[aria-current]')?.getAttribute("href") || "").includes("kind=job"));
+  await until(p, () => [...document.querySelectorAll("#view .wk-card .wk-kp")].every((x) => x.classList.contains("jb")));
+  await p.evaluate(() => document.querySelector("#view .wk-card").click()); await until(p, () => !!document.querySelector("#view .wk-about"));
+  await p.goBack(); await until(p, () => !!document.querySelector("#view .wk-card"));
+  assert.match(await p.evaluate(() => location.hash), /kind=job/, "back from the job lands on the filtered list");
+  await p.goBack(); await p.waitForTimeout(300);
+  assert.equal(await p.evaluate(() => location.hash), "#/home", "one more back leaves jobs (filters did not fill the history)");
+});
+
+test("prefetch: a finger resting 80 ms on a card fetches it once (not a view); a scroll does not", async () => {
+  await p.evaluate(() => { location.hash = "#/jobs"; }); await until(p, () => document.querySelectorAll("#view .wk-card").length >= 8);
+  await p.evaluate(() => window.MPWork.cache.forUser("nobody"));
+  const seen = []; const on = (r) => { if (/\/api\/jobs\/[^/?]+(\?|$)/.test(r.url())) seen.push(r.url()); }; p.on("request", on);
+  const ev = (i, type, dx = 0) => p.evaluate(([i, type, dx]) => { const c = document.querySelectorAll("#view .wk-card")[i], b = c.getBoundingClientRect(); c.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: "touch", isPrimary: true, clientX: b.x + 20 + dx, clientY: b.y + 20 + dx })); }, [i, type, dx]);
+  await ev(2, "pointerdown"); await ev(2, "pointermove", 30); await ev(2, "pointercancel"); await p.waitForTimeout(250);
+  assert.equal(seen.length, 0, "a scroll gesture fetches nothing: " + seen.join());
+  await ev(3, "pointerdown"); await p.waitForTimeout(250);
+  assert.equal(seen.length, 1, "one prefetch: " + seen.join()); assert.match(seen[0], /\?peek=1$/);
+  const id = await p.evaluate(() => document.querySelectorAll("#view .wk-card")[3].getAttribute("href").split("/").pop());
+  await until(p, (id) => window.MPWork.cache.has("job:" + id), id);
+  await ev(3, "pointerup"); p.off("request", on);
+  assert.deepEqual(errors, []);
+});
