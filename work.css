@@ -168,3 +168,7 @@ iframe.wk-print{position:fixed;inset-inline-start:-10000px;top:0;width:1px;heigh
 .wk-mh{display:flex;justify-content:space-between;align-items:center}.wk-mh a{display:inline-flex;gap:4px;align-items:center;min-height:44px;color:var(--accent-ink);font-size:var(--fs-sm);font-weight:700}
 .wk-ml{padding:0}
 .wk-prog{display:flex;gap:4px;margin-top:6px}.wk-prog i{flex:1;height:4px;border-radius:4px;background:var(--line)}.wk-prog i.f{background:var(--accent)}
+
+/* v2.151.1: results being swapped dim in place (no skeleton, no jump) */
+.wk-busy{opacity:.55;pointer-events:none;transition:opacity .12s ease-out}
+@media (prefers-reduced-motion:reduce){.wk-busy{transition:none}}
