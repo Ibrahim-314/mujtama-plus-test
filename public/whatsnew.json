@@ -1,5 +1,22 @@
 [
   {
+    "v": "2.149.15",
+    "date": "2026-11-20",
+    "quiet": true,
+    "ar": {
+      "title": "أهلاً بحساب Pi",
+      "items": [
+        "أول دخول بحساب Pi يرحّب بك باسمك في Pi ويقترح خطوة واحدة: صورتك ثم أول منشور"
+      ]
+    },
+    "en": {
+      "title": "Welcome with Pi",
+      "items": [
+        "Your first Pi sign-in greets you by your Pi username and suggests one step: your photo, then your first post"
+      ]
+    }
+  },
+  {
     "v": "2.149.14",
     "date": "2026-11-19",
     "quiet": true,
