@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.150.0",
+    "date": "2026-11-20",
+    "ar": {
+      "title": "تصميم جديد لصفحة الفرصة",
+      "items": [
+        "رأس الفرصة يعرض الأجر والمتقدّمين والمهلة بوضوح",
+        "تفاصيل النوع والمكان والموعد بأيقونات مرتبة",
+        "شريط ثابت للتقديم والحفظ، وقسم «إدارة الإعلان» لصاحب الفرصة"
+      ]
+    },
+    "en": {
+      "title": "A new look for job pages",
+      "items": [
+        "The job header shows pay, applicants and deadline at a glance",
+        "Type, place and deadline laid out with icons",
+        "A sticky apply and save bar, plus «Manage listing» for the poster"
+      ]
+    }
+  },
+  {
     "v": "2.149.16",
     "date": "2026-11-20",
     "quiet": true,
