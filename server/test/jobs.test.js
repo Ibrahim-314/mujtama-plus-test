@@ -150,6 +150,15 @@ test("state changes, reports → paused, staff dismiss; minors; blocked; Pi boos
   } finally { pis.enabled = en; pis.createIntent = ci; }
 });
 
+test("v2.151.1: ?peek=1 (a prefetch on touch) reads the job without counting a view", async () => {
+  const v = await mk("jb_peek"); await old(v);
+  const views = async () => Number((await db().get("SELECT views FROM jobs WHERE id=$1", [job])).views);
+  const v0 = await views();
+  const r = await v.req("GET", `/api/jobs/${job}?peek=1`); assert.equal(r.status, 200, r.error); assert.equal(r.job.id, job);
+  assert.equal(await views(), v0, "a prefetch is not a view");
+  await v.req("GET", "/api/jobs/" + job); assert.equal(await views(), v0 + 1, "opening it is");
+});
+
 test("caps, data map, migration 057 down/up", async () => {
   const many = await mk("jb_many"); await old(many);
   for (let i = 0; i < 10; i++) { H.app.ctx.rl.w.clear(); const r = await many.req("POST", "/api/jobs", { ...JOB, title: "إعلان تجريبي رقم " + (i + 1) }); assert.equal(r.status, 200, r.error); }
