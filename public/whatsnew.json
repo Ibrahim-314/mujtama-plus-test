@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.151.0",
+    "date": "2026-11-20",
+    "ar": {
+      "title": "تنقّل أسرع في الوظائف والعمل الحر",
+      "items": [
+        "الرجوع للقائمة فوري وبنفس مكانك",
+        "الفرصة تظهر لحظة الضغط بدون شاشة تحميل",
+        "التبديل بين «تصفّح الفرص» و«إعلاناتي وطلباتي» فوري"
+      ]
+    },
+    "en": {
+      "title": "Faster moves around Jobs & Freelance",
+      "items": [
+        "Going back lands instantly, right where you were",
+        "A job opens the moment you tap, no loading screen",
+        "Switching between Browse and My listings is instant"
+      ]
+    }
+  },
+  {
     "v": "2.150.0",
     "date": "2026-11-20",
     "ar": {
