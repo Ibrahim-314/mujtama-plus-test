@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.151.0 «لا شاشة فارغة» — 2026-11-20
+- Jobs: in-memory stale-while-revalidate cache (per account, 3 min, cleared by any non-GET) for the list, «إعلاناتي وطلباتي» and job pages: painted in the same task as the tap, refreshed quietly (list refresh replaces only the results, not the search form).
+- Back from a job → list is instant at the exact scroll; a job opened from a card shows its hero at once; a job from memory keeps its actions inert (aria-busy) until the fresh copy lands.
+- Test: e2e jobs-nav (3).
+
 ## 2.150.0 — 2026-11-20
 - Jobs design v2: job hero (pay, applicants, deadline), icon fact list (valid dt/dd), sticky apply/save bar, owner «Manage listing» panel, featured listing stays locked «غير مفعّل بعد» (Pi off).
 - Server: `kindCounts` in jobs list response for filter chip counts.
