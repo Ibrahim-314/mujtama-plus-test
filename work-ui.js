@@ -20,7 +20,14 @@
  * ===================================================================== */
 (function WorkUI() {
   if (window.MPWork) return;
-  const api = (m, p, b) => Remote.api(m, p, b);
+  /* v2.151.0 «لا شاشة فارغة»: screens already seen are painted at once from memory, then refreshed quietly (stale-while-revalidate).
+   Memory only (gone on reload), per account, 3 min; any change (non-GET) drops all of it before and after; memory never acts. */
+  const JC = new Map(), CTTL = 180e3;
+  const cWho = () => { try { return S.me()?.handle || ""; } catch { return ""; } };
+  const cGet = (k) => { const e = JC.get(k); if (!e) return null; if (e.who !== cWho() || Date.now() - e.t > CTTL) { JC.delete(k); return null; } return e.d; };
+  const cSet = (k, d) => { JC.set(k, { t: Date.now(), d, who: cWho() }); if (JC.size > 40) JC.delete(JC.keys().next().value); };
+  const cJob = (id) => { const f = cGet("job:" + id); if (f) return { full: f }; for (const [k] of JC) { const d = /^(list|mine)/.test(k) && cGet(k); const j = d && (d.jobs || d.saved || []).find((x) => x.id === id); if (j) return { card: j }; } return null; };
+  const api = (m, p, b) => { if (m === "GET") return Remote.api(m, p, b); JC.clear(); return Remote.api(m, p, b).finally(() => JC.clear()); };
   const h = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const enc = encodeURIComponent;
   const $ = (s) => view.querySelector(s);
@@ -267,6 +274,9 @@
   const payAmt = (p) => (!p || p.type === "none" ? "بدون أجر" : `\u2066${p.min === p.max ? num(p.min, { maximumFractionDigits: 2 }) : `${num(p.min, { maximumFractionDigits: 2 })}–${num(p.max, { maximumFractionDigits: 2 })}`} π\u2069`);
   const payPill = (p, cls = "wk-pay") => `<span class="${cls}"><b>${h(payAmt(p))}</b>${p && p.type !== "none" ? `<small>${h(p.label)}</small>` : ""}</span>`;
   const saveBtn = (j) => (signed() && j.poster?.handle !== meHandle() ? `<button class="wk-bm" type="button" data-jsave="${h(j.id)}" aria-pressed="${!!j.saved}" aria-label="${j.saved ? "إزالة من المحفوظة" : "حفظ الفرصة"}">${ic(j.saved ? "bookmarkF" : "bookmark")}</button>` : "");
+  const heroHtml = (j) => `<section class="wk-jhero"><span class="wk-c1">${kindPill(j)}${j.featured ? `<span class="wk-featb">${ic("star", "xs")}<span>مميّز</span></span>` : ""}${fresh(j) ? `<span class="wk-new">جديد</span>` : ""}<span class="wk-ago">${h(ago(j.publishedAt))}</span></span><h3 class="wk-jt">${h(j.title)}</h3>
+        <span class="wk-who">${av(j.poster, "sm")}<span class="u-f1 u-mw0"><a href="#/u/${enc(j.poster.handle)}">${h(j.poster.name)}</a>${j.poster.verified ? ` ${ic("verified", "xs")}` : ""} · <a href="#/cv/${enc(j.poster.handle)}">الملف المهني</a></span></span>
+        <span class="wk-hpay"><b>${h(payAmt(j.pay))}</b>${j.pay && j.pay.type !== "none" ? `<small>${h(j.pay.label)}</small>` : ""}<span class="wk-happs">${ic("users", "xs")}<span>${num(j.apps)} متقدّم</span></span></span></section>`; // v2.151.0: shared by the full view and the instant paint from a card
   const jobCard = (j) => { const more = j.skills.length - 3; return `<li class="wk-jli"><a class="f-card wk-card wk-job${j.featured ? " feat" : ""}" href="#/job/${enc(j.id)}"><span class="wk-c1">${kindPill(j)}${j.featured ? `<span class="wk-featb">${ic("star", "xs")}<span>مميّز</span></span>` : ""}${fresh(j) ? `<span class="wk-new">جديد</span>` : ""}<span class="wk-ago">${h(ago(j.publishedAt))}</span></span>
     <b class="wk-ttl">${h(j.title)}</b>${payPill(j.pay)}<span class="wk-mt"><span>${ic("mapPin", "xs")}<span>${h(j.mode.label)}${j.city ? " · " + h(j.city) : ""}</span></span>${j.employment ? `<span>${ic("brief", "xs")}<span>${h(j.employment.label)}</span></span>` : ""}<span>${ic("grid", "xs")}<span>${h(j.category.label)}</span></span></span>${j.skills.length ? `<span class="wk-tags">${j.skills.slice(0, 3).map((s) => `<span>${h(s)}</span>`).join("")}${more > 0 ? `<span class="more">+${num(more)}</span>` : ""}</span>` : ""}<span class="wk-cf">${av(j.poster, "xs")}<span class="u-f1 u-mw0 wk-pn">${h(j.poster?.name || "")}</span>${dlPill(j)}</span></a>${saveBtn(j)}</li>`; };
   const wireSave = (root) => root.querySelectorAll("[data-jsave]").forEach((b) => b.addEventListener("click", (e) => { e.preventDefault(); busy(b, async () => { const on = b.getAttribute("aria-pressed") !== "true"; await api("POST", `/api/jobs/${enc(b.dataset.jsave)}/save`, { saved: on }); b.setAttribute("aria-pressed", String(on)); b.setAttribute("aria-label", on ? "إزالة من المحفوظة" : "حفظ الفرصة"); b.innerHTML = ic(on ? "bookmarkF" : "bookmark"); say(on ? "حُفظت الفرصة" : "أُزيلت من المحفوظة"); }); }));
@@ -280,27 +290,33 @@
   }
   async function jobsBrowse(box, q) {
     const f = { q: q.get("q") || "", kind: q.get("kind") || "", category: q.get("category") || "", mode: q.get("mode") || "", city: q.get("city") || "", skill: q.get("skill") || "", minPay: q.get("minPay") || "", sort: q.get("sort") || "" };
-    const d = await api("GET", "/api/jobs?" + new URLSearchParams({ ...f, page: q.get("page") || "0" }));
-    if (!box.isConnected) return; const O = d.options;
+    const key = "list:" + new URLSearchParams({ ...f, page: q.get("page") || "0" });
     const url = (o) => { const p = new URLSearchParams({ ...f, ...o }); for (const [k, x] of [...p]) if (!x) p.delete(k); const s = p.toString(); return "#/jobs" + (s ? "?" + s : ""); };
     const sel = (name, label, map, cur) => `<label id="wk-f-${name}">${label}<select name="${name}"><option value="">الكل</option>${Object.entries(map).map(([k, v]) => `<option value="${k}" ${cur === k ? "selected" : ""}>${h(v)}</option>`).join("")}</select></label>`;
-    box.innerHTML = `${d.minor ? `<div class="notice">${ic("shield")}<span>تظهر لك الفرص التطوعية المناسبة لمن هم دون ١٨ سنة فقط.</span></div>` : ""}
+    const listHtml = (d) => { const O = d.options; return `<ul class="f-chips wk-kc" aria-label="النوع"><li><a class="chip f" href="${url({ kind: "", page: "" })}" ${!f.kind ? 'aria-current="true"' : ""}>الكل${d.kindCounts ? `<i>${num(Object.values(d.kindCounts).reduce((x, y) => x + y, 0))}</i>` : ""}</a></li>${Object.entries(O.kinds).map(([k, v]) => `<li><a class="chip f" href="${url({ kind: k, page: "" })}" ${f.kind === k ? 'aria-current="true"' : ""}>${h(v === "مشروع عمل حر" ? "عمل حر" : "وظائف")}${d.kindCounts ? `<i>${num(d.kindCounts[k] || 0)}</i>` : ""}</a></li>`).join("")}</ul>
+      <p class="f-hint u-mb8 wk-cnt"><b>${num(d.total)} فرصة متاحة</b><span>${f.sort === "pay" ? "الأعلى أجراً" : "الأحدث أولاً"}</span></p>
+      ${d.jobs.length ? `<ul class="f-grid wk-grid">${d.jobs.map(jobCard).join("")}</ul>${d.more ? `<p class="u-mt12"><a class="btn ghost sm" href="${url({ page: String(d.page + 1) })}">المزيد</a></p>` : ""}`
+        : UI.empty({ title: Object.values(f).some(Boolean) ? "لا فرص مطابقة" : "لا فرص بعد", text: Object.values(f).some(Boolean) ? "جرّب تصفية أوسع." : "كن أول من ينشر فرصة عمل في مجتمع بلس.", action: signed() ? `<a class="btn" href="#/jobs/new">أضف فرصة</a>` : "" })}`; };
+    const paint = (d) => { const O = d.options; box.innerHTML = `${d.minor ? `<div class="notice">${ic("shield")}<span>تظهر لك الفرص التطوعية المناسبة لمن هم دون ١٨ سنة فقط.</span></div>` : ""}
       <form class="fx-q u-mb12" id="wk-jf" role="search"><label><span class="vh">ابحث في الفرص</span><input type="search" name="q" value="${h(f.q)}" maxlength="80" placeholder="مسمى، مهارة، أو كلمة"></label>
         ${sel("category", "التصنيف", O.categories, f.category)}${sel("mode", "مكان العمل", O.modes, f.mode)}<label id="wk-f-city">المدينة<input name="city" value="${h(f.city)}" maxlength="60"></label><label id="wk-f-skill">المهارة<input name="skill" value="${h(f.skill)}" maxlength="40"></label><label id="wk-f-min">أقل أجر (π)<input name="minPay" type="number" min="0" inputmode="decimal" value="${h(f.minPay)}"></label>
         <label id="wk-f-sort">الترتيب<select name="sort"><option value="">الأحدث</option><option value="pay" ${f.sort === "pay" ? "selected" : ""}>الأعلى أجراً</option></select></label><button class="btn" type="submit">بحث</button></form>
-      <ul class="f-chips wk-kc" aria-label="النوع"><li><a class="chip f" href="${url({ kind: "", page: "" })}" ${!f.kind ? 'aria-current="true"' : ""}>الكل${d.kindCounts ? `<i>${num(Object.values(d.kindCounts).reduce((x, y) => x + y, 0))}</i>` : ""}</a></li>${Object.entries(O.kinds).map(([k, v]) => `<li><a class="chip f" href="${url({ kind: k, page: "" })}" ${f.kind === k ? 'aria-current="true"' : ""}>${h(v === "مشروع عمل حر" ? "عمل حر" : "وظائف")}${d.kindCounts ? `<i>${num(d.kindCounts[k] || 0)}</i>` : ""}</a></li>`).join("")}</ul>
-      <p class="f-hint u-mb8 wk-cnt"><b>${num(d.total)} فرصة متاحة</b><span>${f.sort === "pay" ? "الأعلى أجراً" : "الأحدث أولاً"}</span></p>
-      ${d.jobs.length ? `<ul class="f-grid wk-grid">${d.jobs.map(jobCard).join("")}</ul>${d.more ? `<p class="u-mt12"><a class="btn ghost sm" href="${url({ page: String(d.page + 1) })}">المزيد</a></p>` : ""}`
-        : UI.empty({ title: Object.values(f).some(Boolean) ? "لا فرص مطابقة" : "لا فرص بعد", text: Object.values(f).some(Boolean) ? "جرّب تصفية أوسع." : "كن أول من ينشر فرصة عمل في مجتمع بلس.", action: signed() ? `<a class="btn" href="#/jobs/new">أضف فرصة</a>` : "" })}
+      <div id="wk-jl">${listHtml(d)}</div>
       <p class="f-hint u-mt12 wk-safe">${ic("shield", "xs")} لا تدفع أي مبلغ للتقديم على عمل، ولا تشارك عبارة مرور محفظتك أبداً.</p>`;
-    wireSave(box);
-    const jf = $("#wk-jf");
-    jf.addEventListener("submit", (e) => { e.preventDefault(); const fd = new FormData(jf); location.hash = url({ ...Object.fromEntries([...fd].map(([k, x]) => [k, String(x).trim()])), page: "" }); });
-    window.MPFeat?.filters?.({ host: jf, move: ["category", "mode", "city", "skill", "min", "sort"].map((k) => $("#wk-f-" + k)), form: jf, title: "تصفية", defaults: { category: "", mode: "", city: "", skill: "", minPay: "", sort: "" } });
+      wireSave(box);
+      const jf = $("#wk-jf");
+      jf.addEventListener("submit", (e) => { e.preventDefault(); const fd = new FormData(jf); location.hash = url({ ...Object.fromEntries([...fd].map(([k, x]) => [k, String(x).trim()])), page: "" }); });
+      window.MPFeat?.filters?.({ host: jf, move: ["category", "mode", "city", "skill", "min", "sort"].map((k) => $("#wk-f-" + k)), form: jf, title: "تصفية", defaults: { category: "", mode: "", city: "", skill: "", minPay: "", sort: "" } });
+    };
+    const c = cGet(key); if (c) paint(c); // from memory in the same task as the tap: no skeleton frame, back lands on the exact scroll
+    let d; try { d = await api("GET", "/api/jobs?" + key.slice(5)); } catch (e) { if (c) return; throw e; }
+    if (!box.isConnected) return; cSet(key, d);
+    if (!c) paint(d);
+    else if (JSON.stringify(c) !== JSON.stringify(d)) { const l = $("#wk-jl"); if (l) { l.innerHTML = listHtml(d); wireSave(l); } } // quiet refresh: only the list, the form the reader may be typing in stays
   }
   async function jobsMine(box) {
     if (!signed()) { box.innerHTML = UI.empty({ title: "سجّل الدخول", text: "لتتابع إعلاناتك وطلباتك.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` }); return; }
-    const d = await api("GET", "/api/jobs/me"); if (!box.isConnected) return;
+    const paint = (d) => {
     const sum = (c) => Object.entries(c).filter(([k]) => k !== "withdrawn").reduce((s, [, v]) => s + v, 0);
     const STEPS = ["submitted", "viewed", "shortlisted", "interview", "offered"];
     const prog = (st) => { const i = st === "hired" ? STEPS.length : STEPS.indexOf(st) + 1; return i > 0 ? `<span class="wk-prog" role="img" aria-label="مرحلة الطلب ${num(i)} من ${num(STEPS.length)}">${STEPS.map((_, k) => `<i class="${k < i ? "f" : ""}"></i>`).join("")}</span>` : ""; };
@@ -310,18 +326,30 @@
       <div class="f-h wk-mh" id="wk-ms"><span>المحفوظة</span></div>${d.saved.length ? `<ul class="f-grid wk-grid">${d.saved.map(jobCard).join("")}</ul>` : `<p class="wk-none">احفظ الفرص لتعود إليها لاحقاً.</p>`}`;
     wireSave(box);
     box.querySelectorAll(".wk-stats [data-to]").forEach((b) => b.addEventListener("click", () => box.querySelector("#" + b.dataset.to)?.scrollIntoView({ behavior: "smooth", block: "start" })));
+    };
+    const c = cGet("mine"); if (c) paint(c);
+    let d; try { d = await api("GET", "/api/jobs/me"); } catch (e) { if (c) return; throw e; }
+    if (!box.isConnected) return; cSet("mine", d);
+    if (!c || JSON.stringify(c) !== JSON.stringify(d)) { const y = scrollY; paint(d); if (c) scrollTo(0, y); }
   }
 
   async function jobView(jid) {
     page({ title: "فرصة عمل", icon: "brief", back: ["#/jobs", "الوظائف"] }, `<div id="wk-jv">${skel(5)}</div>`);
     const box = $("#wk-jv");
-    let d; try { d = await api("GET", "/api/jobs/" + enc(jid)); } catch (e) { box.innerHTML = errBox(e); return; }
-    if (!box.isConnected) return; const j = d.job, me = d.me;
+    const pre = cJob(jid); // v2.151.0: a job seen before is painted whole from memory (actions inert until fresh); one from a card gets its hero at once
+    if (pre?.full) { paint(pre.full); const a = $("#wk-ja"); if (a) { a.inert = true; a.setAttribute("aria-busy", "true"); } }
+    else if (pre?.card) box.innerHTML = heroHtml(pre.card) + skel(3);
+    let d; try { d = await api("GET", "/api/jobs/" + enc(jid)); } catch (e) { if (box.isConnected) box.innerHTML = errBox(e); return; }
+    if (!box.isConnected) return; cSet("job:" + jid, d);
+    if (pre?.full && JSON.stringify(pre.full) === JSON.stringify(d)) { const a = $("#wk-ja"); if (a) { a.inert = false; a.removeAttribute("aria-busy"); } }
+    else paint(d);
+    const j = d.job;
+    if (j.status === "open") UI.vidtikStrip?.("job", j.id, box); // v2.76 «يظهر في فيديوتك»
+    try { if (sessionStorage.getItem("mp-auto-apply") === j.id) { sessionStorage.removeItem("mp-auto-apply"); $("#wk-apply")?.click(); } } catch { /* v2.76 «قدّم الآن» from a Vidtik clip opens the apply sheet at once */ }
+    function paint(d) { const j = d.job, me = d.me;
     const facts = [["brief", "النوع", j.kind.label + (j.employment ? " · " + j.employment.label : "")], ["mapPin", "مكان العمل", j.mode.label + (j.city ? " · " + j.city : "") + (j.country ? "، " + j.country : "")], ["grid", "التصنيف", j.category.label], ["clock", "آخر موعد", j.deadline ? day(j.deadline) + (j.expired ? " (انتهى)" : "") : "مفتوح"]];
     box.innerHTML = `${j.status !== "open" ? `<div class="notice ${j.status === "removed" ? "warn" : ""}">${ic(j.status === "review" ? "clock" : "alert")}<span>${h(j.statusLabel)}${j.status === "review" && j.reviewReasons?.length ? ` — يراجعه فريق المنصة: ${j.reviewReasons.map((r) => h(r.label)).join("، ")}` : ""}${j.removedReason ? ` — ${h(j.removedReason)}` : ""}</span></div>` : ""}
-      <section class="wk-jhero"><span class="wk-c1">${kindPill(j)}${j.featured ? `<span class="wk-featb">${ic("star", "xs")}<span>مميّز</span></span>` : ""}${fresh(j) ? `<span class="wk-new">جديد</span>` : ""}<span class="wk-ago">${h(ago(j.publishedAt))}</span></span><h3 class="wk-jt">${h(j.title)}</h3>
-        <span class="wk-who">${av(j.poster, "sm")}<span class="u-f1 u-mw0"><a href="#/u/${enc(j.poster.handle)}">${h(j.poster.name)}</a>${j.poster.verified ? ` ${ic("verified", "xs")}` : ""} · <a href="#/cv/${enc(j.poster.handle)}">الملف المهني</a></span></span>
-        <span class="wk-hpay"><b>${h(payAmt(j.pay))}</b>${j.pay && j.pay.type !== "none" ? `<small>${h(j.pay.label)}</small>` : ""}<span class="wk-happs">${ic("users", "xs")}<span>${num(j.apps)} متقدّم</span></span></span></section>
+      ${heroHtml(j)}
       <section class="card wk-sec"><dl class="wk-facts wk-fi">${facts.map(([i, k, v]) => `<div><dt><span class="wk-fic">${ic(i)}</span>${k}</dt><dd>${h(v)}</dd></div>`).join("")}</dl>${dlPill(j)}
         ${j.skills.length ? `<span class="wk-tags">${j.skills.map((s) => `<span>${h(s)}</span>`).join("")}</span>` : ""}</section>
       <section class="card wk-sec"><h3 class="wk-st">${ic("doc")}الوصف</h3><p class="wk-about">${h(j.body)}</p>${j.questions.length ? `<div class="f-h">أسئلة التقديم</div><ol class="wk-ql">${j.questions.map((x) => `<li>${h(x)}</li>`).join("")}</ol>` : ""}</section>
@@ -332,13 +360,12 @@
       ${me.owner && j.status === "open" ? `<section class="card wk-sec"><h3 class="wk-st">${ic("star")}تمييز الإعلان</h3><p class="f-hint">يظهر إعلانك أولاً في نتائج البحث. ${num(d.options.boostPerDay, { maximumFractionDigits: 2 })} π لليوم.</p>${d.piEnabled ? `<div class="wk-acts">${d.options.boostDays.map((n) => `<button class="btn outline sm" type="button" data-boost="${n}">${num(n)} يوماً · ${num(n * d.options.boostPerDay, { maximumFractionDigits: 2 })} π</button>`).join("")}</div>` : `<div class="wk-lock">${ic("wallet")}<span class="u-f1 u-mw0">${h(d.piNotice)}</span><span class="wk-soon">غير مفعّل بعد</span></div>`}${j.featuredUntil ? `<p class="f-hint">مميّز حتى ${h(day(j.featuredUntil))}</p>` : ""}</section>` : ""}
       ${me.canReport ? `<details class="card u-mt12"><summary class="u-mh44 u-dflex u-aic u-g8 u-fw7 u-cp">${ic("flag")} الإبلاغ عن الإعلان</summary><form class="f-form u-mt8" id="wk-jr"><label>السبب<select name="reason" required><option value="">اختر…</option>${Object.entries(d.options.reasons).map(([k, v]) => `<option value="${k}">${h(v)}</option>`).join("")}</select></label><label>تفاصيل (اختياري)<textarea name="note" rows="2" maxlength="600"></textarea></label><button class="btn outline" type="submit">إرسال البلاغ</button></form></details>` : ""}
       ${me.staff && !me.owner ? `<p class="u-mt8"><a class="btn ghost sm" href="#/admin/jobs">${ic("shield")}مراجعة الإعلانات</a></p>` : ""}`;
-    if (j.status === "open") UI.vidtikStrip?.("job", j.id, box); // v2.76 «يظهر في فيديوتك»
     $("#wk-apply")?.addEventListener("click", () => applySheet(j, d));
-    try { if (sessionStorage.getItem("mp-auto-apply") === j.id) { sessionStorage.removeItem("mp-auto-apply"); $("#wk-apply")?.click(); } } catch { /* v2.76 «قدّم الآن» from a Vidtik clip opens the apply sheet at once */ }
     $("#wk-save")?.addEventListener("click", (e) => busy(e.currentTarget, async () => { const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; await api("POST", `/api/jobs/${enc(j.id)}/save`, { saved: on }); say(on ? "حُفظت الفرصة" : "أُزيلت من المحفوظة"); jobView(jid); }));
     box.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.st !== "open" && !confirm(b.dataset.st === "paused" ? "إيقاف استقبال الطلبات مؤقتاً؟" : "سيُغلق الإعلان وتُبلَّغ الطلبات المفتوحة. متابعة؟")) return; busy(b, async () => { await api("POST", `/api/jobs/${enc(j.id)}/state`, { status: b.dataset.st }); say("تم"); jobView(jid); }); }));
     box.querySelectorAll("[data-boost]").forEach((b) => b.addEventListener("click", () => busy(b, async () => { const r = await api("POST", `/api/jobs/${enc(j.id)}/boost`, { days: Number(b.dataset.boost) }); if (!window.MPPi?.pay) return say("افتح التطبيق في متصفح Pi لإكمال الدفع"); await MPPi.pay({ amount: r.amount, memo: r.intent.memo, purpose: "jobs", refId: r.boost, intent: async () => r.intent }); say("سيظهر إعلانك مميّزاً بعد تأكيد الدفع"); jobView(jid); })));
     $("#wk-jr")?.addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { await api("POST", `/api/jobs/${enc(j.id)}/report`, { reason: e.target.reason.value, note: e.target.note.value.trim() || undefined }); say("وصل بلاغك لفريق المنصة"); e.target.closest("details").open = false; e.target.reset(); }); });
+  }
   }
   function applySheet(j) {
     const bid = j.kind.key === "freelance" && j.pay.type !== "none";
@@ -563,6 +590,6 @@
       contracts: () => (a === "new" ? contractForm() : contractsHub()), contract: () => contractView(a) };
   });
   MPRoutes.add("admin", (a, b, next) => (a === "pro" ? adminView() : a === "jobs" ? adminJobs() : a === "contracts" ? adminContracts() : next()));
-  window.MPWork = { editorView, profileView, talentView, adminView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, adminJobs, contractsHub, contractForm, contractView, adminContracts };
+  window.MPWork = { cache: { size: () => [...JC.keys()].filter((k) => cGet(k)).length, forUser: (who) => { for (const [k, e] of JC) if (e.who !== who) JC.delete(k); } }, editorView, profileView, talentView, adminView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, adminJobs, contractsHub, contractForm, contractView, adminContracts };
   if (!window.__deferRoute && /^#\/(cv|talent|jobs|job|application|contracts|contract|admin\/(pro|jobs|contracts))(\/|\?|$)/.test(location.hash)) route();
 })();
