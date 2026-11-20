@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.151.1 «الصفحة لا تُهدم» — 2026-11-20
+- Jobs: kind chips, search/filter sheet, «المزيد» and the browse/mine tabs rewrite the URL in place (history.replaceState) and swap only the results / section; header, tiles and search form stay; old results dim while loading (no skeleton); the view only scrolls when the results start above the screen.
+- Back leaves Jobs in one step after any number of filters; a job opened from a filtered list returns to that list.
+- Prefetch: a finger resting 80 ms on a job (not a scroll) fetches it once with ?peek=1, which the server does not count as a view.
+- Tests: e2e jobs-nav 4–6, server jobs peek.
+
 ## 2.151.0 «لا شاشة فارغة» — 2026-11-20
 - Jobs: in-memory stale-while-revalidate cache (per account, 3 min, cleared by any non-GET) for the list, «إعلاناتي وطلباتي» and job pages: painted in the same task as the tap, refreshed quietly (list refresh replaces only the results, not the search form).
 - Back from a job → list is instant at the exact scroll; a job opened from a card shows its hero at once; a job from memory keeps its actions inert (aria-busy) until the fresh copy lands.
