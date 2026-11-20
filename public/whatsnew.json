@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.151.2",
+    "date": "2026-11-20",
+    "ar": {
+      "title": "لمسة أخيرة على الوظائف",
+      "items": [
+        "عنوان البطاقة ينتقل بخفة إلى صفحة الفرصة (ويتوقف مع تقليل الحركة)",
+        "شريط الأقسام يبقى أعلى الشاشة وأنت تتصفح",
+        "اضغط القسم الحالي لترجع لأول القائمة"
+      ]
+    },
+    "en": {
+      "title": "A finishing touch on Jobs",
+      "items": [
+        "The card title glides into the job page (off with reduced motion)",
+        "The section bar stays at the top while you scroll",
+        "Tap the current section to jump back to the top"
+      ]
+    }
+  },
+  {
     "v": "2.151.1",
     "date": "2026-11-20",
     "ar": {
