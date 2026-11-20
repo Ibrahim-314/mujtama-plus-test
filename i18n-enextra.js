@@ -3569,5 +3569,15 @@ Object.assign(window.MPI18N.en, {
 "تعذّر تحميل Pi، حاول مرة أخرى.": "Couldn't load Pi, please try again.",
 "تعذّر تحميل شاشة الدخول.": "Couldn't load the sign-in screen.",
 "ن": "N",
-"داخل متصفح Pi؟ ادخل بحساب Pi": "In the Pi Browser? Sign in with Pi"
+"داخل متصفح Pi؟ ادخل بحساب Pi": "In the Pi Browser? Sign in with Pi",
+"ينتهي اليوم": "Closes today",
+"ينتهي غداً": "Closes tomorrow",
+"باقي {n} أيام": "{n} {p:day|days} left",
+"باقي {n} يوماً": "{n} {p:day|days} left",
+"إزالة من المحفوظة": "Remove from saved",
+"حفظ الفرصة": "Save opportunity",
+"أدوات العمل": "Work tools",
+"{n} متقدّم": "{n} {p:applicant|applicants}",
+"إدارة الإعلان": "Manage listing",
+"مرحلة الطلب {n} من {n}": "Application step {n} of {n}"
 });
