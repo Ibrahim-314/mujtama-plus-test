@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.151.1",
+    "date": "2026-11-20",
+    "ar": {
+      "title": "صفحة الوظائف لا تُهدم",
+      "items": [
+        "الفلاتر والبحث والأقسام تبدّل النتائج فقط، بلا صعود لأعلى",
+        "زر الرجوع يخرجك من الوظائف بضغطة واحدة مهما غيّرت الفلاتر",
+        "الفرصة تُجهَّز لحظة لمسها فتفتح كاملة"
+      ]
+    },
+    "en": {
+      "title": "Jobs stays put",
+      "items": [
+        "Filters, search and sections swap only the results, no jump to the top",
+        "Back leaves Jobs in one tap, however many filters you tried",
+        "A job gets ready the moment you touch it, so it opens complete"
+      ]
+    }
+  },
+  {
     "v": "2.151.0",
     "date": "2026-11-20",
     "ar": {
