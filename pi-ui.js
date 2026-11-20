@@ -34,6 +34,18 @@
 
   /* ---------- styles ---------- */
   if (!document.getElementById("pi-css")) document.head.insertAdjacentHTML("beforeend", `<style id="pi-css">
+.piw{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px 20px calc(20px + env(safe-area-inset-bottom));overflow:auto;background:radial-gradient(110% 50% at 50% -10%,color-mix(in srgb,var(--accent) 14%,transparent),transparent 62%),var(--bg)}
+.piw-c{width:100%;max-width:400px;text-align:center;display:flex;flex-direction:column;align-items:center}
+@media (min-width:900px){.piw-c{background:var(--card);border:1px solid var(--line);border-radius:30px;box-shadow:var(--sh-3);padding:40px 36px 30px}}
+.piw-chip{display:inline-flex;align-items:center;gap:8px;height:34px;padding-inline:6px 14px;border-radius:999px;background:var(--accent2);color:var(--accent-ink);font-weight:700;font-size:14px}.piw-chip .pi-logo{width:24px;height:24px;border-radius:8px;font-size:14px}
+.piw h1{margin:18px 0 6px;font-size:28px;line-height:1.25;font-weight:800}.piw h1 bdi{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.piw-sub,.piw-why{margin:0;color:var(--muted);font-size:15.5px;line-height:1.6}.piw-why{font-size:14px;margin-bottom:22px}
+.piw-av{position:relative;width:132px;height:132px;margin:30px 0 22px;padding:0;border-radius:50%;display:grid;place-items:center;background:var(--bg-2);border:2px dashed var(--line-2);color:var(--muted);cursor:pointer}
+.piw-av.done{border:0;cursor:default}.piw-av img{width:100%;height:100%;border-radius:50%;object-fit:cover}.piw-cam{width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.piw-plus{position:absolute;bottom:4px;inset-inline-end:4px;width:38px;height:38px;border-radius:50%;background:var(--grad);color:var(--white);display:grid;place-items:center;font:800 22px/1 system-ui,sans-serif;border:3px solid var(--bg);box-shadow:var(--sh-2)}.piw-av.done .piw-plus{background:var(--ok);font-size:18px}
+.piw-step{font-weight:800;font-size:18px;margin:0 0 4px}
+.piw-go{width:100%;height:52px;border:0;border-radius:16px;background:var(--grad);color:var(--white);font:inherit;font-weight:800;font-size:16.5px;cursor:pointer}.piw-go:focus-visible,.piw-later:focus-visible,.piw-av:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.piw-later{margin-top:10px;height:44px;width:100%;border:0;background:none;color:var(--muted);font:inherit;font-weight:700;font-size:15.5px;cursor:pointer}
 .pi-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .pi-page{max-width:560px;margin:auto}.pi-page h2{font-size:20px;margin:6px 0 12px;display:flex;align-items:center;gap:8px}.pi-page h2:focus{outline:none}
 .pi-logo{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#f6b52a,#e88a12);color:#2a1300;font:800 18px/1 system-ui,sans-serif;flex:none}
@@ -186,14 +198,47 @@
         n.className = "pi-note err"; n.setAttribute("role", "alert");
         n.innerHTML = `حساب Pi <bdi>@${h(r.username)}</bdi> غير مربوط بعد. ادخل بكلمة مرور حسابك في مجتمع بلس (أو أنشئ حساباً جديداً) وسنربطه تلقائياً.
           <button type="button" class="u-mt8 u-w100 btn ghost" id="pi-new">إنشاء حساب جديد بحساب Pi</button>`;
-        document.getElementById("pi-new").onclick = async () => { try { await api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); pendingLink = null; authed = true; await start(); await flushIncomplete(); } catch (e) { n.textContent = e.message; } };
+        document.getElementById("pi-new").onclick = async () => { try { await api("POST", "/api/auth/pi", { accessToken: auth.accessToken }); pendingLink = null; authed = true; welcomeLater(r.username); await start(); await flushIncomplete(); welcome(); } catch (e) { n.textContent = e.message; } };
         opts.onNeedsLink?.();
         return;
       }
-      authed = true; step(r.created ? "أُنشئ حسابك بحساب Pi" : "تم الدخول"); await start(); await flushIncomplete();
+      authed = true; step(r.created ? "أُنشئ حسابك بحساب Pi" : "تم الدخول"); if (r.created) welcomeLater(r.piUsername); await start(); await flushIncomplete(); welcome();
     } catch (e) { n.className = "pi-note err"; n.setAttribute("role", "alert"); n.textContent = e.message; }
     finally { if (b.isConnected) { b.disabled = false; b.removeAttribute("aria-busy"); box.dataset.state = ""; } }
   }
+
+  /* v2.149.15 «أول دخول بحساب Pi»: once, right after a NEW account is created with Pi — welcome by Pi username + one step:
+   * add your photo (the profile cropper), then write your first post (the composer). «لاحقاً» closes it for good. */
+  const WK = "mp.piwelcome";
+  function welcomeLater(u) { try { localStorage.setItem(WK, String(u || "")); } catch { /* storage off: shown this session only */ welcome.u = String(u || ""); } }
+  function welcome() {
+    let u = welcome.u; try { const v = localStorage.getItem(WK); if (v !== null) u = v; } catch { }
+    if (u == null || document.querySelector(".piw")) return;
+    const me = () => (typeof S !== "undefined" && S.me && S.me()) || {}, pic = () => { const a = me().avatar; return a ? (a["400"] || a["200"] || "") : ""; };
+    const close = () => { try { localStorage.removeItem(WK); } catch { } welcome.u = null; clearInterval(welcome.t); d.remove(); };
+    const d = document.createElement("div"); d.className = "piw"; d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true"); d.setAttribute("aria-labelledby", "piw-h");
+    const cam = `<svg class="piw-cam" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>`;
+    const paint = () => {
+      const src = pic(), done = !!src;
+      d.innerHTML = `<div class="piw-c"><span class="piw-chip"><span class="pi-logo" aria-hidden="true">π</span><span>دخلت بحساب Pi</span></span>
+        <h1 id="piw-h"><span>أهلاً</span> ${u ? `<bdi dir="ltr">@${h(u)}</bdi>` : ""}</h1>
+        <p class="piw-sub">${done ? "صورتك جاهزة. الحين خلّ الناس يعرفونك." : "حسابك جاهز في مجتمع بلس."}</p>
+        <button type="button" class="piw-av${done ? " done" : ""}" id="piw-av" aria-label="${done ? "صورتك" : "أضف صورتك"}" ${done ? "tabindex=\"-1\"" : ""}>${done ? `<img src="${h(src)}" alt="">` : cam}<span class="piw-plus" aria-hidden="true">${done ? "✓" : "+"}</span></button>
+        <p class="piw-step">${done ? "اكتب أول منشور" : "أضف صورتك"}</p>
+        <p class="piw-why">${done ? "سطر واحد يكفي: من أنت وش يهمك." : "الناس يتفاعلون أكثر مع حساب له صورة."}</p>
+        <button type="button" class="piw-go" id="piw-go">${done ? "اكتب منشورك" : "اختر صورة"}</button>
+        <button type="button" class="piw-later" id="piw-later">لاحقاً</button></div>`;
+      const go = async () => {
+        if (done) { close(); if (typeof openComposer === "function") openComposer(); return; }
+        try { if (!window.MPProfEdit && window.MPChunks) await MPChunks.load("feat"); window.MPProfEdit?.pick("avatar"); } catch (e) { toast(e.message); }
+      };
+      d.querySelector("#piw-go").onclick = go; if (!done) d.querySelector("#piw-av").onclick = go;
+      d.querySelector("#piw-later").onclick = close; if (d.isConnected) d.querySelector("#piw-go").focus();
+    };
+    paint(); document.body.append(d); d.querySelector("#piw-go").focus();
+    clearInterval(welcome.t); let had = !!pic(); welcome.t = setInterval(() => { if (!d.isConnected) return clearInterval(welcome.t); if (!had && pic()) { had = true; paint(); } }, 600);
+  }
+  if (typeof DB !== "undefined" && DB.me) setTimeout(welcome, 0); // reopened before finishing (a reload mid-welcome)
 
   /* after a password sign-in that followed a needsLink answer, link the Pi account with the same token */
   let pendingLink = null;
