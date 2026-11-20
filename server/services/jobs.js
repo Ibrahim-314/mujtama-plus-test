@@ -142,7 +142,7 @@ module.exports = (ctx, opts = {}) => {
   }
   const options = () => ({ kinds: KIND, categories: CATS, modes: MODES, employment: EMPLOY, pay: PAY, reasons: REASONS, boostDays: BOOST_DAYS, boostPerDay: pi(BOOST_PER_DAY) });
   const jobRow = (jid) => db.get("SELECT * FROM jobs WHERE id=$1", [String(jid)]);
-  async function jobView(viewer, jid) {
+  async function jobView(viewer, jid, peek = false) {
     const j = await jobRow(jid); if (!j) throw E.nf();
     const owner = !!viewer && viewer.id === j.poster_id, staff = viewer?.role === "admin";
     if (!owner && !staff && (j.status === "review" || j.status === "removed")) throw E.nf();
@@ -151,7 +151,7 @@ module.exports = (ctx, opts = {}) => {
     if (minor && !owner && !Number(j.minors_ok)) throw fail(403, "minor_restricted", "هذا الإعلان غير متاح لمن هم دون ١٨ سنة");
     const us = await usersOf([j.poster_id]), saved = await savedSet(viewer?.id, [j.id]);
     const mine = viewer && !owner ? await db.get("SELECT id, status FROM job_applications WHERE job_id=$1 AND applicant_id=$2", [j.id, viewer.id]) : null;
-    if (viewer && !owner && !mine) await db.run("UPDATE jobs SET views=views+1 WHERE id=$1", [j.id]);
+    if (viewer && !owner && !mine && !peek) await db.run("UPDATE jobs SET views=views+1 WHERE id=$1", [j.id]);
     const hasPro = viewer && !owner ? !!(await db.get("SELECT 1 x FROM pro_profiles WHERE user_id=$1", [viewer.id]).catch(() => null)) : false;
     let why = null, whyCode = null;
     if (!viewer) [why, whyCode] = ["سجّل الدخول للتقديم", "auth"];
@@ -355,7 +355,7 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/jobs", async (req) => search(req.user || null, req.query || {}));
   R.post("/api/jobs", A(async (req) => create(req.user, req.body || {})));
   R.get("/api/jobs/me", A(async (req) => mine(req.user)));
-  R.get("/api/jobs/:id", async (req) => jobView(req.user || null, req.params.id));
+  R.get("/api/jobs/:id", async (req) => jobView(req.user || null, req.params.id, String((req.query || {}).peek || "") === "1")); // v2.151.1: ?peek=1 = touch prefetch, not counted as a view
   R.patch("/api/jobs/:id", A(async (req) => edit(req.user, req.params.id, req.body || {})));
   R.post("/api/jobs/:id/state", A(async (req) => setState(req.user, req.params.id, req.body || {})));
   R.post("/api/jobs/:id/save", A(async (req) => save(req.user, req.params.id, (req.body || {}).saved !== false)));
