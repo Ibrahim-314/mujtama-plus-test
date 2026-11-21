@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.152.0",
+    "date": "2026-11-21",
+    "ar": {
+      "title": "سياسات أوضح لـPi",
+      "items": [
+        "سياسة الخصوصية توضّح ما نأخذه من Pi: المعرّف واسم المستخدم فقط",
+        "شروط المدفوعات عبر Pi صارت أوضح",
+        "الشروط والخصوصية متاحة بالإنجليزية"
+      ]
+    },
+    "en": {
+      "title": "Clearer Pi policies",
+      "items": [
+        "The privacy policy explains what we get from Pi: only your ID and username",
+        "Clearer terms for Pi payments",
+        "Terms and privacy are now available in English"
+      ]
+    }
+  },
+  {
     "v": "2.151.2",
     "date": "2026-11-20",
     "ar": {
