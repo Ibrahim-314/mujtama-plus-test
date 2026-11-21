@@ -20,6 +20,9 @@ const { E, HttpError, str, id, now } = require("../lib/core");
 
 const STATUSES = ["created", "approved", "completed", "cancelled", "refunded", "failed"];
 const DEFAULT_PURPOSES = ["tip", "donation", "subscription", "boost", "purchase", "event_ticket", "ppv", "market", "ads", "ai", "transfer", "mentor", "fund", "charity", "jobs", "contract", "test"]; // fund: phase 65 creator support fund donations · charity: phase 70 charity campaign donations · transfer: phase 56 user-to-user transfers · ai: phase 41 AI subscriptions · ppv: phase 38 paid posts · market: phase 39 marketplace orders · ads: phase 40 ad budgets · mentor: phase 74 paid mentorship sessions
+// v2.153.0: purposes owned by a feature get their intent ONLY from that feature (it writes the row its PI_PAYMENT_* handler
+// looks up). Opened on the public route they would take the Pi and credit nobody, so that route refuses them.
+const FEATURE_PURPOSES = new Set(["tip", "subscription", "ppv", "market", "ads", "ai", "transfer", "mentor", "fund", "charity", "jobs", "contract"]);
 const OFF = "مدفوعات Pi غير مفعّلة بعد";
 const AUTH_OFF = "تسجيل الدخول بحساب Pi غير مفعّل";
 const PI_TEST_URL = "https://mujtamakt6955.pinet.com"; // v2.149.13: the testnet app «Mujtama+» in Pi Browser (Render test default only)
@@ -559,7 +562,11 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/pi/link", A(async (req) => linkState(req.user)));
   R.del("/api/pi/link", A(async (req) => unlink(req.user)));
   R.get("/api/pi/wallet", A(whenReady(async (req) => wallet(req.user, req.query || {}))));
-  R.post("/api/pi/payments", A(async (req) => createIntent(req.user, req.body)));
+  R.post("/api/pi/payments", A(async (req) => {
+    requirePayments(); // off → 501 first, as before
+    if (FEATURE_PURPOSES.has(String(req.body?.purpose || ""))) throw new HttpError(400, "ابدأ هذا الدفع من صفحة الميزة نفسها", "feature_purpose");
+    return createIntent(req.user, req.body);
+  }));
   // approve/complete are also routed here from the legacy handlers in platform.js (registered earlier, first match wins)
   R.post("/api/pi/payments/approve", A(async (req) => approve(req.user, str(req.body.paymentId, 200, { required: true }))));
   R.post("/api/pi/payments/complete", A(async (req) => complete(req.user, str(req.body.paymentId, 200, { required: true }), req.body.txid)));
