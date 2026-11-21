@@ -85,8 +85,14 @@ const PiAdapter = {
     return out;
   },
   async createPayment(amount, memo, metadata = {}) {
+    // v2.153.0: supporting a creator (a post, or a profile with toHandle) is a real tip: it goes through the tips sheet so the
+    // creator is credited. The generic sheet would take the Pi with nobody to credit (the server now refuses that purpose).
+    if (metadata.toHandle) {
+      if (!window.MPTips) await window.MPChunks?.load("tips").catch(() => { });
+      if (window.MPTips?.tipSheet) return window.MPTips.tipSheet({ postId: metadata.post || null, toHandle: metadata.toHandle, name: metadata.name });
+    }
     if (!window.MPPi) await window.MPChunks?.load("pi");
     if (!window.MPPi) throw new Error("مدفوعات Pi غير مفعّلة بعد");
-    return window.MPPi.paySheet({ amount, memo, purpose: metadata.purpose || (metadata.post ? "tip" : "donation"), refId: metadata.post || metadata.refId || null });
+    return window.MPPi.paySheet({ amount, memo, purpose: metadata.purpose || "donation", refId: metadata.post || metadata.refId || null });
   }
 };
