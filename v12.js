@@ -276,7 +276,7 @@ moreMenu = function (pid) {
     if (tags[0]) { const b = document.createElement("button"); b.textContent = "كتم #" + tags[0]; b.onclick = () => { DB.muted.hashtags.push(tags[0]); save(); closeSheet(); toast("تم كتم الهاشتاغ"); rerender(); }; menu.appendChild(b); }
     if (p.community) { const b = document.createElement("button"); b.textContent = "كتم هذا المجتمع في الخلاصة"; b.onclick = () => { DB.muted.communities.push(p.community); save(); closeSheet(); toast("تم الكتم"); rerender(); }; menu.appendChild(b); }
     const lb = document.createElement("button"); lb.textContent = "إضافة الكاتب إلى قائمة"; lb.onclick = () => addToList(p.author); menu.appendChild(lb);
-    const sup = document.createElement("button"); sup.textContent = "دعم المبدع (Pi)"; sup.onclick = async () => { closeSheet(); try { await PiAdapter.createPayment(1, "دعم " + S.user(p.author).name, { post: pid }); } catch (e) { toast("دعم المبدعين بعملة Pi يُفعّل مع الربط"); } }; menu.appendChild(sup);
+    const sup = document.createElement("button"); sup.textContent = "دعم المبدع (Pi)"; sup.onclick = async () => { closeSheet(); try { const au = S.user(p.author); await PiAdapter.createPayment(1, "دعم " + au.name, { post: pid, toHandle: au.handle, name: au.name }); } catch (e) { toast("دعم المبدعين بعملة Pi يُفعّل مع الربط"); } }; menu.appendChild(sup);
     return;
   }
   const me = S.me();
@@ -463,7 +463,7 @@ Views.profile = function (handle) {
   _profile(handle);
   const u = handle ? S.byHandle(handle) : S.me(); if (!u) return;
   if (u.id !== DB.me) {
-    const pm = $("#pmore"); if (pm) { const old = pm.onclick; pm.onclick = () => { old(); const menu = document.querySelector("#sheet .menu"); const b = document.createElement("button"); b.textContent = "إضافة إلى قائمة"; b.onclick = () => addToList(u.id); menu.prepend(b); const b2 = document.createElement("button"); b2.textContent = "دعم بعملة Pi"; b2.onclick = async () => { closeSheet(); try { await PiAdapter.createPayment(1, "دعم", {}); } catch (e) { toast("دعم المبدعين بعملة Pi يُفعّل مع الربط"); } }; menu.prepend(b2); }; }
+    const pm = $("#pmore"); if (pm) { const old = pm.onclick; pm.onclick = () => { old(); const menu = document.querySelector("#sheet .menu"); const b = document.createElement("button"); b.textContent = "إضافة إلى قائمة"; b.onclick = () => addToList(u.id); menu.prepend(b); const b2 = document.createElement("button"); b2.textContent = "دعم بعملة Pi"; b2.onclick = async () => { closeSheet(); try { await PiAdapter.createPayment(1, "دعم", { toHandle: u.handle, name: u.name }); } catch (e) { toast("دعم المبدعين بعملة Pi يُفعّل مع الربط"); } }; menu.prepend(b2); }; }
   } else {
     const top = view.querySelector(".profile-top p");
     if (top) top.insertAdjacentHTML("afterend", `<div class="u-mb6 chips"><a class="tab" href="#/lists"><svg class=ei aria-hidden=true><use href=#i-list /></svg> القوائم</a><a class="tab" href="#/events"><svg class=ei aria-hidden=true><use href=#i-calendar /></svg> الأحداث</a><a class="tab" href="#/interests"><svg class=ei aria-hidden=true><use href=#i-target /></svg> الاهتمامات</a><a class="tab" href="#/library"><svg class=ei aria-hidden=true><use href=#i-bookmarkF /></svg> المكتبة</a><a class="tab" href="#/studio"><svg class=ei aria-hidden=true><use href=#i-chart /></svg> استوديو المنشئ</a></div>`);
