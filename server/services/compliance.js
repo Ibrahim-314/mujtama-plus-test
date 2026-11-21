@@ -458,9 +458,9 @@ module.exports = (ctx) => {
    * ===================================================================== */
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString("ar-SA-u-ca-gregory-nu-arab", { year: "numeric", month: "long", day: "numeric" }); } catch { return iso; } };
-  const docs = async () => P.documents(process.env, await rules());
-  function shell(title, inner, { desc = "" } = {}) {
-    return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · مجتمع بلس</title>${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
+  const docs = async (lang) => P.documents(process.env, await rules(), lang);
+  function shell(title, inner, { desc = "", en = false, alt = "" } = {}) {
+    return `<!doctype html><html lang="${en ? "en" : "ar"}" dir="${en ? "ltr" : "rtl"}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} · ${en ? "Mujtama+" : "مجتمع بلس"}</title>${desc ? `<meta name="description" content="${esc(desc)}">` : ""}
 <style>:root{--fg:#1d1b26;--mut:#5f5b73;--bg:#fbfaff;--card:#fff;--acc:#5b2bd6;--line:#e6e2f2;--ok:#1f7a4d}@media(prefers-color-scheme:dark){:root{--fg:#efedf7;--mut:#b3afc6;--bg:#121019;--card:#1b1824;--acc:#b9a2ff;--line:#2e2a3d;--ok:#7fd6a7}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:18px/1.9 "IBM Plex Sans Arabic","Noto Naskh Arabic",system-ui,sans-serif}a{color:var(--acc)}a:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:3px;border-radius:6px}
 .skip{position:absolute;inset-inline-start:-999px}.skip:focus{inset-inline-start:12px;top:12px;background:var(--card);padding:8px 12px;z-index:9}
@@ -472,13 +472,16 @@ section{border-top:1px solid var(--line);padding-top:6px}h2{font-size:1.3em;marg
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}.stat b{display:block;font-size:1.6em;line-height:1.2}.stat span{color:var(--mut);font-size:14px}
 table{border-collapse:collapse;width:100%;font-size:16px;margin:8px 0 16px}th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:start}th{color:var(--mut);font-weight:600}
 footer{max-width:760px;margin:auto;padding:20px;color:var(--mut);font-size:14px}</style></head>
-<body><a class="skip" href="#main">تخطَّ إلى المحتوى</a><header class="top"><b>مجتمع بلس</b><nav aria-label="السياسات"><a href="/legal/terms">الشروط</a><a href="/legal/privacy">الخصوصية</a><a href="/legal/retention">الاحتفاظ</a><a href="/transparency">الشفافية</a><a href="/">التطبيق</a></nav></header>
-<main id="main">${inner}</main><footer>نصوص مكتوبة بلغة واضحة. إن تعارض ملخص مع التفاصيل فالتفاصيل هي المرجع.</footer></body></html>`;
+${en
+  ? `<body><a class="skip" href="#main">Skip to content</a><header class="top"><b>Mujtama+</b><nav aria-label="Policies"><a href="/legal/terms?lang=en">Terms</a><a href="/legal/privacy?lang=en">Privacy</a><a href="/legal/retention">Retention (Arabic)</a><a href="/">App</a>${alt ? `<a href="${esc(alt)}" lang="ar" hreflang="ar">العربية</a>` : ""}</nav></header>
+<main id="main">${inner}</main><footer>Written in plain language. If a summary and the details differ, the details apply. The Arabic text is the reference version.</footer></body></html>`
+  : `<body><a class="skip" href="#main">تخطَّ إلى المحتوى</a><header class="top"><b>مجتمع بلس</b><nav aria-label="السياسات"><a href="/legal/terms">الشروط</a><a href="/legal/privacy">الخصوصية</a><a href="/legal/retention">الاحتفاظ</a><a href="/transparency">الشفافية</a><a href="/">التطبيق</a>${alt ? `<a href="${esc(alt)}" lang="en" hreflang="en">English</a>` : ""}</nav></header>
+<main id="main">${inner}</main><footer>نصوص مكتوبة بلغة واضحة. إن تعارض ملخص مع التفاصيل فالتفاصيل هي المرجع.</footer></body></html>`}`;
   }
-  const docHtml = (d) => shell(d.title, `<h1>${esc(d.title)}</h1><p class="meta">الإصدار ${esc(d.version)} · سارية من ${esc(fmtDate(d.effective))}</p>
-<div class="tldr" role="note"><h2>باختصار</h2><ul>${d.summary.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
-<nav aria-label="المحتويات"><ol class="toc">${d.sections.map(s => `<li><a href="#${esc(s.id)}">${esc(s.heading)}</a></li>`).join("")}</ol></nav>
-${d.sections.map(s => `<section id="${esc(s.id)}" aria-labelledby="h-${esc(s.id)}"><h2 id="h-${esc(s.id)}">${esc(s.heading)}</h2>${s.body.map(p => `<p>${esc(p)}</p>`).join("")}</section>`).join("")}`, { desc: d.summary[0] });
+  const docHtml = (d, alt) => { const en = d.lang === "en"; return shell(d.title, `<h1>${esc(d.title)}</h1><p class="meta">${en ? `Version ${esc(d.version)} · effective ${esc(new Date(d.effective).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" }))}` : `الإصدار ${esc(d.version)} · سارية من ${esc(fmtDate(d.effective))}`}</p>
+<div class="tldr" role="note"><h2>${en ? "In short" : "باختصار"}</h2><ul>${d.summary.map(s => `<li>${esc(s)}</li>`).join("")}</ul></div>
+<nav aria-label="${en ? "Contents" : "المحتويات"}"><ol class="toc">${d.sections.map(s => `<li><a href="#${esc(s.id)}">${esc(s.heading)}</a></li>`).join("")}</ol></nav>
+${d.sections.map(s => `<section id="${esc(s.id)}" aria-labelledby="h-${esc(s.id)}"><h2 id="h-${esc(s.id)}">${esc(s.heading)}</h2>${s.body.map(p => `<p>${esc(p)}</p>`).join("")}</section>`).join("")}`, { desc: d.summary[0], en, alt }); };
   const num = (v) => (typeof v === "number" ? v.toLocaleString("ar-SA-u-nu-arab") : esc(v));
   const table = (obj, labels = {}) => { const e = Object.entries(obj || {}); return e.length ? `<table><thead><tr><th scope="col">النوع</th><th scope="col">العدد</th></tr></thead><tbody>${e.map(([k, v]) => `<tr><td>${esc(labels[k] || k)}</td><td>${num(v)}</td></tr>`).join("")}</tbody></table>` : `<p class="meta">لا شيء في هذه الفترة.</p>`; };
   const KL = { ...L.KIND_LABEL, REMOVED: "إزالة محتوى", ...MOD_LABEL, dismiss: "رفض بلاغ" };
@@ -496,7 +499,14 @@ ${d.sections.map(s => `<section id="${esc(s.id)}" aria-labelledby="h-${esc(s.id)
   async function ssr(req, res, url) {
     const page = (status, html) => { res.writeHead(status, { ...SEC_HEADERS, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" }); res.end(html); return true; };
     let m = /^\/legal\/([a-z-]{2,20})\/?$/.exec(url.pathname);
-    if (m) { const d = (await docs()).find(x => x.slug === m[1]); return d ? page(200, docHtml(d)) : page(404, shell("غير موجود", "<h1>الصفحة غير موجودة</h1>")); }
+    if (m) {
+      const en = url.searchParams.get("lang") === "en";
+      const d = (await docs(en ? "en" : "ar")).find(x => x.slug === m[1]);
+      if (!d) return page(404, shell("غير موجود", "<h1>الصفحة غير موجودة</h1>"));
+      const hasEn = d.lang === "en" || (await docs("en")).some(x => x.slug === d.slug && x.lang === "en");
+      const alt = d.lang === "en" ? `/legal/${d.slug}` : hasEn ? `/legal/${d.slug}?lang=en` : "";
+      return page(200, docHtml(d, alt));
+    }
     if (url.pathname === "/transparency" || url.pathname === "/transparency/") {
       const list = await listTransparency();
       return page(200, shell("تقارير الشفافية", `<h1>تقارير الشفافية</h1><p>ننشر كل شهر وكل ربع سنة أرقاماً مجمّعة عن البلاغات وقرارات الإشراف والاستئنافات وطلبات البيانات. لا تحتوي التقارير أي بيانات شخصية.</p>
@@ -511,7 +521,7 @@ ${list.length ? `<table><thead><tr><th scope="col">الفترة</th><th scope="c
    * routes
    * ===================================================================== */
   R.get("/api/legal", async () => ({ policies: (await docs()).map(d => ({ slug: d.slug, title: d.title, version: d.version, effective: d.effective, summary: d.summary, href: `/legal/${d.slug}` })) }));
-  R.get("/api/legal/:slug", async (req) => { const d = (await docs()).find(x => x.slug === req.params.slug); if (!d) throw E.nf(); return { policy: d }; });
+  R.get("/api/legal/:slug", async (req) => { const d = (await docs(req.query?.lang === "en" ? "en" : "ar")).find(x => x.slug === req.params.slug); if (!d) throw E.nf(); return { policy: d }; });
   R.get("/api/privacy/register", async () => register());
   R.get("/api/transparency", async () => ({ reports: await listTransparency() }));
   R.get("/api/transparency/:period", async (req) => ({ report: await getTransparency(req.params.period) }));
