@@ -254,6 +254,18 @@ module.exports = (ctx, opts = {}) => {
     if (ok) await notify(c.worker_id, "contract_funded", c.id, c.client_id);
   }));
   bus?.on?.("PI_PAYMENT_CANCELLED", track(async (e) => { if (e.purpose === "contract") await db.run("UPDATE contract_milestones SET intent_id=NULL WHERE intent_id=$1 AND status='pending'", [e.tx]); }));
+  // v2.153.0: staff refunded a milestone's Pi while it still sits in escrow → refunded to the client (never releasable to the worker)
+  bus?.on?.("PI_PAYMENT_REFUNDED", track(async (e) => {
+    if (e.purpose !== "contract") return;
+    const m = await db.get("SELECT * FROM contract_milestones WHERE intent_id=$1", [e.tx]); if (!m || !["funded", "submitted", "revision"].includes(m.status)) return;
+    const c = await row(m.contract_id); if (!c) return;
+    let ok = false;
+    await db.tx(async (t) => {
+      if (!(await settle(t, m, c, 0, "pirefund", { memo: "Pi refunded by staff" }))) return;
+      await event(t, c.id, m.id, null, "refunded", null); await maybeComplete(t, c.id); ok = true;
+    });
+    if (ok) { await notify(c.worker_id, "contract_status", c.id, c.client_id); await notify(c.client_id, "contract_status", c.id, c.worker_id); }
+  }));
 
   /* ---------- delivery & review ---------- */
   async function submit(user, mid, b) {
