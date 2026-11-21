@@ -73,9 +73,9 @@
         <a class="u-db card" href="#/transparency"><b>تقارير الشفافية</b><div class="muted">أرقام البلاغات والقرارات والاستئنافات كل شهر</div></a><a class="u-db card" href="#/finance-report"><b>الشفافية المالية</b><div class="muted">حجم مدفوعات Pi والرسوم والمدفوعات والاحتياطيات (مجمّعة)</div></a>`;
       return;
     }
-    const r = await load(b, () => api("GET", "/api/legal/" + encodeURIComponent(slug))); if (!r) return;
+    const r = await load(b, () => api("GET", "/api/legal/" + encodeURIComponent(slug) + (document.documentElement.lang === "en" ? "?lang=en" : ""))); if (!r) return;
     const d = r.policy; document.getElementById("cmp-h").textContent = d.title;
-    b.innerHTML = `<p class="muted">الإصدار ${h(d.version)} · سارية من ${h(fmt(d.effective))} · <a href="/legal/${h(d.slug)}" target="_blank" rel="noopener">رابط للمشاركة</a></p>
+    b.innerHTML = `<p class="muted">الإصدار ${h(d.version)} · سارية من ${h(fmt(d.effective))} · <a href="/legal/${h(d.slug)}${d.lang === "en" ? "?lang=en" : ""}" target="_blank" rel="noopener">رابط للمشاركة</a></p>
       <div class="card cmp-tldr" role="note"><b>باختصار</b><ul>${d.summary.map(s => `<li>${h(s)}</li>`).join("")}</ul></div>
       <nav aria-label="المحتويات"><ol class="cmp-toc">${d.sections.map(s => `<li><a href="#/legal/${h(d.slug)}" data-cmp-sec="${h(s.id)}">${h(s.heading)}</a></li>`).join("")}</ol></nav>
       <div class="card cmp-doc">${d.sections.map(s => `<section id="sec-${h(s.id)}" aria-labelledby="sh-${h(s.id)}"><h3 id="sh-${h(s.id)}" tabindex="-1">${h(s.heading)}</h3>${s.body.map(p => `<p>${h(p)}</p>`).join("")}</section>`).join("")}</div>`;
