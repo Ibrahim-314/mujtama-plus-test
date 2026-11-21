@@ -350,6 +350,18 @@ module.exports = (ctx, opts = {}) => {
     });
   }));
   bus?.on?.("PI_PAYMENT_CANCELLED", track(async (e) => { if (e.purpose === "jobs") await db.run("UPDATE job_boosts SET status='cancelled' WHERE intent_id=$1 AND status='pending'", [e.tx]); }));
+  // v2.153.0: staff refunded the boost's Pi → the listing stops being featured for the refunded days and the fee journal is reversed
+  bus?.on?.("PI_PAYMENT_REFUNDED", track(async (e) => {
+    if (e.purpose !== "jobs") return;
+    const bo = await db.get("SELECT * FROM job_boosts WHERE intent_id=$1 AND status='completed'", [e.tx]); if (!bo) return;
+    await db.tx(async (tx) => {
+      const r = await tx.run("UPDATE job_boosts SET status='refunded' WHERE id=$1 AND status='completed'", [bo.id]); if (!r.changes) return;
+      const j = await tx.get("SELECT featured_until FROM jobs WHERE id=$1", [bo.job_id]);
+      const until = j?.featured_until ? new Date(j.featured_until).getTime() - Number(bo.days) * 864e5 : 0;
+      await tx.run("UPDATE jobs SET featured_until=$1 WHERE id=$2", [until > clock() ? iso(until) : null, bo.job_id]);
+      await postJournal(tx, { ikey: `jobs:${bo.id}:refund`, kind: "jobs_boost_refund", source: "jobs", refId: bo.id, senderId: bo.user_id, piTx: e.tx, lines: [{ account: ACC.fees, debit: Number(bo.amount) }, { account: ACC.out(bo.user_id), userId: bo.user_id, credit: Number(bo.amount) }] });
+    });
+  }));
 
   /* ---------- routes ---------- */
   R.get("/api/jobs", async (req) => search(req.user || null, req.query || {}));
