@@ -484,7 +484,7 @@
   const piv = (x) => `${num(x, { maximumFractionDigits: 2 })} π`;
   const CT_TONE = { offer: "info", active: "ok", completed: "ok", declined: "bad", cancelled: "", pending: "", funded: "info", submitted: "warn", revision: "warn", approved: "ok", released: "ok", refunded: "", };
   const ctBadge = (st, label) => `<span class="sbadge ${CT_TONE[st] || ""}">${h(label)}</span>`;
-  const EV_TXT = { offer: "أرسل العميل عرض العقد", accepted: "قبل المنفّذ العقد", declined: "رفض المنفّذ العرض", withdrawn: "سحب العميل العرض", funded: "مُوّلت المرحلة بالضمان", submitted: "سلّم المنفّذ المرحلة", revision: "طلب العميل تعديلاً", approved: "اعتمد العميل المرحلة", auto_approved: "اعتُمدت المرحلة تلقائياً بعد انتهاء مهلة المراجعة", dispute: "فُتح نزاع", resolved: "قرار فريق المنصة", cancelled: "انتهى العقد", completed: "اكتمل العقد" };
+  const EV_TXT = { offer: "أرسل العميل عرض العقد", accepted: "قبل المنفّذ العقد", declined: "رفض المنفّذ العرض", withdrawn: "سحب العميل العرض", funded: "مُوّلت المرحلة بالضمان", submitted: "سلّم المنفّذ المرحلة", revision: "طلب العميل تعديلاً", approved: "اعتمد العميل المرحلة", auto_approved: "اعتُمدت المرحلة تلقائياً بعد انتهاء مهلة المراجعة", dispute: "فُتح نزاع", resolved: "قرار فريق المنصة", cancelled: "انتهى العقد", completed: "اكتمل العقد", refunded: "استُردّ مبلغ المرحلة للعميل" };
 
   async function contractsHub() {
     const tab = qs().get("tab") === "closed" ? "closed" : "open";
