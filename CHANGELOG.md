@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.153.0 (2026-11-21) «كل دفعة لها أثر»
+- Pi purposes sweep on the real chain (intent → approve → complete → effect → refund): new server test pi-purposes-sweep (jobs boost, contract escrow, creators fund).
+- Fix: «دعم المبدع (Pi)» on posts and «دعم بعملة Pi» on profiles took Pi and credited nobody; they now open the tips sheet (creator is credited).
+- Fix: the public intent route refuses feature-owned purposes (tip, subscription, ppv, market, ads, ai, transfer, mentor, fund, charity, jobs, contract) with 400 feature_purpose.
+- Fix: a refunded contract milestone still in escrow is refunded to the client (no longer releasable to the worker).
+- Fix: a refunded job boost stops featuring the listing and reverses the fee journal.
+- Receipts and wallet show an Arabic label for every purpose (no more «ppv», «jobs»…); contract timeline shows the refund.
+
 ## 2.152.0 (2026-11-21) «سياسات واضحة لـPi»
 - Privacy + Terms 1.1: new Pi Network data section (uid/username only, token not stored, no recovery phrase/keys, transaction records, deletion), Pi as a third party, expanded Pi payments terms (Testnet, irreversible, refunds as new tx, 18+).
 - English versions at /legal/privacy?lang=en and /legal/terms?lang=en (lang/dir, hreflang switch); in-app #/legal reads English when the UI is English.
