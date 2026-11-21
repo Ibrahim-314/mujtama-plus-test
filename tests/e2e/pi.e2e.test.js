@@ -357,7 +357,7 @@ test("old entry point PiAdapter.createPayment opens the unified pay sheet and re
   await P.click("#sheet .pi-btn");
   await P.waitForSelector("#sheet .pi-pay[data-state=done]");
   await shot("pay-sheet-done");
-  const intent = calls("/api/pi/payments", "POST").at(-1); assert.deepEqual(intent.body, { amount: 1, memo: "دعم أمل", purpose: "tip", refId: "p9" });
+  const intent = calls("/api/pi/payments", "POST").at(-1); assert.deepEqual(intent.body, { amount: 1, memo: "دعم أمل", purpose: "donation", refId: "p9" });
   await P.click("#pi-sh-x");
   const r = await until(() => window.__oldR);
   assert.ok(r.txid, "resolves with the completed payment");
