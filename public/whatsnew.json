@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.153.0",
+    "date": "2026-11-21",
+    "ar": {
+      "title": "كل دفعة لها أثر",
+      "items": [
+        "«دعم المبدع» من المنشور أو الملف الشخصي يصل للمبدع فعلاً",
+        "استرداد ضمان مرحلة العقد يعود للعميل",
+        "استرداد تمييز الوظيفة يلغي التمييز",
+        "الإيصالات تعرض غرض كل دفعة بالعربية"
+      ]
+    },
+    "en": {
+      "title": "Every payment lands",
+      "items": [
+        "«Support creator» from a post or profile now reaches the creator",
+        "A refunded contract milestone goes back to the client",
+        "A refunded job boost ends the featured spot",
+        "Receipts name every payment purpose"
+      ]
+    }
+  },
+  {
     "v": "2.152.0",
     "date": "2026-11-21",
     "ar": {
