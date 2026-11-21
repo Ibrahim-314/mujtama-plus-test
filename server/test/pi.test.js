@@ -60,7 +60,7 @@ const events = [];
 const mk = async (handle) => { H.app.ctx.rl.w.clear(); const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: "عضو " + handle, handle, password: "secret123" }); assert.equal(r.status, 200, r.error); c.id = r.user.id; c.handle = handle; return c; };
 const linkPi = async (c, uid) => { const r = await c.req("POST", "/api/pi/auth", { accessToken: TOKEN(uid, c.handle), link: true }); assert.equal(r.status, 200, r.error); c.uid = "uid_" + uid; return r; };
 /** intent → Pi payment carrying the intent id (what Pi.createPayment does on the client) */
-const startPayment = async (c, amount = 1.5, extra = {}) => { const it = await c.req("POST", "/api/pi/payments", { amount, memo: "دعم صانع المحتوى", purpose: "tip", refId: "post_1", ...extra }); assert.equal(it.status, 200, it.error); const p = pay({ uid: c.uid, amount, metadata: it.metadata }); return { it, p }; };
+const startPayment = async (c, amount = 1.5, extra = {}) => { const it = await c.req("POST", "/api/pi/payments", { amount, memo: "دعم صانع المحتوى", purpose: "donation", refId: "post_1", ...extra }); assert.equal(it.status, 200, it.error); const p = pay({ uid: c.uid, amount, metadata: it.metadata }); return { it, p }; };
 
 test.before(async () => {
   H = await boot({ piOpts: { env: ENV, fetch: fakeFetch, jobs: false } });
@@ -106,7 +106,7 @@ test("sign-in works with payments off (PI_ENABLED unset, no API key): App Studio
   const r = await only.router.match("POST", "/api/pi/auth").handler({ body: { accessToken: TOKEN("solo", "solo_pi") }, query: {}, ip: "1", headers: {}, csrfOk: true }, {});
   assert.deepEqual(r, { needsLink: true, username: "solo_pi", linked: false });
   assert.equal(studioCalls.length, n0 + 1); assert.equal(studioCalls.at(-1).body.accessToken, TOKEN("solo", "solo_pi"));
-  await assert.rejects(() => only.router.match("POST", "/api/pi/payments").handler({ user: { id: "u" }, body: { amount: 1, memo: "m", purpose: "tip" } }), (e) => e.status === 501);
+  await assert.rejects(() => only.router.match("POST", "/api/pi/payments").handler({ user: { id: "u" }, body: { amount: 1, memo: "m", purpose: "donation" } }), (e) => e.status === 501);
   // a custom PI_APPSTUDIO_URL is honoured; a non-https one is ignored (falls back to the default)
   const seen = []; const spy = (url, o) => { seen.push(url); return appStudio(o); };
   const mk2 = (env) => { const router = new Router(); require("../services/pi")({ db: stubDb, bus: { on() { }, emit() { } }, rl: { hit: () => true }, router, config: {}, requireUser: (fn) => fn, services: {} }, { env, fetch: spy, jobs: false }); return router; };
@@ -185,20 +185,20 @@ test("CSRF: only the Pi login endpoints accept a request without X-Requested-Wit
   assert.equal(si.status, 200); assert.equal(si.user.id, alice.id, "Pi sign-in without the header (Pi Browser / sandbox frame)");
   assert.equal((await alice.req("POST", "/api/pi/auth", { accessToken: TOKEN("a1", "alice_pi"), link: true }, noHdr)).status, 403, "linking acts on the session: header required");
   assert.equal((await new H.Client().req("POST", "/api/auth/pi", { accessToken: TOKEN("l1", "legacy_pi") }, noHdr)).status, 200, "legacy Pi login exempt too");
-  assert.equal((await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" }, noHdr)).status, 403);
+  assert.equal((await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" }, noHdr)).status, 403);
   assert.equal((await alice.req("DELETE", "/api/pi/link", null, noHdr)).status, 403);
   assert.equal((await new H.Client().req("POST", "/api/auth/login", { handle: "pi_alice", password: "secret123" }, noHdr)).status, 403);
 });
 
 test("intents: validation, link required, metadata carries the intent id", async () => {
-  const notLinked = await carol.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" });
+  const notLinked = await carol.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" });
   assert.equal(notLinked.status, 409); assert.equal(notLinked.code, "pi_not_linked");
-  for (const b of [{ amount: 0, memo: "x", purpose: "tip" }, { amount: -1, memo: "x", purpose: "tip" }, { amount: "abc", memo: "x", purpose: "tip" }, { amount: 101, memo: "x", purpose: "tip" }, { amount: 1, memo: "x", purpose: "casino" }, { amount: 1, purpose: "tip" }])
+  for (const b of [{ amount: 0, memo: "x", purpose: "donation" }, { amount: -1, memo: "x", purpose: "donation" }, { amount: "abc", memo: "x", purpose: "donation" }, { amount: 101, memo: "x", purpose: "donation" }, { amount: 1, memo: "x", purpose: "casino" }, { amount: 1, purpose: "donation" }])
     assert.equal((await alice.req("POST", "/api/pi/payments", b)).status, 400, JSON.stringify(b));
-  const it = await alice.req("POST", "/api/pi/payments", { amount: 0.123456789, memo: "اشتراك", purpose: "subscription", refId: "c_9" });
+  const it = await alice.req("POST", "/api/pi/payments", { amount: 0.123456789, memo: "اشتراك", purpose: "donation", refId: "c_9" });
   assert.equal(it.status, 200); assert.match(it.id, /^pit_/); assert.equal(it.amount, 0.1234568, "rounded to Pi's 7 decimals");
   assert.deepEqual(it.metadata, { intentId: it.id }); assert.equal(it.memo, "اشتراك");
-  assert.equal((await new H.Client().req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" })).status, 401);
+  assert.equal((await new H.Client().req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" })).status, 401);
 });
 
 test("approve → complete: owner/network/amount/txid verified with Pi, idempotent, receipt + event", async () => {
@@ -223,24 +223,24 @@ test("approve → complete: owner/network/amount/txid verified with Pi, idempote
   const r = await alice.req("GET", "/api/pi/receipts/" + it.id);
   assert.equal(r.status, 200);
   for (const k of ["id", "amount", "memo", "status", "txid", "network", "createdAt", "completedAt", "piUsername", "purpose", "explorerUrl"]) assert.ok(k in r, k);
-  assert.equal(r.amount, 2); assert.equal(r.txid, "tx_1"); assert.equal(r.network, "testnet"); assert.equal(r.piUsername, "alice_pi"); assert.equal(r.purpose, "tip");
+  assert.equal(r.amount, 2); assert.equal(r.txid, "tx_1"); assert.equal(r.network, "testnet"); assert.equal(r.piUsername, "alice_pi"); assert.equal(r.purpose, "donation");
   assert.equal(r.explorerUrl, "https://blockexplorer.minepi.com/testnet/tx/tx_1"); assert.ok(r.completedAt);
   assert.equal((await alice.req("GET", "/api/pi/receipts/" + p.identifier)).id, it.id, "receipt by Pi payment id too");
   assert.equal((await bob.req("GET", "/api/pi/receipts/" + it.id)).status, 404);
   assert.equal((await admin.req("GET", "/api/pi/receipts/" + it.id)).status, 200, "staff can open any receipt");
   await new Promise(r2 => setTimeout(r2, 20));
-  const ev = events.find(e => e.e === "PI_PAYMENT_COMPLETED" && e.tx === it.id); assert.ok(ev); assert.equal(ev.purpose, "tip"); assert.equal(ev.refId, "post_1");
+  const ev = events.find(e => e.e === "PI_PAYMENT_COMPLETED" && e.tx === it.id); assert.ok(ev); assert.equal(ev.purpose, "donation"); assert.equal(ev.refId, "post_1");
   const trail = await db().all("SELECT from_status, to_status, source FROM pi_tx_events WHERE tx_id=$1 ORDER BY id", [it.id]);
   assert.deepEqual(trail.map(t => t.to_status), ["created", "approved", "completed"]);
 });
 
 test("approve rejects mismatches: amount → failed, foreign owner and wrong network → 403", async () => {
-  const it = await alice.req("POST", "/api/pi/payments", { amount: 3, memo: "x", purpose: "tip" });
+  const it = await alice.req("POST", "/api/pi/payments", { amount: 3, memo: "x", purpose: "donation" });
   const p = pay({ uid: alice.uid, amount: 30, metadata: it.metadata });
   const r = await alice.req("POST", "/api/pi/payments/approve", { paymentId: p.identifier });
   assert.equal(r.status, 409); assert.equal((await db().get("SELECT status, error FROM pi_transactions WHERE id=$1", [it.id])).status, "failed");
   assert.equal(p.status.developer_approved, false, "never approved on Pi");
-  const it2 = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" });
+  const it2 = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" });
   const foreign = pay({ uid: "uid_someone", amount: 1, metadata: it2.metadata });
   assert.equal((await alice.req("POST", "/api/pi/payments/approve", { paymentId: foreign.identifier })).status, 403);
   const main = pay({ uid: alice.uid, amount: 1, metadata: it2.metadata, network: "Pi Network" });
@@ -258,7 +258,7 @@ test("cancel: approved payment cancelled on Pi and locally, idempotent, cannot c
   assert.equal((await alice.req("POST", "/api/pi/payments/cancel", { paymentId: p.identifier })).status, 200);
   onChain(p, "tx_late");
   assert.equal((await alice.req("POST", "/api/pi/payments/complete", { paymentId: p.identifier, txid: "tx_late" })).status, 409);
-  const only = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" });
+  const only = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" });
   assert.equal((await bob.req("POST", "/api/pi/payments/cancel", { intentId: only.id })).status, 404);
   assert.equal((await alice.req("POST", "/api/pi/payments/cancel", { intentId: only.id })).status, 200);
   const { p: p2 } = await startPayment(alice, 1); await alice.req("POST", "/api/pi/payments/approve", { paymentId: p2.identifier }); onChain(p2, "tx_moving");
@@ -335,7 +335,7 @@ test("refunds: admin records a refund (original → refunded, an incoming row), 
   const w = await bob.req("GET", "/api/pi/wallet");
   const orig = w.tx.find(t => t.id === it.id), back = w.tx.find(t => t.id === r.refundId);
   assert.equal(orig.status, "refunded"); assert.equal(back.direction, "in"); assert.equal(back.status, "completed"); assert.equal(back.purpose, "refund"); assert.equal(back.txid, "tx_refund");
-  const open = await bob.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "tip" });
+  const open = await bob.req("POST", "/api/pi/payments", { amount: 1, memo: "x", purpose: "donation" });
   assert.equal((await admin.req("POST", `/api/admin/pi/payments/${open.id}/refund`, {})).status, 409);
 });
 
@@ -350,7 +350,7 @@ test("reconciliation: admin run fixes drift, reports unfixable mismatches, expir
   // D: the pending one from the incomplete test is now verified
   const pd = pending; pd.transaction.verified = true; pd.status.transaction_verified = true;
   // E: stale intent never handed to Pi
-  const e = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "old", purpose: "tip" });
+  const e = await alice.req("POST", "/api/pi/payments", { amount: 1, memo: "old", purpose: "donation" });
   await db().run("UPDATE pi_transactions SET created_at=$1 WHERE id=$2", [new Date(Date.now() - 3 * 864e5).toISOString(), e.id]);
   assert.equal((await alice.req("POST", "/api/admin/pi/reconcile", {})).status, 403);
   const run = await admin.req("POST", "/api/admin/pi/reconcile", { date: today });
