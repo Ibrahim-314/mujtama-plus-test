@@ -24,7 +24,8 @@
   let uid = 0;
 
   const STATUS = { created: ["بانتظار الموافقة", "wait"], approved: ["قيد التنفيذ", "wait"], completed: ["مكتمل", "ok"], cancelled: ["ملغاة", "mute"], refunded: ["مستردّة", "info"], failed: ["فشلت", "bad"] };
-  const PURPOSE = { transfer: "تحويل إلى عضو", tip: "دعم مبدع", donation: "تبرع", subscription: "اشتراك", boost: "ترويج", purchase: "شراء", event_ticket: "تذكرة فعالية", test: "دفعة تجريبية", refund: "استرداد", legacy: "دفعة سابقة", support: "دعم" };
+  const PURPOSE = { transfer: "تحويل إلى عضو", tip: "دعم مبدع", donation: "تبرع", subscription: "اشتراك", boost: "ترويج", purchase: "شراء", event_ticket: "تذكرة فعالية", test: "دفعة تجريبية", refund: "استرداد", legacy: "دفعة سابقة", support: "دعم",
+    ppv: "منشور مدفوع", market: "طلب من السوق", ads: "ميزانية إعلان", ai: "اشتراك الذكاء الاصطناعي", mentor: "جلسة إرشاد", fund: "صندوق دعم الصنّاع", charity: "تبرّع خيري", jobs: "تمييز إعلان وظيفة", contract: "ضمان مرحلة عقد" }; // v2.153.0: every purpose has an Arabic label (receipts showed «ppv», «jobs»…)
   const MAX = 1000; // server default (PI max per payment)
   const NET = { testnet: "شبكة تجريبية", mainnet: "الشبكة الرئيسية" };
   const chip = (s) => { const [t, c] = STATUS[s] || [s || "—", "mute"]; return `<span class="pi-chip ${c}">${h(t)}</span>`; };
