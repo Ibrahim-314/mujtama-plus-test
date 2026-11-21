@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.152.0 (2026-11-21) «سياسات واضحة لـPi»
+- Privacy + Terms 1.1: new Pi Network data section (uid/username only, token not stored, no recovery phrase/keys, transaction records, deletion), Pi as a third party, expanded Pi payments terms (Testnet, irreversible, refunds as new tx, 18+).
+- English versions at /legal/privacy?lang=en and /legal/terms?lang=en (lang/dir, hreflang switch); in-app #/legal reads English when the UI is English.
+
 ## 2.151.2 «اللمسة الأخيرة» — 2026-11-20
 - Jobs: card → job view transition (card title morphs into the job title, 0.24 s) only where document.startViewTransition exists and motion is welcome; the page's own enter animation is held off during it; plain navigation elsewhere.
 - The «تصفّح الفرص / إعلاناتي وطلباتي» bar sticks under the top bar (follows it when it hides on phones); tapping the current section scrolls to the top without touching the filters or history.
