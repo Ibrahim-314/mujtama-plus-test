@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.154.0 — 2026-11-22
+
+«المزيد» stage 1 (approved mockup): 11 member sections → 6 (أنا، التواصل والمجتمعات، اكتشف، الإبداع والعمل والتعلّم، المحفظة والسوق، الإعدادات والمساعدة). Each shows 5–6 core rows; the other 81 fold under «أدوات أخرى» with sub-headings. All 114 destinations kept, search unchanged, admin section unchanged. Tests: tests/unit/menu-v21540.test.js; nav.e2e updated for the new section ids.
+
 ## 2.153.0 (2026-11-21) «كل دفعة لها أثر»
 - Pi purposes sweep on the real chain (intent → approve → complete → effect → refund): new server test pi-purposes-sweep (jobs boost, contract escrow, creators fund).
 - Fix: «دعم المبدع (Pi)» on posts and «دعم بعملة Pi» on profiles took Pi and credited nobody; they now open the tips sheet (creator is credited).
