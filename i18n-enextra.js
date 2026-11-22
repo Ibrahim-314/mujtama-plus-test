@@ -3586,5 +3586,13 @@ Object.assign(window.MPI18N.en, {
 "أدوات العمل": "Work tools",
 "{n} متقدّم": "{n} {p:applicant|applicants}",
 "إدارة الإعلان": "Manage listing",
-"مرحلة الطلب {n} من {n}": "Application step {n} of {n}"
+"مرحلة الطلب {n} من {n}": "Application step {n} of {n}",
+"أنا": "Me",
+"التواصل والمجتمعات": "Connect & communities",
+"الإبداع والعمل والتعلّم": "Create, work & learn",
+"المحفظة والسوق": "Wallet & market",
+"الإعدادات والمساعدة": "Settings & help",
+"أدوات أخرى": "More tools",
+"العمل": "Work",
+"التعلّم": "Learning"
 });
