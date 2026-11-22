@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.154.0",
+    "date": "2026-11-22",
+    "ar": {
+      "title": "«المزيد» أبسط",
+      "items": [
+        "ستة أقسام بدل أحد عشر",
+        "كل قسم يعرض الأهم، والباقي تحت «أدوات أخرى»",
+        "لا شيء انحذف، والبحث يجد كل الميزات"
+      ]
+    },
+    "en": {
+      "title": "A simpler «More»",
+      "items": [
+        "Six sections instead of eleven",
+        "Each section shows what matters most; the rest sit under «More tools»",
+        "Nothing was removed, and search still finds every feature"
+      ]
+    }
+  },
+  {
     "v": "2.153.0",
     "date": "2026-11-21",
     "ar": {
