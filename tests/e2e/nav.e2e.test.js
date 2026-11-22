@@ -57,7 +57,7 @@ test("tab bar: five labelled destinations, 44 px targets, active + aria-current,
   }
   // a deep screen keeps the tab it was opened from (owner), without aria-current
   await p.click('.bottomnav a[data-r="menu"]'); await until(() => location.hash === "#/menu"); await p.waitForSelector("#mn-q");
-  await p.click('details.mn-cat[data-cat="work"] summary'); await p.click('details.mn-cat[data-cat="work"] a[href="#/jobs"]');
+  await p.click('details.mn-cat[data-cat="create"] summary'); await p.click('details.mn-cat[data-cat="create"] a[href="#/jobs"]');
   await until(() => location.hash === "#/jobs"); await settle();
   assert.deepEqual(await p.evaluate(() => { const a = document.querySelector(".bottomnav a.active"); return [a?.dataset.r, a?.classList.contains("owner"), !!document.querySelector(".bottomnav a[aria-current=page]")]; }), ["menu", true, false]);
   // re-tapping the active tab scrolls back to the top
@@ -137,14 +137,14 @@ test("«المزيد» hub: profile card, shortcuts, disclosures by keyboard, se
     cats: [...document.querySelectorAll("details.mn-cat")].map((d) => d.dataset.cat), tiles: [...document.querySelectorAll(".mn-tile, details.mn-cat > summary")].map((e) => e.getBoundingClientRect().height) }));
   assert.equal(hub.h2, "المزيد"); assert.equal(hub.me, "#/me");
   assert.deepEqual(hub.short, ["#/messages", "#/library", "#/mjt", "#/events", "#/studio", "#/jobs", "#/courses", "#/settings"]);
-  assert.deepEqual(hub.cats, ["you", "connect", "discover", "community", "create", "learn", "work", "money", "safety", "help", "settings", "admin"]);
+  assert.deepEqual(hub.cats, ["you", "connect", "discover", "create", "money", "settings", "admin"]);
   assert.ok(hub.tiles.every((h) => h >= 44));
   // keyboard: focus a category, Enter opens it, Enter again closes it
   await p.evaluate(() => sessionStorage.removeItem("mp.menu.open")); await p.reload(); await p.waitForSelector("#mn-q"); await settle();
-  await p.focus('details.mn-cat[data-cat="learn"] summary'); await p.keyboard.press("Enter");
-  assert.equal(await p.evaluate(() => document.querySelector('details.mn-cat[data-cat="learn"]').open), true);
-  assert.ok(await p.evaluate(() => !!document.querySelector('details.mn-cat[data-cat="learn"] a[href="#/courses"]').offsetParent));
-  await p.keyboard.press("Enter"); assert.equal(await p.evaluate(() => document.querySelector('details.mn-cat[data-cat="learn"]').open), false);
+  await p.focus('details.mn-cat[data-cat="create"] summary'); await p.keyboard.press("Enter");
+  assert.equal(await p.evaluate(() => document.querySelector('details.mn-cat[data-cat="create"]').open), true);
+  assert.ok(await p.evaluate(() => !!document.querySelector('details.mn-cat[data-cat="create"] a[href="#/courses"]').offsetParent));
+  await p.keyboard.press("Enter"); assert.equal(await p.evaluate(() => document.querySelector('details.mn-cat[data-cat="create"]').open), false);
   // Pi entries carry «غير مفعّل بعد» while Pi payments are off
   await until(() => document.querySelector('#mn-hub a[href="#/wallet"] .mn-tag')?.textContent === "غير مفعّل بعد");
   assert.equal(await p.evaluate(() => !!document.querySelector('#mn-hub a[href="#/mjt"] .mn-tag')), false, "MJT is live, no tag");
