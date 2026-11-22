@@ -25,7 +25,8 @@ async function visit(list) {
   for (const h of list) {
     let cur = h; p.removeAllListeners("pageerror"); p.on("pageerror", (e) => errors.push(cur + " " + e.message));
     await p.evaluate((h) => { document.getElementById("sheet")?.classList.add("hidden"); location.hash = h; }, h);
-    await p.waitForFunction(() => !document.querySelector("#view .skel") && document.querySelector("#view")?.textContent.trim().length > 0, null, { timeout: 15000 }).catch(() => bad.push(h + " never rendered"));
+    /* v2.154.0: bare #/city is the full-screen game (#nb-root over an empty #view by design), so its "rendered" signal is the game root. */
+    await p.waitForFunction(() => document.getElementById("nb-root") || (!document.querySelector("#view .skel") && document.querySelector("#view")?.textContent.trim().length > 0), null, { timeout: 15000 }).catch(() => bad.push(h + " never rendered"));
     await p.waitForTimeout(120);
     const r = await p.evaluate(() => ({ text: document.getElementById("view").innerText, root: MPNav.isRoot(), parent: MPNav.parentOf(), title: MPNav.title() }));
     if (/الصفحة غير موجودة/.test(r.text)) bad.push(h + " not found");
