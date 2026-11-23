@@ -73,7 +73,7 @@ module.exports = (ctx, opts = {}) => {
     const name = str(b.name, 80, { required: true, min: 3 }), about = str(b.about, 2000), kind = oneOf(b.kind, Object.keys(KIND), "project");
     const visibility = oneOf(b.visibility, Object.keys(VIS), "private");
     if (visibility === "listed" && (await isMinor(user.id))) throw fail(403, "minor_restricted", "الفرق الظاهرة في الدليل متاحة لمن هم ١٨ سنة فأكثر");
-    if ((await count("SELECT COUNT(*) n FROM wt_teams WHERE owner_id=$1 AND status<>'archived'", [user.id])) >= MAX_OWNED) throw fail(409, "limit", "وصلت للحد الأقصى من الفرق النشطة");
+    await ownedCap(user.id);
     const contractId = b.contractId ? await checkContract(user, String(b.contractId)) : null;
     const tid = id("wt"), now = iso();
     await db.tx(async (t) => {
@@ -111,6 +111,7 @@ module.exports = (ctx, opts = {}) => {
     const staff = user.role === "admin", owner = t.owner_id === user.id;
     if (!owner && !staff) throw E.forbid("للمالك فقط");
     const to = oneOf(b.status, Object.keys(STATUS), null); if (!to) throw E.bad();
+    if (t.status === "archived" && to !== "archived") await ownedCap(t.owner_id); // v2.157: reopening counts like creating (archive → reopen can't bypass the ceiling)
     await db.run("UPDATE wt_teams SET status=$1, updated_at=$2, closed_at=$3 WHERE id=$4", [to, iso(), to === "active" ? null : iso(), t.id]);
     if (staff && !owner) ctx.audit?.("team_" + to, t.id, str(b.reason, 400) || t.name, user.id);
     return view(user, t.id);
@@ -177,13 +178,24 @@ module.exports = (ctx, opts = {}) => {
       updates: ups.filter((x) => !x.parent_id).reverse().map((x) => ({ id: x.id, kind: x.kind, body: x.body, user: uv(x.user_id), at: isoOf(x.created_at), warn: !!Number(x.warn) && x.user_id !== user?.id, canDelete: admin || x.user_id === user?.id,
         replies: ups.filter((r) => r.parent_id === x.id).map((r) => ({ id: r.id, body: r.body, user: uv(r.user_id), at: isoOf(r.created_at), warn: !!Number(r.warn) && r.user_id !== user?.id, canDelete: admin || r.user_id === user?.id })) })),
       invites: invites.map((x) => ({ id: x.id, kind: x.kind, user: uv(x.user_id), role: x.role, roleLabel: ROLES[x.role], code: x.kind === "link" ? x.code : undefined, uses: Number(x.uses), maxUses: x.max_uses === null || x.max_uses === undefined ? null : Number(x.max_uses), expiresAt: isoOf(x.expires_at), note: x.note || null })),
-      contract, me: { role, roleLabel: role ? ROLES[role] : null, staff, can }, options: options()
+      contract, me: { role, roleLabel: role ? ROLES[role] : null, staff, can }, options: { ...options(), maxMembers: await membersCap(t) }
     };
   }
 
   /* ---------- membership ---------- */
+  /* v2.157: ceilings follow the Plus membership (Free 5 / Plus 20 active teams owned; 50 / 150 members, by the OWNER's tier).
+   * Checked only when a team is created / reopened or a member is added: existing teams and members are never removed. */
+  const M = () => ctx.services.membership;
+  const envOwned = env.WT_MAX_OWNED ? MAX_OWNED : undefined, envMembers = env.WT_MAX_MEMBERS ? MAX_MEMBERS : undefined;
+  async function ownedCap(uid) {
+    const used = await count("SELECT COUNT(*) n FROM wt_teams WHERE owner_id=$1 AND status<>'archived'", [uid]);
+    if (M()) return M().enforce(uid, "teams_owned", used, { envFree: envOwned, what: "الفرق النشطة التي تملكها" });
+    if (used >= MAX_OWNED) throw fail(409, "limit", "وصلت للحد الأقصى من الفرق النشطة");
+  }
+  const membersCap = async (t) => (M() ? (await M().limitFor(t.owner_id, "team_members", envMembers)).limit : MAX_MEMBERS);
   async function canJoin(t, uid) {
-    if ((await count("SELECT COUNT(*) n FROM wt_members WHERE team_id=$1", [t.id])) >= MAX_MEMBERS) throw fail(409, "full", "اكتمل عدد أعضاء الفريق");
+    const cap = await membersCap(t);
+    if ((await count("SELECT COUNT(*) n FROM wt_members WHERE team_id=$1", [t.id])) >= cap) throw Object.assign(fail(409, "full", "اكتمل عدد أعضاء الفريق"), { details: { quota: { key: "team_members", limit: cap } } });
     if (await memberOf(t.id, uid)) throw fail(409, "member", "أنت عضو في هذا الفريق");
     if ((await isMinor(uid)) && (await paidContract(t))) throw fail(403, "minor_restricted", "هذا الفريق مرتبط بعقد مدفوع ومتاح لمن هم ١٨ سنة فأكثر");
   }
@@ -195,7 +207,7 @@ module.exports = (ctx, opts = {}) => {
     if (r === "admin" && role !== "owner") throw E.forbid("يعيّن المالك المشرفين");
     if (b.link) {
       if (t.visibility === "listed" && (await isMinor(user.id))) throw E.forbid();
-      const days = Math.max(1, Math.min(30, Math.round(Number(b.days) || 7))), max = b.maxUses ? Math.max(1, Math.min(MAX_MEMBERS, Math.round(Number(b.maxUses)))) : null;
+      const days = Math.max(1, Math.min(30, Math.round(Number(b.days) || 7))), max = b.maxUses ? Math.max(1, Math.min(await membersCap(t), Math.round(Number(b.maxUses)))) : null;
       const code = token().slice(0, 22), iid = id("wti");
       await db.run("INSERT INTO wt_invites (id, team_id, kind, by_user, code, role, status, max_uses, expires_at, created_at) VALUES ($1,$2,'link',$3,$4,$5,'pending',$6,$7,$8)", [iid, t.id, user.id, code, r === "admin" ? "member" : r, max, iso(clock() + days * 864e5), iso()]);
       return { id: iid, code, path: "#/teams/join/" + code };
