@@ -1,4 +1,4 @@
-/* AI subscriptions & entitlements — «مجتمع+ ذكاء» (phase 41, generic for phase 42+). Contract: docs/integration/p41-contract.md.
+/* AI subscriptions & entitlements — «مجتمع بلس Plus» (phase 41, generic for phase 42+). Contract: docs/integration/p41-contract.md.
  * • Plans bundle feature keys (`translate` now; `assistant` and later AI systems just add keys). Monthly period (AI_PERIOD_DAYS).
  *   Price is never hard-coded: AI_PLAN_PRICE seeds it, an admin edits it (price_set_by=admin wins over env); no price → 409 price_unset.
  * • Subscribe = one Pi payment per period (purpose `ai`) through ctx.services.pi.createIntent; effects only on bus events
@@ -14,8 +14,10 @@ const { toUnits, pi, ACC, createLedger } = require("../lib/ledger");
 const DAY = 864e5;
 const OFF = "مدفوعات Pi غير مفعّلة بعد";
 const PLATFORM = "platform:ai";
-const FEATURES = { translate: "ترجمة آلية للمنشورات والتعليقات والرسائل", assistant: "المساعد الذكي: صياغة وردود مهذبة وأسئلة وبحث بالمعنى" };
-const DEFAULT_PLAN = { slug: "ai_plus", name: "مجتمع+ ذكاء", features: ["translate"] };
+const FEATURES = { translate: "ترجمة آلية للمنشورات والتعليقات والرسائل", assistant: "المساعد الذكي: صياغة وردود مهذبة وأسئلة وبحث بالمعنى",
+  studio_extended: "تحليلات استوديو المنشئ لفترات أطول (حتى 365 يوماً بدل 90)" }; // v2.156: Plus membership feature keys (stable names)
+const DEFAULT_PLAN = { slug: "ai_plus", name: "مجتمع بلس Plus", features: ["translate"] }; // v2.156: the one paid membership (slug kept: existing subscribers are Plus)
+const LEGACY_NAME = "مجتمع بلس Plus";
 
 /** @param {any} ctx @param {{ env?: Record<string,string|undefined>, now?: () => Date, jobs?: boolean }} [opts] */
 module.exports = (ctx, opts = {}) => {
@@ -57,6 +59,7 @@ module.exports = (ctx, opts = {}) => {
     const at = nowIso();
     await db.run("INSERT INTO ai_plans(id,slug,name,features,price,price_set_by,period_days,limits,active,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,'{}',1,$8,$8) ON CONFLICT DO NOTHING",
       [id("aip"), DEFAULT_PLAN.slug, DEFAULT_PLAN.name, JSON.stringify(DEFAULT_PLAN.features), cfg.envPrice, cfg.envPrice ? "env" : null, cfg.periodDays, at]);
+    await db.run("UPDATE ai_plans SET name=$1, updated_at=$2 WHERE slug=$3 AND name=$4", [DEFAULT_PLAN.name, at, DEFAULT_PLAN.slug, LEGACY_NAME]); // v2.156: «مجتمع بلس Plus» → Plus (an admin-chosen name stays)
     if (cfg.envPrice) await db.run("UPDATE ai_plans SET price=$1, price_set_by='env', updated_at=$2 WHERE slug=$3 AND (price_set_by IS NULL OR price_set_by='env') AND (price IS NULL OR price<>$1)", [cfg.envPrice, at, DEFAULT_PLAN.slug]);
   })().catch((e) => { ready = null; throw e; }));
   const planBySlug = async (slug) => { await ensurePlans(); return db.get("SELECT * FROM ai_plans WHERE slug=$1", [slug]); };
@@ -98,7 +101,7 @@ module.exports = (ctx, opts = {}) => {
     const e = await entitled(uid, feature);
     if (e.ok) return e;
     const plan = await planBySlug(DEFAULT_PLAN.slug);
-    throw fail(402, "subscription_required", "هذه الميزة متاحة لمشتركي «مجتمع+ ذكاء»", { upsell: { plan: plan ? planClient(plan) : null, piEnabled: piOn(), ...(piOn() ? {} : { piNote: OFF }) } });
+    throw fail(402, "subscription_required", `هذه الميزة متاحة لمشتركي «${plan?.name || DEFAULT_PLAN.name}»`, { upsell: { plan: plan ? planClient(plan) : null, piEnabled: piOn(), ...(piOn() ? {} : { piNote: OFF }) } });
   }
 
   async function subscribe(user, b) {
@@ -317,6 +320,7 @@ module.exports = (ctx, opts = {}) => {
   const settle = async () => { for (let i = 0; i < 5; i++) { await new Promise((r) => setImmediate(r)); while (inflight.size) await Promise.all([...inflight]); } };
   bus.on("PI_PAYMENT_COMPLETED", track(async (e) => { if (e.purpose === "ai") await onCompleted(e); }));
   bus.on("PI_PAYMENT_CANCELLED", track(async (e) => { if (e.purpose === "ai") await db.run("UPDATE ai_payments SET status='cancelled', cancelled_at=$1 WHERE intent_id=$2 AND status='pending'", [nowIso(), e.tx]); }));
+  bus.on("PI_PAYMENT_FAILED", track(async (e) => { if (e.purpose === "ai") await db.run("UPDATE ai_payments SET status='failed', cancelled_at=$1 WHERE intent_id=$2 AND status='pending'", [nowIso(), e.tx]); })); // v2.156: a failed Pi payment never grants Plus
   bus.on("PI_PAYMENT_REFUNDED", track(async (e) => { if (e.purpose === "ai") await onRefunded(e); }));
   bus.on("USER_ANONYMISED", track(async (e) => { if (e?.user) await db.run("UPDATE ai_subscriptions SET state='revoked', grant_note=NULL, updated_at=$2 WHERE user_id=$1", [e.user, nowIso()]); }));
 
@@ -333,6 +337,7 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/admin/ai/subscribers", admin(async (req) => subscribers(req.query || {})));
   R.get("/api/admin/ai/finance", admin(async (req) => finance(req.query || {})));
 
-  return { config: cfg, entitled, requireFeature, checkCaps, meter, maintain, settle, finance, FEATURES, ensurePlans };
+  return { config: cfg, entitled, requireFeature, checkCaps, meter, maintain, settle, finance, FEATURES, ensurePlans,
+    subscribe, cancel, planBySlug, planClient, subRow, subClient, isLive, liveSubs, piOn, isMinor }; // v2.156: used by services/membership.js
 };
 Object.assign(module.exports, { FEATURES, DEFAULT_PLAN });
