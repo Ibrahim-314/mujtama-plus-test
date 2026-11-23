@@ -122,7 +122,9 @@
       };
       // the intent's {amount, memo, metadata} go to Pi exactly as the server returned them (binding via metadata.intentId)
       window.Pi.createPayment({ amount: intent.amount, memo: intent.memo, metadata: intent.metadata }, {
-        onReadyForServerApproval: (id) => { pid = id; api("POST", "/api/pi/payments/approve", { paymentId: id }).catch(reject); },
+        onReadyForServerApproval: (id) => { // v2.156: a failed approval is retried, then the payment is cancelled (it used to stay stuck in Pi and block the next one)
+          pid = id; const go = (n) => api("POST", "/api/pi/payments/approve", { paymentId: id }).catch((e) => n < 2 && !(e?.status >= 400 && e?.status < 500 && e?.status !== 429) ? new Promise(r => setTimeout(r, (MPPi._retryMs ?? 2500) * (n + 1))).then(() => go(n + 1)) : (cancel(id), reject(e)));
+          go(0); },
         onReadyForServerCompletion: (id, txid) => { pid = id; complete(id, txid).then((r) => resolve({ ...(r || {}), id: intent.id, paymentId: id, txid }), (e) => reject(Object.assign(e, { paid: true, intentId: intent.id }))); },
         onCancel: (id) => { cancel(id); reject(Object.assign(new Error("أُلغيت عملية الدفع."), { cancelled: true })); },
         onError: (err, p) => { cancel(p?.identifier); reject(new Error("تعذّرت عملية الدفع" + (err?.message ? ": " + err.message : "."))); }
