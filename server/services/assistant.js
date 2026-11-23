@@ -29,7 +29,7 @@ module.exports = (ctx, opts = {}) => {
   const ai = () => ctx.services.ai;
   const logger = (() => { try { return require("../lib/log").log; } catch { return console; } })();
 
-  /* ---------- plan: the «مجتمع+ ذكاء» plan gets `assistant` once (an admin can remove it later; we never re-add) ---------- */
+  /* ---------- plan: the «مجتمع بلس Plus» plan gets `assistant` once (an admin can remove it later; we never re-add) ---------- */
   let seeded = null;
   const seed = () => (seeded ||= (async () => {
     if (env.AI_ASSISTANT_IN_PLAN === "0") return;
