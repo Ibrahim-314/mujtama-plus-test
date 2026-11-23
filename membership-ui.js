@@ -23,6 +23,8 @@
 .mb-cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.mb-col{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}.mb-col.plus{border:2px solid var(--brand-1)}
 .mb-col h3{margin:0 0 4px;font-size:18px}.mb-col ul{margin:8px 0 0;padding-inline-start:18px;line-height:1.7;font-size:14px}.mb-acts{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .mb-hist{list-style:none;margin:0;padding:0}.mb-hist li{display:flex;gap:10px;justify-content:space-between;padding:10px 4px;border-bottom:1px solid var(--line)}.mb-hist li:last-child{border:0}
+.mb-bar{display:block;height:4px;border-radius:4px;background:var(--line);margin-top:4px;min-width:72px}.mb-bar i{display:block;height:100%;border-radius:4px;background:var(--accent)}.mb-bar i.w{background:var(--warn)}
+.mb-q{margin:6px 0;font-size:var(--fs-sm)}.mb-q.w{color:var(--warn)}
 @media (max-width:520px){.mb-cmp{grid-template-columns:1fr}}
 </style>`);
 
@@ -37,6 +39,28 @@
       ${m.state === "payment_failed" ? `<p class="muted">آخر دفعة لم تكتمل، ولم يُخصم منك شيء مقابل Plus. يمكنك المحاولة مجدداً.</p>` : ""}
       ${m.state === "plus_cancelling" ? `<p class="muted">أوقفت التجديد. تبقى مزايا Plus حتى تاريخ الانتهاء ثم تعود إلى Free.</p>` : ""}</section>`;
   }
+  /* v2.158 — usage of the per-member ceilings: used / allowed, what to do, and (Free only) a quiet note on Plus */
+  function meter(u, compact) {
+    if (u.used == null) return compact ? "" : `<li><span>${h(u.label)}</span><span class="muted">حتى ${h(u.limit)}</span></li>`;
+    const warn = u.full || u.near, plus = u.tier !== "plus" && u.plusLimit > u.limit;
+    const tip = warn ? `<small class="u-db muted">${h(u.advice)}${plus ? ` · <a href="#/membership">Plus يرفع الحد إلى ${h(u.plusLimit)}</a>` : ""}</small>` : "";
+    const bar = `<span class="mb-bar" aria-hidden="true"><i style="width:${Math.min(100, u.pct || 0)}%"${warn ? ' class="w"' : ""}></i></span>`;
+    if (compact) return `<p class="mb-q ${warn ? "w" : ""}" role="note"><span>${h(u.label)}: <b>${h(u.used)}</b> من ${h(u.limit)}</span>${bar}${tip}</p>`;
+    return `<li><span>${h(u.label)}${tip}</span><span><b>${h(u.used)}</b> من ${h(u.limit)}${bar}</span></li>`;
+  }
+  function usage(m) {
+    const u = m.usage || []; if (!u.length) return "";
+    return `<h3 class="u-mt12">استخدامك</h3><ul class="mb-hist mb-use card u-p12">${u.map((x) => meter(x)).join("")}</ul>
+      <p class="muted">الحدود تُطبَّق عند إنشاء عنصر جديد فقط — لا يُحذف شيء مما لديك ولا يُخفى.</p>`;
+  }
+  /** a one-line usage note other screens add next to their «create» action (saved searches, collections, teams) */
+  let cache = null;
+  async function note(key) {
+    if (!cache || Date.now() - cache.at > 30e3) cache = { at: Date.now(), p: api("GET", "/api/membership/usage").catch(() => ({ usage: [] })) };
+    const u = ((await cache.p).usage || []).find((x) => x.key === key);
+    return u ? meter(u, true) : "";
+  }
+  const fresh = () => { cache = null; };
   function compare(c, m) {
     const p = c.plus;
     const price = p && p.price != null ? `${amt(p.price)} / ${h(p.periodDays)} يوماً` : h(p?.priceNote || "لم يُحدَّد سعر الاشتراك بعد");
@@ -68,7 +92,7 @@
     const body = $("#mb-b");
     try {
       const [m, c] = await Promise.all([api("GET", "/api/membership/me"), api("GET", "/api/membership/plans")]);
-      body.innerHTML = hero(m) + compare(c, m) + hist(m); body.removeAttribute("aria-busy");
+      body.innerHTML = hero(m) + usage(m) + compare(c, m) + hist(m); body.removeAttribute("aria-busy");
       $("#mb-buy")?.addEventListener("click", () => buy($("#mb-buy"), c.plus));
       $("#mb-can")?.addEventListener("click", () => toggle("cancel"));
       $("#mb-res")?.addEventListener("click", () => toggle("resume"));
@@ -90,6 +114,6 @@
   async function toggle(k) { try { await api("POST", "/api/membership/" + k, {}); say(k === "cancel" ? "أُوقف التجديد" : "استؤنف التجديد"); page(); } catch (e) { say(e.message); } }
 
   MPRoutes.extend(() => ({ membership: () => page() }));
-  window.MPMembership = { page, version: "2.157.0" };
+  window.MPMembership = { page, note, fresh, version: "2.158.0" };
   if (/^#\/membership\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();
