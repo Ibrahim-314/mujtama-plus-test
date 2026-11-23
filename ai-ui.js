@@ -1,4 +1,4 @@
-/* AI subscription «مجتمع+ ذكاء» + real translation UI (phase 41). Lazy chunk `ai`. Contract: docs/integration/p41-contract.md.
+/* AI subscription «مجتمع بلس Plus» + real translation UI (phase 41). Lazy chunk `ai`. Contract: docs/integration/p41-contract.md.
  * • «🌐 ترجمة» on posts / comments / messages whose language differs from the interface language (and is not in prefs.skip).
  *   Subscriber → POST /api/ai/translate, then a tap toggles «عرض الأصل» ⇄ «عرض الترجمة», labelled «ترجمة آلية».
  *   Auto-translate (prefs.auto) batches the visible items. Non-subscriber → upsell sheet (plan, price or «لم يُحدَّد…», Pi note).
@@ -108,7 +108,7 @@
     await loadMe();
     const p = cfg?.plans?.[0], trOff = cfg && !cfg.features?.translate?.available;
     const price = p?.price != null ? `${p.price} Pi / ${p.periodDays} يوم` : "لم يُحدَّد سعر الاشتراك بعد";
-    const s = sheet(`<h3><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>${esc(p?.name || "مجتمع+ ذكاء")}</h3><p>الترجمة الآلية ميزة لمشتركي «مجتمع+ ذكاء»</p>
+    const s = sheet(`<h3><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>${esc(p?.name || "مجتمع بلس Plus")}</h3><p>${esc(MPT("الترجمة الآلية ميزة لمشتركي"))} «${esc(p?.name || "مجتمع بلس Plus")}» · <a href="#/membership">${esc(MPT("قارن Free وPlus"))}</a></p>
       <p class="muted">اشتراك شهري اختياري بعملة Pi</p><ul class="mp-ai-feat">${(p?.featureLabels || ["ترجمة آلية للمنشورات والتعليقات والرسائل"]).map((f) => `<li>${esc(f)}</li>`).join("")}${(p?.features || []).includes("assistant") ? "" : "<li>المساعد الذكي (قريباً)</li>"}</ul>
       <p><b data-noi18n>${esc(MPT(price))}</b></p><p class="muted">واجهة التطبيق بكل اللغات مجانية للجميع</p>
       ${trOff ? `<p class="muted" role="status">${esc(OFF_TR)}</p>` : ""}<p id="mp-sub-n" class="muted" role="status"></p>
@@ -192,13 +192,13 @@
 
   /* ---------- #/ai, #/settings/translate, #/admin/ai ---------- */
   async function subView() {
-    view.innerHTML = `<div class="wrap">${UI.pageHead({ back: ["#/me", "حسابي"], title: "اشتراك «مجتمع+ ذكاء»", icon: "sparkle" })}<div id="mp-ai"><div class="skel"></div></div></div>`;
+    view.innerHTML = `<div class="wrap">${UI.pageHead({ back: ["#/me", "حسابي"], title: "الترجمة والمساعد الذكي", icon: "sparkle" })}<div id="mp-ai"><div class="skel"></div></div></div>`;
     const box = view.querySelector("#mp-ai");
     if (!on()) { box.innerHTML = `<p class="muted">${esc(OFF_TR)}</p>`; return; }
     await loadMe(true);
     if (!me) { box.textContent = "تعذر الاتصال بالخادم"; return; }
     const s = me.subscription, live = s?.state === "active", u = me.usage.translate, p = cfg.plans[0];
-    box.innerHTML = `<div class="card"><h3 class="u-m0 u-mb6 u-t-lg">${esc(p?.name || "مجتمع+ ذكاء")}</h3>
+    box.innerHTML = `<div class="card"><h3 class="u-m0 u-mb6 u-t-lg">${esc(p?.name || "مجتمع بلس Plus")}</h3>
       <p>${live ? `<b>فعّال</b> · <span data-noi18n>${esc(new Date(s.periodEnd).toLocaleDateString())}</span>` : s ? "<b>منتهٍ</b>" : esc(p?.price != null ? p.price + " Pi" : "لم يُحدَّد سعر الاشتراك بعد")}</p>
       <ul class="mp-ai-feat">${(p?.featureLabels || []).map((f) => `<li>${esc(f)}</li>`).join("")}<li>المساعد الذكي (قريباً)</li></ul>
       ${cfg.features?.translate?.available ? "" : `<p class="muted">${esc(OFF_TR)}</p>`}${me.piEnabled ? "" : `<p class="muted">${esc(OFF_PI)}</p>`}
@@ -217,7 +217,7 @@
     const box = view.querySelector("#mp-tp");
     if (!on()) { box.innerHTML = `<p class="muted">${esc(OFF_TR)}</p>`; return; }
     let p; try { p = await api("GET", "/api/ai/translate/prefs"); } catch (e) { box.textContent = e.message; return; }
-    box.innerHTML = `<div class="card">${subscribed() ? "" : `<p class="muted">الترجمة الآلية ميزة لمشتركي «مجتمع+ ذكاء» · <a href="#/ai">اشترك الآن</a></p>`}
+    box.innerHTML = `<div class="card">${subscribed() ? "" : `<p class="muted">الترجمة الآلية ميزة لمشتركي Plus · <a href="#/membership">اشترك الآن</a></p>`}
       <label class="chk"><input type="checkbox" id="mp-auto" ${p.auto ? "checked" : ""}> ترجمة تلقائية لما أراه</label>
       <h4>الترجمة إلى</h4><select id="mp-tgt"><option value="">لغة الواجهة (افتراضي)</option>${Object.entries(NAMES).map(([k, v]) => `<option value="${k}" ${p.target === k ? "selected" : ""} data-noi18n>${v}</option>`).join("")}</select>
       <h4>لا تترجم هذه اللغات</h4>${Object.entries(NAMES).map(([k, v]) => `<label class="chk"><input type="checkbox" data-skip="${k}" ${p.skip.includes(k) ? "checked" : ""}> <span data-noi18n>${v}</span></label>`).join("")}</div>`;
@@ -230,13 +230,16 @@
     view.innerHTML = `<div class="wrap">${UI.pageHead({ back: ["#/admin", "الإدارة"], title: "إدارة الذكاء", icon: "sparkle" })}<div id="mp-aa"><div class="skel"></div></div></div>`;
     const box = view.querySelector("#mp-aa");
     try {
-      const [pl, f] = await Promise.all([api("GET", "/api/admin/ai/plans"), api("GET", "/api/admin/ai/finance")]);
+      const [pl, f, ql] = await Promise.all([api("GET", "/api/admin/ai/plans"), api("GET", "/api/admin/ai/finance"), api("GET", "/api/admin/membership/limits").catch(() => null)]);
       const p = pl.plans[0];
       box.innerHTML = `<div class="card"><h3 class="u-m0 u-mb6 u-t-lg">${esc(p.name)}</h3>
         <label>السعر (Pi) <input id="mp-price" type="number" min="0" step="0.0000001" value="${p.price ?? ""}" placeholder="لم يُحدَّد سعر الاشتراك بعد"></label>
         <label>حد الأحرف الشهري <input id="mp-chars" type="number" min="0" value="${p.limits.translate.chars}"></label>
         <label>حد التكلفة الشهري (USD) <input id="mp-usd" type="number" min="0" step="0.01" value="${p.limits.translate.costUsd}"></label>
         <label class="chk"><input type="checkbox" id="mp-act" ${p.active ? "checked" : ""}> متاحة للاشتراك</label><button class="btn" type="button" id="mp-psave">حفظ</button></div>
+        ${ql ? `<div class="card" id="mp-ql"><h3 class="u-m0 u-mb6 u-t-lg">حدود العضوية (Free / Plus)</h3><p class="muted">تُطبَّق عند الإنشاء فقط، ولا يُحذف شيء موجود عند الأعضاء.</p>
+          ${Object.entries(ql.limits).map(([k, x]) => `<div class="u-mb6"><b>${esc(x.label)}</b><br><label>Free <input type="number" min="1" data-q="${esc(k)}" data-t="free" value="${x.free}"></label> <label>Plus <input type="number" min="1" data-q="${esc(k)}" data-t="plus" value="${x.plus}"></label></div>`).join("")}
+          <button class="btn" type="button" id="mp-qsave">حفظ الحدود</button></div>` : ""}
         <div class="card"><h3 class="u-m0 u-mb6 u-t-lg">منح اشتراك</h3><input id="mp-gu" placeholder="@handle"> <input id="mp-gd" type="number" min="1" max="366" value="30" aria-label="أيام"> <button class="btn" type="button" id="mp-grant">منح</button> <button class="btn ghost" type="button" id="mp-revoke">سحب</button></div>
         <div class="card" data-noi18n><h3 class="u-m0 u-mb6 u-t-lg">${esc(f.period)}</h3><p>Revenue ${f.revenue} Pi · refunds ${f.refunds} · net ${f.net} Pi · ${f.payments} payments · ${f.activeSubscribers} active (${f.grants} grants)</p>
         <p>Provider cost $${f.providerCostUsd} / budget $${f.budgetUsd}${f.marginUsd != null ? ` · margin $${f.marginUsd}` : ""}</p>
@@ -244,6 +247,10 @@
       box.querySelector("#mp-psave").addEventListener("click", async () => {
         const v = box.querySelector("#mp-price").value;
         try { await api("PUT", "/api/admin/ai/plans/" + p.slug, { price: v === "" ? null : Number(v), active: box.querySelector("#mp-act").checked, limits: { translate: { chars: Number(box.querySelector("#mp-chars").value), costUsd: Number(box.querySelector("#mp-usd").value) } } }); toast("تم الحفظ"); } catch (e) { toast(e.message); }
+      });
+      box.querySelector("#mp-qsave")?.addEventListener("click", async () => {
+        const limits = {}; box.querySelectorAll("#mp-ql input[data-q]").forEach((i) => { (limits[i.dataset.q] ||= {})[i.dataset.t] = Number(i.value); });
+        try { await api("PUT", "/api/admin/membership/limits", { limits }); toast("تم حفظ الحدود"); } catch (e) { toast(e.message); }
       });
       const g = (path) => async () => { try { await api("POST", path, { user: box.querySelector("#mp-gu").value.trim(), days: Number(box.querySelector("#mp-gd").value) }); toast("تم"); } catch (e) { toast(e.message); } };
       box.querySelector("#mp-grant").addEventListener("click", g("/api/admin/ai/grants"));
@@ -260,7 +267,7 @@
         if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("mp-adm-ai")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-ai" href="#/admin/ai"><svg class=ei aria-hidden=true><use href=#i-sparkle /></svg> <b>إدارة الذكاء</b></a>`); });
       });
   MPRoutes.add("settings", (a, b, next) => (a === "translate" ? prefsView() : next()));
-  const setCard = () => { if (/^#\/settings\/?(\?|$)/.test(location.hash) && !document.getElementById("mp-ai-set")) (view.querySelector(".wrap") || view).insertAdjacentHTML("beforeend", `<div class="card" id="mp-ai-set"><h3 class="u-m0 u-mb8 u-t-lg"><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>مجتمع+ ذكاء</h3><a class="btn ghost" href="#/ai">اشتراكي</a> <a class="btn ghost" href="#/settings/translate">تفضيلات الترجمة</a> <a class="btn ghost" href="#/settings/language">اللغة</a></div>`); };
+  const setCard = () => { if (/^#\/settings\/?(\?|$)/.test(location.hash) && !document.getElementById("mp-ai-set")) (view.querySelector(".wrap") || view).insertAdjacentHTML("beforeend", `<div class="card" id="mp-ai-set"><h3 class="u-m0 u-mb8 u-t-lg"><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>مجتمع بلس Plus</h3><a class="btn ghost" href="#/ai">اشتراكي</a> <a class="btn ghost" href="#/settings/translate">تفضيلات الترجمة</a> <a class="btn ghost" href="#/settings/language">اللغة</a></div>`); };
   if (typeof Views !== "undefined" && Views.settings) { MPSettings.add(function () { setCard(); }); }
   window.MPAI = { upsell, subView, prefsView, adminView, detect, translateBtn, state, refresh: () => loadMe(true), version: "2.24.0" };
   loadMe(); window.MPChunks?.load("assistant").catch(() => { }); window.MPChunks?.load("launch").catch(() => { }); window.MPChunks?.load("beta").catch(() => { }); // phase 42/50: assistant button in the composer; help center, tickets, ambassadors, waitlist
