@@ -206,6 +206,8 @@ function homeCompose(k) {
     if (k === "ai") { const C = window.MPChunks; (C ? C.load("ai").catch(() => { }).then(() => C.load("assistant")).catch(() => { }) : Promise.resolve()).then(() => inEd(".mp-asb", (b) => b.click())); } /* «✨ المساعد» of the editor */
   });
 }
+/* v2.155: the hub chunk (homehub-ui.js) draws search, welcome and sections above the composer; its last height is reserved here so the feed never jumps */
+const homeHubSlot = () => { const n = +localStorage.getItem("mp_hub_h") || 0; return n && !window.MPHubFailed ? `<div id="hub-slot" aria-hidden="true">${'<div class="skel"></div>'.repeat(Math.min(8, Math.round(n / 150)))}</div>` : ""; };
 /* v2.148.1: «فاتك اليوم» gets its place in the first frame (the discovery chunk fills it later), so the feed never moves down */
 const homeDigSlot = () => {
   if (feedMode !== "for" || !navigator.onLine || localStorage.getItem("mp_digest_hidden") === new Date().toDateString()) return "";
@@ -230,7 +232,7 @@ const Views = {
   _homeBase() {
     const list = Feed.build(feedMode), shown = list.slice(0, feedLimit);
     const trends = Trends.list(3), sugComm = DB.communities.find(c => !S.membership(c.id)), sugUser = DB.users.find(u => u.id !== DB.me && !S.follows(DB.me, u.id) && !DB.blocked.includes(u.id));
-    let html = `<div class="wrap">
+    let html = `<div class="wrap">${homeHubSlot()}
       <div class="card composer-bar h2c" id="hcomp"><div class="h2c-r1"><span class="h2c-av">${homeAv()}</span><button type="button" class="fake" id="cbar">ماذا تريد أن تنشر؟</button></div>
       <div class="h2c-q" role="group" aria-label="نوع المنشور">${HOME_Q.map(([k, l, d]) => `<button type="button" class="h2c-b" data-q="${k}" aria-label="${l}" title="${l}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg></button>`).join("")}</div></div>
       <div class="tabs">${homeTabs()}</div>${homeDigSlot()}`;
@@ -238,7 +240,7 @@ const Views = {
     shown.forEach((p, i) => {
       html += postCard(p);
       if (i === 2 && trends.length) html += `<div class="card discover"><b><svg class=ei aria-hidden=true><use href=#i-fire /></svg> رائج الآن</b>${trends.map(t => `<a class="trend" href="#/tag/${encodeURIComponent(t.tag)}"><span><bdi>#${esc(t.tag)}</bdi></span><span class="muted">${t.unique} مشارك</span></a>`).join("")}</div>`;
-      if (i === 5 && sugComm) html += `<div class="card discover"><div class="muted">مجتمع مقترح لك</div><div class="u-mt8 row"><div class="av" style="background:${sugComm.color}"><svg class=ei aria-hidden=true><use href=#i-users /></svg></div><a href="#/c/${sugComm.id}" class="grow"><b>${esc(sugComm.name)}</b><div class="muted">${esc(sugComm.desc)}</div></a><button class="btn" data-join="${sugComm.id}">انضم</button></div></div>`;
+      if (i === 5 && sugComm && !window.MPHub?.on("communities")) html += `<div class="card discover"><div class="muted">مجتمع مقترح لك</div><div class="u-mt8 row"><div class="av" style="background:${sugComm.color}"><svg class=ei aria-hidden=true><use href=#i-users /></svg></div><a href="#/c/${sugComm.id}" class="grow"><b>${esc(sugComm.name)}</b><div class="muted">${esc(sugComm.desc)}</div></a><button class="btn" data-join="${sugComm.id}">انضم</button></div></div>`;
       if (i === 8 && sugUser) html += `<div class="card discover"><div class="muted">شخص قد يهمك</div><div class="u-mt8 row">${av(sugUser)}<a href="#/u/${sugUser.handle}" class="grow"><b>${esc(sugUser.name)}</b><div class="muted">${esc(sugUser.bio)}</div></a><button class="btn" data-follow="${sugUser.id}">تابع</button></div></div>`;
     });
     if (list.length > feedLimit) html += `<div id="more-sentinel" aria-hidden="true"></div>`; // v2.145.1: a skeleton only while the next 10 load
@@ -494,8 +496,8 @@ const Views = {
 
   onboarding(step = 1) {
     document.body.classList.add("ob");
-    if (step === 1) view.innerHTML = `<div class="wrap" style="text-align:center;padding-top:40px"><div class="logo" style="width:80px;height:80px;font-size:56px;border-radius:26px;margin:auto">+</div><h2 class="u-t-num u-mt20">أهلاً بك في مجتمع بلس</h2><p class="muted">اكتشف أشخاصاً ومجتمعات ونقاشات تهمك، وشارك أفكارك مع العالم.</p><br><button class="btn block" id="n1">ابدأ</button>${(() => { const en = !!(window.MPI18n && MPI18n.current() === "en"); return `<button type="button" class="btn ghost block u-mt12" id="ob-lang" data-mplang="${en ? "ar" : "en"}" lang="${en ? "ar" : "en"}" data-noi18n>${en ? "العربية" : "English"}</button>`; })()}</div>`; /* v2.140: visitors pick the language right on the welcome screen */
-    if (step === 2) view.innerHTML = `<div class="wrap"><h2>ما الذي يهمك؟</h2><p class="muted">اختر ٣ اهتمامات على الأقل لنخصص لك المحتوى.</p><div class="chips">${TOPICS.map(t => `<button class="tab ${DB.interests.includes(t.slug) ? "on" : ""}" data-i="${t.slug}">${t.name}</button>`).join("")}</div><br><button class="btn block" id="n2" ${DB.interests.length < 3 ? "disabled" : ""}>التالي (${DB.interests.length}/3)</button></div>`;
+    if (step === 1) view.innerHTML = `<div class="wrap" style="text-align:center;padding-top:40px"><div class="logo" style="width:80px;height:80px;font-size:56px;border-radius:26px;margin:auto">+</div><h2 class="u-t-num u-mt20">مرحبًا بك في مجتمع بلس</h2><p class="muted">مكان يجمع مجتمعك ومعرفتك وعملك ونموّك داخل منظومة Pi.</p><br><button class="btn block" id="n1">ابدأ</button>${(() => { const en = !!(window.MPI18n && MPI18n.current() === "en"); return `<button type="button" class="btn ghost block u-mt12" id="ob-lang" data-mplang="${en ? "ar" : "en"}" lang="${en ? "ar" : "en"}" data-noi18n>${en ? "العربية" : "English"}</button>`; })()}</div>`; /* v2.140: visitors pick the language right on the welcome screen */
+    if (step === 2) view.innerHTML = `<div class="wrap"><h2>ما الذي يهمك؟</h2><p class="muted">اختر ما يهمك لنخصص لك الصفحة الرئيسية، أو تخطَّ هذه الخطوة وغيّرها لاحقًا.</p><div class="chips">${TOPICS.map(t => `<button class="tab ${DB.interests.includes(t.slug) ? "on" : ""}" data-i="${t.slug}">${t.name}</button>`).join("")}</div><br><button class="btn block" id="n2">التالي</button><button class="btn ghost block u-mt12" id="n2s">تخطَّ الآن</button></div>`;
     if (step === 3) {
       const sug = DB.users.filter(u => u.id !== DB.me).sort((a, b) => b.topics.filter(t => DB.interests.includes(t)).length - a.topics.filter(t => DB.interests.includes(t)).length).slice(0, 5);
       const comms = DB.communities.filter(c => DB.interests.includes(c.topic) && c.type === "public");
@@ -504,6 +506,7 @@ const Views = {
     if ($("#n1")) $("#n1").onclick = () => Views.onboarding(2);
     view.querySelectorAll("[data-i]").forEach(b => b.onclick = () => { const s = b.dataset.i; DB.interests = DB.interests.includes(s) ? DB.interests.filter(x => x !== s) : [...DB.interests, s]; save(); Views.onboarding(2); });
     if ($("#n2")) $("#n2").onclick = () => Views.onboarding(3);
+    if ($("#n2s")) $("#n2s").onclick = () => { DB.onboarded = true; save(); document.body.classList.remove("ob"); location.hash = "#/home"; route(); };
     if ($("#n3")) $("#n3").onclick = () => { DB.onboarded = true; save(); document.body.classList.remove("ob"); location.hash = "#/home"; route(); };
     view._ob = step;
   },
