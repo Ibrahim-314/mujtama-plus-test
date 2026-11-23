@@ -732,11 +732,13 @@ module.exports = (ctx) => {
   const savedClient = (s) => ({ id: s.id, q: s.q, filters: s.filters || {}, alert: !!s.alert, newCount: s.new_count, lastChecked: s.last_checked, createdAt: s.created_at });
   async function saveSearch(uid, b) {
     const q = str(b.q, 120, { required: true }), f = parseFilters(b.filters || {});
-    const n = await db.get("SELECT COUNT(*) n FROM saved_searches WHERE user_id=$1", [uid]); // v2.157: Free 25 / Plus 100 (admin-editable), checked here on the server
-    if (ctx.services.membership) await ctx.services.membership.enforce(uid, "saved_searches", Number(n.n)); else if (n.n >= 25) throw E.bad("وصلت للحد الأقصى من عمليات البحث المحفوظة (25)");
     const filters = { type: f.type, ptype: f.ptype, community: f.community, lang: f.lang };
     const row = { id: id("ss"), q, filters, alert: b.alert === false ? 0 : 1, at: now() };
-    await db.run("INSERT INTO saved_searches(id,user_id,q,filters,alert,last_checked,new_count,created_at) VALUES($1,$2,$3,$4,$5,$6,0,$6)", [row.id, uid, q, filters, row.alert, row.at]);
+    const count = async () => Number((await db.get("SELECT COUNT(*) n FROM saved_searches WHERE user_id=$1", [uid])).n);
+    const insert = () => db.run("INSERT INTO saved_searches(id,user_id,q,filters,alert,last_checked,new_count,created_at) VALUES($1,$2,$3,$4,$5,$6,0,$6)", [row.id, uid, q, filters, row.alert, row.at]);
+    // v2.157/158: Free 25 / Plus 100 (admin-editable), checked on the server; concurrent saves can't cross the ceiling
+    if (ctx.services.membership) await ctx.services.membership.guarded(uid, "saved_searches", { count, create: insert, undo: () => db.run("DELETE FROM saved_searches WHERE id=$1", [row.id]) });
+    else { if ((await count()) >= 25) throw E.bad("وصلت للحد الأقصى من عمليات البحث المحفوظة (25)"); await insert(); }
     return savedClient(await db.get("SELECT * FROM saved_searches WHERE id=$1", [row.id]));
   }
   /* alerts: count new matching posts since the last check, notify once per batch */
