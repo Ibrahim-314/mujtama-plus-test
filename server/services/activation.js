@@ -212,7 +212,7 @@ module.exports = (ctx, opts = {}) => {
     add("translate", "provider", ts.available, "مزود الترجمة الآلية", "اختر LibreTranslate (رابط خادم مجاني أو مستضاف ذاتياً) أو مفتاح DeepL API Free أو خادماً متوافقاً مع OpenAI في نموذج الترجمة أدناه.", false, { value: ts.provider });
     add("translate", "private", !ts.available || ts.private, "مزود خاص لترجمة الرسائل", "الرسائل الخاصة لا تُرسل إلى خادم LibreTranslate عام بلا مفتاح؛ فعّل «خادم خاص» فقط إن كان الخادم لك.", false);
     let price = false; try { price = !!(await db.get("SELECT 1 x FROM ai_plans WHERE active=1 AND price > 0 LIMIT 1")); } catch { /* table/column may differ */ }
-    add("translate", "plan_price", price, "سعر اشتراك «مجتمع+ ذكاء»", "حدّد سعر الخطة من #/admin/ai (الترجمة متاحة للمشتركين).", false, { link: "#/admin/ai" });
+    add("translate", "plan_price", price, "سعر اشتراك «مجتمع بلس Plus»", "حدّد سعر الخطة من #/admin/ai (الترجمة متاحة للمشتركين).", false, { link: "#/admin/ai" });
     const MAIN = { pi: "pi_payments", push: "vapid", email: "smtp", translate: "provider" };
     const groups = Object.entries(MAIN).map(([g, k]) => ({ id: g, ready: !!items.find((i) => i.key === k)?.ok }));
     return {
@@ -221,7 +221,7 @@ module.exports = (ctx, opts = {}) => {
       steps: {
         push: ["لا يحتاج أي إعداد: المفاتيح تُولّد تلقائياً وتُحفظ في قاعدة البيانات.", "من جوالك: الإعدادات ← الإشعارات ← فعّل إشعارات الجهاز ← «إشعار تجريبي». على iPhone أضف التطبيق للشاشة الرئيسية أولاً (iOS 16.4+)."],
         email: ["أنشئ أنت (لا التطبيق) كلمة مرور تطبيق لبريد تملكه، مثلاً Gmail: myaccount.google.com ← الأمان ← التحقق بخطوتين ← كلمات مرور التطبيقات.", "في هذه الصفحة ← البريد: الخادم smtp.gmail.com، المنفذ 465، المستخدم بريدك، كلمة المرور = كلمة مرور التطبيق، ثم «حفظ».", "اضغط «إرسال رسالة تجريبية» وتأكد من وصولها.", "(اختياري) أضف PUBLIC_ORIGIN في Railway."],
-        translate: ["الخيار المجاني الأسهل: DeepL API Free (deepl.com/pro-api ← Free؛ قد يطلب الموقع بطاقة للتحقق دون خصم) ← انسخ المفتاح المنتهي بـ :fx.", "أو رابط خادم LibreTranslate تستضيفه أنت.", "في هذه الصفحة ← الترجمة: اختر المزود والصق المفتاح/الرابط ← «تجربة» ثم «حفظ».", "حدّد سعر «مجتمع+ ذكاء» من #/admin/ai لتصل الترجمة للمشتركين."]
+        translate: ["الخيار المجاني الأسهل: DeepL API Free (deepl.com/pro-api ← Free؛ قد يطلب الموقع بطاقة للتحقق دون خصم) ← انسخ المفتاح المنتهي بـ :fx.", "أو رابط خادم LibreTranslate تستضيفه أنت.", "في هذه الصفحة ← الترجمة: اختر المزود والصق المفتاح/الرابط ← «تجربة» ثم «حفظ».", "حدّد سعر «مجتمع بلس Plus» من #/admin/ai لتصل الترجمة للمشتركين."]
       }
     };
   }
