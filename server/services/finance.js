@@ -21,7 +21,7 @@ const CATS = { tips: "الإكراميات", subs: "الدعم والاشترا�
 const KINDS = {
   tip: "إكرامية", tip_hold: "إكرامية (قيد المراجعة)", tip_release: "إكرامية بعد المراجعة", support: "دعم شهري / اشتراك مبدع", ppv: "شراء منشور مدفوع",
   market_hold: "طلب من السوق (في الضمان)", market_release: "تسليم طلب السوق", market_refund: "استرداد طلب السوق", market_split: "تسوية نزاع في السوق",
-  ads_fund: "تمويل حملة إعلانية", ads_charge: "إنفاق إعلاني", ads_refund: "استرداد ميزانية إعلان", ai_subscription: "اشتراك «مجتمع+ ذكاء»",
+  ads_fund: "تمويل حملة إعلانية", ads_charge: "إنفاق إعلاني", ads_refund: "استرداد ميزانية إعلان", ai_subscription: "اشتراك «مجتمع بلس Plus»",
   transfer: "تحويل Pi", transfer_hold: "تحويل Pi (قيد المراجعة)", transfer_release: "تحويل Pi بعد المراجعة", transfer_payout: "صرف رصيد التحويلات إلى محفظتك",
   rewards_fund: "تمويل صندوق المكافآت", rewards_redeem: "استبدال نقاط المساهمة", rewards_payout: "صرف مكافأة النقاط إلى محفظتك", reversal: "عكس / استرداد"
 };
