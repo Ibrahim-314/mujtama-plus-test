@@ -285,7 +285,8 @@ module.exports = (ctx, opts = {}) => {
     if (l.kind !== "quiz") throw E.bad("ليس اختباراً");
     const since = new Date(clock() - DAY).toISOString();
     const n = Number((await db.get("SELECT COUNT(*) n FROM course_attempts WHERE lesson_id=$1 AND user_id=$2 AND at > $3", [l.id, user.id, since])).n);
-    if (n >= MAX_ATTEMPTS) throw Object.assign(E.bad(`استنفدت محاولاتك اليوم (${MAX_ATTEMPTS})؛ راجع الدرس وحاول غداً`), { code: "attempts" });
+    const cap = ctx.services.membership ? (await ctx.services.membership.limitFor(user.id, "quiz_attempts_daily", env.COURSE_QUIZ_ATTEMPTS_PER_DAY ? MAX_ATTEMPTS : undefined)) : { limit: MAX_ATTEMPTS, tier: "free", plus: MAX_ATTEMPTS }; // v2.157: Free 10 / Plus 30 per lesson per 24 h
+    if (n >= cap.limit) throw Object.assign(E.bad(`استنفدت محاولاتك اليوم (${cap.limit})؛ راجع الدرس وحاول غداً${cap.tier === "free" && cap.plus > cap.limit ? `. مع Plus تصير ${cap.plus} محاولة` : ""}`), { code: "attempts", details: { quota: { key: "quiz_attempts_daily", used: n, limit: cap.limit, tier: cap.tier, plusLimit: cap.plus } } });
     const qz = parse(l.quiz, { questions: [] }), ans = Array.isArray(b.answers) ? b.answers : [];
     if (ans.length !== qz.questions.length || ans.some((x) => x === null || x === undefined || x === "")) throw E.bad("أجب عن جميع الأسئلة");
     const results = qz.questions.map((q, i) => ({ correct: Number(ans[i]) === q.answer, chosen: Number(ans[i]), answer: q.answer, explain: q.explain || null }));
@@ -295,7 +296,7 @@ module.exports = (ctx, opts = {}) => {
     const prev = await db.get("SELECT attempts FROM course_progress WHERE lesson_id=$1 AND user_id=$2", [l.id, user.id]);
     await progressRow(c, l, user.id, { done: passed, best: score, attempts: Number(prev?.attempts || 0) + 1 });
     const st = await recompute(c, user.id);
-    return { score, passed, passPct: pass, results, attemptsLeft: MAX_ATTEMPTS - n - 1, ...st };
+    return { score, passed, passPct: pass, results, attemptsLeft: cap.limit - n - 1, ...st };
   }
 
   /* ---------- pages ---------- */
