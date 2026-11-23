@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.157.0 — 2026-11-23 «حدود Plus» (membership phase 2b limits, no migration)
+- Usage ceilings per tier, approved by the owner: saved searches 25 / 100 · collections 50 / 200 · quiz attempts per lesson per 24 h 10 / 30 · active teams owned 5 / 20 · members per team 50 / 150 (by the team owner's tier). Appearance, colours and icons stay free for everyone.
+- One server-side check (`membership.enforce` / `limitFor`) in services/search, collections (API and offline sync), courses, teams (create, reopen from archive, invite/link/request/accept). The usage is counted by each service from its own rows, exactly as before; only the ceiling changed. Over the ceiling → 409 `quota_reached` with `{ quota: { key, used, limit, tier, plusLimit } }`.
+- Existing data is never trimmed: a member above a ceiling keeps everything and only cannot create more. Reopening an archived team counts as creating one, so archive → reopen cannot bypass the ceiling.
+- Admin: every number is editable at #/admin/ai («حدود العضوية») and via GET/PUT /api/admin/membership/limits (admin only, audited, Plus ≥ Free ≥ 1). Stored in membership_meta key `quotas`; no code change needed. Env WT_MAX_OWNED / WT_MAX_MEMBERS / COURSE_QUIZ_ATTEMPTS_PER_DAY, when set, still seed the Free value.
+- Membership page lists the raised ceilings under Plus; /api/membership/me returns the member's own ceilings.
+- Note: Free active teams go from 20 to 5 (owner decision); members who already own more keep them.
+- Tests: server/test/membership-limits.test.js (8).
+
+## 2.156.1 — 2026-11-23 (fix, no migration)
+- Home hub: paid / locked posts are no longer picked for «يستحق اهتمامك», so they stay in the feed with their lock card and unlock button (regression from 2.155.0). tests/e2e/paid now 11/11.
+
+## 2.156.0 — 2026-11-23 «عضوية Plus» (membership phase 2a, migration 088, additive)
+- Pi payments: `approve` retries up to 2 times with backoff on network/5xx/429; on a 4xx or final failure the payment is cancelled (`cancel(id)`) instead of staying stuck. A `PI_PAYMENT_FAILED` event marks pending AI-plan payments as failed.
+- «مجتمع+ ذكاء» renamed «مجتمع بلس Plus» everywhere (UI, notifications, help, EN). Slug stays `ai_plus`: existing subscribers are Plus with the same period end, no data move. `ensurePlans` renames the legacy name only if the admin has not changed it. Price stays null until the admin sets it.
+- New service `membership` (`can`, `require`, `state`: free / plus_active / plus_cancelling / payment_pending / payment_failed / expired, history, events) and routes `GET /api/membership/plans|me`, `POST /api/membership/subscribe|cancel|resume`. Kept separate from creator subscriptions.
+- Gated features: `translate`, `assistant` (existing) and `studio_extended` (new, PENDING owner approval): studio analytics beyond 90 days (up to 365). 7–90 days stay free for everyone.
+- Migration 088: `membership_meta`, `membership_events` (+ index). Additive only.
+- New lazy chunk `membership` (#/membership): Free vs Plus comparison, subscribe/renew via Pi, cancel/resume renewal, history. Linked from settings (Payments) and the More menu; help entry AR/EN; whatsnew entry.
+- Expired content stays visible (unchanged). Refunds, staff grants and minors follow the existing ai_plus rules.
+- Tests: server/test/membership.test.js (14, stubbed Pi API), tests/e2e/membership-v2156 (2); ai/assistant e2e and ai.test name assertions updated. Real Pi testnet payment not run here.
+
 ## 2.155.0 — 2026-11-23 «رئيسية تخدمك» (Home hub, phase 1a, no migration)
 - Home: new hub above the feed (own lazy chunk `homehub`, 5.8 KB br): search, welcome + MJT balance (only when a real balance exists), 6 quick actions, «يستحق اهتمامك» (up to 3 posts), «اكتشف مجتمعات تهمك», «فرصتك القادمة» (jobs / freelance / projects & teams as separate tabs), then «من المجتمع» (composer + existing feed, last).
 - Optional sections hidden by default: استوديو المنشئ، تعلّم وطوّر مهاراتك، مساعدك الذكي.
