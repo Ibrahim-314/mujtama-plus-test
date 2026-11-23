@@ -3482,5 +3482,6 @@
 "مهمة": "High",
 "تم الإرسال ✓": "Sent ✓",
 "اسحب لتحريك الصورة": "Drag to move the photo",
-"✓ حُدّثت الصورة": "✓ Photo updated"
+"✓ حُدّثت الصورة": "✓ Photo updated",
+"تم حفظ الحدود": "Limits saved"
 });
