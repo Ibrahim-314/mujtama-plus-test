@@ -73,13 +73,12 @@ module.exports = (ctx, opts = {}) => {
     const name = str(b.name, 80, { required: true, min: 3 }), about = str(b.about, 2000), kind = oneOf(b.kind, Object.keys(KIND), "project");
     const visibility = oneOf(b.visibility, Object.keys(VIS), "private");
     if (visibility === "listed" && (await isMinor(user.id))) throw fail(403, "minor_restricted", "الفرق الظاهرة في الدليل متاحة لمن هم ١٨ سنة فأكثر");
-    await ownedCap(user.id);
     const contractId = b.contractId ? await checkContract(user, String(b.contractId)) : null;
     const tid = id("wt"), now = iso();
-    await db.tx(async (t) => {
+    await ownedGuard(user.id, () => db.tx(async (t) => {
       await t.run("INSERT INTO wt_teams (id, owner_id, kind, name, about, visibility, status, contract_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,'active',$7,$8,$8)", [tid, user.id, kind, name, about, visibility, contractId, now]);
       await t.run("INSERT INTO wt_members (team_id, user_id, role, title, joined_at) VALUES ($1,$2,'owner',$3,$4)", [tid, user.id, str(b.title, 60), now]);
-    });
+    }), () => db.tx(async (t) => { await t.run("DELETE FROM wt_members WHERE team_id=$1", [tid]); await t.run("DELETE FROM wt_teams WHERE id=$1 AND owner_id=$2", [tid, user.id]); }));
     return { id: tid, state: "active" };
   }
   async function checkContract(user, cid) {
@@ -111,8 +110,9 @@ module.exports = (ctx, opts = {}) => {
     const staff = user.role === "admin", owner = t.owner_id === user.id;
     if (!owner && !staff) throw E.forbid("للمالك فقط");
     const to = oneOf(b.status, Object.keys(STATUS), null); if (!to) throw E.bad();
-    if (t.status === "archived" && to !== "archived") await ownedCap(t.owner_id); // v2.157: reopening counts like creating (archive → reopen can't bypass the ceiling)
-    await db.run("UPDATE wt_teams SET status=$1, updated_at=$2, closed_at=$3 WHERE id=$4", [to, iso(), to === "active" ? null : iso(), t.id]);
+    const write = () => db.run("UPDATE wt_teams SET status=$1, updated_at=$2, closed_at=$3 WHERE id=$4", [to, iso(), to === "active" ? null : iso(), t.id]);
+    if (t.status === "archived" && to !== "archived") await ownedGuard(t.owner_id, write, () => db.run("UPDATE wt_teams SET status='archived', updated_at=$1, closed_at=$2 WHERE id=$3", [t.updated_at, t.closed_at, t.id])); // v2.157: reopening counts like creating
+    else await write();
     if (staff && !owner) ctx.audit?.("team_" + to, t.id, str(b.reason, 400) || t.name, user.id);
     return view(user, t.id);
   }
@@ -187,15 +187,32 @@ module.exports = (ctx, opts = {}) => {
    * Checked only when a team is created / reopened or a member is added: existing teams and members are never removed. */
   const M = () => ctx.services.membership;
   const envOwned = env.WT_MAX_OWNED ? MAX_OWNED : undefined, envMembers = env.WT_MAX_MEMBERS ? MAX_MEMBERS : undefined;
-  async function ownedCap(uid) {
-    const used = await count("SELECT COUNT(*) n FROM wt_teams WHERE owner_id=$1 AND status<>'archived'", [uid]);
-    if (M()) return M().enforce(uid, "teams_owned", used, { envFree: envOwned, what: "الفرق النشطة التي تملكها" });
-    if (used >= MAX_OWNED) throw fail(409, "limit", "وصلت للحد الأقصى من الفرق النشطة");
+  const ownedN = (uid) => count("SELECT COUNT(*) n FROM wt_teams WHERE owner_id=$1 AND status<>'archived'", [uid]);
+  /* v2.158: count → create → re-count; a parallel create that crossed the ceiling undoes only its own new / reopened team */
+  async function ownedGuard(uid, create, undo) {
+    if (M()) return M().guarded(uid, "teams_owned", { count: () => ownedN(uid), create, undo, envFree: envOwned, what: "الفرق النشطة التي تملكها" });
+    if ((await ownedN(uid)) >= MAX_OWNED) throw fail(409, "limit", "وصلت للحد الأقصى من الفرق النشطة");
+    return create();
   }
   const membersCap = async (t) => (M() ? (await M().limitFor(t.owner_id, "team_members", envMembers)).limit : MAX_MEMBERS);
+  const membersN = (tid) => count("SELECT COUNT(*) n FROM wt_members WHERE team_id=$1", [tid]);
+  function fullErr(t, used, cap) {
+    return Object.assign(fail(409, "full", `اكتمل عدد أعضاء الفريق (${used} من ${cap}). يمكن للمشرف إزالة عضو غير نشط ليتسع الفريق`), { details: { quota: { key: "team_members", used, limit: cap } } });
+  }
+  /* add a member under the team's lock; if another instance added one at the same moment and the team is now over its
+   * ceiling, only THIS new membership is undone (the invite goes back to how it was). Existing members are never removed. */
+  async function joinGuarded(t, uid, join, undoInvite) {
+    const run = async () => {
+      await canJoin(t, uid);
+      await join();
+      const cap = await membersCap(t), n = await membersN(t.id);
+      if (n > cap) { await db.tx(async (tx) => { await tx.run("DELETE FROM wt_members WHERE team_id=$1 AND user_id=$2 AND role<>'owner'", [t.id, uid]); if (undoInvite) await undoInvite(tx); }); throw fullErr(t, cap, cap); }
+    };
+    return M() ? M().serial("team_members:" + t.id, run) : run();
+  }
   async function canJoin(t, uid) {
-    const cap = await membersCap(t);
-    if ((await count("SELECT COUNT(*) n FROM wt_members WHERE team_id=$1", [t.id])) >= cap) throw Object.assign(fail(409, "full", "اكتمل عدد أعضاء الفريق"), { details: { quota: { key: "team_members", limit: cap } } });
+    const cap = await membersCap(t), used = await membersN(t.id);
+    if (used >= cap) throw fullErr(t, used, cap);
     if (await memberOf(t.id, uid)) throw fail(409, "member", "أنت عضو في هذا الفريق");
     if ((await isMinor(uid)) && (await paidContract(t))) throw fail(403, "minor_restricted", "هذا الفريق مرتبط بعقد مدفوع ومتاح لمن هم ١٨ سنة فأكثر");
   }
@@ -232,11 +249,11 @@ module.exports = (ctx, opts = {}) => {
     if (i.status !== "pending") throw fail(409, "not_pending", "انتهت هذه الدعوة");
     const t = await teamRow(i.team_id); if (!t || t.status === "archived") throw fail(409, "archived", "الفريق مؤرشف");
     const accept = b.accept === true;
-    if (accept) await canJoin(t, user.id);
-    await db.tx(async (tx) => {
+    const write = () => db.tx(async (tx) => {
       const r = await tx.run("UPDATE wt_invites SET status=$1, decided_at=$2 WHERE id=$3 AND status='pending'", [accept ? "accepted" : "declined", iso(), i.id]); if (!r.changes) throw fail(409, "not_pending", "انتهت هذه الدعوة");
       if (accept) await addMember(tx, t, user.id, i.role);
     });
+    if (accept) await joinGuarded(t, user.id, write, (tx) => tx.run("UPDATE wt_invites SET status='pending', decided_at=NULL WHERE id=$1", [i.id])); else await write();
     await notify(i.by_user, accept ? "team_joined" : "team_declined", t.id, user.id);
     return { ok: true, team: t.id, joined: accept };
   }
@@ -256,11 +273,10 @@ module.exports = (ctx, opts = {}) => {
     const { i, t } = await linkInfo(user, b.code);
     if (await blockedBetween(user.id, t.owner_id)) throw fail(404, "expired", "رابط الدعوة منتهٍ أو غير صالح");
     if (t.visibility === "listed" && (await isMinor(user.id))) throw fail(403, "minor_restricted", "الانضمام عبر الروابط للفرق العامة متاح لمن هم ١٨ سنة فأكثر");
-    await canJoin(t, user.id);
-    await db.tx(async (tx) => {
+    await joinGuarded(t, user.id, () => db.tx(async (tx) => {
       const r = await tx.run("UPDATE wt_invites SET uses=uses+1 WHERE id=$1 AND status='pending' AND (max_uses IS NULL OR uses < max_uses)", [i.id]); if (!r.changes) throw fail(404, "expired", "رابط الدعوة منتهٍ أو غير صالح");
       await addMember(tx, t, user.id, i.role);
-    });
+    }), (tx) => tx.run("UPDATE wt_invites SET uses=uses-1 WHERE id=$1 AND uses>0", [i.id]));
     await notify(t.owner_id, "team_joined", t.id, user.id);
     return { ok: true, team: t.id };
   }
@@ -279,8 +295,9 @@ module.exports = (ctx, opts = {}) => {
     const { t } = await gate(user, tid, "admin"); writable(t);
     const i = await db.get("SELECT * FROM wt_invites WHERE id=$1 AND team_id=$2 AND kind='request'", [String(iid), t.id]); if (!i) throw E.nf();
     if (i.status !== "pending") throw fail(409, "not_pending", "حُسم هذا الطلب");
-    const accept = b.accept === true; if (accept) await canJoin(t, i.user_id);
-    await db.tx(async (tx) => { await tx.run("UPDATE wt_invites SET status=$1, decided_at=$2 WHERE id=$3", [accept ? "accepted" : "declined", iso(), i.id]); if (accept) await addMember(tx, t, i.user_id, "member"); });
+    const accept = b.accept === true;
+    const write = () => db.tx(async (tx) => { await tx.run("UPDATE wt_invites SET status=$1, decided_at=$2 WHERE id=$3", [accept ? "accepted" : "declined", iso(), i.id]); if (accept) await addMember(tx, t, i.user_id, "member"); });
+    if (accept) await joinGuarded(t, i.user_id, write, (tx) => tx.run("UPDATE wt_invites SET status='pending', decided_at=NULL WHERE id=$1", [i.id])); else await write();
     await notify(i.user_id, accept ? "team_joined" : "team_declined", t.id, user.id);
     return view(user, t.id);
   }
