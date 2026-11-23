@@ -224,11 +224,22 @@ async function createApp(overrides = {}) {
       //  the handler still requires it for anything that acts on an existing session, e.g. link:true)
       req.csrfOk = req.headers["x-requested-with"] === "mujtama";
       if (req.method !== "GET" && !route.opts.beacon && !route.opts.piLogin && !route.opts.apiToken && !req.csrfOk) throw E.forbid("طلب مرفوض");
-      if (route.opts.raw) req.rawBody = await readBody(req, route.opts.rawLimit || 210 * 1024 * 1024); // v2.60 M3: chunk routes cap the body early
+      /* v2.154.1 (security): resolve the session BEFORE reading any body. Raw upload routes (up to 210 MB, read into memory)
+       * used to buffer the whole body first, so anonymous requests could exhaust the server's memory. Raw routes now refuse
+       * an anonymous caller with 401 before a single body byte is read, except beacon/webhook raw routes (mail unsubscribe,
+       * mail provider events), which authenticate by a signed token or signature and are capped at 1 MB. */
+      req.user = await ctx.services.users.resolve(req);
+      if (route.opts.raw) {
+        const selfAuth = route.opts.beacon || route.opts.apiToken; // signed token / webhook signature / OAuth client credentials
+        if (!req.user && !selfAuth) { req.resume(); throw new HttpError(401, "يجب تسجيل الدخول أولاً", "auth_required"); }
+        const cap = selfAuth && !req.user ? Math.min(route.opts.rawLimit || 1024 * 1024, 1024 * 1024) : route.opts.rawLimit || 210 * 1024 * 1024;
+        const declared = +req.headers["content-length"] || 0;
+        if (declared > cap) { req.resume(); throw new HttpError(413, "الملف أكبر من المسموح", "too_large"); }
+        req.rawBody = await readBody(req, cap); // v2.60 M3: chunk routes cap the body early
+      }
       else if (req.method !== "GET") { const b = await readBody(req, 1024 * 1024); try { req.body = b.length ? JSON.parse(b) : {}; } catch { throw E.bad("JSON غير صالح"); } if (typeof req.body !== "object" || req.body === null) throw E.bad(); }
       else req.body = {};
       req.params = route.params;
-      req.user = await ctx.services.users.resolve(req);
       await ctx.services.orgs.applyActAs(req);
       const out = await route.handler(req, res);
       ctx.services.orgs.afterAction(req).catch(() => { });
