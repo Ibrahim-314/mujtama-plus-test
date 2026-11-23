@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.155.0 — 2026-11-23 «رئيسية تخدمك» (Home hub, phase 1a, no migration)
+- Home: new hub above the feed (own lazy chunk `homehub`, 5.8 KB br): search, welcome + MJT balance (only when a real balance exists), 6 quick actions, «يستحق اهتمامك» (up to 3 posts), «اكتشف مجتمعات تهمك», «فرصتك القادمة» (jobs / freelance / projects & teams as separate tabs), then «من المجتمع» (composer + existing feed, last).
+- Optional sections hidden by default: استوديو المنشئ، تعلّم وطوّر مهاراتك، مساعدك الذكي.
+- «تخصيص صفحتي الرئيسية»: show/hide, reorder, restore default; saved in prefs (ns `home`, key `layout`) and restored on another device.
+- No duplicates: posts picked for «يستحق اهتمامك» are filtered out of the feed; the in-feed suggested-community card is dropped while the communities section is on.
+- Each section loads its own data when it nears the screen (5 min cache); a realtime re-render keeps the hub node and refetches nothing.
+- Onboarding: interests are optional («التالي» always enabled) and a «تخطَّ الآن» button goes straight to Home.
+- English translations for all new strings; RTL/LTR; no horizontal scroll at 320 px.
+- Tests: tests/e2e/homehub-v2155 (3); home-h2-v2145 first-post check updated for the hub.
+
+## 2.154.1 — 2026-11-23 «أمان قبل كل شيء» (security hotfix, no feature change, no migration)
+- Static files: the server no longer serves repository internals. Without WEB_ROOT (plain `npm start`) the web root is the repo itself, and `/server/data.sqlite`, dotfiles holding secrets and the server source were downloadable. Dotfiles/dot-folders (except `/.well-known/`), `server/ tools/ tests/ docs/ deploy/ ops/ node_modules/ tmp-*` and data/secret file types (`.sqlite .db .pem .key .yml .sh .log …`, package/Docker files, top-level docs) now answer 404; the "inside the root" check no longer accepts a sibling folder with the same prefix (`lib/http.js` `isForbiddenStatic`).
+- Uploads: the session is resolved before any body is read. Raw upload routes (up to 210 MB buffered in memory) refuse anonymous callers with 401 `auth_required` before reading a byte, and a declared Content-Length above the cap is refused with 413 at once; beacon/webhook and OAuth token raw routes (mail unsubscribe/events, /api/oauth/token|revoke) keep authenticating themselves and are capped at 1 MB when anonymous (`server.js`).
+- Passwords: sign-in checks the password once with async scrypt (thread pool, no event-loop freeze; was two synchronous runs on every failure); an unknown handle is checked against a dummy hash so it costs the same as a wrong password (no username discovery by timing); a per-account login rate limit is added beside the per-IP one; a malformed stored hash is a plain "wrong password" instead of a 500. Registration, password change/reset, email change and account deletion use the async helpers too (`lib/core.js`, `services/users.js`, `services/mail.js`, `services/compliance.js`).
+- Tests: server/test/security-v21541.test.js (5).
+
 ## 2.154.0 — 2026-11-22
 
 «المزيد» stage 1 (approved mockup): 11 member sections → 6 (أنا، التواصل والمجتمعات، اكتشف، الإبداع والعمل والتعلّم، المحفظة والسوق، الإعدادات والمساعدة). Each shows 5–6 core rows; the other 81 fold under «أدوات أخرى» with sub-headings. All 114 destinations kept, search unchanged, admin section unchanged. Tests: tests/unit/menu-v21540.test.js; nav.e2e updated for the new section ids.
