@@ -126,9 +126,9 @@ const KINDS = {
   ad_budget_low: { tab: "system", imp: 55, ch: { inapp: 1, push: 0, email: 0 }, v: ["أوشكت ميزانية حملتك الإعلانية على النفاد"], label: "انخفاض ميزانية الحملات", system: 1 },
   ad_completed: { tab: "system", imp: 50, ch: { inapp: 1, push: 0, email: 0 }, v: ["انتهت حملتك الإعلانية؛ اطّلع على النتائج"], label: "انتهاء الحملات الإعلانية", system: 1 },
   // phase 41 — AI subscriptions (ref = plan slug)
-  ai_subscribed: { tab: "system", imp: 60, ch: { inapp: 1, push: 1, email: 0 }, v: ["تم تفعيل اشتراكك في «مجتمع+ ذكاء»"], label: "تفعيل اشتراكات الذكاء", system: 1 },
-  ai_renew_reminder: { tab: "system", imp: 55, ch: { inapp: 1, push: 1, email: 1 }, v: ["ينتهي اشتراكك في «مجتمع+ ذكاء» خلال أيام؛ جدّده للاستمرار"], label: "تذكير بتجديد اشتراك الذكاء", system: 1 },
-  ai_expired: { tab: "system", imp: 50, ch: { inapp: 1, push: 0, email: 0 }, v: ["انتهى اشتراكك في «مجتمع+ ذكاء»"], label: "انتهاء اشتراك الذكاء", system: 1 },
+  ai_subscribed: { tab: "system", imp: 60, ch: { inapp: 1, push: 1, email: 0 }, v: ["تم تفعيل اشتراكك في «مجتمع بلس Plus»"], label: "تفعيل اشتراكات الذكاء", system: 1 },
+  ai_renew_reminder: { tab: "system", imp: 55, ch: { inapp: 1, push: 1, email: 1 }, v: ["ينتهي اشتراكك في «مجتمع بلس Plus» خلال أيام؛ جدّده للاستمرار"], label: "تذكير بتجديد اشتراك الذكاء", system: 1 },
+  ai_expired: { tab: "system", imp: 50, ch: { inapp: 1, push: 0, email: 0 }, v: ["انتهى اشتراكك في «مجتمع بلس Plus»"], label: "انتهاء اشتراك الذكاء", system: 1 },
   // phase 45 — digital wellbeing (ref = ISO week, e.g. 2026-W42)
   wellbeing_weekly: { tab: "system", imp: 25, ch: { inapp: 1, push: 0, email: 0 }, v: ["تقرير استخدامك الأسبوعي جاهز"], label: "تقرير الاستخدام الأسبوعي", system: 1 },
   // phase 49 — on-call alerts for admins (ref = alert rule id)
