@@ -1,5 +1,5 @@
 /* AI assistant «المساعد الذكي» UI (phase 42). Lazy chunk `assistant` (loaded by the `ai` chunk). Contract: docs/integration/p42.md.
- * • «✨ المساعد» next to the post composer (#txt) and the comment box (#cin). Non-subscriber → the existing «مجتمع+ ذكاء» upsell
+ * • «✨ المساعد» next to the post composer (#txt) and the comment box (#cin). Non-subscriber → the existing «مجتمع بلس Plus» upsell
  *   (MPAI.upsell) + «المساعد الذكي غير مفعّل بعد» when no provider. Subscriber → sheet: rephrase / improve / shorter / polite,
  *   polite reply suggestions (comment box), ask the community (cited answer), semantic search, and «ما الذي يراه المساعد؟».
  * • Suggestions are never applied silently: the user taps «استخدام». No inline handlers (CSP); CSS lives in this chunk. */
@@ -39,7 +39,7 @@
     await load(true);
     if (!me?.entitled) {
       if (!window.MPAI) await window.MPChunks?.load("ai").catch(() => { });
-      // v2.51: /api/assistant/* just seeded `assistant` into the «مجتمع+ ذكاء» plan — refresh the AI chunk's cached plan so the upsell lists it
+      // v2.51: /api/assistant/* just seeded `assistant` into the «مجتمع بلس Plus» plan — refresh the AI chunk's cached plan so the upsell lists it
       if (window.MPAI) { await window.MPAI.refresh?.(); await window.MPAI.upsell(); const s = document.getElementById("sheet"); if (s && !me?.available && !s.querySelector("#mp-as-off")) s.querySelector("#mp-sub-n")?.insertAdjacentHTML("beforebegin", `<p class="muted" id="mp-as-off" role="status">${esc(T(OFF))}</p>`); }
       else toast(T(OFF));
       return;
