@@ -1,5 +1,41 @@
 [
   {
+    "v": "2.155.0",
+    "date": "2026-11-23",
+    "ar": {
+      "title": "رئيسية تخدمك",
+      "items": [
+        "أقسام جديدة فوق الخلاصة: بحث، اختصارات، ما يستحق اهتمامك، مجتمعات، وفرصتك القادمة",
+        "«تخصيص صفحتي الرئيسية»: إظهار وإخفاء وترتيب الأقسام",
+        "تخطي الاهتمامات في البداية صار ممكناً"
+      ]
+    },
+    "en": {
+      "title": "A Home that works for you",
+      "items": [
+        "New sections above the feed: search, shortcuts, worth your attention, communities and your next opportunity",
+        "«Customise my Home»: show, hide and reorder sections",
+        "You can skip interests during sign-up"
+      ]
+    }
+  },
+  {
+    "v": "2.154.1",
+    "date": "2026-11-23",
+    "ar": {
+      "title": "أمان قبل كل شيء",
+      "items": [
+        "حماية أقوى لملفات الخادم وكلمات المرور والرفع"
+      ]
+    },
+    "en": {
+      "title": "Security first",
+      "items": [
+        "Stronger protection for server files, passwords and uploads"
+      ]
+    }
+  },
+  {
     "v": "2.154.0",
     "date": "2026-11-22",
     "ar": {
