@@ -23,11 +23,11 @@ test("real server: ✨ assistant in the composer — upsell, not-enabled note, t
   const pid = mk.post.id;
   await p.goto(S.base + "/?nosw#/post/" + pid);
   await p.waitForSelector("#cin + .mp-asb", { timeout: 20000 }); // lazy `assistant` chunk attached the button to the comment box
-  // non-subscriber → the existing «مجتمع+ ذكاء» upsell, with the assistant note (no provider) and Pi off
+  // non-subscriber → the existing «مجتمع بلس Plus» upsell, with the assistant note (no provider) and Pi off
   await p.click("#cin + .mp-asb");
   await p.waitForSelector("#mp-sub", { timeout: 10000 });
   const sh = await p.textContent("#sheet");
-  assert.match(sh, /مجتمع\+ ذكاء/); assert.match(sh, /المساعد الذكي غير مفعّل بعد/); assert.match(sh, /المساعد الذكي: صياغة/);
+  assert.match(sh, /مجتمع بلس Plus/); assert.match(sh, /المساعد الذكي غير مفعّل بعد/); assert.match(sh, /المساعد الذكي: صياغة/);
   await p.click("#mp-sub");
   await until(() => /مدفوعات Pi غير مفعّلة بعد/.test(document.querySelector("#mp-sub-n")?.textContent || ""));
   await p.click("#mp-not");
