@@ -1,6 +1,6 @@
 /* Pricing manager + revenue / cost dashboard (phase 53). Admin only.
  * 1. Price book (price_book): one catalogue for everything paid on the platform —
- *      ai.plan.<slug>      «مجتمع+ ذكاء» monthly price            (1e-7 Pi units → ai_plans.price)
+ *      ai.plan.<slug>      «مجتمع بلس Plus» monthly price            (1e-7 Pi units → ai_plans.price)
  *      fee.tips            platform fee on tips                    (basis points → tips.config.feeBps)
  *      fee.subscriptions   platform fee on creator subscriptions   (bps → tips.config.supportFeeBps, used by phase 37/57)
  *      fee.paid            platform fee on pay-per-view content    (bps → paid.config.feeBps)
@@ -28,7 +28,7 @@ const { toUnits, pi } = require("../lib/ledger");
 const DAY = 864e5;
 const PLATFORM = ["platform:fees", "platform:ai", "platform:ads"];
 const LIAB = (a) => a === "escrow:market" || a === "escrow:contracts" || a === "platform:held" || a.startsWith("ads:budget:");
-const STREAM_AR = { tip: "الإكراميات", tips: "الإكراميات", support: "اشتراكات صنّاع المحتوى", ppv: "المحتوى المدفوع", market: "السوق", digital: "المنتجات الرقمية", ads: "الإعلانات", ai: "مجتمع+ ذكاء", transfer: "التحويلات" };
+const STREAM_AR = { tip: "الإكراميات", tips: "الإكراميات", support: "اشتراكات صنّاع المحتوى", ppv: "المحتوى المدفوع", market: "السوق", digital: "المنتجات الرقمية", ads: "الإعلانات", ai: "مجتمع بلس Plus", transfer: "التحويلات" };
 const COST_CATS = ["hosting", "database", "provider", "domain", "other"];
 const SUGGESTED = {
   "ai.plan.ai_plus": { value: 1, reason: "يغطي سقف تكلفة المزوّد (٠٫٥$ شهرياً لكل مشترك) ما دام سعر Pi ≥ ٠٫٥$، ويبقى أقل من اشتراكات الذكاء المعروفة" },
