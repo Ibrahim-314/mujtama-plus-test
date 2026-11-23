@@ -4,7 +4,7 @@
  * Sending goes through lib/mailer.js (SMTP + DKIM); transactional mail is queued (lib/queue.js) so a
  * flaky SMTP server is retried with exponential backoff. Templates: lib/email-templates.js (Arabic, RTL). */
 const crypto = require("node:crypto");
-const { E, HttpError, str, id, now, sha, token, hashPassword, verifyPassword } = require("../lib/core");
+const { E, HttpError, str, id, now, sha, token, hashPassword, verifyPassword, verifyPasswordAsync, hashPasswordAsync } = require("../lib/core");
 const T = require("../lib/email-templates");
 const L = require("../lib/notify-lib");
 const DKIM = require("../lib/dkim");
@@ -127,7 +127,7 @@ module.exports = (ctx) => {
     const u = req.user, email = normEmail(str(req.body.email, 120, { required: true }));
     if (!EMAIL.test(email)) throw E.bad("البريد الإلكتروني غير صالح");
     if (u.email === email) return accountEmail(await db.get("SELECT * FROM users WHERE id=$1", [u.id]));
-    if (u.email && u.email_verified_at && u.password_hash && !verifyPassword(String(req.body.password || ""), u.password_hash)) throw new HttpError(401, "أدخل كلمة المرور الحالية لتغيير البريد", "password_required");
+    if (u.email && u.email_verified_at && u.password_hash && !(await verifyPasswordAsync(String(req.body.password || ""), u.password_hash))) throw new HttpError(401, "أدخل كلمة المرور الحالية لتغيير البريد", "password_required");
     if (limited("email:" + u.id)) throw E.rate();
     if (await db.get("SELECT 1 x FROM users WHERE email=$1 AND id<>$2", [email, u.id])) throw E.conflict("هذا البريد مرتبط بحساب آخر");
     const old = u.email_verified_at ? u.email : null;
@@ -154,7 +154,7 @@ module.exports = (ctx) => {
   async function reset(req) {
     const password = checkPw(req.body.password);
     const row = await consume(req.body.token, "reset"); if (!row) throw E.bad("الرابط غير صالح أو انتهت صلاحيته");
-    await db.run("UPDATE users SET password_hash=$1 WHERE id=$2", [hashPassword(password), row.user_id]);
+    await db.run("UPDATE users SET password_hash=$1 WHERE id=$2", [await hashPasswordAsync(password), row.user_id]);
     await db.run("DELETE FROM sessions WHERE user_id=$1", [row.user_id]);
     ctx.audit?.("password_reset", row.user_id, null, row.user_id);
     await afterPasswordChange(row.user_id);
@@ -162,8 +162,8 @@ module.exports = (ctx) => {
   }
   async function changePassword(req) {
     const u = req.user, password = checkPw(req.body.password);
-    if (u.password_hash && !verifyPassword(String(req.body.current || ""), u.password_hash)) throw new HttpError(401, "كلمة المرور الحالية غير صحيحة", "bad_credentials");
-    await db.run("UPDATE users SET password_hash=$1 WHERE id=$2", [hashPassword(password), u.id]);
+    if (u.password_hash && !(await verifyPasswordAsync(String(req.body.current || ""), u.password_hash))) throw new HttpError(401, "كلمة المرور الحالية غير صحيحة", "bad_credentials");
+    await db.run("UPDATE users SET password_hash=$1 WHERE id=$2", [await hashPasswordAsync(password), u.id]);
     await db.run("DELETE FROM sessions WHERE user_id=$1 AND (sid IS NULL OR sid<>$2)", [u.id, u.session_sid || ""]);
     ctx.audit?.("password_changed", u.id, null, u.id);
     await afterPasswordChange(u.id);
