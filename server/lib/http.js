@@ -151,10 +151,26 @@ const MIME = {
  * assets (/assets/name-HASH.ext), no-cache for HTML and the service worker, preload hints. */
 const HASHED = /-[A-Za-z0-9_-]{8,}\.(js|css|woff2|png|webp|avif|svg)$/;
 let preloadLinks = null;
+/* v2.154.1 (security): never serve repository internals as static files. Without WEB_ROOT the web root is the repository
+ * itself (dev mode), which exposed server/data.sqlite, dotfiles holding secrets, and the server source.
+ * Dotfiles/dot-folders (except /.well-known/), server-side and tooling folders and secret/data file types are refused (404). */
+const DENY_TOP = new Set(["server", "node_modules", "deploy", "ops", "tools", "tests", "docs", "roadmap", "shots-e2e", "storage", "data"]);
+const DENY_EXT = /\.(sqlite|sqlite3|db|db-journal|db-wal|db-shm|pem|key|crt|p12|pfx|log|bak|old|orig|swp|sh|py|pyc|ya?ml|toml|lock|map|part\d+)$/i;
+const DENY_NAME = new Set(["package.json", "package-lock.json", "dockerfile", "dockerfile.railway", "docker-compose.yml", "docker-compose.staging.yml", "tsconfig.json", "eslint.config.js", "eslint.config.mjs", "capacitor.config.json", "railway.json", "render.yaml", "readme.md", "changelog.md", "roadmap.md", "roadmap-2.md", "architecture.md", "design.md"]);
+function isForbiddenStatic(rel) {
+  const parts = rel.split(/[\\/]+/).filter(Boolean);
+  if (!parts.length) return false;
+  if (parts.some((seg, i) => seg.startsWith(".") && !(i === 0 && seg === ".well-known"))) return true;
+  if (DENY_TOP.has(parts[0].toLowerCase()) || /^tmp[-_]/i.test(parts[0])) return true;
+  const base = parts[parts.length - 1].toLowerCase();
+  return DENY_NAME.has(base) || DENY_EXT.test(base);
+}
 function serveStatic(root, req, res, urlPath) {
   const rel = decodeURIComponent(urlPath === "/" ? "/index.html" : urlPath);
-  const file = path.normalize(path.join(root, rel));
-  if (!file.startsWith(path.normalize(root))) return false;
+  if (rel.includes("\0") || isForbiddenStatic(rel)) return false;
+  const rootN = path.normalize(root).replace(/[\\/]+$/, "");
+  const file = path.normalize(path.join(rootN, rel));
+  if (file !== rootN && !file.startsWith(rootN + path.sep)) return false; // v2.154.1: "/app/dist-x" no longer counts as inside "/app/dist"
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return false;
   const ext = path.extname(file).toLowerCase(),
     base = path.basename(file);
@@ -229,4 +245,4 @@ class Realtime {
     return this.clients.size;
   }
 }
-module.exports = { Router, parseCookies, readBody, serveStatic, SEC_HEADERS, Realtime, MIME, buildCsp, inlineScriptHashes, cookieHeader };
+module.exports = { Router, parseCookies, readBody, serveStatic, isForbiddenStatic, SEC_HEADERS, Realtime, MIME, buildCsp, inlineScriptHashes, cookieHeader };
