@@ -128,6 +128,7 @@ async function createApp(overrides = {}) {
   ctx.services.market = require("./services/market")(ctx, config.marketOpts); // Phase 39: community marketplace (listings, orders, escrow, reviews, disputes)
   ctx.services.ads = require("./services/ads")(ctx, config.adsOpts);         // Phase 40: ethical ads (promoted posts, privacy-safe targeting, review, CPM budget)
   ctx.services.ai = require("./services/ai")(ctx, config.aiOpts);             // Phase 41: AI plans + monthly Pi subscriptions + entitlements + metering
+  ctx.services.membership = require("./services/membership")(ctx, config.membershipOpts); // v2.156: Free / Plus membership (Plus = the ai_plus plan) + one server-side entitlement check
   ctx.services.translate = require("./services/translate")(ctx, config.translateOpts); // Phase 41: real machine translation (subscribers), shared cache
   ctx.services.i18n = require("./services/i18n")(ctx, config.i18nOpts);       // Phase 41: interface languages ar/en + UI string management (free)
   ctx.services.aihub = require("./services/aihub")(ctx, config.aihubOpts);       // v2.77: «مركز الذكاء» — members link their own AI accounts (OpenRouter one tap, Gemini/Groq/… keys)
