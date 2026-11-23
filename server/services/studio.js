@@ -80,7 +80,11 @@ module.exports = (ctx) => {
     return { range: { from: o.daily.views[0].day, to: o.daily.views[6].day }, totals: o.totals, deltas: o.deltas, engagementRate: o.engagementRate, bestDay: best.value > 0 ? best.day : null, topPost: o.top[0] || null, daily: o.daily.views, user: { name: u.name, handle: u.handle } };
   }
 
-  R.get("/api/studio/overview", A(async (req) => overview(req.user, Math.min(90, Math.max(7, +req.query.days || 28)))));
+  R.get("/api/studio/overview", A(async (req) => {
+    const days = Math.min(365, Math.max(7, Math.floor(+req.query.days) || 28));
+    if (days > 90) await ctx.services.membership.require(req.user.id, "studio_extended"); // v2.156: 180/365 days are Plus (402 + upsell); up to 90 stays free
+    return overview(req.user, days);
+  }));
   R.get("/api/studio/posts/:id", A(async (req) => postStats(req.user, req.params.id)));
   R.get("/api/studio/best-time", A(async (req) => bestTime(req.user, Math.max(-720, Math.min(840, +req.query.tz || 0)))));
   R.get("/api/studio/calendar", A(async (req) => calendar(req.user, req.query.month)));
