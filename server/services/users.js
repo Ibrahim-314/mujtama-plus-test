@@ -1,5 +1,5 @@
 /* User Service + Social Graph: accounts, sessions, Pi authentication, profiles, preferences, follows. */
-const { E, str, id, hashPassword, verifyPassword, token, sha, now } = require("../lib/core");
+const { E, str, id, hashPassword, verifyPassword, verifyPasswordAsync, hashPasswordAsync, token, sha, now } = require("../lib/core");
 const COLORS = ["#5b2bd6", "#e0559b", "#1f9d8b", "#e88b2a", "#3478f6", "#9b51e0", "#2fa84f", "#d6453a", "#00a3c4", "#7a5af8"];
 const SESSION_DAYS = 30;
 const HANDLE = /^[a-zA-Z0-9_]{3,24}$/;
@@ -37,7 +37,7 @@ module.exports = (ctx) => {
   async function createUser({ name, handle, password, piUid }) {
     const u = { id: id("u"), handle, name, color: COLORS[Math.floor(Math.random() * COLORS.length)], created_at: now() };
     await db.run("INSERT INTO users(id,handle,name,color,role,password_hash,pi_uid,prefs,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)",
-      [u.id, handle, name, u.color, "user", password ? hashPassword(password) : null, piUid || null, { onboarded: false, interests: [] }, u.created_at]);
+      [u.id, handle, name, u.color, "user", password ? await hashPasswordAsync(password) : null, piUid || null, { onboarded: false, interests: [] }, u.created_at]);
     if (!config.seedOnly) {
       await db.run(`UPDATE users SET role='admin' WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM users a WHERE a.role='admin')
         AND NOT EXISTS (SELECT 1 FROM users o WHERE o.id<>$1 AND SUBSTR(o.id,1,6)<>'u_demo' AND (o.created_at < $2 OR (o.created_at = $2 AND o.id < $1)))`, [u.id, u.created_at]);
@@ -65,9 +65,13 @@ module.exports = (ctx) => {
   async function login(req, res) {
     if (!rl.hit("login", req.ip)) throw E.rate();
     const handle = str(req.body.handle, 24, { required: true });
+    if (!rl.hit("login", "h:" + handle.toLowerCase())) throw E.rate(); // v2.154.1: per-account limit too (a botnet rotates IPs)
     const u = await db.get("SELECT * FROM users WHERE LOWER(handle)=LOWER($1)", [handle]);
-    if (u && !verifyPassword(String(req.body.password || ""), u.password_hash)) ctx.services.security?.noteFailed?.(u, req); // v2.79: repeated-failure alert
-    if (!u || !verifyPassword(String(req.body.password || ""), u.password_hash))
+    /* v2.154.1: one async check (was two synchronous scrypt runs on the main thread on every failure); an unknown handle
+     * is checked against a dummy hash so it takes as long as a wrong password. */
+    const ok = await verifyPasswordAsync(String(req.body.password || ""), u?.password_hash);
+    if (u && !ok) ctx.services.security?.noteFailed?.(u, req); // v2.79: repeated-failure alert
+    if (!u || !ok)
       throw new (require("../lib/core").HttpError)(401, "بيانات الدخول غير صحيحة", "bad_credentials");
     if (u.status !== "active") throw E.forbid("الحساب موقوف");
     const mfa = await ctx.services.security.checkSecondFactor(u, req.body.code);
