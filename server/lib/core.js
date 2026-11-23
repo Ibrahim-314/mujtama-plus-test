@@ -199,11 +199,27 @@ const hashPassword = pw => {
   const h = crypto.scryptSync(pw, salt, 64);
   return "scrypt$" + salt.toString("hex") + "$" + h.toString("hex");
 };
+const parseHash = (stored) => {
+  if (typeof stored !== "string") return null;
+  const [kind, s, h] = stored.split("$");
+  if (kind !== "scrypt" || !/^[0-9a-f]{32}$/i.test(s || "") || !/^[0-9a-f]{128}$/i.test(h || "")) return null; // v2.154.1: a malformed hash is a plain "no", never a 500
+  return { salt: Buffer.from(s, "hex"), hash: Buffer.from(h, "hex") };
+};
 const verifyPassword = (pw, stored) => {
-  if (!stored) return false;
-  const [, s, h] = stored.split("$");
-  const c = crypto.scryptSync(pw, Buffer.from(s, "hex"), 64);
-  return crypto.timingSafeEqual(c, Buffer.from(h, "hex"));
+  const p = parseHash(stored); if (!p) return false;
+  const c = crypto.scryptSync(String(pw), p.salt, 64);
+  return crypto.timingSafeEqual(c, p.hash);
+};
+/* v2.154.1 (security): async scrypt runs on libuv's thread pool, so a burst of sign-in attempts no longer freezes the
+ * event loop for every other request. DUMMY_HASH lets a sign-in for an unknown handle cost the same as a real one
+ * (no username discovery by timing). */
+const scryptAsync = (pw, salt) => new Promise((res, rej) => crypto.scrypt(String(pw), salt, 64, (e, k) => (e ? rej(e) : res(k))));
+const hashPasswordAsync = async pw => { const salt = crypto.randomBytes(16); const h = await scryptAsync(pw, salt); return "scrypt$" + salt.toString("hex") + "$" + h.toString("hex"); };
+const DUMMY_HASH = "scrypt$" + "0".repeat(32) + "$" + "0".repeat(128);
+const verifyPasswordAsync = async (pw, stored) => {
+  const p = parseHash(stored) || parseHash(DUMMY_HASH);
+  const c = await scryptAsync(pw, p.salt);
+  return crypto.timingSafeEqual(c, p.hash) && !!parseHash(stored) && stored !== DUMMY_HASH;
 };
 const token = () => crypto.randomBytes(32).toString("base64url");
 const sha = s => crypto.createHash("sha256").update(s).digest("hex");
@@ -252,6 +268,8 @@ module.exports = {
   acceptId,
   hashPassword,
   verifyPassword,
+  verifyPasswordAsync,
+  hashPasswordAsync,
   token,
   sha,
   now,
