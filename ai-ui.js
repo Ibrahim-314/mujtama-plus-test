@@ -236,6 +236,9 @@
         <label>السعر (Pi) <input id="mp-price" type="number" min="0" step="0.0000001" value="${p.price ?? ""}" placeholder="لم يُحدَّد سعر الاشتراك بعد"></label>
         <label>حد الأحرف الشهري <input id="mp-chars" type="number" min="0" value="${p.limits.translate.chars}"></label>
         <label>حد التكلفة الشهري (USD) <input id="mp-usd" type="number" min="0" step="0.01" value="${p.limits.translate.costUsd}"></label>
+        <fieldset class="u-mt8"><legend>المساعد الذكي — حد شهري لكل عضو Plus</legend><p class="muted u-m0">اتركه فارغاً حتى تعتمد رقماً؛ تبقى ميزانية المزوّد العامة سارية.</p>
+        <label>حد الأحرف <input id="mp-achars" type="number" min="0" value="${p.limits.assistant ? p.limits.assistant.chars : ""}"></label>
+        <label>حد التكلفة (USD) <input id="mp-ausd" type="number" min="0" step="0.01" value="${p.limits.assistant ? p.limits.assistant.costUsd : ""}"></label></fieldset>
         <label class="chk"><input type="checkbox" id="mp-act" ${p.active ? "checked" : ""}> متاحة للاشتراك</label><button class="btn" type="button" id="mp-psave">حفظ</button></div>
         ${ql ? `<div class="card" id="mp-ql"><h3 class="u-m0 u-mb6 u-t-lg">حدود العضوية (Free / Plus)</h3><p class="muted">تُطبَّق عند الإنشاء فقط، ولا يُحذف شيء موجود عند الأعضاء.</p>
           ${Object.entries(ql.limits).map(([k, x]) => `<div class="u-mb6"><b>${esc(x.label)}</b><br><label>Free <input type="number" min="1" data-q="${esc(k)}" data-t="free" value="${x.free}"></label> <label>Plus <input type="number" min="1" data-q="${esc(k)}" data-t="plus" value="${x.plus}"></label></div>`).join("")}
@@ -246,7 +249,7 @@
         ${f.byFeature.map((x) => `<div class="muted">${esc(x.feature)} · ${esc(x.provider)} · ${x.requests} req · ${x.chars} chars · ${x.cacheHits} cache · $${x.costUsd}</div>`).join("")}</div>`;
       box.querySelector("#mp-psave").addEventListener("click", async () => {
         const v = box.querySelector("#mp-price").value;
-        try { await api("PUT", "/api/admin/ai/plans/" + p.slug, { price: v === "" ? null : Number(v), active: box.querySelector("#mp-act").checked, limits: { translate: { chars: Number(box.querySelector("#mp-chars").value), costUsd: Number(box.querySelector("#mp-usd").value) } } }); toast("تم الحفظ"); } catch (e) { toast(e.message); }
+        try { await api("PUT", "/api/admin/ai/plans/" + p.slug, { price: v === "" ? null : Number(v), active: box.querySelector("#mp-act").checked, limits: { translate: { chars: Number(box.querySelector("#mp-chars").value), costUsd: Number(box.querySelector("#mp-usd").value) }, assistant: box.querySelector("#mp-achars").value === "" ? null : { chars: Number(box.querySelector("#mp-achars").value), costUsd: Number(box.querySelector("#mp-ausd").value || 0) } } }); toast("تم الحفظ"); } catch (e) { toast(e.message); }
       });
       box.querySelector("#mp-qsave")?.addEventListener("click", async () => {
         const limits = {}; box.querySelectorAll("#mp-ql input[data-q]").forEach((i) => { (limits[i.dataset.q] ||= {})[i.dataset.t] = Number(i.value); });
