@@ -67,7 +67,10 @@ module.exports = (ctx, opts = {}) => {
   function limitsOf(plan) {
     const l = parse(plan?.limits, {}) || {};
     const t = l.translate || {};
-    return { translate: { chars: Number.isFinite(+t.chars) && +t.chars >= 0 ? Math.floor(+t.chars) : cfg.translateChars, costUsd: Number.isFinite(+t.costUsd) && +t.costUsd >= 0 ? +t.costUsd : cfg.translateUsd } };
+    /* v2.158: the assistant has NO per-member cap until an admin sets one (no invented numbers); the global provider budget still applies */
+    const a = l.assistant, aOk = a && Number.isInteger(+a.chars) && +a.chars >= 0 && Number.isFinite(+a.costUsd) && +a.costUsd >= 0;
+    return { translate: { chars: Number.isFinite(+t.chars) && +t.chars >= 0 ? Math.floor(+t.chars) : cfg.translateChars, costUsd: Number.isFinite(+t.costUsd) && +t.costUsd >= 0 ? +t.costUsd : cfg.translateUsd },
+      assistant: aOk ? { chars: Math.floor(+a.chars), costUsd: +a.costUsd } : null };
   }
   const planClient = (p) => ({ slug: p.slug, name: p.name, features: parse(p.features, []), featureLabels: parse(p.features, []).map((k) => FEATURES[k] || k),
     price: p.price == null ? null : pi(p.price), ...(p.price == null ? { priceNote: "لم يُحدَّد سعر الاشتراك بعد" } : {}), currency: "PI", periodDays: Number(p.period_days), limits: limitsOf(p), active: !!Number(p.active) });
@@ -212,10 +215,11 @@ module.exports = (ctx, opts = {}) => {
     const plan = await planBySlug(DEFAULT_PLAN.slug);
     const s = plan ? await subRow(user.id, plan.id) : null;
     const tr = await entitled(user.id, "translate"), as = await entitled(user.id, "assistant");
-    const u = await usageRow(user.id, "translate");
-    const lim = tr.limits || limitsOf(plan).translate;
+    const u = await usageRow(user.id, "translate"), ua = await usageRow(user.id, "assistant");
+    const lim = tr.limits || limitsOf(plan).translate, alim = as.ok ? as.limits : limitsOf(plan).assistant;
     return { subscription: await subClient(s), entitlements: { translate: tr.ok, assistant: as.ok },
-      usage: { period: periodOf(), translate: { requests: Number(u.requests), chars: Number(u.chars), cacheHits: Number(u.cache_hits), limitChars: lim.chars, pct: lim.chars ? Math.min(100, Math.round((Number(u.chars) / lim.chars) * 100)) : 0 } },
+      usage: { period: periodOf(), translate: { requests: Number(u.requests), chars: Number(u.chars), cacheHits: Number(u.cache_hits), limitChars: lim.chars, pct: lim.chars ? Math.min(100, Math.round((Number(u.chars) / lim.chars) * 100)) : 0 },
+        assistant: { requests: Number(ua.requests), chars: Number(ua.chars), limitChars: alim ? alim.chars : null, pct: alim?.chars ? Math.min(100, Math.round((Number(ua.chars) / alim.chars) * 100)) : null } },
       prefs: ctx.services.translate ? await ctx.services.translate.prefsOf(user.id) : null, minor: await isMinor(user.id), piEnabled: piOn(), ...(piOn() ? {} : { piNote: OFF }) };
   }
 
@@ -236,7 +240,9 @@ module.exports = (ctx, opts = {}) => {
       const L = b.limits, next = { ...parse(p.limits, {}) }; let n = 0;
       if (!L || typeof L !== "object" || Array.isArray(L)) throw bad();
       for (const f of ["translate", "assistant"]) {
-        const t = L[f]; if (t === undefined) continue; if (!t || typeof t !== "object") throw bad();
+        const t = L[f]; if (t === undefined) continue;
+        if (t === null && f === "assistant") { delete next[f]; n++; continue; } // back to «not set yet»
+        if (!t || typeof t !== "object") throw bad();
         const chars = Number(t.chars), usd = Number(t.costUsd);
         if (!Number.isInteger(chars) || chars < 0 || chars > 1e8 || !Number.isFinite(usd) || usd < 0 || usd > 1000) throw bad();
         next[f] = { chars, costUsd: usd }; n++;
