@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.158.0",
+    "date": "2026-11-23",
+    "ar": {
+      "title": "استخدامك للحدود",
+      "items": [
+        "عرض استخدامك لحدود Free/Plus (كذا من كذا) مع ما يمكنك فعله",
+        "منع تجاوز الحدود مع الطلبات المتزامنة",
+        "حد شهري للمساعد الذكي يضبطه المسؤول"
+      ]
+    },
+    "en": {
+      "title": "Your usage",
+      "items": [
+        "See your Free/Plus usage (X of Y) and what you can do",
+        "Limits hold under simultaneous requests",
+        "Admin-set monthly cap for the AI assistant"
+      ]
+    }
+  },
+  {
     "v": "2.157.0",
     "date": "2026-11-23",
     "ar": {
