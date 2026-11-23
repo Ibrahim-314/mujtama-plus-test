@@ -65,7 +65,11 @@ test("header: thin on Home, hides on scroll down, back on scroll up; first post 
   const first = () => p.evaluate(() => Math.round(document.querySelector("#view .post-card").getBoundingClientRect().top + scrollY));
   const withDig = await first(); if (await p.$("#d-dig-x")) await p.click("#d-dig-x"); await p.waitForTimeout(400);
   const noDig = await first(); console.log(`# first post top @390 ar: with «فاتك اليوم» ${withDig}px, without ${noDig}px`);
-  assert.ok(noDig <= 305, "first post near the top: " + noDig);
+  /* v2.155: the Home hub (search, welcome, sections) sits above the composer, so the first post is no longer near the top;
+   * the search box is, and the feed still follows the hub directly (hub → composer → tabs → posts) */
+  const hub = await p.evaluate(() => { const h = document.querySelector("#view .hub"), s = h && h.querySelector(".hb-search"); return h && { search: Math.round(s.getBoundingClientRect().top + scrollY), bottom: Math.round(h.getBoundingClientRect().bottom + scrollY), next: h.nextElementSibling && h.nextElementSibling.id }; });
+  assert.ok(hub && hub.search <= 120, "search box near the top: " + JSON.stringify(hub));
+  assert.equal(hub.next, "hcomp", "the composer follows the hub"); assert.ok(noDig > hub.bottom, "posts after the hub");
   await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(100);
   for (let y = 100; y <= 900; y += 100) { await p.mouse.wheel(0, 100); await p.waitForTimeout(40); }
   await p.waitForFunction(() => document.body.classList.contains("bars-off"), null, { timeout: 4000 });
