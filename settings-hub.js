@@ -59,7 +59,7 @@ const SET_ROWS = [["msgai-set", "privacy", "الذكاء الاصطناعي في
   ["#/feedprefs", "content"], ["#/settings/translate", "content", "تفضيلات الترجمة", "لغة الترجمة والترجمة التلقائية"], ["#/settings/ads", "content", "تفضيلات الإعلانات", "اهتمامات الإعلانات وما تخفيه منها"],
   ["#/settings/language", "display", "لغة الواجهة", "العربية، English"], ["#/settings/appearance", "display"], ["#/settings/display", "display"], ["ds", "display"], ["#/app", "display"],
   ["#/mjt", "money", "مجتمع كوين (MJT)", "رصيدك داخل التطبيق، سجله وطرق كسبه"], ["#/wallet", "money"], ["#/me/purchases", "money", "مشترياتي", "ما اشتريته من محتوى ومنتجات"], ["#/purchases", "money", "مشترياتي", "ما اشتريته من محتوى ومنتجات"], ["#/me/paid-posts", "money", "منشوراتي المدفوعة", "المحتوى الذي تبيعه"],
-  ["#/ai", "money", "اشتراك مجتمع+ ذكاء", "الترجمة الآلية والمساعد الذكي"], ["#/creator", "money", "الإكراميات ودعم المبدع", "استقبال الدعم والإحصائيات"], ["#/ads", "money", "حملاتي الإعلانية", "روّج منشوراتك بميزانية Pi"],
+  ["#/membership", "money", "العضوية: Free وPlus", "عضويتك، المقارنة، الترقية والتجديد"], ["#/ai", "money", "الترجمة والمساعد الذكي", "إعدادات الترجمة واستخدامك الشهري"], ["#/creator", "money", "الإكراميات ودعم المبدع", "استقبال الدعم والإحصائيات"], ["#/ads", "money", "حملاتي الإعلانية", "روّج منشوراتك بميزانية Pi"],
   ["#/age", "family"], ["#/family", "family"],
   ["#/faq", "help", "الأسئلة الشائعة", "شروحات وإجابات سريعة"], ["#/tickets", "help", "تذاكر الدعم", "راسل فريق الدعم وتابع ردوده"], ["#/help", "help", "المساعدة العاجلة والدعم النفسي", "جهات الدعم والإبلاغ العاجل"],
   ["bt-fab", "help"], ["replay-tour", "help"], ["#/beta", "help", "النسخة التجريبية", "الموجات وملاحظاتك"], ["#/ambassadors", "help", "سفراء المجتمع", "انضم لبرنامج السفراء"], ["#/policies", "help", "سياسات المحتوى", "ما يُسمح به وما لا يُسمح"],
@@ -92,6 +92,7 @@ function orgSettings() {
     if (svg) { svg.setAttribute("class", "ic sm"); el.firstChild.append(svg); }
     if (inp) { inp.classList.add("switch"); if (!inp.getAttribute("aria-label")) inp.setAttribute("aria-label", m[2] || t); el.append(inp); } else if (el.getAttribute("href")) el.insertAdjacentHTML("beforeend", `<span class="chev" aria-hidden="true">←</span>`);
     put(el, key); };
+  if (!w.querySelector('a[href="#/membership"]')) w.insertAdjacentHTML("beforeend", `<a class="card" href="#/membership"><b>العضوية</b></a>`); // v2.156: Free / Plus page (no module renders it)
   for (const el of [...w.children]) {
     if (el === head || el.matches(".set-hub, .set-grps, .set-foot") || el.dataset.org) continue;
     const title = UI.noEmo((el.querySelector(":scope > b, :scope > h3, :scope .set-h, :scope > .row b")?.textContent || el.querySelector("b")?.textContent || "").trim());
