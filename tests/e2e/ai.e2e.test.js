@@ -66,7 +66,7 @@ test("real P41 server: non-subscriber upsell (service off, Pi off) → grant + p
   await p.click(`[data-aitr="post:${pid}"]`);
   await p.waitForSelector("#mp-sub", { timeout: 10000 });
   const sh = await p.textContent("#sheet");
-  assert.match(sh, /مجتمع\+ ذكاء/); assert.match(sh, /خدمة الترجمة غير مفعّلة بعد/); assert.match(sh, /لم يُحدَّد سعر الاشتراك بعد/);
+  assert.match(sh, /مجتمع بلس Plus/); assert.match(sh, /خدمة الترجمة غير مفعّلة بعد/); assert.match(sh, /لم يُحدَّد سعر الاشتراك بعد/);
   await p.click("#mp-sub");
   await until(() => /مدفوعات Pi غير مفعّلة بعد/.test(document.querySelector("#mp-sub-n")?.textContent || ""));
   await p.click("#mp-not");
