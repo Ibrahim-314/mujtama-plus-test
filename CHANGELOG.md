@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.158.0 — 2026-11-23 (Plus phase 3)
+- Membership usage: `/api/membership/usage`, usage section on #/membership, used/allowed notes on saved searches, collections, new team.
+- Concurrency guard (`membership.guarded`): per-scope queue + post-insert recount; undoes only its own row. Applied to saved searches, collections, teams owned/reopen, team joins (invite/link/request), quiz attempts.
+- Quota errors carry used/limit/advice/upgrade link; Plus members see no upsell.
+- AI assistant per-member monthly cap: unset by default, admin-editable (null clears).
+- Tests: membership-phase3 (8) + quiz race test.
+
 ## 2.157.0 — 2026-11-23 «حدود Plus» (membership phase 2b limits, no migration)
 - Usage ceilings per tier, approved by the owner: saved searches 25 / 100 · collections 50 / 200 · quiz attempts per lesson per 24 h 10 / 30 · active teams owned 5 / 20 · members per team 50 / 150 (by the team owner's tier). Appearance, colours and icons stay free for everyone.
 - One server-side check (`membership.enforce` / `limitFor`) in services/search, collections (API and offline sync), courses, teams (create, reopen from archive, invite/link/request/accept). The usage is counted by each service from its own rows, exactly as before; only the ceiling changed. Over the ceiling → 409 `quota_reached` with `{ quota: { key, used, limit, tier, plusLimit } }`.
