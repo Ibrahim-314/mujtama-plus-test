@@ -323,8 +323,8 @@
       if (slot && slot.innerHTML !== btn) slot.innerHTML = btn;
     } else {
       if (slot?.querySelector("#st-new")) slot.innerHTML = homeAv();
-      const html = `<div class="stories-bar" data-keep="stories" data-keep-before="#hcomp" role="group" aria-label="القصص"><button class="st-item" id="st-new">${mine ? ring(me, true) : `<span class="st-ring add">${face(me)}<i>${ic("plus", "xs")}</i></span>`}<span>${mine ? "قصتك" : "أضف قصة"}</span></button>${others.map(g => `<button class="st-item" data-st="${g.user.id}">${ring(g.user, g.allSeen)}<span>${esc(g.user.name.split(" ")[0])}</span></button>`).join("")}</div>`;
-      if (cur && cur.outerHTML !== html) cur.outerHTML = html; else if (!cur) anchor.insertAdjacentHTML("beforebegin", html); // v2.29: in place, no jump
+      const html = `<div class="stories-bar" data-keep="stories" data-keep-before="#hub-st,#hcomp" role="group" aria-label="القصص"><button class="st-item" id="st-new">${mine ? ring(me, true) : `<span class="st-ring add">${face(me)}<i>${ic("plus", "xs")}</i></span>`}<span>${mine ? "قصتك" : "أضف قصة"}</span></button>${others.map(g => `<button class="st-item" data-st="${g.user.id}">${ring(g.user, g.allSeen)}<span>${esc(g.user.name.split(" ")[0])}</span></button>`).join("")}</div>`;
+      if (cur && cur.outerHTML !== html) cur.outerHTML = html; else if (!cur) (view.querySelector("#hub-st") || anchor).insertAdjacentHTML("beforebegin", html); // v2.29: in place, no jump
       document.querySelectorAll(".stories-bar").forEach((x, i) => { if (i) x.remove(); });
     }
     const add = $("#st-new"); if (add) add.onclick = (e) => { e.stopPropagation(); if (mine) storyViewer(groups, groups.indexOf(mine)); else openComposer({ type: "story" }); };
