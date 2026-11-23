@@ -90,13 +90,62 @@ module.exports = (ctx, opts = {}) => {
     const q = (await quotas(envFree ? { [key]: envFree } : {}))[key], plus = await isPlus(uid);
     return { limit: plus ? Math.max(q.plus, q.free) : q.free, tier: plus ? "plus" : "free", free: q.free, plus: Math.max(q.plus, q.free) };
   }
+  /* v2.158 — what the member can do when a ceiling is reached (shown with used / allowed; never deletes anything for them) */
+  const ADVICE = {
+    saved_searches: "احذف بحثًا محفوظًا لا تحتاجه لتحفظ بحثًا جديدًا",
+    collections: "ادمج مجموعتين أو احذف مجموعة فارغة لتنشئ مجموعة جديدة",
+    quiz_attempts_daily: "راجع الدرس ثم أعد المحاولة بعد مرور 24 ساعة على أقدم محاولة",
+    teams_owned: "أرشف فريقًا لم تعد تعمل عليه لتنشئ فريقًا جديدًا — يبقى محتواه محفوظًا",
+    team_members: "أزل عضوًا غير نشط ليتسع الفريق لعضو جديد"
+  };
+  function quotaError(key, used, l, what) {
+    const w = what || QUOTAS[key].label, upsell = l.tier !== "plus" && l.plus > l.free;
+    const msg = `وصلت للحد: ${w} (${Number(used)} من ${l.limit}). ${ADVICE[key]}${upsell ? `، أو اشترك في Plus ليصير الحد ${l.plus}` : ""}.`;
+    return Object.assign(new HttpError(409, msg, "quota_reached"), { details: { quota: { key, used: Number(used), limit: l.limit, tier: l.tier, plusLimit: l.plus, advice: ADVICE[key], upgrade: upsell ? "#/membership" : null } } });
+  }
   /** throw 409 quota_reached when `used` (counted by the owning service, from its own rows) has reached the ceiling */
   async function enforce(uid, key, used, opts = {}) {
     const l = await limitFor(uid, key, opts.envFree);
     if (Number(used) < l.limit) return l;
-    const what = opts.what || QUOTAS[key].label;
-    const msg = l.tier === "plus" || l.plus <= l.free ? `وصلت للحد الأقصى: ${what} (${l.limit})` : `وصلت لحد العضوية المجانية: ${what} (${l.limit}). مع Plus يصير ${l.plus}`;
-    throw Object.assign(new HttpError(409, msg, "quota_reached"), { details: { quota: { key, used: Number(used), limit: l.limit, tier: l.tier, plusLimit: l.plus } } });
+    throw quotaError(key, used, l, opts.what);
+  }
+  /* v2.158 — concurrency. Two requests from the same member must not both pass the count. (1) one queue per scope in this
+   * process serialises count → insert; (2) after the insert the owning service re-counts committed rows and undoes ITS OWN
+   * new row if the ceiling was crossed (covers several server instances). Rows that existed before are never touched. */
+  const queues = new Map();
+  async function serial(scope, fn) {
+    const prev = queues.get(scope) || Promise.resolve();
+    let done; const mine = new Promise((r) => { done = r; });
+    const tail = prev.then(() => mine);
+    queues.set(scope, tail);
+    try { await prev; return await fn(); } finally { done(); if (queues.get(scope) === tail) queues.delete(scope); }
+  }
+  /** count → enforce → create → re-count → undo own row on a race. Returns create()'s result. */
+  async function guarded(uid, key, o) {
+    return serial(`${key}:${o.scope || uid}`, async () => {
+      const used = Number(await o.count()), l = await enforce(uid, key, used, o);
+      const out = await o.create(l);
+      const after = Number(await o.count());
+      if (after > l.limit) { try { await o.undo(out); } catch (e) { logger.warn?.("quota undo failed", { key, err: e.message }); } throw quotaError(key, l.limit, l, o.what); }
+      return out;
+    });
+  }
+  /* usage of the per-member ceilings (per-lesson / per-team ones are shown where they apply) */
+  const COUNTERS = {
+    saved_searches: "SELECT COUNT(*) n FROM saved_searches WHERE user_id=$1",
+    collections: "SELECT COUNT(*) n FROM collections WHERE owner=$1",
+    teams_owned: "SELECT COUNT(*) n FROM wt_teams WHERE owner_id=$1 AND status<>'archived'"
+  };
+  async function usage(uid) {
+    const [q, plus] = await Promise.all([quotas(), isPlus(uid)]), out = [];
+    for (const [key, x] of Object.entries(q)) {
+      const limit = plus ? Math.max(x.plus, x.free) : x.free;
+      let used = null;
+      if (COUNTERS[key]) { try { used = Number((await db.get(COUNTERS[key], [uid]))?.n || 0); } catch { used = null; } }
+      const pct = used == null || !limit ? null : Math.min(100, Math.round((used / limit) * 100));
+      out.push({ key, label: x.label, used, limit, tier: plus ? "plus" : "free", plusLimit: Math.max(x.plus, x.free), pct, near: pct != null && pct >= 80 && used < limit, full: used != null && used >= limit, over: used != null && used > limit, advice: ADVICE[key] });
+    }
+    return out;
   }
   async function setQuotas(user, b) {
     const L = b?.limits, bad = () => new HttpError(400, "قيم الحدود غير صالحة", "quotas_invalid");
@@ -160,7 +209,7 @@ module.exports = (ctx, opts = {}) => {
   async function overview(user) {
     const [me, plan] = await Promise.all([state(user.id), planInfo()]);
     const piCfg = ctx.services.pi?.config ? ctx.services.pi.config() : null;
-    return { ...me, plan, limits: await myQuotas(user.id), piEnabled: ai().piOn(), network: piCfg?.network || "testnet", minor: await ai().isMinor(user.id),
+    return { ...me, plan, limits: await myQuotas(user.id), usage: await usage(user.id), piEnabled: ai().piOn(), network: piCfg?.network || "testnet", minor: await ai().isMinor(user.id),
       ...(ai().piOn() ? {} : { piNote: "مدفوعات Pi غير مفعّلة بعد" }), ...(await history(user.id)) };
   }
 
@@ -189,6 +238,7 @@ module.exports = (ctx, opts = {}) => {
   };
   R.get("/api/membership/plans", safe(async () => compare()));
   R.get("/api/membership/me", A(safe(async (req) => overview(req.user))));
+  R.get("/api/membership/usage", A(safe(async (req) => ({ usage: await usage(req.user.id) }))));
   R.post("/api/membership/subscribe", A(safe(async (req) => { await ensure(); return ai().subscribe(req.user, { plan: PLUS }); }))); // also renews: extends from the current end
   R.post("/api/membership/cancel", A(safe(async (req) => ai().cancel(req.user, { plan: PLUS }, true))));
   R.post("/api/membership/resume", A(safe(async (req) => ai().cancel(req.user, { plan: PLUS }, false))));
@@ -197,5 +247,5 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/admin/membership/limits", adminOnly(async () => ({ limits: await quotas() })));
   R.put("/api/admin/membership/limits", adminOnly(async (req) => setQuotas(req.user, req.body || {})));
 
-  return { can, require: require_, state, history, ensure, isPlus, quotas, limitFor, enforce, PLUS, FREE, QUOTAS };
+  return { can, require: require_, state, history, ensure, isPlus, quotas, limitFor, enforce, guarded, serial, quotaError, usage, PLUS, FREE, QUOTAS };
 };
