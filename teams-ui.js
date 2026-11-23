@@ -17,6 +17,8 @@
   const say = (m) => (typeof toast === "function" ? toast(m) : null);
   const qs = () => new URLSearchParams(location.hash.split("?")[1] || "");
   const ic = (n, c = "sm") => UI.icon(n, c);
+  /* v2.158: used / allowed next to a «create» action (membership chunk loads lazily; nothing renders when offline or signed out) */
+  const quotaNote = (key, el) => { if (!el) return; window.MPChunks?.load("membership").then(() => { window.MPMembership?.fresh?.(); return window.MPMembership?.note(key); }).then((x) => { if (x && el.isConnected) el.innerHTML = x; }).catch(() => { }); };
   const num = (n, o) => UI.num(n, o);
   const signed = () => typeof DB !== "undefined" && !!DB.me;
   const errBox = (e) => UI.empty({ title: "تعذّر التحميل", text: e?.message || "تعذّر الاتصال بالخادم" });
@@ -62,7 +64,7 @@
     if (!signed()) { box.innerHTML = UI.empty({ title: "سجّل الدخول أولاً", text: "لإنشاء فريق.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` }); return; }
     let mine, cts; try { mine = await api("GET", "/api/teams"); cts = await api("GET", "/api/contracts").catch(() => ({ open: [], closed: [] })); } catch (e) { box.innerHTML = errBox(e); return; }
     if (!box.isConnected) return; const O = mine.options, all = [...cts.open, ...cts.closed];
-    box.innerHTML = `<form class="card f-form" id="wt-f">
+    box.innerHTML = `<div id="wt-q"></div><form class="card f-form" id="wt-f">
       <fieldset class="wk-fs"><legend>النوع</legend><div class="wk-checks">${Object.entries(O.kinds).map(([k, v], i) => `<label class="wk-ck"><input type="radio" name="kind" value="${k}" ${i === 1 ? "checked" : ""}><span>${h(v)}</span></label>`).join("")}</div></fieldset>
       <label>الاسم<input name="name" required minlength="3" maxlength="80" placeholder="مثلاً: تطبيق مكتبة الحي" value="${h(all.find((c) => c.id === qs().get("contract"))?.title || "")}"></label>
       <label>الفكرة والهدف (اختياري)<textarea name="about" rows="4" maxlength="2000"></textarea></label>
@@ -71,7 +73,7 @@
       ${all.length ? `<label>ربط بعقد (اختياري)<select name="contract"><option value="">بدون</option>${all.map((c) => `<option value="${h(c.id)}" ${qs().get("contract") === c.id ? "selected" : ""}>${h(c.title)}</option>`).join("")}</select></label>` : ""}
       <button class="btn" type="submit">إنشاء</button></form>`;
     const f = $("#wt-f");
-    f.addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { const r = await api("POST", "/api/teams", { kind: f.querySelector("[name=kind]:checked").value, name: f.name.value.trim(), about: f.about.value.trim() || null, visibility: f.visibility.value, title: f.title.value.trim() || null, contractId: f.contract?.value || undefined }); say("أُنشئ الفريق"); location.hash = "#/team/" + enc(r.id); }); });
+    quotaNote("teams_owned", $("#wt-q")); f.addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { const r = await api("POST", "/api/teams", { kind: f.querySelector("[name=kind]:checked").value, name: f.name.value.trim(), about: f.about.value.trim() || null, visibility: f.visibility.value, title: f.title.value.trim() || null, contractId: f.contract?.value || undefined }); window.MPMembership?.fresh?.(); say("أُنشئ الفريق"); location.hash = "#/team/" + enc(r.id); }); });
   }
 
   /* ---------- #/teams/join/:code ---------- */
