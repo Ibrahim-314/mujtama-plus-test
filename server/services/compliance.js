@@ -12,7 +12,7 @@
  * 6–7. Plain-language Terms / Privacy / Retention documents (lib/compliance-policies.js) at /api/legal and /legal/*.
  * 8. Account decision log — platform decisions + community moderation + account status, with reasons and appeal links.
  * Engineering support for compliance, not legal advice (docs/COMPLIANCE.md). */
-const { E, str, oneOf, id, now, verifyPassword } = require("../lib/core");
+const { E, str, oneOf, id, now, verifyPassword, verifyPasswordAsync } = require("../lib/core");
 const { SEC_HEADERS } = require("../lib/http");
 const L = require("../lib/compliance-lib");
 const P = require("../lib/compliance-policies");
@@ -194,7 +194,7 @@ module.exports = (ctx) => {
     if (isAdmin(user)) throw E.forbid("حسابات الإدارة تُحذف بعد نقل الصلاحيات يدوياً");
     if (await db.get("SELECT 1 x FROM dsr_requests WHERE user_id=$1 AND kind='delete' AND status IN ('scheduled','processing')", [user.id])) throw E.conflict("طلب الحذف مسجّل مسبقاً");
     if (b.confirm !== "حذف") throw E.bad("اكتب كلمة «حذف» للتأكيد");
-    if (user.password_hash) { const full = await db.get("SELECT password_hash FROM users WHERE id=$1", [user.id]); if (!verifyPassword(String(b.password || ""), full.password_hash)) throw E.forbid("كلمة المرور غير صحيحة"); }
+    if (user.password_hash) { const full = await db.get("SELECT password_hash FROM users WHERE id=$1", [user.id]); if (!(await verifyPasswordAsync(String(b.password || ""), full.password_hash))) throw E.forbid("كلمة المرور غير صحيحة"); }
     const grace = L.GRACE_DAYS(), when = new Date(Date.now() + grace * L.DAY).toISOString();
     const rid = await newRequest(user.id, "delete", { status: "scheduled", detail: str(b.reason, 500), scheduledFor: when, meta: { graceDays: grace } });
     await ctx.audit("DELETION_SCHEDULED", user.id, when, user.id);
