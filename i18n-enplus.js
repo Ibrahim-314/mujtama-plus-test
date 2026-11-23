@@ -3483,5 +3483,13 @@
 "تم الإرسال ✓": "Sent ✓",
 "اسحب لتحريك الصورة": "Drag to move the photo",
 "✓ حُدّثت الصورة": "✓ Photo updated",
-"تم حفظ الحدود": "Limits saved"
+"تم حفظ الحدود": "Limits saved",
+"المساعد الذكي — حد شهري لكل عضو Plus": "AI assistant — monthly cap per Plus member",
+"اتركه فارغاً حتى تعتمد رقماً؛ تبقى ميزانية المزوّد العامة سارية.": "Leave it empty until you approve a number; the overall provider budget still applies.",
+"حد الأحرف": "Character cap",
+"حد التكلفة (USD)": "Cost cap (USD)",
+"من {name}": "of {name}",
+"من {name}{name}": "of {name}{name}",
+"استخدامك": "Your usage",
+"الحدود تُطبَّق عند إنشاء عنصر جديد فقط — لا يُحذف شيء مما لديك ولا يُخفى.": "Limits apply only when you create something new — nothing you already have is deleted or hidden."
 });
