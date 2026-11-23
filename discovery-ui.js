@@ -14,6 +14,8 @@
   const online = () => typeof Remote !== "undefined" && !!Remote.on;
   const api = (...a) => Remote.api(...a);
   const h = (s) => esc(String(s ?? ""));
+  /* v2.158: used / allowed next to a «create» action (membership chunk loads lazily; nothing renders when offline or signed out) */
+  const quotaNote = (key, el) => { if (!el) return; window.MPChunks?.load("membership").then(() => { window.MPMembership?.fresh?.(); return window.MPMembership?.note(key); }).then((x) => { if (x && el.isConnected) el.innerHTML = x; }).catch(() => { }); };
   const enc = encodeURIComponent;
   const nf = (n) => (window.UI ? UI.nfmt(n) : String(n || 0)) || "0";
   const cssMedia = (u) => `url('${u}') center/cover no-repeat`;
@@ -640,6 +642,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     $("#s-hclear") && ($("#s-hclear").onclick = async () => { await api("DELETE", "/api/search/history"); landing(); });
     body.querySelectorAll("[data-hdel]").forEach(b => b.onclick = async () => { await api("DELETE", "/api/search/history/" + b.dataset.hdel); b.closest(".s-hist").remove(); live("حُذف من السجل"); });
     body.querySelectorAll("[data-ss]").forEach(a => a.addEventListener("click", () => api("POST", `/api/search/saved/${a.dataset.ss}/seen`).catch(() => { })));
+    if (saved.saved.length) { const q = document.createElement("div"); q.id = "s-sq"; body.querySelector(".s-chips")?.after(q); quotaNote("saved_searches", q); }
   }
   /* v2.129 search stage 6 — «بحث متقدم»: a form that writes the operators for you (the query box shows exactly what will run) */
   const ADV = [["all", "كل هذه الكلمات", "مثال: تعلم بايثون"], ["phrase", "هذه العبارة بالضبط", "مثال: من الصفر"], ["any", "أي من هذه الكلمات", "مثال: react vue"],
@@ -711,7 +714,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
     $("#s-savebtn").onclick = async () => {
       try {
         if (isSaved) { await api("DELETE", "/api/search/saved/" + isSaved.id); toast("أُلغي حفظ البحث"); }
-        else { await api("POST", "/api/search/saved", { q, filters: { type: SR.type, lang: SR.lang || undefined, community: SR.community || undefined }, alert: true }); toast("حُفظ البحث — سننبهك عند ظهور نتائج جديدة"); }
+        else { await api("POST", "/api/search/saved", { q, filters: { type: SR.type, lang: SR.lang || undefined, community: SR.community || undefined }, alert: true }); window.MPMembership?.fresh?.(); toast("حُفظ البحث — سننبهك عند ظهور نتائج جديدة"); }
         runSearch(q);
       } catch (e) { toast(e.message); }
     };
@@ -1141,6 +1144,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none;display
         <div class="col-meta"><a href="#/collection/${h(c.id)}" tabindex="-1"><b>${h(c.name)}</b><small><span>${nf(itemsOf(c.id).length)} عنصر</span>${c.shared ? `<span class="col-sh">${ic("link", "xs")} مشتركة</span>` : ""}</small></a><button class="d-grip" aria-label="انقل مجموعة ${h(c.name)}" title="اسحب لإعادة الترتيب">${ic("grip", "sm")}</button></div></div>`).join("")}
       <div role="listitem" style="display:contents"><button class="col-tile col-new" id="col-new">${ic("plus")} مجموعة جديدة</button></div></div>`;
     $("#col-new").onclick = () => newCollection();
+    if (online()) { const q = document.createElement("div"); q.id = "col-q"; $("#col-grid").after(q); quotaNote("collections", q); }
     cleanDnd();
     dndCleanup.push(sortable($("#col-grid"), { item: ".col-tile[data-id]", handle: ".d-grip", grid: true, onEnd: async (ids) => {
       SV.collections = ids.map(id => SV.collections.find(c => c.id === id)); await saveLocal(); mirror();
