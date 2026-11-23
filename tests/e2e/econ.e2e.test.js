@@ -20,7 +20,7 @@ test("pricing + revenue (admin), digital store + purchases, moved security/priva
   await p.goto(S.base + "/?nosw#/admin/pricing");
   await until(() => document.querySelectorAll(".ec-it").length >= 8, undefined, 30000);
   const t = await p.textContent(".ec-page");
-  assert.match(t, /رسوم المنصة على الإكراميات/); assert.match(t, /مجتمع\+ ذكاء/); assert.match(t, /أسعار مقترحة لم تُطبَّق بعد/);
+  assert.match(t, /رسوم المنصة على الإكراميات/); assert.match(t, /مجتمع بلس Plus/); assert.match(t, /أسعار مقترحة لم تُطبَّق بعد/);
   /* Every suggested price is shown (8: ai_plus + 7 fixed items). An "apply" button [data-sug] appears only where the current
    * value differs from the suggestion; where it already matches (env defaults: fee.transfers 0, ads.cpm.min 0.01) the row shows
    * the «مطبّق» chip instead. So the button count is derived from the API, never a hard-coded number, and nothing was applied. */
