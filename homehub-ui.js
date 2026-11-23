@@ -64,7 +64,7 @@
   function pickPosts() {
     if (picks && picksMe === DB.me && (window.__softRender || Date.now() - picksAt < 10 * 60e3)) return picks;
     const since = Date.now() - 7 * 864e5, me = DB.me;
-    const pool = S.visiblePosts().filter((p) => p.author !== me && p.type !== "story" && (!p.community || S.community(p.community)?.type === "public" || S.membership(p.community)) && new Date(p.createdAt) > since && !DB.muted.posts.includes(p.id) && !DB.muted.users.includes(p.author) && !DB.muted.topics.includes(p.topic))
+    const pool = S.visiblePosts().filter((p) => p.author !== me && p.type !== "story" && !p.locked && !p.paid && !p.lock && /* v2.156.1: paid posts stay in the feed, where their lock card renders */ (!p.community || S.community(p.community)?.type === "public" || S.membership(p.community)) && new Date(p.createdAt) > since && !DB.muted.posts.includes(p.id) && !DB.muted.users.includes(p.author) && !DB.muted.topics.includes(p.topic))
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 200);
     const scored = pool.map((p) => {
       const rx = S.reactionsOf(p.id).length, cm = S.commentsOf(p.id).length, ageH = (Date.now() - new Date(p.createdAt)) / 3600e3;
