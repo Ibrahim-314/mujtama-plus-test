@@ -92,7 +92,8 @@ module.exports = (ctx) => {
   }
   async function createCollection(uid, b) {
     await importLegacy(uid);
-    if ((await db.get("SELECT COUNT(*) n FROM collections WHERE owner=$1", [uid])).n >= MAX_COLLECTIONS) throw E.bad("الحد الأقصى 50 مجموعة");
+    { const used = Number((await db.get("SELECT COUNT(*) n FROM collections WHERE owner=$1", [uid])).n); // v2.157: Free 50 / Plus 200 (admin-editable)
+      if (ctx.services.membership) await ctx.services.membership.enforce(uid, "collections", used); else if (used >= MAX_COLLECTIONS) throw E.bad("الحد الأقصى 50 مجموعة"); }
     const pos = (await db.get("SELECT COALESCE(MAX(position),-1)+1 p FROM collections WHERE owner=$1", [uid])).p;
     const c = { id: typeof b.id === "string" && /^col_[a-z0-9]{6,30}$/i.test(b.id) ? b.id : id("col"), at: now() };
     await db.run("INSERT INTO collections(id,owner,name,color,emoji,position,updated_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$7)", [c.id, uid, str(b.name, 50, { required: true }), HEX.test(b.color || "") ? b.color : null, str(b.emoji, 8), pos, c.at]);
