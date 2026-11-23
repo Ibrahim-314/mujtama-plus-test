@@ -1,4 +1,4 @@
-/* Phase 41 — AI subscriptions «مجتمع+ ذكاء» + real translation + interface languages. Stubbed Pi Platform API (same stub as
+/* Phase 41 — AI subscriptions «مجتمع بلس Plus» + real translation + interface languages. Stubbed Pi Platform API (same stub as
  * ads/market tests via config.piOpts), stubbed translation provider via config.translateOpts.provider, injectable clock.
  * SQLite by default and PostgreSQL with TEST_DATABASE_URL.
  * Covers: migration 024 (down/up, static additive), pure helpers (language detection, hashing, provider selection + privacy flags,
@@ -192,7 +192,7 @@ test("i18n (free): languages, user language, admin string overrides, versions, a
 test("entitlements: 402 + upsell for non-subscribers, minors 403, price unset, Pi off, admin sets price", async () => {
   const cfg = await new H.Client().req("GET", "/api/ai/config");
   assert.equal(cfg.status, 200);
-  assert.equal(cfg.plans[0].slug, "ai_plus"); assert.equal(cfg.plans[0].name, "مجتمع+ ذكاء"); assert.deepEqual(cfg.plans[0].features, ["translate"]);
+  assert.equal(cfg.plans[0].slug, "ai_plus"); assert.equal(cfg.plans[0].name, "مجتمع بلس Plus"); // v2.156: the plan is the Plus membership assert.deepEqual(cfg.plans[0].features, ["translate"]);
   assert.equal(cfg.plans[0].price, null, "no hard-coded price"); assert.equal(cfg.plans[0].priceNote, "لم يُحدَّد سعر الاشتراك بعد");
   assert.deepEqual(cfg.features.translate, { available: true, provider: "stub", private: true });
   assert.deepEqual(cfg.languages, ["ar", "en", "fr", "ur"]);
