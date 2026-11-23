@@ -1,5 +1,60 @@
 [
   {
+    "v": "2.157.0",
+    "date": "2026-11-23",
+    "ar": {
+      "title": "مزايا أكثر مع Plus",
+      "items": [
+        "مع Plus ترتفع الحدود: 100 بحث محفوظ، 200 مجموعة، 30 محاولة اختبار للدرس، 20 فريق، و150 عضو في الفريق.",
+        "كل ما عندك الآن يبقى كما هو، والمظهر والألوان مجانية للجميع."
+      ]
+    },
+    "en": {
+      "title": "More room with Plus",
+      "items": [
+        "Plus raises your limits: 100 saved searches, 200 collections, 30 quiz attempts per lesson, 20 teams and 150 members per team.",
+        "Everything you already have stays, and appearance and colours stay free for everyone."
+      ]
+    }
+  },
+  {
+    "v": "2.156.1",
+    "date": "2026-11-23",
+    "quiet": true,
+    "ar": {
+      "title": "إصلاح المنشورات المدفوعة في الرئيسية",
+      "items": [
+        "المنشورات المدفوعة المقفلة ترجع تظهر في الرئيسية مع زر الفتح."
+      ]
+    },
+    "en": {
+      "title": "Paid posts on Home fixed",
+      "items": [
+        "Locked paid posts show on Home again, with their unlock button."
+      ]
+    }
+  },
+  {
+    "v": "2.156.0",
+    "date": "2026-11-23",
+    "ar": {
+      "title": "عضوية مجتمع بلس Plus",
+      "items": [
+        "صفحة جديدة للعضوية: قارن بين Free وPlus واشترك أو جدّد من مكان واحد.",
+        "«مجتمع+ ذكاء» صار اسمه «مجتمع بلس Plus»، والمشتركون الحاليون انتقلوا تلقائياً بنفس تاريخ الانتهاء.",
+        "إصلاح تعليق الدفع في Pi: إعادة محاولة تلقائية، وإلغاء الدفعة العالقة بدل ما تبقى معلّقة."
+      ]
+    },
+    "en": {
+      "title": "Mujtama Plus membership",
+      "items": [
+        "A new Membership page: compare Free and Plus, subscribe or renew in one place.",
+        "AI Plus is now Plus; current subscribers moved over with the same end date.",
+        "Pi payments no longer get stuck: automatic retry, and a stuck payment is cancelled instead of hanging."
+      ]
+    }
+  },
+  {
     "v": "2.155.0",
     "date": "2026-11-23",
     "ar": {
