@@ -121,6 +121,15 @@ test("progress, quizzes (server scoring, best score, attempts/day), completion o
   const d2 = await s1.req("GET", "/api/courses/" + course); assert.equal(d2.me.progress, 80); assert.equal(d2.me.completed, true);
 });
 
+test("v2.158: parallel quiz attempts cannot pass the daily ceiling; attempts are never reset by a race", async () => {
+  if ((await s2.req("GET", "/api/courses/" + course)).me?.enrolled !== true) { H.app.ctx.rl.w.clear(); await s2.req("POST", `/api/courses/${course}/enrol`); }
+  const rs = await Promise.all(Array.from({ length: 6 }, () => s2.req("POST", `/api/course-lessons/${lessons.quiz}/quiz`, { answers: [0, 0] })));
+  assert.equal(rs.filter((r) => r.status === 200).length, 3, rs.map((r) => r.status + ":" + (r.code || "")).join(","));
+  assert.ok(rs.filter((r) => r.status !== 200).every((r) => r.code === "attempts"));
+  const blocked = rs.find((r) => r.code === "attempts"); assert.match(blocked.error, /3 من 3/);
+  assert.equal(Number((await db().get("SELECT COUNT(*) n FROM course_attempts WHERE lesson_id=$1 AND user_id=$2", [lessons.quiz, s2.id])).n), 3);
+});
+
 test("teacher view: learners + funnel; product access needs an entitlement; archive", async () => {
   await s2.req("POST", `/api/courses/${course}/enrol`); await s2.req("POST", `/api/course-lessons/${lessons.intro}/complete`);
   assert.equal((await s1.req("GET", `/api/courses/${course}/learners`)).status, 403);
