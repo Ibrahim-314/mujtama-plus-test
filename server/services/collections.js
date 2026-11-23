@@ -92,11 +92,14 @@ module.exports = (ctx) => {
   }
   async function createCollection(uid, b) {
     await importLegacy(uid);
-    { const used = Number((await db.get("SELECT COUNT(*) n FROM collections WHERE owner=$1", [uid])).n); // v2.157: Free 50 / Plus 200 (admin-editable)
-      if (ctx.services.membership) await ctx.services.membership.enforce(uid, "collections", used); else if (used >= MAX_COLLECTIONS) throw E.bad("الحد الأقصى 50 مجموعة"); }
-    const pos = (await db.get("SELECT COALESCE(MAX(position),-1)+1 p FROM collections WHERE owner=$1", [uid])).p;
+    const name = str(b.name, 50, { required: true });
     const c = { id: typeof b.id === "string" && /^col_[a-z0-9]{6,30}$/i.test(b.id) ? b.id : id("col"), at: now() };
-    await db.run("INSERT INTO collections(id,owner,name,color,emoji,position,updated_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$7)", [c.id, uid, str(b.name, 50, { required: true }), HEX.test(b.color || "") ? b.color : null, str(b.emoji, 8), pos, c.at]);
+    const count = async () => Number((await db.get("SELECT COUNT(*) n FROM collections WHERE owner=$1", [uid])).n);
+    const insert = async () => { const pos = (await db.get("SELECT COALESCE(MAX(position),-1)+1 p FROM collections WHERE owner=$1", [uid])).p;
+      await db.run("INSERT INTO collections(id,owner,name,color,emoji,position,updated_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$7)", [c.id, uid, name, HEX.test(b.color || "") ? b.color : null, str(b.emoji, 8), pos, c.at]); };
+    // v2.157/158: Free 50 / Plus 200 (admin-editable); the new, still-empty collection is undone if a parallel request crossed the ceiling
+    if (ctx.services.membership) await ctx.services.membership.guarded(uid, "collections", { count, create: insert, undo: () => db.run("DELETE FROM collections WHERE id=$1 AND owner=$2", [c.id, uid]) });
+    else { if ((await count()) >= MAX_COLLECTIONS) throw E.bad("الحد الأقصى 50 مجموعة"); await insert(); }
     return colClient(await db.get("SELECT * FROM collections WHERE id=$1", [c.id]), 0, []);
   }
   async function updateCollection(uid, cid, b) {
