@@ -284,15 +284,23 @@ module.exports = (ctx, opts = {}) => {
     const { l, c } = await learnable(user, lid);
     if (l.kind !== "quiz") throw E.bad("ليس اختباراً");
     const since = new Date(clock() - DAY).toISOString();
-    const n = Number((await db.get("SELECT COUNT(*) n FROM course_attempts WHERE lesson_id=$1 AND user_id=$2 AND at > $3", [l.id, user.id, since])).n);
-    const cap = ctx.services.membership ? (await ctx.services.membership.limitFor(user.id, "quiz_attempts_daily", env.COURSE_QUIZ_ATTEMPTS_PER_DAY ? MAX_ATTEMPTS : undefined)) : { limit: MAX_ATTEMPTS, tier: "free", plus: MAX_ATTEMPTS }; // v2.157: Free 10 / Plus 30 per lesson per 24 h
-    if (n >= cap.limit) throw Object.assign(E.bad(`استنفدت محاولاتك اليوم (${cap.limit})؛ راجع الدرس وحاول غداً${cap.tier === "free" && cap.plus > cap.limit ? `. مع Plus تصير ${cap.plus} محاولة` : ""}`), { code: "attempts", details: { quota: { key: "quiz_attempts_daily", used: n, limit: cap.limit, tier: cap.tier, plusLimit: cap.plus } } });
+    const countN = async () => Number((await db.get("SELECT COUNT(*) n FROM course_attempts WHERE lesson_id=$1 AND user_id=$2 AND at > $3", [l.id, user.id, since])).n);
+    const M = ctx.services.membership, envCap = env.COURSE_QUIZ_ATTEMPTS_PER_DAY ? MAX_ATTEMPTS : undefined;
+    const cap = M ? (await M.limitFor(user.id, "quiz_attempts_daily", envCap)) : { limit: MAX_ATTEMPTS, tier: "free", plus: MAX_ATTEMPTS }; // v2.157: Free 10 / Plus 30 per lesson per rolling 24 h (attempt rows are never reset)
+    const attemptsErr = (n) => (M ? Object.assign(M.quotaError("quiz_attempts_daily", n, cap, "محاولات هذا الاختبار خلال 24 ساعة"), { status: 400, code: "attempts" })
+      : Object.assign(E.bad(`استنفدت محاولاتك اليوم (${cap.limit})؛ راجع الدرس وحاول غداً`), { code: "attempts" }));
     const qz = parse(l.quiz, { questions: [] }), ans = Array.isArray(b.answers) ? b.answers : [];
-    if (ans.length !== qz.questions.length || ans.some((x) => x === null || x === undefined || x === "")) throw E.bad("أجب عن جميع الأسئلة");
     const results = qz.questions.map((q, i) => ({ correct: Number(ans[i]) === q.answer, chosen: Number(ans[i]), answer: q.answer, explain: q.explain || null }));
-    const score = Math.round((results.filter((r) => r.correct).length / results.length) * 100);
-    const pass = l.pass_pct ?? Number(c.pass_pct), passed = score >= pass;
-    await db.run("INSERT INTO course_attempts(id,lesson_id,course_id,user_id,answers,score,passed,at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [id("ca"), l.id, c.id, user.id, JSON.stringify(ans.map(Number)), score, passed ? 1 : 0, iso()]);
+    const score = results.length ? Math.round((results.filter((r) => r.correct).length / results.length) * 100) : 0;
+    const pass = l.pass_pct ?? Number(c.pass_pct), passed = score >= pass, aid = id("ca");
+    const attempt = async () => {
+      const before = await countN(); if (before >= cap.limit) throw attemptsErr(before);
+      if (ans.length !== qz.questions.length || ans.some((x) => x === null || x === undefined || x === "")) throw E.bad("أجب عن جميع الأسئلة");
+      await db.run("INSERT INTO course_attempts(id,lesson_id,course_id,user_id,answers,score,passed,at) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", [aid, l.id, c.id, user.id, JSON.stringify(ans.map(Number)), score, passed ? 1 : 0, iso()]);
+      if ((await countN()) > cap.limit) { await db.run("DELETE FROM course_attempts WHERE id=$1", [aid]); throw attemptsErr(cap.limit); } // v2.158: a parallel attempt took the last slot
+      return before;
+    };
+    const n = M ? await M.serial(`quiz_attempts_daily:${user.id}:${l.id}`, attempt) : await attempt();
     const prev = await db.get("SELECT attempts FROM course_progress WHERE lesson_id=$1 AND user_id=$2", [l.id, user.id]);
     await progressRow(c, l, user.id, { done: passed, best: score, attempts: Number(prev?.attempts || 0) + 1 });
     const st = await recompute(c, user.id);
