@@ -525,7 +525,7 @@ const DATA_MAP = [
     user: "user_id=$1",
     cols: ["id", "plan_id", "state", "source", "period_start", "period_end", "cancel_at_period_end", "cancelled_at", "created_at", "updated_at"],
     purpose: "service",
-    category: "اشتراكاتك في ميزات الذكاء (مجتمع+ ذكاء)",
+    category: "اشتراكاتك في ميزات الذكاء (مجتمع بلس Plus)",
     retention: "طوال وجود الحساب؛ يُلغى الاشتراك عند حذف الحساب",
     erase: "keep"
   },
