@@ -151,6 +151,8 @@
   const lateRoute = () => { const r = (location.hash.split("/")[1] || "").split("?")[0]; return Object.keys(LATE).some((n) => LATE[n].includes(r) && has(n === "integrity" ? "protection" : n) && !loaded[n] && !failed[n]); };
   if (typeof Views !== "undefined" && Views.notFound) { const _nf = Views.notFound; Views.notFound = function () { const n = needFor(); if (((n && !failed[n]) || lateRoute()) && typeof view !== "undefined" && view) { view.innerHTML = `<div class="wrap" aria-busy="true" aria-label="جارٍ التحميل…"><div class="skel"></div><div class="skel"></div></div>`; return; } return _nf.apply(this, arguments); }; }
   addEventListener("hashchange", ensure); ensure();
+  // v2.155: the Home hub (homehub-ui.js) loads as soon as the account is in; if it fails, its reserved slot goes away
+  whenIn(() => load("homehub").catch(() => { window.MPHubFailed = 1; document.getElementById("hub-slot")?.remove(); }));
   // warm both chunks when the browser is idle so the first tap is instant; the discovery chunk also
   // enhances Home (feed tabs, caught-up marker, digest) and post pages (summary card) in place once loaded
   whenIn(() => (window.requestIdleCallback || ((f) => setTimeout(f, 2500)))(() => load("composer").catch(() => { }).then(() => load("discovery")).catch(() => { }).then(() => load("communities")).catch(() => { }).then(() => load("comms")).catch(() => { }).then(() => load("notify")).catch(() => { }).then(() => load("compliance")).catch(() => { }))); // notify-ui also shows in-app toasts
