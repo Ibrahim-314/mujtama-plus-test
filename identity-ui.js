@@ -303,11 +303,15 @@
     const show = () => {
       let el = null; while (i < TOUR.length && !(el = [...document.querySelectorAll(TOUR[i][0])].find(e => e.offsetParent !== null))) i++;
       if (i >= TOUR.length) return done(false);
-      const r = el.getBoundingClientRect(), hole = $(".tour-hole"), card = $(".tour-card"), pad = 8;
+      // v2.161.1: a target below the fold (the home hub pushes #cbar down) is scrolled into view first; otherwise the hole and the
+      // card land off-screen and the page stays dim and untappable
+      let r0 = el.getBoundingClientRect(); if (r0.top < 60 || r0.bottom > innerHeight - 200) { el.scrollIntoView({ block: "center", behavior: "instant" }); r0 = el.getBoundingClientRect(); }
+      const r = r0, hole = $(".tour-hole"), card = $(".tour-card"), pad = 8;
       Object.assign(hole.style, { top: r.top - pad + "px", left: r.left - pad + "px", width: r.width + pad * 2 + "px", height: r.height + pad * 2 + "px" });
       card.innerHTML = `<b>${TOUR[i][1]}</b><p class="u-m0 u-mt4 u-mb10 muted">${TOUR[i][2]}</p><div class="row"><span class="muted">${i + 1}/${TOUR.length}</span><span class="grow"></span><button class="btn ghost" id="t-skip">تخطي</button><button class="u-ms6 btn" id="t-next">${i === TOUR.length - 1 ? "تم" : "التالي"}</button></div>`;
-      const below = r.bottom + 180 < innerHeight; card.style.top = (below ? r.bottom + 16 : Math.max(12, r.top - card.offsetHeight - 16)) + "px"; card.style.left = Math.min(innerWidth - card.offsetWidth - 12, Math.max(12, r.left + r.width / 2 - card.offsetWidth / 2)) + "px";
+      const below = r.bottom + 180 < innerHeight; card.style.top = Math.min(innerHeight - card.offsetHeight - 12, Math.max(12, below ? r.bottom + 16 : r.top - card.offsetHeight - 16)) + "px"; card.style.left = Math.min(innerWidth - card.offsetWidth - 12, Math.max(12, r.left + r.width / 2 - card.offsetWidth / 2)) + "px";
       $("#t-next").onclick = () => { i++; show(); }; $("#t-skip").onclick = () => done(true);
+      document.querySelector(".tour").onkeydown = (e) => { if (e.key === "Escape") done(true); }; $("#t-next").focus({ preventScroll: true });
     };
     requestAnimationFrame(show);
   }
