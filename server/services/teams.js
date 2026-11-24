@@ -79,6 +79,7 @@ module.exports = (ctx, opts = {}) => {
       await t.run("INSERT INTO wt_teams (id, owner_id, kind, name, about, visibility, status, contract_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,'active',$7,$8,$8)", [tid, user.id, kind, name, about, visibility, contractId, now]);
       await t.run("INSERT INTO wt_members (team_id, user_id, role, title, joined_at) VALUES ($1,$2,'owner',$3,$4)", [tid, user.id, str(b.title, 60), now]);
     }), () => db.tx(async (t) => { await t.run("DELETE FROM wt_members WHERE team_id=$1", [tid]); await t.run("DELETE FROM wt_teams WHERE id=$1 AND owner_id=$2", [tid, user.id]); }));
+    ctx.services.achievements?.emit(user.id, "team_created", tid); // v2.159: achievement signal only
     return { id: tid, state: "active" };
   }
   async function checkContract(user, cid) {
