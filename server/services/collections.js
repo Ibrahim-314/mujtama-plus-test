@@ -100,6 +100,7 @@ module.exports = (ctx) => {
     // v2.157/158: Free 50 / Plus 200 (admin-editable); the new, still-empty collection is undone if a parallel request crossed the ceiling
     if (ctx.services.membership) await ctx.services.membership.guarded(uid, "collections", { count, create: insert, undo: () => db.run("DELETE FROM collections WHERE id=$1 AND owner=$2", [c.id, uid]) });
     else { if ((await count()) >= MAX_COLLECTIONS) throw E.bad("الحد الأقصى 50 مجموعة"); await insert(); }
+    ctx.services.achievements?.emit(uid, "collection_created", c.id); // v2.159: achievement signal only
     return colClient(await db.get("SELECT * FROM collections WHERE id=$1", [c.id]), 0, []);
   }
   async function updateCollection(uid, cid, b) {
