@@ -38,3 +38,38 @@
 .mj-batches{box-shadow:none;background:var(--surface-sunken);margin-top:var(--s3)}
 .mj-page .btn.sm{min-height:44px}
 .mj-page [hidden]{display:none!important}
+/* v2.160 «محفظة المكافآت» (rewards-ui.js rides this chunk). Tokens only; logical properties. */
+.rw-tot{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:var(--s2);margin:0 0 var(--s3)}
+.rw-tot div{display:grid;gap:2px}
+.rw-tot dt{font-size:var(--fs-xs);color:color-mix(in srgb,currentColor 80%,transparent)}
+.rw-tot dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums}
+.rw-src fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--s2);border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s3);margin:0 0 var(--s3)}
+.rw-src legend{padding-inline:var(--s1)}
+.rw-src label,#rw-q label,#rw-wl label,#rw-fz label,#rw-adj label,#rw-set label{display:grid;gap:4px;font-size:var(--fs-sm)}
+.rw-src .chk{display:flex;align-items:center;gap:6px}
+.rw-src input,#rw-q input,#rw-q select,#rw-wl input,#rw-fz input,#rw-adj input,#rw-adj select,#rw-set input{min-height:44px}
+#rw-q,#rw-wl,#rw-fz,#rw-adj,#rw-set{display:grid;gap:var(--s2);margin-bottom:var(--s3)}
+.rw-det{display:grid;gap:6px;margin-top:var(--s3)}
+.rw-det div{display:flex;gap:var(--s2);justify-content:space-between}
+.rw-det dt{color:var(--muted)}
+.rw-det dd{margin:0;text-align:end;overflow-wrap:anywhere}
+.mj-hist .lnk{background:none;border:0;padding:0;text-align:start;color:inherit;cursor:pointer;min-height:44px}
+/* v2.161 «خدمات MJT» (mjt-services-ui.js rides this chunk). Tokens only; logical properties. */
+.sv-list{list-style:none;margin:0 0 var(--s3);padding:0;display:grid;gap:var(--s3)}
+.sv-card{margin:0}
+.sv-ben{margin:0 0 var(--s2);color:var(--text-2);line-height:1.7}
+.sv-meta,.sv-conf{display:grid;gap:6px;margin:0 0 var(--s3)}
+.sv-meta div,.sv-conf div{display:flex;gap:var(--s2);justify-content:space-between;align-items:baseline}
+.sv-meta dt,.sv-conf dt{color:var(--muted);font-size:var(--fs-sm);flex:none;white-space:nowrap}
+.sv-meta dd,.sv-conf dd{margin:0;font-weight:600;text-align:end;overflow-wrap:anywhere}
+.sv-state{display:flex;align-items:center;gap:6px;margin:0 0 var(--s2);font-size:var(--fs-sm);color:var(--text-2)}
+.sv-state.ok{color:color-mix(in srgb,var(--ok) 72%,var(--text))}
+.sv-hint{display:block;color:var(--muted);font-size:var(--fs-xs)}
+.sv-card .btn,.sv-sheet .btn{min-height:44px}
+.sv-f fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--s2);border:1px solid var(--line);border-radius:var(--r-sm);padding:var(--s3);margin:0 0 var(--s3)}
+.sv-f legend{padding-inline:var(--s1)}
+.sv-f .sv-wide{grid-column:1/-1;margin:0}
+.sv-f label,#sv-cq label,#sv-pq label{display:grid;gap:4px;font-size:var(--fs-sm)}
+.sv-f .chk{display:flex;align-items:center;gap:6px}
+.sv-f input,.sv-f select,#sv-cq input,#sv-pq input,#sv-pq select{min-height:44px}
+#sv-cq,#sv-pq{display:grid;gap:var(--s2);margin:var(--s2) 0 var(--s3)}
