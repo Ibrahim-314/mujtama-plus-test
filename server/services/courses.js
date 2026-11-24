@@ -56,7 +56,8 @@ module.exports = (ctx, opts = {}) => {
     if (c.access !== "product" || !c.listing_id) return true;
     if (!user) return false;
     const e = await db.get("SELECT e.id FROM digital_entitlements e JOIN market_orders o ON o.id=e.order_id WHERE e.buyer_id=$1 AND e.listing_id=$2 AND e.status='active' AND o.status NOT IN ('refunded','cancelled')", [user.id, c.listing_id]).catch(() => null);
-    return !!e;
+    if (e) return true;
+    return !!(await ctx.services.mjtServices?.allows(user.id, "course:" + c.id).catch(() => false)); // v2.161: «خدمات MJT» unlock (an admin-registered paid course; expiry checked server-side)
   }
 
   /* ---------- 1. authoring ---------- */
@@ -246,6 +247,7 @@ module.exports = (ctx, opts = {}) => {
     if (l.status !== "published" && !a.manager) throw E.nf("الدرس غير منشور");
     const e = await enrolment(c, user?.id);
     if (!e && !a.manager) throw Object.assign(E.forbid("سجّل في الدورة لتبدأ الدروس"), { code: "not_enrolled" });
+    if (!a.manager) await stillEntitled(c, user);
     const ls = await published(c.id), i = ls.findIndex((x) => x.id === l.id);
     const titles = ls.length ? await db.all(`SELECT id, title, kind FROM course_lessons WHERE id IN (${ph(ls.map((x) => x.id))})`, ls.map((x) => x.id)) : [];
     const pick = (x) => (x ? { id: x.id, title: titles.find((t) => t.id === x.id)?.title, kind: x.kind } : null);
@@ -266,10 +268,18 @@ module.exports = (ctx, opts = {}) => {
     else await db.run("UPDATE course_progress SET done=$1, best_score=$2, attempts=$3, done_at=COALESCE(done_at, $4), updated_at=$5 WHERE lesson_id=$6 AND user_id=$7",
       [patch.done || Number(p.done) ? 1 : 0, patch.best !== undefined ? Math.max(Number(p.best_score ?? -1), patch.best) : p.best_score, patch.attempts !== undefined ? patch.attempts : Number(p.attempts || 0), patch.done ? at : null, at, l.id, uid]);
   }
+  /** v2.161: a paid course's lessons need the access to still be valid (a time-limited MJT unlock that expired, or a refunded
+   *  purchase), not only an enrolment made earlier. Teachers / managers always keep access. Free courses are unaffected. */
+  async function stillEntitled(c, user) {
+    if (c.access !== "product" || !c.listing_id || (await entitled(c, user))) return;
+    if ((await access(await group(c.community_id), user)).manager) return;
+    throw Object.assign(E.forbid("انتهى وصولك إلى هذه الدورة المدفوعة"), { code: "needs_purchase", details: { listingId: c.listing_id } });
+  }
   async function learnable(user, lid) {
     const l = await db.get("SELECT * FROM course_lessons WHERE id=$1 AND status='published'", [lid]); if (!l) throw E.nf("الدرس غير موجود");
     const c = await load(l.course_id); if (c.status !== "published") throw E.bad("الدورة غير منشورة");
     const e = await enrolment(c, user.id); if (!e) throw Object.assign(E.forbid("سجّل في الدورة أولاً"), { code: "not_enrolled" });
+    await stillEntitled(c, user);
     return { l, c };
   }
   async function complete(user, lid, b = {}) {
@@ -303,6 +313,7 @@ module.exports = (ctx, opts = {}) => {
     const n = M ? await M.serial(`quiz_attempts_daily:${user.id}:${l.id}`, attempt) : await attempt();
     const prev = await db.get("SELECT attempts FROM course_progress WHERE lesson_id=$1 AND user_id=$2", [l.id, user.id]);
     await progressRow(c, l, user.id, { done: passed, best: score, attempts: Number(prev?.attempts || 0) + 1 });
+    if (passed) ctx.services.achievements?.emit(user.id, "quiz_passed", l.id, { course: c.id }); // v2.159: achievement signal only (no reward); never blocks the attempt
     const st = await recompute(c, user.id);
     return { score, passed, passPct: pass, results, attemptsLeft: cap.limit - n - 1, ...st };
   }
