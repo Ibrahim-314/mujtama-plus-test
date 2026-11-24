@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.161.0 — 2026-11-24 (MJT Services «خدمات MJT», phase 5)
+- Migration 091_mjt_services (mjt_services, mjt_service_prices, mjt_service_purchases, mjt_entitlements), additive and reversible; member tables added to the compliance data map.
+- services/mjt-services.js on the phase-4 engine (mjt-rewards debit / refundCredit — no new engine, wallet or ledger): catalog, server-side cost, price versions (client sends id + priceVersion + ikey; any amount field → 400; stale version → 409), idempotent purchase with debit + purchase + entitlement in ONE transaction, permanent or time-limited entitlements (expiry checked server-side), never charges for owned / free / Plus-included / native access.
+- Wired only to real capabilities: Creator Studio analytics beyond 90 days (studio_extended) and admin-registered PAID courses (access = product; delivery = enrolment). Paid-course lessons now re-check access on every lesson (expired / refunded access closes them; teachers unaffected). Free courses stay free.
+- Catalog ships disabled with cost and term unset (seed: studio_extended only). Admin sets cost / term / access mode / eligible memberships / enable.
+- Refund policy: atomic purchase (any failure → nothing debited); delivery failure after commit → automatic full compensating refund + entitlement revoked; manual refund admin-only with mandatory reason, full amount, once; disabling or repricing never refunds or revokes; expiry not refunded. Journal stays append-only.
+- Member page #/mjt/services (services, confirmation sheet, «خدماتي», history) linked from #/rewards and «المزيد»; admin #/admin/mjt-services (catalog, usage + MJT spent, price history, register feature / paid course, purchases, manual refund). Rate limiter mjt_services. Lazy `mjt` chunk + mjt.css.
+
+## 2.160.0 — 2026-11-24 (MJT internal rewards, phase 4)
+- Migration 090_mjt_rewards (mjt_reward_sources, mjt_reward_entries), additive and reversible.
+- mjt-rewards.js on the existing mjt.js ledger: idempotent credit/debit in DB transactions, no negative balance, freeze/unfreeze, pending approval, velocity review, canSpend (not wired).
+- Reward sources from achievements, all disabled with no amount by default.
+- Wallet page #/rewards and admin #/admin/rewards; rate limiters mjt_wallet/mjt_admin.
+- Removed game loading tip promising real MJT.
+
+## 2.159.0 — 2026-11-24 (MJT readiness + phase 3 verification, migration 089, additive)
+- Full verification of v2.156–2.158: API suite, unit suite (Chromium libs fixed in the sandbox), build, budget, lint on every touched file.
+- Fix: `public/whatsnew.json` 2.158.0 entry used the wrong shape (`version` + flat lists) — the update prompt / «سجل الإصدارات» could not read it and `whatsnew.test` failed. Rewritten in the standard `{ v, ar: { title, items }, en: { title, items } }` shape.
+- New: unified achievement events (`services/achievements.js`, migration 089 `achievement_events`). `record(uid, type, ref, meta)` appends one row per (uid, type, ref) — idempotent, NO amount / balance fields, credits nothing (no MJT, no points). Emitted fire-and-forget (never breaks the action) from: quiz passed, course completed (bus COURSE_COMPLETED), team created, collection created, saved search created, article published (bus POST_PUBLISHED, type article only). Emits bus `ACHIEVEMENT_RECORDED` for a later, separately approved stage. Admin only: `GET /api/admin/achievements` (counts by type; members 403). Added to the compliance data map (export / erase with the account).
+- Fix: saved-search alerts — turning an alert back on now starts counting from that moment (it used to report every post published while the alert was off); one failing saved search no longer aborts the whole alert batch.
+- i18n: English for the v2.158 usage labels and advice (shown on #/library, #/membership, teams) and the pre-existing «تحديث في شروط الاستخدام (الإصدار 1.1)» line — e2e en-coverage was failing on both.
+- No change to quotas (Free/Plus 25/100, 50/200, 10/30, 5/20, 50/150), Plus price (null), home page or membership design. Testnet only.
+- Tests: server/test/achievements.test.js (6), server/test/search-alerts-v2159.test.js (2), courses.test achievement assertions.
+
 ## 2.158.1 — 2026-11-24 (security)
 - Node.js 22.23.4 → 22.23.5 (Dockerfile, Dockerfile.railway, engines): HTTPS security fixes released 2026-11-11.
 
