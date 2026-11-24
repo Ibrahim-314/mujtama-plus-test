@@ -115,6 +115,10 @@ test("progress, quizzes (server scoring, best score, attempts/day), completion o
   await new Promise((r) => setTimeout(r, 50));
   assert.equal(events, 1, "completion recorded once");
   assert.equal((await db().all("SELECT id FROM notifications WHERE user_id=$1 AND kind='course_completed'", [s1.id])).length, 1);
+  // v2.159: one achievement signal each (quiz passed once, course completed once) — no amounts anywhere
+  await H.app.ctx.services.achievements.settle();
+  const ach = await db().all("SELECT type, ref FROM achievement_events WHERE user_id=$1 ORDER BY type", [s1.id]);
+  assert.deepEqual(ach.map((x) => [x.type, x.ref]), [["course_completed", course], ["quiz_passed", lessons.quiz]]);
   // a new lesson: enrolled learners told; progress recomputed (completion kept)
   await T.req("POST", `/api/courses/${course}/lessons`, { moduleId: mods[1], title: "مشروع صغير", kind: "text", body: "ابنِ آلة حاسبة" });
   assert.equal((await db().all("SELECT id FROM notifications WHERE user_id=$1 AND kind='course_lesson'", [s1.id])).length, 1);
