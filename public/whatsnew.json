@@ -1,5 +1,68 @@
 [
   {
+    "v": "2.161.0",
+    "date": "2026-11-24",
+    "ar": {
+      "title": "خدمات MJT",
+      "items": [
+        "صفحة جديدة «خدمات MJT»: استخدم رصيد مكافآتك في خدمات حقيقية داخل التطبيق تختارها الإدارة",
+        "قبل التأكيد ترى اسم الخدمة وما ستحصل عليه وتكلفتها ورصيدك بعد العملية — ولا يُخصم شيء مقابل ما تملكه أو ما تشمله عضويتك",
+        "«خدماتي» يعرض ما حصلت عليه ومدة صلاحيته، وتظهر كل عملية في سجل محفظة المكافآت",
+        "مجتمع كوين رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل"
+      ]
+    },
+    "en": {
+      "title": "MJT Services",
+      "items": [
+        "New “MJT Services” page: use your rewards balance on real in-app services chosen by the admins",
+        "Before you confirm you see the service, what you get, its cost and your balance afterwards — nothing is deducted for what you already own or your membership includes",
+        "“My services” shows what you got and how long it lasts; every purchase also appears in your rewards wallet history",
+        "Mujtama Coin is an internal rewards balance only: no monetary value, no withdrawal, sale or transfer"
+      ]
+    }
+  },
+  {
+    "v": "2.160.0",
+    "date": "2026-11-24",
+    "ar": {
+      "title": "محفظة المكافآت",
+      "items": [
+        "صفحة جديدة «محفظة المكافآت»: رصيدك من مكافآت مجتمع كوين، ما كسبته وما استخدمته، وسجل كامل بالمصدر والحالة",
+        "مكافآت على إنجازات حقيقية تختارها الإدارة (مثل إكمال دورة) — كلها معطّلة حتى تُفعَّل",
+        "مجتمع كوين رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل"
+      ]
+    },
+    "en": {
+      "title": "Rewards wallet",
+      "items": [
+        "New “Rewards wallet” page: your Mujtama Coin rewards balance, what you earned and used, and a full history with source and status",
+        "Rewards for real achievements chosen by the admins (such as completing a course) — all off until enabled",
+        "Mujtama Coin is an internal rewards balance only: no monetary value, no withdrawal, sale or transfer"
+      ]
+    }
+  },
+  {
+    "v": "2.159.0",
+    "date": "2026-11-24",
+    "quiet": true,
+    "ar": {
+      "title": "تحسينات خلف الكواليس",
+      "items": [
+        "تسجيل موحّد للإنجازات (اجتياز اختبار، إكمال دورة، إنشاء فريق أو مجموعة أو بحث محفوظ) دون أي رصيد أو مكافأة",
+        "تنبيهات البحث المحفوظ: إعادة تفعيل التنبيه تحسب الجديد من الآن فقط",
+        "إصلاح ملاحظات الإصدار السابق في نافذة «يوجد تحديث»"
+      ]
+    },
+    "en": {
+      "title": "Behind-the-scenes improvements",
+      "items": [
+        "Unified achievement log (quiz passed, course completed, team, collection or saved search created) with no balance or reward",
+        "Saved-search alerts: turning an alert back on counts only new posts from now",
+        "Fixed the previous release notes in the update prompt"
+      ]
+    }
+  },
+  {
     "v": "2.158.1",
     "date": "2026-11-24",
     "ar": {
@@ -19,7 +82,7 @@
     "v": "2.158.0",
     "date": "2026-11-23",
     "ar": {
-      "title": "استخدامك للحدود",
+      "title": "استخدامك لحدود Plus",
       "items": [
         "عرض استخدامك لحدود Free/Plus (كذا من كذا) مع ما يمكنك فعله",
         "منع تجاوز الحدود مع الطلبات المتزامنة",
@@ -27,7 +90,7 @@
       ]
     },
     "en": {
-      "title": "Your usage",
+      "title": "Your Plus usage",
       "items": [
         "See your Free/Plus usage (X of Y) and what you can do",
         "Limits hold under simultaneous requests",
