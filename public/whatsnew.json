@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.161.1",
+    "date": "2026-11-24",
+    "ar": {
+      "title": "إصلاح الجولة الإرشادية",
+      "items": [
+        "إصلاح: الجولة الإرشادية كانت تعتّم الصفحة الرئيسية بلا شرح وتمنع الضغط، الآن تظهر في مكانها ويمكن تخطيها دائماً"
+      ]
+    },
+    "en": {
+      "title": "Guided tour fix",
+      "items": [
+        "Fix: the guided tour could dim Home with no card and block taps; it now always shows on screen and can be skipped"
+      ]
+    }
+  },
+  {
     "v": "2.161.0",
     "date": "2026-11-24",
     "ar": {
