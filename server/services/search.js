@@ -739,6 +739,7 @@ module.exports = (ctx) => {
     // v2.157/158: Free 25 / Plus 100 (admin-editable), checked on the server; concurrent saves can't cross the ceiling
     if (ctx.services.membership) await ctx.services.membership.guarded(uid, "saved_searches", { count, create: insert, undo: () => db.run("DELETE FROM saved_searches WHERE id=$1", [row.id]) });
     else { if ((await count()) >= 25) throw E.bad("وصلت للحد الأقصى من عمليات البحث المحفوظة (25)"); await insert(); }
+    ctx.services.achievements?.emit(uid, "saved_search_created", row.id); // v2.159: achievement signal only
     return savedClient(await db.get("SELECT * FROM saved_searches WHERE id=$1", [row.id]));
   }
   /* alerts: count new matching posts since the last check, notify once per batch */
@@ -746,12 +747,14 @@ module.exports = (ctx) => {
     const due = await db.all("SELECT s.*, u.prefs FROM saved_searches s JOIN users u ON u.id=s.user_id WHERE s.alert=1 AND s.last_checked < $1 LIMIT 500", [new Date(Date.now() - 60e3).toISOString()]);
     let notified = 0;
     for (const s of due) {
-      const viewer = { id: s.user_id, prefs: s.prefs || {} };
-      const f = { ...parseFilters(s.filters || {}), type: "posts", from: s.last_checked, to: null };
-      const res = await run(viewer, s.q, f, { limit: 1 });
-      const fresh = res.groups.posts ? res.groups.posts.total : 0;
-      await db.run("UPDATE saved_searches SET last_checked=$1, new_count=new_count+$2 WHERE id=$3", [now(), fresh, s.id]);
-      if (fresh > 0) { await ctx.services.messaging.notify(s.user_id, "search_alert", { ref: s.id }); notified++; }
+      try { // v2.159: one broken saved search no longer stops the batch (it was retried first forever)
+        const viewer = { id: s.user_id, prefs: s.prefs || {} };
+        const f = { ...parseFilters(s.filters || {}), type: "posts", from: s.last_checked, to: null };
+        const res = await run(viewer, s.q, f, { limit: 1 });
+        const fresh = res.groups.posts ? res.groups.posts.total : 0;
+        await db.run("UPDATE saved_searches SET last_checked=$1, new_count=new_count+$2 WHERE id=$3", [now(), fresh, s.id]);
+        if (fresh > 0) { await ctx.services.messaging.notify(s.user_id, "search_alert", { ref: s.id }); notified++; }
+      } catch (err) { require("../lib/log").log.warn?.("saved search alert failed", { id: s.id, err: err?.message }); await db.run("UPDATE saved_searches SET last_checked=$1 WHERE id=$2", [now(), s.id]).catch(() => {}); }
     }
     return { checked: due.length, notified };
   }
@@ -816,7 +819,10 @@ module.exports = (ctx) => {
   r.del("/api/search/history/:id", AU(async (req) => { await db.run("DELETE FROM search_history WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.get("/api/search/saved", AU(async (req) => ({ saved: (await db.all("SELECT * FROM saved_searches WHERE user_id=$1 ORDER BY created_at DESC", [req.user.id])).map(savedClient) })));
   r.post("/api/search/saved", AU(async (req) => ({ saved: await saveSearch(req.user.id, req.body) })));
-  r.patch("/api/search/saved/:id", AU(async (req) => { await db.run("UPDATE saved_searches SET alert=$1 WHERE id=$2 AND user_id=$3", [req.body.alert ? 1 : 0, req.params.id, req.user.id]); return { ok: true }; }));
+  r.patch("/api/search/saved/:id", AU(async (req) => { // v2.159: turning an alert back on counts only posts from now on (not the whole time it was off)
+    if (req.body.alert) await db.run("UPDATE saved_searches SET alert=1, last_checked=$1 WHERE id=$2 AND user_id=$3 AND alert=0", [now(), req.params.id, req.user.id]);
+    else await db.run("UPDATE saved_searches SET alert=0 WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]);
+    return { ok: true }; }));
   r.post("/api/search/saved/:id/seen", AU(async (req) => { await db.run("UPDATE saved_searches SET new_count=0 WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.del("/api/search/saved/:id", AU(async (req) => { await db.run("DELETE FROM saved_searches WHERE id=$1 AND user_id=$2", [req.params.id, req.user.id]); return { ok: true }; }));
   r.post("/api/search/click", async (req) => recordClick(req.user, req.body || {}));
