@@ -1,5 +1,21 @@
 [
   {
+    "v": "2.158.1",
+    "date": "2026-11-24",
+    "ar": {
+      "title": "تحديث أمني للخادم",
+      "items": [
+        "تحديث Node.js إلى 22.23.5 لسدّ ثغرات أمنية خطيرة في HTTPS صدرت في 11 نوفمبر 2026"
+      ]
+    },
+    "en": {
+      "title": "Server security update",
+      "items": [
+        "Node.js updated to 22.23.5, closing serious HTTPS security flaws published on 11 November 2026"
+      ]
+    }
+  },
+  {
     "v": "2.158.0",
     "date": "2026-11-23",
     "ar": {
