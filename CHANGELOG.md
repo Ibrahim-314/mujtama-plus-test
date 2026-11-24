@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.161.1 (2026-11-24)
+- إصلاح الجولة الإرشادية: خطوة هدفها أسفل الشاشة (بعد مركز الرئيسية) كانت تضع الفقاعة خارج الشاشة فتبقى الصفحة معتمة ولا تستجيب. الآن يُمرَّر الهدف إلى العرض، وتُحصر الفقاعة داخل الشاشة، وEscape يتخطى. اختبار `tour-v21611`.
+
 ## 2.161.0 — 2026-11-24 (MJT Services «خدمات MJT», phase 5)
 - Migration 091_mjt_services (mjt_services, mjt_service_prices, mjt_service_purchases, mjt_entitlements), additive and reversible; member tables added to the compliance data map.
 - services/mjt-services.js on the phase-4 engine (mjt-rewards debit / refundCredit — no new engine, wallet or ledger): catalog, server-side cost, price versions (client sends id + priceVersion + ikey; any amount field → 400; stale version → 409), idempotent purchase with debit + purchase + entitlement in ONE transaction, permanent or time-limited entitlements (expiry checked server-side), never charges for owned / free / Plus-included / native access.
