@@ -114,6 +114,9 @@ const LIMITS = {
   clip_draft: [30, 60e3], // v2.80: Vidtik draft saves per member per minute
   game_mission: [30, 60e3], // Phase 2D-A: game mission completions per member per minute
   pi_diag: [40, 60e3], // v2.149.11: Pi sign-in step beacons per IP per minute
+  mjt_wallet: [60, 60e3], // v2.160: member MJT rewards wallet reads per member per minute
+  mjt_admin: [120, 60e3], // v2.160: admin MJT rewards actions per admin per minute
+  mjt_services: [20, 60e3], // v2.161: MJT service purchases per member per minute
   default: [120, 60e3]
 };
 class RateLimiter {
