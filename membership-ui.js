@@ -114,6 +114,6 @@
   async function toggle(k) { try { await api("POST", "/api/membership/" + k, {}); say(k === "cancel" ? "أُوقف التجديد" : "استؤنف التجديد"); page(); } catch (e) { say(e.message); } }
 
   MPRoutes.extend(() => ({ membership: () => page() }));
-  window.MPMembership = { page, note, fresh, version: "2.158.0" };
+  window.MPMembership = { page, note, fresh, version: "2.161.0" };
   if (/^#\/membership\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();
