@@ -82,7 +82,7 @@ module.exports = (ctx) => {
 
   R.get("/api/studio/overview", A(async (req) => {
     const days = Math.min(365, Math.max(7, Math.floor(+req.query.days) || 28));
-    if (days > 90) await ctx.services.membership.require(req.user.id, "studio_extended"); // v2.156: 180/365 days are Plus (402 + upsell); up to 90 stays free
+    if (days > 90 && !(await ctx.services.mjtServices?.allows(req.user.id, "feature:studio_extended").catch(() => false))) await ctx.services.membership.require(req.user.id, "studio_extended"); // v2.156: 180/365 days are Plus (402 + upsell); up to 90 stays free. v2.161: or an MJT service entitlement (expiry checked server-side)
     return overview(req.user, days);
   }));
   R.get("/api/studio/posts/:id", A(async (req) => postStats(req.user, req.params.id)));
