@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.158.1 — 2026-11-24 (security)
+- Node.js 22.23.4 → 22.23.5 (Dockerfile, Dockerfile.railway, engines): HTTPS security fixes released 2026-11-11.
+
 ## 2.158.0 — 2026-11-23 (Plus phase 3)
 - Membership usage: `/api/membership/usage`, usage section on #/membership, used/allowed notes on saved searches, collections, new team.
 - Concurrency guard (`membership.guarded`): per-scope queue + post-insert recount; undoes only its own row. Applied to saved searches, collections, teams owned/reopen, team joins (invite/link/request), quiz attempts.
