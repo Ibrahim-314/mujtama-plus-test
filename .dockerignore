@@ -6,3 +6,4 @@ tests/visual/output
 *.sqlite*
 .env
 .git
+docs/mjt-token
