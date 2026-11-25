@@ -43,7 +43,7 @@
   };
   ROUTES.feat = ["u", "me"]; // v2.149.1: profile v3 styles ride feat.css — a cold profile waits on the skeleton, never paints the old layout
   ROUTES.membership = ["membership"]; // v2.156: Free / Plus membership page (membership-ui.js)
-  ROUTES.mjt = ["mjt", "admin/mjt", "rewards", "admin/rewards", "admin/mjt-services"]; // v2.47 «مجتمع كوين» wallet + admin (mjt-ui.js + mjt.css); v2.160 + rewards wallet (rewards-ui.js); v2.161 + «خدمات MJT» #/mjt/services + admin (mjt-services-ui.js)
+  ROUTES.mjt = ["mjt", "admin/mjt", "rewards", "admin/rewards", "admin/mjt-services"]; ROUTES.mjteco = ["admin/mjt-economy"]; // v2.162 «اقتصاد MJT» admin analytics (mjt-economy-ui.js + mjt-economy.css) // v2.47 «مجتمع كوين» wallet + admin (mjt-ui.js + mjt.css); v2.160 + rewards wallet (rewards-ui.js); v2.161 + «خدمات MJT» #/mjt/services + admin (mjt-services-ui.js)
   ROUTES.proreviews = ["reviews", "admin/reviews"]; // v2.46 phase 80: professional reputation (proreviews-ui.js + proreviews.css), loads after the work chunk
   ROUTES.teams = ["teams", "team"]; // v2.45 phase 79: teams & projects (teams-ui.js + teams.css), loads after the work chunk
   ROUTES.creation = ["studio", "rooms", "room"]; // v2.42: studio + live rooms screens (creation-ui.js) with creation.css
@@ -57,7 +57,7 @@
   ROUTES.setx = ["settings"]; // v2.81: the settings hub (settings-hub.js) left the core bundle
   ROUTES.launch = ["faq", "tickets", "ambassadors", "waitlist", "about", "staff"]; ROUTES.pwa = ["share", "app", "versions"];
   const loaded = {}, pending = {}, cssDone = {}, cssPend = {};
-  const FEAT = "market nearby study series biz courses collabs hijri certs mentor vcreators charity knowledge work teams proreviews mjt canalytics points creation communities tips transfers ads dev digital subs wellbeing menu cadmin aihub".split(" ");
+  const FEAT = "market nearby study series biz courses collabs hijri certs mentor vcreators charity knowledge work teams proreviews mjt mjteco canalytics points creation communities tips transfers ads dev digital subs wellbeing menu cadmin aihub".split(" ");
   const has = (n) => !!((window.__CHUNKS || {})[n] || (window.__CSS || {})[n]);
   /* v2.32 lazy CSS: a chunk's stylesheet (window.__CSS[name]) is fetched with its JS, and the screen renders only after both
    * arrived, so a module never paints unstyled. A failed stylesheet does not block the screen. */

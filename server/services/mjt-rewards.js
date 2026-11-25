@@ -262,14 +262,17 @@ module.exports = (ctx, opts = {}) => {
 
   async function stats() {
     const s = await led().supply();
-    const j = await db.all("SELECT kind, COALESCE(SUM(amount),0) a FROM mjt_reward_entries WHERE status='posted' GROUP BY kind");
-    const sum = (k) => j.filter((r) => k.includes(r.kind)).reduce((x, r) => x + Number(r.a), 0);
+    // v2.162 fix: service refunds (refundCredit: kind adjust_credit, source service_refund) are refunds, not admin credits — they
+    // were counted in «issued» / adjustCredit before
+    const j = await db.all("SELECT kind, CASE WHEN source=$1 THEN 1 ELSE 0 END rf, COALESCE(SUM(amount),0) a FROM mjt_reward_entries WHERE status='posted' GROUP BY 1, 2", [SERVICE_REFUND]);
+    const sum = (k) => j.filter((r) => k.includes(r.kind) && !Number(r.rf)).reduce((x, r) => x + Number(r.a), 0);
+    const refunds = j.filter((r) => Number(r.rf)).reduce((x, r) => x + Number(r.a), 0);
     const bySource = await db.all("SELECT source, status, COUNT(*) n, COALESCE(SUM(amount),0) a FROM mjt_reward_entries WHERE kind='earn' AND (status='posted' OR (status='pending' AND decides IS NULL)) GROUP BY source, status");
     const src = {}; for (const r of bySource) { const k = r.source || "—"; src[k] ||= { source: k, label: srcLabel(k), posted: 0, issued: 0, pending: 0 }; if (r.status === "posted") { src[k].posted += Number(r.n); src[k].issued += Number(r.a); } else src[k].pending += Number(r.n); }
     const pend = await db.get(`SELECT COUNT(*) n FROM mjt_reward_entries p WHERE p.status='pending' AND ${OPEN}`);
     const wallets = await db.get("SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN status='active' THEN 1 ELSE 0 END),0) a, COALESCE(SUM(CASE WHEN status<>'active' THEN 1 ELSE 0 END),0) f FROM mjt_accounts WHERE kind='user'");
     const tx = await db.get("SELECT COUNT(*) n FROM mjt_tx"), rtx = await db.get("SELECT COUNT(*) n FROM mjt_reward_entries WHERE status='posted'");
-    return { note: NOTE, totalBalances: format(s.users), rewards: { issued: format(sum(CREDIT)), earned: format(sum(["earn"])), adjustCredit: format(sum(["adjust_credit"])), spent: format(sum(["spend"])), adjustDebit: format(sum(["adjust_debit"])), postedEntries: Number(rtx?.n || 0), pending: Number(pend?.n || 0) },
+    return { note: NOTE, totalBalances: format(s.users), rewards: { issued: format(sum(CREDIT)), earned: format(sum(["earn"])), adjustCredit: format(sum(["adjust_credit"])), refunds: format(refunds), spent: format(sum(["spend"])), adjustDebit: format(sum(["adjust_debit"])), postedEntries: Number(rtx?.n || 0), pending: Number(pend?.n || 0) },
       ledger: { minted: format(s.minted), burned: format(s.burned), circulating: format(s.circulating), txCount: Number(tx?.n || 0) },
       wallets: { total: Number(wallets?.n || 0), active: Number(wallets?.a || 0), frozen: Number(wallets?.f || 0) },
       bySource: Object.values(src).map((x) => ({ ...x, issued: format(x.issued) })), settings: await engineSettings() };

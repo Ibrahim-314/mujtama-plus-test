@@ -154,7 +154,7 @@
   /* ---------- #/admin/mjt-services ---------- */
   async function adminView() {
     if (!signed()) { page({ title: "خدمات MJT", icon: "bag" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
-    page({ title: "إدارة خدمات MJT", icon: "bag", sub: "كتالوج الخدمات التي تُستخدم برصيد المكافآت", back: ["#/admin/rewards", "مكافآت مجتمع كوين"] }, `<div id="sv-a" aria-busy="true">${skel(5)}</div>`);
+    page({ title: "إدارة خدمات MJT", icon: "bag", sub: "كتالوج الخدمات التي تُستخدم برصيد المكافآت", back: ["#/admin/rewards", "مكافآت مجتمع كوين"], actions: `<a class="btn outline" href="#/admin/mjt-economy">اقتصاد MJT</a>` }, `<div id="sv-a" aria-busy="true">${skel(5)}</div>`);
     const box = $("#sv-a");
     const reload = async () => {
       let d; try { d = await api("GET", "/api/admin/mjt/services"); } catch (e) { box.removeAttribute("aria-busy"); failBox(box, e, reload); return; }
