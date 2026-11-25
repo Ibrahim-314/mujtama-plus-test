@@ -70,6 +70,12 @@ module.exports = (ctx, opts = {}) => {
   const piOn = () => { const d = ctx.services.pi?.diag?.(); return !!(d && d.enabled && d.apiKeyPresent); };
   const pub = (u) => (u ? { handle: u.handle, name: u.name, avatar: u.avatar || null } : null);
   const money = (units) => ({ units: Number(units), mjt: format(units) });
+  /* v2.163 legacy switches (services/mjt-legacy.js): default ON; a missing service means ON (older boots / unit wiring) */
+  const LG = () => ctx.services.mjtLegacy;
+  const legacyOn = async (k) => { const l = LG(); return l ? l.isOn(k) : true; };
+  const LEGACY_CODE = "mjt_legacy_disabled";
+  /** the HTTP refusal for a sendBlock() reason */
+  const blockErr = (why) => (why.code === LEGACY_CODE ? LG().error(why.path) : fail(why.code === "transfers_off" ? 409 : 403, why.code, why.msg));
 
   /* ---------- settings ---------- */
   let cfgCache = null;
@@ -131,12 +137,12 @@ module.exports = (ctx, opts = {}) => {
   async function onAward(a) {
     if (!linked() || !a || !EARN_KINDS.includes(a.kind) || !(Number(a.points) > 0) || a.status === "reversed") return { minted: false, reason: "not_eligible" };
     if (a.created_at < (await launchAt())) return { minted: false, reason: "before_launch" }; // the conversion covers it
-    const S = await settings(), uid = a.user_id, acc = userAcc(uid);
+    const S = await settings(), uid = a.user_id, acc = userAcc(uid), lgOn = await legacyOn("pointRewards"); // v2.163: read before the transaction
     return db.tx(async (t) => {
       const w = (await led.lock(t, [acc])).get(acc), at = nowIso(), lid = id("ml");
       const ins = await t.run("INSERT INTO mjt_point_links(id,award_id,user_id,pts,amount,clawed,source,tx_id,status,created_at,updated_at) VALUES($1,$2,$3,$4,0,0,'reward',NULL,'pending',$5,$5) ON CONFLICT DO NOTHING", [lid, a.id, uid, Number(a.points), at]);
       if (!ins.changes) return { minted: false, reason: "duplicate" };
-      const why = !S.rewards.enabled ? "rewards_off" : w.status !== "active" ? "frozen" : null;
+      const why = !S.rewards.enabled ? "rewards_off" : !lgOn ? "legacy_off" : w.status !== "active" ? "frozen" : null;
       if (why) { await t.run("UPDATE mjt_point_links SET status='skipped', updated_at=$1 WHERE id=$2", [at, lid]); return { minted: false, reason: why }; }
       const room = Math.max(0, S.rewards.dailyCap - (await earnedToday(uid, t)));
       const amount = Math.min(Number(a.points) * RATE, room);
@@ -207,6 +213,7 @@ module.exports = (ctx, opts = {}) => {
   class Empty extends Error { }
   /** apply: one DB transaction for the whole run. Idempotent: users already converted (or awards already linked) are skipped. */
   async function convert(actorId = "system") {
+    if (!(await legacyOn("conversion"))) { if (actorId === "system") return { applied: false, reason: "legacy_off" }; throw LG().error("conversion"); } // v2.163: rollback / dry run stay available
     const cutoff = await launchAt(), bid = id("mb");
     try {
       const res = await db.tx(async (t) => {
@@ -292,8 +299,9 @@ module.exports = (ctx, opts = {}) => {
     for (const f of await db.all("SELECT members FROM integrity_flags WHERE status IN ('open','confirmed') AND score >= 0.6").catch(() => [])) if (parse(f.members, []).includes(uid)) return true;
     return false;
   }
-  /** why this user cannot send right now (null = can) */
-  async function sendBlock(user, S) {
+  /** why this user cannot send right now (null = can). path: "transfers" (member transfers) or "tips" (v2.163 legacy switch) */
+  async function sendBlock(user, S, path = "transfers") {
+    if (!(await legacyOn(path))) return { code: LEGACY_CODE, msg: LG().note(path), path };
     if (!S.transfers.enabled) return { code: "transfers_off", msg: "التحويل بين الأعضاء متوقف مؤقتاً" };
     if (await isMinor(user.id)) return { code: "minor_restricted", msg: "التحويل غير متاح لمن هم دون ١٨ سنة" };
     const u = await db.get("SELECT status, created_at FROM users WHERE id=$1", [user.id]);
@@ -318,7 +326,7 @@ module.exports = (ctx, opts = {}) => {
       return { replayed: true, transfer: { id: prev.id, amount: format(prev.amount), to: pub(other), createdAt: prev.created_at }, balance: money((await walletOf(user.id)).balance) };
     }
     if (!rl.hit("mjt_transfer", user.id)) throw E.rate();
-    const why = await sendBlock(user, S); if (why) throw fail(why.code === "transfers_off" ? 409 : 403, why.code, why.msg);
+    const why = await sendBlock(user, S, "transfers"); if (why) throw blockErr(why);
     const handle = str(String(b.to ?? "").replace(/^@/, ""), 60, { required: true });
     const other = await db.get("SELECT id, handle, name, avatar, status FROM users WHERE LOWER(handle)=LOWER($1)", [handle]);
     if (!other || other.status !== "active") throw E.nf("الحساب غير موجود");
@@ -371,7 +379,7 @@ module.exports = (ctx, opts = {}) => {
       return { replayed: true, tip: { id: prev.id, amount: format(prev.amount), [kind]: pid, createdAt: prev.created_at }, balance: money((await walletOf(user.id)).balance), summary: await tipSummary(user, pid) };
     }
     if (!rl.hit("mjt_transfer", user.id)) throw E.rate();
-    const why = await sendBlock(user, S); if (why) throw fail(why.code === "transfers_off" ? 409 : 403, why.code, why.msg);
+    const why = await sendBlock(user, S, "tips"); if (why) throw blockErr(why);
     let ownerId;
     if (kind === "room") {
       const room = await db.get("SELECT id, host, status FROM rooms WHERE id=$1", [pid]);
@@ -486,11 +494,14 @@ module.exports = (ctx, opts = {}) => {
     const S = await settings(), w = await walletOf(user.id), derived = await led.derivedOf(db, userAcc(user.id));
     if (derived !== w.balance) logger.error?.("mjt balance mismatch", { user: user.id });
     const conv = await db.get("SELECT pts, amount, created_at FROM mjt_conversions WHERE user_id=$1 AND status='applied'", [user.id]);
-    const why = await sendBlock(user, S), d = await sentSince(user.id, dayStart());
+    const why = await sendBlock(user, S, "transfers"), d = await sentSince(user.id, dayStart());
+    // v2.163: tips have their own legacy switch; every other reason is shared with transfers
+    const tipWhy = why && why.code !== LEGACY_CODE ? why : await sendBlock(user, S, "tips");
+    const legacy = LG() ? await LG().flags(LG().MEMBER_KEYS) : null;
     return { token: TOKEN, balance: money(w.balance), verified: derived === w.balance, frozen: w.status !== "active", receive: w.receive, minor: await isMinor(user.id),
       today: { earned: format(await earnedToday(user.id)), cap: format(S.rewards.dailyCap), sent: format(d.sum), sendLimit: format(S.transfers.maxDaily) },
       conversion: conv ? { pts: Number(conv.pts), mjt: format(conv.amount), at: conv.created_at } : null,
-      send: { allowed: !why, reason: why?.code || null, note: why?.msg || null } };
+      send: { allowed: !why, reason: why?.code || null, note: why?.msg || null }, tip: { allowed: !tipWhy, reason: tipWhy?.code || null, note: tipWhy?.msg || null }, legacy };
   }
   async function history(user, q = {}) {
     const lim = int(q.limit, 30, 1, 100), args = [userAcc(user.id)]; let w = "";
@@ -511,7 +522,7 @@ module.exports = (ctx, opts = {}) => {
   async function config(user) {
     const S = await settings();
     let kinds = []; try { const P = await ctx.services.points?.settings?.(); kinds = EARN_KINDS.map((k) => ({ key: k, label: ctx.services.points?.KIND_INFO?.[k] || k, mjt: format((P?.kinds?.[k]?.points || 0) * RATE), dailyCap: P?.kinds?.[k]?.dailyCap ?? null })); } catch { /* points optional */ }
-    return { token: TOKEN, rate: { pointsPerMjt: 1, text: "1 نقطة مساهمة = 1 MJT" }, earn: { kinds, dailyCap: format(S.rewards.dailyCap), enabled: !!S.rewards.enabled },
+    return { token: TOKEN, rate: { pointsPerMjt: 1, text: "1 نقطة مساهمة = 1 MJT" }, earn: { kinds, dailyCap: format(S.rewards.dailyCap), enabled: !!S.rewards.enabled && (await legacyOn("pointRewards")) },
       transfers: { enabled: !!S.transfers.enabled, maxSingle: format(S.transfers.maxSingle), maxDaily: format(S.transfers.maxDaily), maxPerHour: S.transfers.maxPerHour, minAccountDays: S.transfers.minAccountDays },
       buy: { available: false, reason: piOn() ? "later_stage" : "pi_off", note: piOn() ? "شراء مجتمع كوين بـ Pi يأتي في مرحلة لاحقة" : "شراء مجتمع كوين بـ Pi غير متاح الآن — مدفوعات Pi غير مفعّلة بعد" },
       signedIn: !!user };
@@ -572,6 +583,7 @@ module.exports = (ctx, opts = {}) => {
   async function ownerGrant(spec) {
     const m = /^(\d{1,7}):([A-Za-z0-9_-]{3,40})(?::@?([A-Za-z0-9_.]{2,60}))?$/.exec(String(spec || "").trim()); if (!m) return null;
     const amount = Number(m[1]) * UNIT; if (!(amount > 0)) return null;
+    if (!(await legacyOn("ownerGrant"))) { logger.info?.("mjt owner grant skipped: legacy path switched off"); return { skipped: true, reason: "legacy_off" }; } // v2.163
     // v2.74.2: an explicit handle (3rd part) names the owner's own account; without it, the oldest admin
     const owner = m[3] ? await db.get("SELECT id, handle FROM users WHERE LOWER(handle)=LOWER($1) AND status='active'", [m[3]])
       : await db.get("SELECT id, handle FROM users WHERE role='admin' AND status='active' ORDER BY created_at, id LIMIT 1"); if (!owner) return null;

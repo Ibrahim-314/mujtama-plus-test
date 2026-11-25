@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.163.0",
+    "date": "2026-11-25",
+    "ar": {
+      "title": "مفاتيح المسارات القديمة لمجتمع كوين (للإدارة)",
+      "items": [
+        "تستطيع الإدارة إيقاف أي مسار قديم لمجتمع كوين مؤقتاً أو إعادة تشغيله من صفحة «اقتصاد مجتمع كوين»: التحويل، والإكراميات، والتعدين، ومكافأة الدخول اليومي، وتحويل النقاط، ورصيد تجربة المالك، ومكافآت المجتمعات",
+        "كل المسارات تعمل كما هي حتى توقفها الإدارة، وكل تغيير يُسجَّل مع السبب",
+        "الإيقاف لا يغيّر أي رصيد أو سجل: يوقف العمليات الجديدة فقط ويظهر للعضو «متوقف مؤقتاً»، ونقاط المساهمة تستمر"
+      ]
+    },
+    "en": {
+      "title": "Legacy Mujtama Coin switches (admins)",
+      "items": [
+        "Admins can pause or resume each legacy Mujtama Coin path from the “Mujtama Coin economy” page: transfers, tips, mining, the daily sign-in reward, points conversion, the owner test grant and community rewards",
+        "Every path keeps working as before until an admin pauses it, and each change is logged with a reason",
+        "Pausing never changes a balance or history: it only stops new actions and members see “temporarily paused”; contribution points keep working"
+      ]
+    }
+  },
+  {
     "v": "2.162.0",
     "date": "2026-11-25",
     "ar": {

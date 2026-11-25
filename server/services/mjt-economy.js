@@ -6,7 +6,7 @@
  * The only writes of this module: the economy settings (mjt_settings key 'economy': per-source monthly budgets + alert
  * thresholds, ALL NULL by default) and a manual pause / resume of a PHASE-4 reward source through mjt-rewards.saveSource()
  * (the source's existing enable flag). Legacy MJT paths (transfers, tips, mining, daily sign-in, points → MJT, owner grant,
- * /api/mjt/buy) are classified and shown, never changed. No limit is ever changed automatically; a budget or an alert only
+ * /api/mjt/buy) are classified and shown here (v2.163: their on/off switches live in services/mjt-legacy.js and are shown next to their numbers). No limit is ever changed automatically; a budget or an alert only
  * ALERTS. The simulation is pure arithmetic on real baselines and writes nothing.
  *
  * Classification (derived per ledger transaction from mjt_tx.kind + ikey prefix + ref_type; RULES below, first match wins):
@@ -229,7 +229,7 @@ module.exports = (ctx, opts = {}) => {
         budget: { monthly: budget === null ? null : format(budget), used30d: format(month), usedPct: budget ? pct(month, budget) : null, reached: budget !== null && month >= budget } };
     });
     const others = Object.keys(winBy).filter((k) => !src.some((s) => s.key === k)).map((k) => ({ key: k, period: format(winBy[k]) })); // earn credits outside a configured source (e.g. funding in tests)
-    return { phase4, other: others, legacy: classesOf({ cls: emptyCls(), subs: [] }, win).find((c) => c.key === "legacy_issuance").subs, note: "المسارات القديمة تُعرض للقراءة فقط ولا يمكن إيقافها من هنا." };
+    return { phase4, other: others, legacy: classesOf({ cls: emptyCls(), subs: [] }, win).find((c) => c.key === "legacy_issuance").subs, note: "المسارات القديمة ليست مصادر مكافآت: لكل مسار مفتاح تشغيل/إيقاف خاص به (مفاتيح المسارات القديمة)." };
   }
   async function servicesOf(from, to, bal, win) {
     const rows = await db.all(`SELECT s.id, s.key, s.title, s.enabled, COUNT(p.id) n, COALESCE(SUM(p.cost),0) gross, COALESCE(SUM(CASE WHEN p.status='refunded' THEN 1 ELSE 0 END),0) rn, COALESCE(SUM(CASE WHEN p.status='refunded' THEN p.cost ELSE 0 END),0) ra, COUNT(DISTINCT p.user_id) buyers
@@ -309,6 +309,15 @@ module.exports = (ctx, opts = {}) => {
     return { items: r, note: "اقتراحات نصية فقط مستخرجة من الأرقام — لا يُطبَّق أي تغيير تلقائياً." };
   }
 
+  /* ---------- v2.163: legacy path switches next to their own ledger numbers (services/mjt-legacy.js) ---------- */
+  async function legacyOf(all, win) {
+    const LG = ctx.services.mjtLegacy; if (!LG) return null;
+    const st = await LG.state();
+    const sum = (rows, subs) => { const o = { in: 0, out: 0, tx: 0 }; for (const x of rows) if (subs.includes(x.cls + "|" + x.sub)) { o.in += x.in; o.out += x.out; o.tx += x.tx; } return { in: format(o.in), out: format(o.out), tx: o.tx }; };
+    return { switches: [...st.paths, ...st.fixed].map((p) => ({ key: p.key, label: p.label, enabled: !!p.enabled, stored: p.fixed ? false : !!p.stored, envForcedOff: !!p.envForcedOff, fixed: !!p.fixed, period: sum(win.subs, p.subs), all: sum(all.subs, p.subs) })),
+      updatedAt: st.updatedAt, note: st.note };
+  }
+
   /* ---------- the dashboard ---------- */
   async function dashboard(q = {}) {
     const p = periodOf(q.period), P = PERIODS[p], from = ago(P.ms);
@@ -318,7 +327,7 @@ module.exports = (ctx, opts = {}) => {
     const srcs = await sourcesOf(win, S), svc = await servicesOf(from, FAR, bal, win), flows = await flowsOf(win, from, bal, active), series = await seriesOf(p);
     const alerts = await alertsOf(ov, flows, srcs, recon, win, S);
     const topSources = srcs.phase4.filter((s) => Number(s.period) > 0).sort((a, b) => Number(b.period) - Number(a.period)).slice(0, 5).map((s) => ({ key: s.key, label: s.label, issued: s.period }));
-    return { note: NOTE, period: { key: p, label: P.ar, from, to: nowIso(), days: P.ms / DAY }, overview: ov, classes: classesOf(all, win), topSources, issuance: srcs, services: svc, flows, series, alerts,
+    return { note: NOTE, period: { key: p, label: P.ar, from, to: nowIso(), days: P.ms / DAY }, overview: ov, classes: classesOf(all, win), topSources, issuance: srcs, legacy: await legacyOf(all, win), services: svc, flows, series, alerts,
       recommendations: recommendationsOf(ov, win, srcs, svc, alerts, recon), reconciliation: recon, settings: settingsClient(S),
       definitions: { activeWallet: `محفظة لها حركة واحدة على الأقل في آخر ${ACTIVE_DAYS} يوماً`, concentration: "حصة أعلى 10% من المحافظ التي لديها رصيد من مجموع الأرصدة", useRate: "صافي الاستخدام في الخدمات (بعد الاسترداد) ÷ صافي الإصدار (الجديد + القديم) في الفترة", avgEarned: "إصدار الفترة ÷ عدد الأعضاء الذين تلقّوا إصداراً فيها", avgSpent: "استخدام الفترة ÷ عدد الأعضاء الذين استخدموا رصيداً فيها", balances: "مجموع الأرصدة الحالية في المحافظ — رقم مستقل لا يُجمع مع الإصدار" } };
   }
@@ -333,7 +342,7 @@ module.exports = (ctx, opts = {}) => {
   async function setSourceState(user, key, b = {}) {
     if (typeof b.enabled !== "boolean") throw fail(400, "enabled_required", "حدّد الإيقاف أو التشغيل");
     const s = await db.get("SELECT key FROM mjt_reward_sources WHERE key=$1", [String(key || "").slice(0, 40)]);
-    if (!s) throw fail(404, "not_a_source", "هذا ليس مصدر مكافآت جديداً — المسارات القديمة لا تُدار من هنا");
+    if (!s) throw fail(404, "not_a_source", "هذا ليس مصدر مكافآت جديداً — للمسارات القديمة مفاتيحها الخاصة");
     const r = await RW().saveSource(user, s.key, { enabled: b.enabled }); // reuses the engine: audit, amount-required check
     ctx.audit?.(b.enabled ? "mjt_economy_source_resumed" : "mjt_economy_source_paused", s.key, str(b.reason, 300) || null, user.id);
     return r;

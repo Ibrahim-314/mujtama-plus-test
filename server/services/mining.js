@@ -29,6 +29,9 @@ module.exports = (ctx, opts = {}) => {
   const mjt = () => ctx.services.mjt;
   const led = () => mjt().ledger;
   const parse = (v, d) => { try { return JSON.parse(v) ?? d; } catch { return d; } };
+  /* v2.163 legacy switches (services/mjt-legacy.js, default ON): mining → no NEW session; checkin → no new +1 MJT.
+   * A session started before the switch can still be claimed (its amount was fixed at start; nothing is lost). */
+  const legacyOn = async (k) => { const l = ctx.services.mjtLegacy; return l ? l.isOn(k) : true; };
 
   let cache = null;
   async function settings() {
@@ -85,6 +88,7 @@ module.exports = (ctx, opts = {}) => {
   async function start(user) {
     const S = await settings();
     if (!S.enabled) throw fail(409, "mining_off", "التعدين متوقف مؤقتاً");
+    if (!(await legacyOn("mining"))) throw ctx.services.mjtLegacy.error("mining");
     const now = clock().getTime();
     let claimed = null;
     const cur = await active(user.id);
@@ -103,6 +107,7 @@ module.exports = (ctx, opts = {}) => {
   async function checkin(user) {
     const S = await settings();
     if (!S.checkinOn) return { credited: false, reason: "off", state: await checkinState(user.id) };
+    if (!(await legacyOn("checkin"))) throw ctx.services.mjtLegacy.error("checkin");
     const d = day(), acc = userAcc(user.id);
     const r = await db.tx(async (t) => {
       const ins = await t.run("INSERT INTO mjt_checkins(user_id,day,amount,tx_id,created_at) VALUES($1,$2,$3,NULL,$4) ON CONFLICT DO NOTHING", [user.id, d, S.checkin, nowIso()]);
@@ -129,7 +134,7 @@ module.exports = (ctx, opts = {}) => {
     const rows = await db.all("SELECT day FROM mjt_checkins WHERE user_id=$1 ORDER BY day DESC LIMIT 60", [uid]);
     const days = rows.map((r) => r.day);
     const week = []; for (let i = 6; i >= 0; i--) { const d = new Date(Date.parse(today + "T00:00:00Z") - i * 864e5).toISOString().slice(0, 10); week.push({ day: d, done: days.includes(d) }); }
-    return { on: !!S.checkinOn, amount: format(S.checkin), today: days.includes(today), streak: streakOf(days, today), week };
+    return { on: !!S.checkinOn && (await legacyOn("checkin")), amount: format(S.checkin), today: days.includes(today), streak: streakOf(days, today), week };
   }
 
   async function state(user) {
@@ -140,7 +145,7 @@ module.exports = (ctx, opts = {}) => {
     const days = (await db.all("SELECT started_at FROM mjt_mining WHERE user_id=$1 ORDER BY started_at DESC LIMIT 60", [user.id])).map((r) => String(r.started_at).slice(0, 10));
     const w = await mjt().guards.walletOf(user.id);
     return {
-      enabled: !!S.enabled, now: new Date(now).toISOString(), sessionHours: SESSION / HOUR,
+      enabled: !!S.enabled && (await legacyOn("mining")), now: new Date(now).toISOString(), sessionHours: SESSION / HOUR,
       rate: format(S.rate), rateUnits: Number(S.rate), boost: await boostOf(user.id),
       session: sessionOut(s, now), balance: format(w.balance), frozen: w.status !== "active",
       totals: { mined: format(tot?.s || 0), sessions: Number(tot?.n || 0), streak: streakOf(days, day()) },

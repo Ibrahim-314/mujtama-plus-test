@@ -149,6 +149,7 @@ async function createApp(overrides = {}) {
   ctx.services.beta = require("./services/beta")(ctx, config.betaOpts);                         // Phase 54: invite-based beta waves, feedback triage, surveys, cohort dashboard, flag kill switch
   ctx.services.points = require("./services/points")(ctx, config.pointsOpts);                   // Phase 59: contribution points, levels, leaderboard, campaigns, Pi rewards pool
   ctx.services.achievements = require("./services/achievements")(ctx);                          // v2.159: unified achievement events (append-only, idempotent, no amounts — MJT readiness, migration 089)
+  ctx.services.mjtLegacy = require("./services/mjt-legacy")(ctx, config.mjtLegacyOpts || {});         // v2.163: admin on/off switches for the legacy MJT paths (mjt_settings key 'legacy'; default all ON)
   ctx.services.mjt = require("./services/mjt")(ctx, config.mjtOpts);                            // v2.47 MJT «مجتمع كوين» stage 1: in-app double-entry ledger (not on any chain), points → MJT conversion, rewards, transfers
   ctx.services.mining = require("./services/mining")(ctx, config.miningOpts);
   ctx.services.mjtRewards = require("./services/mjt-rewards")(ctx, config.mjtRewardsOpts || {});
