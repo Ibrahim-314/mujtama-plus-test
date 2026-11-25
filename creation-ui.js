@@ -139,7 +139,7 @@
     const setAmt = (v) => { amt = v; q("[data-rt-sendamt]").textContent = `${v} MJT`; s.querySelectorAll("[data-rt-amt]").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.rtAmt === v))); };
     s._onclose = () => { if (ret?.isConnected) ret.focus(); };
     setTimeout(() => q("#rt-t")?.focus(), 30);
-    api("GET", "/api/mjt/me").then((r) => { const b = q("[data-rt-bal]"); if (b) b.textContent = `${r.balance?.mjt ?? "0"} MJT`; }).catch(() => { });
+    api("GET", "/api/mjt/me").then((r) => { const b = q("[data-rt-bal]"); if (b) b.textContent = `${r.balance?.mjt ?? "0"} MJT`; if (r.tip && !r.tip.allowed) { q("[data-rt-send]").disabled = true; busy = true; err(r.tip.note); } }).catch(() => { }); // v2.163: tips paused → the button is disabled with the note
     s.querySelectorAll("[data-rt-amt]").forEach((b) => b.addEventListener("click", () => { q("[data-rt-custom]").value = ""; err(); setAmt(+b.dataset.rtAmt); }));
     q("[data-rt-custom]").addEventListener("input", (e) => { const v = Number(String(e.target.value).replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(",", ".")); err(); if (v > 0) setAmt(Math.round(v * 100) / 100); });
     q("[data-rt-close]").addEventListener("click", () => closeSheet());

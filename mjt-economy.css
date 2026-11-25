@@ -50,7 +50,7 @@
 .ec-al .t small{line-height:1.5}
 .ec-rec{margin:0;padding-inline-start:1.2em;display:grid;gap:6px;line-height:1.7;font-size:var(--fs-sm)}
 .ec-csv{display:flex;flex-wrap:wrap;gap:var(--s2)}
-.ec-map,.ec-thr{margin-top:var(--s3)}
-.ec-map summary,.ec-thr summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;font-size:var(--fs-sm)}
+.ec-map,.ec-thr,.ec-lgd{margin-top:var(--s3)}
+.ec-map summary,.ec-thr summary,.ec-lgd summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;font-size:var(--fs-sm)}
 .ec-def{margin:0;padding-inline-start:1.2em;display:grid;gap:6px;font-size:var(--fs-xs);color:var(--text-2);line-height:1.6}
 @media (max-width:420px){.ec-kpi{grid-template-columns:1fr 1fr}.ec-kpi dd{font-size:var(--fs-md)}}

@@ -89,6 +89,10 @@
     const al = d.alerts.items.map((a) => `<li class="li ec-al ${a.triggered ? "on" : ""}"><span class="t"><b>${h(a.label)}${a.enabled && a.threshold !== true ? ` ${amt(a.threshold)}${h(ALERT_UNIT[a.key] || "")}` : ""}</b><small>${a.enabled ? `القيمة الحالية: ${typeof a.value === "object" ? "" : amt(a.value)}` : "معطّلة — لم تُحدَّد قيمة"}${a.detail && typeof a.detail === "string" ? ` · ${h(a.detail)}` : ""}${Array.isArray(a.detail) ? ` · ${a.detail.map((x) => h(x.source || x)).join("، ")}` : ""}</small></span><span class="sbadge ${a.triggered ? "bad" : a.enabled ? "ok" : ""}">${a.triggered ? "تنبيه" : a.enabled ? "طبيعي" : "معطّلة"}</span></li>`).join("");
     const thr = Object.entries(d.settings.alerts).map(([k, v]) => k === "mismatch" ? `<label class="chk"><input type="checkbox" name="${k}" ${v ? "checked" : ""}> نبّهني عند عدم تطابق الدفتر</label>` : `<label>${h((d.alerts.items.find((a) => a.key === k) || {}).label || k)} ${ALERT_UNIT[k] ? `(${h(ALERT_UNIT[k])})` : ""}<input name="${k}" inputmode="decimal" value="${v === null ? "" : h(v)}" placeholder="معطّلة"></label>`).join("");
     const rec = d.reconciliation;
+    // v2.163 legacy path switches: state next to the path's own ledger numbers; a change needs a reason (audited)
+    const lg = d.legacy, lgOn = (s) => (s.fixed ? `<span class="sbadge">غير متاح</span>` : `<span class="sbadge ${s.enabled ? "ok" : "bad"}">${s.enabled ? "يعمل" : "متوقف"}</span>${s.envForcedOff ? ` <small class="muted">(متغير البيئة)</small>` : ""}`);
+    const lgSec = lg ? sec("lg", "lock", "مفاتيح المسارات القديمة", table("مفاتيح المسارات القديمة", ["المسار", "الحالة", "داخل (الفترة)", "داخل (الكل)", "حركات (الكل)"], lg.switches.map((s) => [h(s.label), lgOn(s), amt(s.period.in), amt(s.all.in), h(s.all.tx)]))
+      + `<details class="ec-lgd"><summary>تشغيل أو إيقاف مسار</summary>${lg.switches.filter((s) => !s.fixed).map((s) => `<form class="ec-bud ec-lg" data-k="${h(s.key)}" data-on="${s.stored ? 0 : 1}" novalidate><label>${h(s.label)} — سبب ${s.stored ? "الإيقاف" : "التشغيل"}<input name="reason" maxlength="300" autocomplete="off" placeholder="5 أحرف على الأقل"></label><button class="btn ${s.stored ? "ghost" : "outline"}">${s.stored ? "إيقاف" : "تشغيل"}</button></form>`).join("")}</details><p class="f-hint">${h(lg.note)}</p>`, "كل المسارات تعمل افتراضياً حتى توقفها الإدارة. كل تغيير يُسجَّل باسمك مع السبب.") : "";
     box.innerHTML = `<p class="ec-note" role="note">${ic("lock", "xs")}<span>${h(d.note)}</span></p>
       ${sec("ov", "chart", "نظرة عامة", `<dl class="ec-kpi">
         ${stat("الإصدار الجديد منذ البداية", amt(c.issuedNew), "مصادر المكافآت")}${stat("الإصدار القديم منذ البداية", amt(c.issuedLegacy), `منه مُسترجع ${c.legacyReversed}`)}
@@ -100,7 +104,8 @@
       ${sec("ts", "clock", "الإصدار والاستخدام عبر الزمن", barsSvg(d.series.points, d.series.bucketDays >= 7), `كل عمود = ${h(d.series.bucketDays)} يوم`)}
       ${d.topSources.length ? sec("top", "award", "أعلى مصادر المكافآت في الفترة", `<ul class="list">${d.topSources.map((x) => `<li class="li"><span class="t"><b>${h(x.label)}</b></span><span class="ec-amt">${amt(x.issued)}</span></li>`).join("")}</ul>`) : ""}
       ${sec("cls", "search", "تصنيف الحركات", table("تصنيف الحركات", ["الصنف", "داخل (الفترة)", "خارج (الفترة)", "حركات", "داخل (الكل)", "خارج (الكل)"], clsRows) + `<details class="ec-map"><summary>جدول التصنيف (نوع الحركة ← الصنف)</summary><div id="ec-map"></div></details>`, "«داخل» = ما أُضيف إلى محافظ الأعضاء، «خارج» = ما خُصم منها. المسارات القديمة صنف مستقل دائماً، وأي نوع غير معروف يظهر في «غير مصنّف».")}
-      ${sec("iss", "award", "التحكم في الإصدار", `${src || `<p class="f-hint">لا مصادر مكافآت.</p>`}<h4 class="ec-h4">المسارات القديمة (للقراءة فقط)</h4>${legacy}<p class="f-hint">${h(iss.note)}</p>`, "الحدود تُعرض كما هي في صفحة المكافآت ولا تُغيَّر من هنا. الميزانية تنبيه فقط ولا توقف المصدر.")}
+      ${sec("iss", "award", "التحكم في الإصدار", `${src || `<p class="f-hint">لا مصادر مكافآت.</p>`}<h4 class="ec-h4">المسارات القديمة</h4>${legacy}<p class="f-hint">${h(iss.note)}</p>`, "الحدود تُعرض كما هي في صفحة المكافآت ولا تُغيَّر من هنا. الميزانية تنبيه فقط ولا توقف المصدر.")}
+      ${lgSec}
       ${sec("svc", "bag", "استخدام الخدمات", (svcRows.length ? table("استخدام الخدمات", ["الخدمة", "العمليات", "المستخدم", "المسترد", "المشترون", "مكررو الشراء"], svcRows) : `<p class="f-hint">لا خدمات.</p>`) + `<p class="ec-line">الأعلى استخداماً: ${h(sv.mostUsed || "—")} · الأقل: ${h(sv.leastUsed || "—")} · نسبة الأعضاء الذين استخدموا رصيداً ${pc(sv.spenderSharePct)} (${h(sv.spenders)} من ${h(sv.wallets)}) · مكررو الشراء ${h(sv.repeatBuyers)}</p>`)}
       ${sec("flow", "wallet", "الداخل مقابل الخارج", `${flowSvg(f.inflow, f.outflow)}<dl class="ec-kpi">${stat("الفرق", amt(f.gap))}${stat("تراكم الأرصدة غير المستخدمة", amt(f.unused.accumulated), `من ${f.unused.start} إلى ${f.unused.end}`)}${stat("نمو الأرصدة", pc(f.unused.growthPct))}${stat("لكل عضو نشط", amt(f.perActive?.gap))}${stat("التحويلات والإكراميات", `${amt(f.circulation.transfers)} · ${amt(f.circulation.tips)}`, "تداول بين الأعضاء — ليس دخلاً ولا خرجاً")}</dl>`)}
       ${sec("al", "lock", "التنبيهات الاقتصادية", `<ul class="list">${al}</ul><p class="f-hint">${h(d.alerts.note)}</p>
@@ -118,6 +123,9 @@
       el.querySelector(".ec-bud").addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { await api("PUT", "/api/admin/mjt/economy/settings", { budgets: { [k]: e.target.budget.value.trim() || null } }); say("حُفظت الميزانية"); reload(); }); });
       el.querySelector("[data-st]").addEventListener("click", (e) => { const on = e.currentTarget.dataset.st === "1"; if (!on && !confirm("إيقاف هذا المصدر يدوياً؟ لن تُصرف منه مكافآت جديدة حتى تعيد تشغيله.")) return; busy(e.currentTarget, async () => { await api("POST", `/api/admin/mjt/economy/sources/${enc(k)}/state`, { enabled: on }); say(on ? "أُعيد تشغيل المصدر" : "أُوقف المصدر"); reload(); }); });
     });
+    box.querySelectorAll(".ec-lg").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); const on = f.dataset.on === "1", reason = f.elements.reason.value.trim();
+      if (reason.length < 5) { say("اكتب سبب التغيير (5 أحرف على الأقل)"); f.elements.reason.focus(); return; }
+      busy(e.submitter, async () => { await api("PUT", "/api/admin/mjt/legacy/" + enc(f.dataset.k), { enabled: on, reason }); say(on ? "أُعيد تشغيل المسار" : "أُوقف المسار مؤقتاً"); reload(); }); }));
     // thresholds
     $("#ec-thr").addEventListener("submit", (e) => { e.preventDefault(); const fm = e.target, alerts = {}; for (const k of Object.keys(d.settings.alerts)) alerts[k] = k === "mismatch" ? (fm.elements[k].checked || null) : fm.elements[k].value.trim() || null;
       busy(e.submitter, async () => { await api("PUT", "/api/admin/mjt/economy/settings", { alerts }); say("حُفظت الحدود"); reload(); }); });
@@ -133,6 +141,6 @@
   }
 
   MPRoutes.add("admin", (a, b, next) => (a === "mjt-economy" ? view_() : next()));
-  window.MPMjtEconomy = { view: view_, version: "2.162.0" };
+  window.MPMjtEconomy = { view: view_, version: "2.163.0" };
   if (/^#\/admin\/mjt-economy\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

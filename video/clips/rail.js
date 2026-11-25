@@ -93,9 +93,9 @@
       const paintSend = () => {
         const b = q("[data-cl-send]"); if (!b) return; const v = cur(), ok = AMT_RE.test(v) && Number(v) > 0;
         q("[data-cl-sendamt]").textContent = (ok ? v : "—") + " MJT";
-        const low = me && ok && Number(me.balance.mjt) < Number(v), blocked = me && me.send && !me.send.allowed;
+        const tp = me && (me.tip || me.send), low = me && ok && Number(me.balance.mjt) < Number(v), blocked = tp && !tp.allowed; // v2.163: tips have their own legacy switch (me.tip)
         b.disabled = busy || !ok || !!low || !!blocked; b.setAttribute("aria-busy", String(busy));
-        if (blocked) err(me.send.note || "الإكراميات غير متاحة لحسابك الآن"); else if (low) err("رصيدك من مجتمع كوين لا يكفي لهذا المبلغ"); else if (!busy) err("");
+        if (blocked) err(tp.note || "الإكراميات غير متاحة لحسابك الآن"); else if (low) err("رصيدك من مجتمع كوين لا يكفي لهذا المبلغ"); else if (!busy) err("");
       };
       (q('[data-cl-amt][aria-pressed="true"]') || q("[data-cl-mjt]")).focus({ preventScroll: true });
       api("GET", "/api/mjt/posts/" + encodeURIComponent(p.id) + "/tips").then((r) => { sm = r; if (el.isConnected) q("[data-cl-sum]").innerHTML = sumHTML(sm); }).catch(() => { if (el.isConnected) q("[data-cl-sum]").innerHTML = `<span class="cl-tip-muted">تعذّر تحميل الإكراميات</span>`; });

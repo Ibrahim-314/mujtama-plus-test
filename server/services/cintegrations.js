@@ -180,6 +180,7 @@ module.exports = (ctx, opts = {}) => {
   async function blocked(c, uid) {
     const m = mjt(); if (!m) return "mjt_off";
     const S = await m.settings(); if (!S.rewards.enabled) return "rewards_off";
+    if (ctx.services.mjtLegacy && !(await ctx.services.mjtLegacy.isOn("communityRewards"))) return "legacy_off"; // v2.163 legacy switch (reversals keep working)
     if (uid === c.owner) return "self";
     const mem = await db.get("SELECT m.role, u.role urole, u.status, u.created_at FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.community=$1 AND m.user_id=$2", [c.id, uid]);
     if (!mem || !["member", "moderator", "admin"].includes(mem.role)) return "not_member";
