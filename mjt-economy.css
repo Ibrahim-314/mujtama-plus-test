@@ -1,0 +1,56 @@
+/* v2.162 «اقتصاد مجتمع كوين» #/admin/mjt-economy (lazy "mjteco" chunk, after feat.css). Tokens only; logical properties. */
+.ec-page{max-width:760px;margin-inline:auto}
+.ec-page h2:focus{outline:none}
+.ec-seg{margin-bottom:var(--s3)}
+.ec-note{display:flex;gap:6px;align-items:flex-start;margin:0 0 var(--s3);font-size:var(--fs-xs);line-height:1.6;color:var(--text-2)}
+.ec-note .ic{flex:none;margin-top:2px}
+.ec-sec{margin-bottom:var(--s3)}
+.ec-sec .f-h{display:flex;align-items:center;gap:6px;margin-top:0}
+.ec-h4{margin:var(--s4) 0 var(--s2);font-size:var(--fs-sm)}
+.ec-n{font-variant-numeric:tabular-nums;font-weight:700}
+.ec-kpi{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--s2);margin:0 0 var(--s3)}
+.ec-kpi>div{display:grid;gap:2px;padding:var(--s2) var(--s3);border-radius:var(--r-sm);background:var(--surface-sunken)}
+.ec-kpi dt{font-size:var(--fs-xs);color:var(--text-2)}
+.ec-kpi dd{margin:0;font-size:var(--fs-lg)}
+.ec-kpi .ec-hint{font-size:var(--fs-xs);color:var(--muted);line-height:1.5}
+.ec-line{margin:var(--s2) 0;font-size:var(--fs-sm);line-height:1.7}
+.ec-warn{color:color-mix(in srgb,var(--warn) 60%,var(--text))}
+.ec-amt{flex:none;font-weight:700;font-variant-numeric:tabular-nums;color:color-mix(in srgb,var(--ok) 72%,var(--text))}
+.ec-acts{display:flex;flex-wrap:wrap;gap:var(--s2);align-items:center;margin-top:var(--s2)}
+.ec-acts .btn,.ec-csv .btn,.ec-bud .btn{min-height:44px}
+.ec-tw{overflow-x:auto;margin:var(--s2) 0;border-radius:var(--r-sm);-webkit-overflow-scrolling:touch}
+.ec-tw:focus-visible{outline:2px solid var(--brand-1);outline-offset:2px}
+.ec-t{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.ec-t th,.ec-t td{padding:8px 10px;text-align:start;border-bottom:1px solid var(--line);white-space:nowrap}
+.ec-t thead th{font-size:var(--fs-xs);color:var(--text-2);font-weight:600}
+.ec-t tbody th{font-weight:600;white-space:normal;min-width:120px}
+.ec-t small{font-size:var(--fs-xs)}
+.ec-sr{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ec-fig{margin:0 0 var(--s2)}
+.ec-fig svg{display:block;inline-size:100%;block-size:auto}
+.ec-ax{font-size:var(--fs-xs);fill:var(--muted)}
+.ec-base{stroke:var(--line);stroke-width:1}
+.ec-c1{fill:var(--brand-1);background:var(--brand-1)}
+.ec-c2{fill:var(--warn);background:var(--warn)}
+.ec-c3{fill:var(--ok);background:var(--ok)}
+.ec-leg{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);margin:0 0 var(--s2);padding:0;list-style:none;font-size:var(--fs-xs);color:var(--text-2)}
+.ec-leg li{display:inline-flex;align-items:center;gap:6px}
+.ec-leg i{display:inline-block;inline-size:12px;block-size:12px;border-radius:var(--r-xs)}
+.ec-src{padding:var(--s3) 0;border-bottom:1px solid var(--line)}
+.ec-src:last-of-type{border-bottom:0}
+.ec-src header{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ec-bud,.ec-simf,#ec-thr{display:grid;gap:var(--s2);margin-top:var(--s2)}
+.ec-simf{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.ec-simf .ec-acts{grid-column:1/-1}
+.ec-bud label,.ec-simf label,#ec-thr label{display:grid;gap:4px;font-size:var(--fs-xs);color:var(--text-2)}
+.ec-bud input,.ec-simf input,#ec-thr input:not([type]){min-height:44px}
+#ec-thr .chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:var(--fs-sm);color:var(--text)}
+.ec-al{min-height:56px}
+.ec-al.on{background:var(--danger-soft)}
+.ec-al .t small{line-height:1.5}
+.ec-rec{margin:0;padding-inline-start:1.2em;display:grid;gap:6px;line-height:1.7;font-size:var(--fs-sm)}
+.ec-csv{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.ec-map,.ec-thr{margin-top:var(--s3)}
+.ec-map summary,.ec-thr summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;font-size:var(--fs-sm)}
+.ec-def{margin:0;padding-inline-start:1.2em;display:grid;gap:6px;font-size:var(--fs-xs);color:var(--text-2);line-height:1.6}
+@media (max-width:420px){.ec-kpi{grid-template-columns:1fr 1fr}.ec-kpi dd{font-size:var(--fs-md)}}

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.162.0 — 2026-11-25 (MJT economy «اقتصاد MJT», phase 6)
+- New admin page `#/admin/mjt-economy` (own lazy chunk `mjteco`: mjt-economy-ui.js + mjt-economy.css; linked from #/admin/rewards and #/admin/mjt-services). Admin only — members get 403. Arabic RTL first, English strings, phone widths / Pi Browser, hand-drawn SVG charts (no chart library).
+- services/mjt-economy.js: READ-ONLY over the existing ledger (mjt_accounts / mjt_tx / mjt_entries), the phase-4 rewards journal and the phase-5 services tables. No second ledger or balance; no history edited.
+- Transaction classes derived per ledger transaction (kind + ikey prefix + ref_type): new_issuance (earn), legacy_issuance (reward, mining, checkin, conversion, conversion_reversal, clawback, owner grant / undo, buy), admin_correction (staff adjustments, rewards corrective credit / debit), spend, refund, member_transfer (transfer, community_reward[_reversal]), tip, unclassified (any other kind — shown, never hidden).
+- Dashboard: cumulative new vs legacy issuance (apart), spent on services, total current balances (own figure, never added to issuance), active wallets (≥ 1 movement in the last 30 days), averages earned / spent per member, balance-use rate, concentration (top 10% of wallets), top reward sources, issuance and use over time; daily / weekly / monthly / yearly filters; ledger reconciliation (per-wallet SUM(entries) vs stored balance, mismatches listed).
+- Issuance control: per phase-4 source — caps (day / week / month / item) next to actual usage and peak per member, optional monthly budget (null by default, alert only), manual pause / resume through the source's existing enable flag. Legacy paths shown read-only.
+- Service usage (purchases, MJT, refunds, buyers, repeat buyers, share of members who spent), inflow vs outflow (gap, unused-balance accumulation, per active member), rule-based alerts (all thresholds null = off; evaluated on page load or on request), text-only recommendations, hypothetical simulation («افتراضي», never saved), CSV export of every table for the period (audited).
+- Settings live in the existing mjt_settings table (key `economy`); changes are written to mjt_audit + the hash-chained audit log. Nothing changes a limit automatically.
+- Migration 092_mjt_economy: two indexes only (mjt_tx.created_at, mjt_entries.created_at); additive and reversible.
+- Fix: the rewards admin «المُصدَر» (issued) total counted service refunds (refundCredit) as admin credits; refunds are now excluded and shown on their own (`rewards.refunds`).
+- Legacy MJT paths (transfers, tips, mining 5/day, sign-in 1/day, points → MJT, MJT_OWNER_GRANT, /api/mjt/buy, testnet stageNote) unchanged. Testnet only; no token, price, market or Mainnet link.
+- Tests: server/test/mjt-economy.test.js (14), tests/e2e/mjt-economy-v2162.e2e.test.js (3).
+
 ## 2.161.1 (2026-11-24)
 - إصلاح الجولة الإرشادية: خطوة هدفها أسفل الشاشة (بعد مركز الرئيسية) كانت تضع الفقاعة خارج الشاشة فتبقى الصفحة معتمة ولا تستجيب. الآن يُمرَّر الهدف إلى العرض، وتُحصر الفقاعة داخل الشاشة، وEscape يتخطى. اختبار `tour-v21611`.
 

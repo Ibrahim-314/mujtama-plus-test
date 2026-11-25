@@ -1,5 +1,25 @@
 [
   {
+    "v": "2.162.0",
+    "date": "2026-11-25",
+    "ar": {
+      "title": "اقتصاد مجتمع كوين (للإدارة)",
+      "items": [
+        "صفحة جديدة للإدارة «اقتصاد مجتمع كوين»: الإصدار الجديد والقديم كلٌّ على حدة، والاستخدام في الخدمات، ومجموع الأرصدة، والمحافظ النشطة، عبر الزمن",
+        "تنبيهات وميزانيات اختيارية معطّلة افتراضياً — تنبّه فقط ولا تغيّر أي حد تلقائياً، مع محاكاة افتراضية لا تُحفظ",
+        "إصلاح: استرداد الخدمات لم يعد يُحتسب ضمن ما أصدرته الإدارة في صفحة المكافآت"
+      ]
+    },
+    "en": {
+      "title": "Mujtama Coin economy (admins)",
+      "items": [
+        "New admin page “Mujtama Coin economy”: new and legacy issuance kept apart, spending on services, total balances and active wallets, over time",
+        "Optional alerts and budgets, off by default — they only alert and never change a limit, plus a hypothetical simulation that is never saved",
+        "Fix: service refunds are no longer counted as admin-issued on the rewards page"
+      ]
+    }
+  },
+  {
     "v": "2.161.1",
     "date": "2026-11-24",
     "ar": {

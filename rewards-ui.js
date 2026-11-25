@@ -108,7 +108,7 @@
   /* ---------- #/admin/rewards ---------- */
   async function adminView() {
     if (!signed()) { page({ title: "مكافآت مجتمع كوين", icon: "award" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
-    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات MJT</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
+    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات MJT</a><a class="btn outline" href="#/admin/mjt-economy">اقتصاد MJT</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
     const box = $("#rw-a");
     const reload = async () => {
       let s, src, pend;
@@ -119,7 +119,7 @@
       const num = (v) => (v === null || v === undefined ? "" : h(v));
       box.innerHTML = `<p class="mj-stage" role="note">${ic("lock", "xs")}<span>${h(s.note || NOTE)}</span></p>
         <section class="card mj-sec"><h3 class="f-h">${ic("chart")}الإحصاءات</h3><dl class="rw-tot">
-          ${stat("مجموع الأرصدة", s.totalBalances)}${stat("المُصدَر كمكافآت", s.rewards.issued)}${stat("المستخدم", s.rewards.spent)}${stat("المحافظ النشطة", s.wallets.active)}${stat("الموقوفة", s.wallets.frozen)}${stat("عدد الحركات", s.ledger.txCount)}${stat("قيد المراجعة", s.rewards.pending)}</dl>
+          ${stat("مجموع الأرصدة", s.totalBalances)}${stat("المُصدَر كمكافآت", s.rewards.issued)}${stat("المستخدم", s.rewards.spent)}${s.rewards.refunds !== undefined ? stat("المسترد", s.rewards.refunds) : ""}${stat("المحافظ النشطة", s.wallets.active)}${stat("الموقوفة", s.wallets.frozen)}${stat("عدد الحركات", s.ledger.txCount)}${stat("قيد المراجعة", s.rewards.pending)}</dl>
           ${s.bySource.length ? `<ul class="list">${s.bySource.map((x) => `<li class="li"><span class="t"><b>${h(x.label)}</b><small>${h(x.posted)} مُضافة · ${h(x.pending)} معلّقة</small></span><span class="mj-amt in">${amt(x.issued)}</span></li>`).join("")}</ul>` : ""}</section>
         <section class="card mj-sec"><h3 class="f-h">${ic("award")}مصادر المكافآت</h3>
           <p class="f-hint">كل المصادر تبدأ معطّلة وبلا مبلغ. لا يُدفع شيء حتى تحدد المبلغ وتفعّل المصدر. الحدود اختيارية: اتركها فارغة لعدم التقييد.</p>
