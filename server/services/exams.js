@@ -191,6 +191,7 @@ module.exports = (ctx, opts = {}) => {
       const gname = (await db.get("SELECT name FROM communities WHERE id=$1", [x.community_id]))?.name || "مجتمع بلس";
       const t = await db.get("SELECT name FROM users WHERE id=$1", [x.author]);
       await ctx.services.certs.issue("exam", x.id, at.user_id, { title: x.title, issuer: gname, community: x.community_id, issuerUser: x.author, details: { score: g.pct, passPct: x.s.passPct, questions: x.q.length, teacher: t?.name || null, attempt: at.id } }).catch((e) => ctx.log?.error?.("exam certificate failed", { err: e.message }));
+      if (at.user_id !== x.author) ctx.services.mjtRewards?.emit?.("exam_certified", at.user_id, x.id, { counterpart: x.author }); // v2.165: MJT source «اجتياز اختبار رسمي بشهادة» (OFF by default; never blocks the attempt)
     }
     return g;
   }

@@ -153,6 +153,7 @@ async function createApp(overrides = {}) {
   ctx.services.mjt = require("./services/mjt")(ctx, config.mjtOpts);                            // v2.47 MJT «مجتمع كوين» stage 1: in-app double-entry ledger (not on any chain), points → MJT conversion, rewards, transfers
   ctx.services.mining = require("./services/mining")(ctx, config.miningOpts);
   ctx.services.mjtRewards = require("./services/mjt-rewards")(ctx, config.mjtRewardsOpts || {});
+  ctx.services.mjtSafety = require("./services/mjt-safety")(ctx, config.mjtSafetyOpts || {});         // v2.165 phase 8.1: identity checks, overall caps, review queue — every switch OFF by default (mjt_settings 'safety'; migration 093)
   ctx.services.mjtServices = require("./services/mjt-services")(ctx, config.mjtServicesOpts || {});  // v2.161 phase 5: «خدمات MJT» — spend via the phase-4 engine on real existing capabilities (catalog off by default; migration 091)    // v2.160 phase 4: MJT internal rewards (extends mjt.js: same ledger; sources off by default; migration 090)                   // v2.87 «التعدين»: 24-hour MJT mining sessions + daily sign-in reward (migration 079)
   ctx.services.mjtEconomy = require("./services/mjt-economy")(ctx, config.mjtEconomyOpts || {});    // v2.162 phase 6: «اقتصاد MJT» — admin-only read-only economy analytics, alerts (off by default), simulation (migration 092: indexes only)
   ctx.services.finance = require("./services/finance")(ctx, config.financeOpts);                 // Phase 60: statements, sequential invoices, annual summaries, public finance transparency, reconciliation

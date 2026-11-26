@@ -327,6 +327,8 @@ module.exports = (ctx, opts = {}) => {
       if (!sameTo || Number(prev.amount) !== amount) throw fail(409, "idempotency_conflict", "مفتاح العملية مستخدم لطلب مختلف");
       return { replayed: true, transfer: { id: prev.id, amount: format(prev.amount), to: pub(other), createdAt: prev.created_at }, balance: money((await walletOf(user.id)).balance) };
     }
+    const SF = ctx.services.mjtSafety; // v2.165 phase 8.1: identity checks (switch OFF by default → no hold, the v2.164 path)
+    if (SF) { const held = await SF.heldByKey(ikey); if (held) { if (Number(held.amount) !== amount) throw fail(409, "idempotency_conflict", "مفتاح العملية مستخدم لطلب مختلف"); return SF.holdResponse(held); } }
     if (!rl.hit("mjt_transfer", user.id)) throw E.rate();
     const why = await sendBlock(user, S, "transfers"); if (why) throw blockErr(why);
     const handle = str(String(b.to ?? "").replace(/^@/, ""), 60, { required: true });
@@ -338,6 +340,14 @@ module.exports = (ctx, opts = {}) => {
     if (await linkedPair(user.id, other.id)) throw fail(403, "linked_accounts", "لا يمكن التحويل بين حسابات على الجهاز نفسه");
     if (amount > S.transfers.maxSingle) throw fail(400, "transfer_max", `أعلى مبلغ للتحويل الواحد ${format(S.transfers.maxSingle)} MJT`);
     const from = userAcc(user.id), to = userAcc(other.id);
+    if (SF) {
+      const reasons = await SF.transferReasons(user, other);
+      if (reasons.length) { // held for admin review: nothing moves now, nothing is lost
+        const w = await walletOf(other.id); if (!w.receive) throw fail(409, "recipient_off", "هذا العضو أوقف استقبال التحويلات");
+        if ((await walletOf(user.id)).balance < amount) throw fail(409, "insufficient_balance", "رصيدك من مجتمع كوين لا يكفي");
+        return { ...(await SF.hold(user, other, amount, note, ikey, reasons)), balance: money((await walletOf(user.id)).balance) };
+      }
+    }
     const r = await db.tx(async (t) => {
       const w = await led.lock(t, [from, to]);
       // a concurrent request with the same key committed while we waited for the lock → answer as its replay
@@ -357,6 +367,23 @@ module.exports = (ctx, opts = {}) => {
       ctx.realtime?.send?.(other.id, "mjt", { kind: "transfer", amount: format(amount) });
     }
     return { replayed: r.replayed, transfer: { id: r.tx.id, amount: format(r.tx.amount), to: pub(other), note, createdAt: r.tx.created_at }, balance: money((await walletOf(user.id)).balance) };
+  }
+  /** v2.165: post a transfer an admin approved from the review queue (services/mjt-safety.js). Same ledger entry and
+   *  idempotency key as the member's original request; re-checks the wallets at approval time (409 → the hold stays pending). */
+  async function executeHold(h) {
+    const from = userAcc(h.from_id), to = userAcc(h.to_id), amount = Number(h.amount);
+    const r = await db.tx(async (t) => {
+      const w = await led.lock(t, [from, to]);
+      const dup = await t.get("SELECT id FROM mjt_tx WHERE ikey=$1", [h.ikey]);
+      if (!dup) {
+        if (w.get(from).status !== "active") throw fail(409, "account_frozen", "محفظة المرسل موقوفة مؤقتاً");
+        if (!w.get(to).receive) throw fail(409, "recipient_off", "المستلم أوقف استقبال التحويلات");
+        if (w.get(from).balance < amount) throw fail(409, "insufficient_balance", "رصيد المرسل لا يكفي الآن");
+      }
+      return led.post(t, { ikey: h.ikey, kind: "transfer", actorId: h.from_id, userId: h.from_id, otherId: h.to_id, refType: "transfer", memo: h.note || null, lines: [{ account: from, amount: -amount }, { account: to, amount }] });
+    });
+    if (!r.replayed) { ctx.audit?.("mjt_transfer", h.to_id, format(amount), h.from_id); await notify(h.to_id, "mjt_received", { actor: h.from_id, ref: r.tx.id }); ctx.realtime?.send?.(h.to_id, "mjt", { kind: "transfer", amount: format(amount) }); }
+    return r;
   }
   /* ---------- v2.74 tips on clips / video posts («إكرامية») ----------
    * A tip = one ledger transfer (kind 'tip', ref_type 'post', ref_id = post id) from the viewer to the post author, with the
@@ -615,6 +642,6 @@ module.exports = (ctx, opts = {}) => {
   }
   if (env.MJT_OWNER_GRANT) { const tg = setTimeout(async () => { try { await ready; await ownerGrant(env.MJT_OWNER_GRANT); } catch (e) { logger.error?.("mjt owner grant failed", { err: e?.message }); } }, 6000); tg.unref?.(); }
   if (opts.jobs !== false && ctx.scheduler) ctx.scheduler.every("mjt.reconcile", +(env.MJT_RECONCILE_INTERVAL_MS || 15 * 60e3), () => reconcile());
-  return { ready, onAward, onAwardReversed, reconcile, convert, dryRun, rollback, transfer, tipPost, tipRoom, tipSummary, tipsReceived, ownerGrant, ownerGrantUndo, dropMinAge, adjust, freeze, spend, refund, me, history, settings, launchAt, linked, verify: () => led.verify(), supply: () => led.supply(), ledger: led, RATE, TOKEN, EARN_KINDS,
+  return { ready, onAward, onAwardReversed, reconcile, convert, dryRun, rollback, transfer, executeHold, tipPost, tipRoom, tipSummary, tipsReceived, ownerGrant, ownerGrantUndo, dropMinAge, adjust, freeze, spend, refund, me, history, settings, launchAt, linked, verify: () => led.verify(), supply: () => led.supply(), ledger: led, RATE, TOKEN, EARN_KINDS,
     guards: { isMinor, blockedBetween, linkedPair, flagged, walletOf } }; // v2.60: the transfer safety checks, reused by community MJT rewards
 };

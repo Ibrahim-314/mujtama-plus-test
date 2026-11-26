@@ -33,12 +33,22 @@ const { UNIT, SYS, userAcc, format } = L;
 const HOUR = 3600e3, DAY = 24 * HOUR;
 /* achievement types (services/achievements.js) that may become reward sources; saved_search_created and collection_created
  * are repeatable, deletable, low-value actions and are never rewardable */
-const REWARDABLE = { quiz_passed: "اجتياز اختبار درس", course_completed: "إكمال دورة", team_created: "إنشاء فريق عمل", article_published: "نشر مقال" };
+const REWARDABLE = { quiz_passed: "اجتياز اختبار درس", course_completed: "إكمال دورة", team_created: "إنشاء فريق عمل", article_published: "نشر مقال",
+  /* v2.165 phase 8.1 — new sources from the master plan's earn table. Each one is its own row in mjt_reward_sources, seeded
+   * DISABLED with amount NULL (caps pre-filled from the plan); nothing pays until an admin sets the amount and turns it on. */
+  answer_accepted: "إجابة مقبولة", useful_post: "منشور مفيد", wiki_edit: "تحرير في الويكي", report_confirmed: "بلاغ مؤكَّد", newcomer_help: "مساعدة عضو جديد",
+  friend_active: "دعوة صديق بقي نشطاً 14 يوماً", exam_certified: "اجتياز اختبار رسمي بشهادة", study_session: "حضور جلسة دراسة", daily_activity: "مكافأة النشاط اليومي", active_week: "أسبوع نشِط" };
+/** v2.165: caps the new sources are seeded with (master plan §3); the old four keep their v2.160 seed (no caps) */
+const SEED_CAPS = { answer_accepted: [5, null, null], useful_post: [3, null, null], wiki_edit: [5, null, null], report_confirmed: [5, null, null], newcomer_help: [3, null, null], friend_active: [null, null, 10], exam_certified: [null, 2, null], study_session: [null, 5, null], daily_activity: [1, null, null], active_week: [null, 1, null] };
+/** derived bonuses: paid only after another posted contribution earn, never trigger themselves */
+const BONUS = ["daily_activity", "active_week"];
 const CREDIT = ["earn", "adjust_credit"], DEBIT = ["spend", "adjust_debit"];
 const TX_KIND = { earn: "earn", spend: "spend", adjust_credit: "adjustment", adjust_debit: "adjustment" };
 const KIND_AR = { earn: "مكافأة إنجاز", spend: "استخدام رصيد", adjust_credit: "تصحيح من الإدارة (إضافة)", adjust_debit: "تصحيح من الإدارة (خصم)" };
 const STATUS_AR = { posted: "مُضافة", pending: "قيد المراجعة", rejected: "مرفوضة" };
-const REASON_AR = { wallet_frozen: "المحفظة موقوفة مؤقتاً", requires_approval: "تحتاج موافقة الإدارة", velocity_review: "مراجعة تلقائية لكثرة المكافآت في وقت قصير" };
+const REASON_AR = { wallet_frozen: "المحفظة موقوفة مؤقتاً", requires_approval: "تحتاج موافقة الإدارة", velocity_review: "مراجعة تلقائية لكثرة المكافآت في وقت قصير",
+  /* v2.165 identity checks (services/mjt-safety.js) */
+  account_too_new: "عمر الحساب أقل من الحد", pi_required: "الحساب غير موثّق بـ Pi", integrity_flagged: "مراجعة أمان للحساب", linked_counterpart: "حساب مرتبط بالطرف الآخر", own_content: "محتوى العضو نفسه", linked_cluster: "حسابات مرتبطة", fan_in: "تحويلات كثيرة إلى حساب واحد" };
 const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
 const ENGINE_DEFAULTS = { velocityPerHour: 10 };
 const IKEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
@@ -77,7 +87,7 @@ module.exports = (ctx, opts = {}) => {
   /* ---------- sources ---------- */
   async function ensureSources() {
     const at = nowIso();
-    for (const [key, label] of Object.entries(REWARDABLE)) await db.run("INSERT INTO mjt_reward_sources(key,label,amount,daily_cap,weekly_cap,monthly_cap,max_per_ref,requires_approval,enabled,updated_by,created_at,updated_at) VALUES($1,$2,NULL,NULL,NULL,NULL,1,0,0,'system',$3,$3) ON CONFLICT DO NOTHING", [key, label, at]);
+    for (const [key, label] of Object.entries(REWARDABLE)) { const c = SEED_CAPS[key] || [null, null, null]; await db.run("INSERT INTO mjt_reward_sources(key,label,amount,daily_cap,weekly_cap,monthly_cap,max_per_ref,requires_approval,enabled,updated_by,created_at,updated_at) VALUES($1,$2,NULL,$4,$5,$6,1,0,0,'system',$3,$3) ON CONFLICT DO NOTHING", [key, label, at, c[0], c[1], c[2]]); }
   }
   const nOrNull = (v) => (v === null || v === undefined ? null : Number(v));
   const srcClient = (r) => ({ key: r.key, label: r.label, amount: r.amount === null || r.amount === undefined ? null : format(r.amount), dailyCap: nOrNull(r.daily_cap), weeklyCap: nOrNull(r.weekly_cap), monthlyCap: nOrNull(r.monthly_cap), maxPerRef: nOrNull(r.max_per_ref), requiresApproval: !!Number(r.requires_approval), enabled: !!Number(r.enabled), updatedAt: r.updated_at });
@@ -100,6 +110,7 @@ module.exports = (ctx, opts = {}) => {
     const at = nowIso(), vals = [key, next.label, next.amount, next.daily_cap, next.weekly_cap, next.monthly_cap, next.max_per_ref, next.requires_approval, next.enabled, user.id, at];
     if (create) await db.run("INSERT INTO mjt_reward_sources(key,label,amount,daily_cap,weekly_cap,monthly_cap,max_per_ref,requires_approval,enabled,updated_by,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11)", vals);
     else await db.run("UPDATE mjt_reward_sources SET label=$2, amount=$3, daily_cap=$4, weekly_cap=$5, monthly_cap=$6, max_per_ref=$7, requires_approval=$8, enabled=$9, updated_by=$10, updated_at=$11 WHERE key=$1", vals);
+    if (next.enabled && !(cur && Number(cur.enabled))) await markSince(key, at, user.id); // v2.165: events before this moment never pay (no back-pay)
     await audit(db, create ? "reward_source_created" : "reward_source_saved", user.id, key, null, { before: cur ? srcClient(cur) : null, after: srcClient({ key, ...next, updated_at: at }) });
     ctx.audit?.("mjt_reward_source_saved", key, JSON.stringify({ enabled: !!next.enabled, amount: next.amount === null ? null : format(next.amount) }), user.id);
     return { source: srcClient(await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [key])) };
@@ -111,6 +122,10 @@ module.exports = (ctx, opts = {}) => {
     await audit(db, "reward_source_deleted", user.id, cur.key, null, { before: srcClient(cur) });
     return { ok: true };
   }
+
+  /* v2.165: when each source was last switched on — offer() pays only events that happened after it */
+  async function sinceMap() { return parse((await db.get("SELECT value FROM mjt_settings WHERE key='reward_since'"))?.value, {}) || {}; }
+  async function markSince(key, at, by) { const m = { ...(await sinceMap()), [key]: at }; await db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('reward_since',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(m), by, at]); }
 
   /* ---------- engine ---------- */
   const insertEntry = (t, e) => t.run("INSERT INTO mjt_reward_entries(id,user_id,kind,amount,balance_after,source,ref,reason,status,idempotency_key,actor_id,tx_id,decides,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
@@ -132,6 +147,7 @@ module.exports = (ctx, opts = {}) => {
       const base = { id: uuid(), user_id: uid, kind: o.kind, amount: o.amount, source: o.source, ref: o.ref ? String(o.ref).slice(0, 120) : null, reason: o.reason ? String(o.reason).slice(0, 300) : null, idempotency_key: o.ikey, actor_id: o.actorId, decides: o.decides, created_at: nowIso() };
       const g = o.guard ? await o.guard(t) : null;
       if (g?.skip) return { entry: null, skipped: g.skip };
+      if (g?.amount && Number.isSafeInteger(g.amount) && g.amount > 0 && g.amount < o.amount) { o = { ...o, amount: g.amount }; base.amount = g.amount; } // v2.165: overall cap room
       let pending = o.pending || g?.pending || null;
       if (w.status !== "active" && !adjust) {
         if (o.kind === "earn" && !o.decides) pending = "wallet_frozen"; // earning waits while frozen — nothing is lost
@@ -169,6 +185,24 @@ module.exports = (ctx, opts = {}) => {
   /* ---------- rewards from achievement events ---------- */
   const inflight = new Set();
   const track = (p) => { const q = Promise.resolve(p).catch((err) => logger.warn?.("mjt reward failed", { err: err?.message })).finally(() => inflight.delete(q)); inflight.add(q); return q; };
+  const SF = () => ctx.services.mjtSafety;
+  /** v2.165: the other member behind an existing achievement (whose lesson / course / content it is) — read only while the
+   *  identity switch is on, so the v2.160 behaviour is untouched otherwise */
+  async function counterpartOf(e) {
+    if (e.counterpart !== undefined) return e.counterpart || null;
+    try {
+      if (e.type === "quiz_passed") return (await db.get("SELECT c.author FROM course_lessons l JOIN courses c ON c.id=l.course_id WHERE l.id=$1", [e.ref]))?.author || null;
+      if (e.type === "course_completed") return (await db.get("SELECT author FROM courses WHERE id=$1", [e.ref]))?.author || null;
+    } catch { /* optional tables */ }
+    return null;
+  }
+  /** v2.165: «إكمال دورة» per lesson (switch course.perLesson, OFF): amountPerLesson × published lessons, clamped to [min, max] */
+  async function courseAmount(e, src) {
+    const S = SF() ? await SF().settings() : null;
+    if (e.type !== "course_completed" || !S?.course?.perLesson) return Number(src.amount);
+    const n = Number((await db.get("SELECT COUNT(*) n FROM course_lessons WHERE course_id=$1 AND status='published'", [e.ref]).catch(() => ({ n: 0 })))?.n || 0);
+    return Math.min(S.course.max, Math.max(S.course.min, n * S.course.amountPerLesson)) * UNIT;
+  }
   async function onAchievement(e) {
     if (!e || typeof e.user !== "string" || !REWARDABLE[e.type] || !e.ref) return { paid: false, reason: "not_rewardable" };
     const src = await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [e.type]);
@@ -176,6 +210,9 @@ module.exports = (ctx, opts = {}) => {
     if (!Number(src.enabled)) return { paid: false, reason: "disabled" };
     if (src.amount === null || src.amount === undefined || !(Number(src.amount) > 0)) return { paid: false, reason: "no_amount" };
     const S = await engineSettings(), ref = String(e.ref).slice(0, 120);
+    // v2.165 identity checks (switch OFF by default → [] → exactly the v2.160 path). Read outside the wallet transaction.
+    const why = SF() && (await SF().identityOn()) ? await SF().earnReasons(e.user, { counterpart: await counterpartOf(e) }) : [];
+    const amount = await courseAmount(e, src);
     const live = "SELECT COUNT(*) n FROM mjt_reward_entries p WHERE p.user_id=$1 AND p.kind='earn' AND p.decides IS NULL AND NOT EXISTS (SELECT 1 FROM mjt_reward_entries d WHERE d.decides=p.id AND d.status='rejected')";
     const guard = async (t) => {
       const cnt = async (extra, args) => Number((await t.get(live + extra, [e.user, ...args])).n);
@@ -183,13 +220,61 @@ module.exports = (ctx, opts = {}) => {
       for (const [cap, ms, why] of [[src.daily_cap, DAY, "daily_cap"], [src.weekly_cap, 7 * DAY, "weekly_cap"], [src.monthly_cap, 30 * DAY, "monthly_cap"]])
         if (cap !== null && cap !== undefined && (await cnt(" AND p.source=$2 AND p.created_at >= $3", [e.type, since(ms)])) >= Number(cap)) return { skip: why };
       if (src.max_per_ref !== null && src.max_per_ref !== undefined && (await cnt(" AND p.source=$2 AND p.ref=$3", [e.type, ref])) >= Number(src.max_per_ref)) return { skip: "max_per_ref" };
-      if ((await cnt(" AND p.created_at >= $2", [since(HOUR)])) >= Number(S.velocityPerHour)) return { pending: "velocity_review" };
-      if (Number(src.requires_approval)) return { pending: "requires_approval" };
-      return null;
+      let out = null;
+      if (SF()) { // v2.165 overall caps (switch OFF by default → room Infinity)
+        const c = await SF().capRoom(e.user, t);
+        if (c.room <= 0) return { skip: c.why };
+        if (c.room < amount) out = { amount: c.room };
+      }
+      if (why.length) return { ...out, pending: why.join(" · ") };
+      if ((await cnt(" AND p.created_at >= $2", [since(HOUR)])) >= Number(S.velocityPerHour)) return { ...out, pending: "velocity_review" };
+      if (Number(src.requires_approval)) return { ...out, pending: "requires_approval" };
+      return out;
     };
-    const r = await credit(e.user, { amount: Number(src.amount), source: e.type, ref, reason: src.label, ikey: `ach:${e.user}:${e.type}:${ref}`, guard });
+    const r = await credit(e.user, { amount, source: e.type, ref, reason: src.label, ikey: `ach:${e.user}:${e.type}:${ref}`, guard });
+    const paid = !!(r.entry && r.entry.status === "posted" && !r.replayed);
+    if (paid && !BONUS.includes(e.type)) await bonuses(e.user).catch((err) => logger.warn?.("mjt bonus failed", { err: err?.message }));
     return { paid: !!(r.entry && r.entry.status === "posted"), pending: !!r.pending, reason: r.skipped || (r.replayed ? "duplicate" : null), entry: r.entry };
   }
+  /* ---------- v2.165 offers from existing app events (each source has its own switch, OFF by default) ---------- */
+  /** is this source switched on with an amount? (no write when it is not) */
+  async function wants(type) { const s = await db.get("SELECT enabled, amount FROM mjt_reward_sources WHERE key=$1", [type]); return !!(s && Number(s.enabled) && s.amount !== null && s.amount !== undefined && Number(s.amount) > 0); }
+  /** an app event that may pay `type`. o.at = when it happened: an event before the source was switched on never pays. */
+  async function offer(type, uid, ref, o = {}) {
+    if (!REWARDABLE[type] || typeof uid !== "string" || !uid || ref === null || ref === undefined || ref === "") return { paid: false, reason: "invalid" };
+    if (!(await wants(type))) return { paid: false, reason: "disabled" };
+    if (o.at) { const since = (await sinceMap())[type] || (await db.get("SELECT updated_at FROM mjt_reward_sources WHERE key=$1", [type]))?.updated_at; if (since && String(new Date(o.at).toISOString()) < String(since)) return { paid: false, reason: "before_enabled" }; }
+    return onAchievement({ user: uid, type, ref: String(ref), counterpart: o.counterpart === undefined ? null : o.counterpart });
+  }
+  /** fire-and-forget form for success paths in other services (never throws, never delays the caller) */
+  const emit = (type, uid, ref, o) => { track(offer(type, uid, ref, o)); };
+  const isoWeek = (d) => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); const dn = (x.getUTCDay() + 6) % 7; x.setUTCDate(x.getUTCDate() - dn + 3); const y = x.getUTCFullYear(); const w1 = new Date(Date.UTC(y, 0, 4)); return `${y}-W${String(1 + Math.round(((x - w1) / DAY - 3 + ((w1.getUTCDay() + 6) % 7)) / 7)).padStart(2, "0")}`; };
+  /** «مكافأة النشاط اليومي» once per UTC day and «أسبوع نشِط» once per ISO week — only after a posted contribution earn */
+  async function bonuses(uid) {
+    const d = clock(), day = d.toISOString().slice(0, 10);
+    if (await wants("daily_activity")) await offer("daily_activity", uid, day);
+    if (await wants("active_week")) {
+      const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())); x.setUTCDate(x.getUTCDate() - ((x.getUTCDay() + 6) % 7));
+      const rows = await db.all(`SELECT DISTINCT SUBSTR(created_at,1,10) d FROM mjt_reward_entries WHERE user_id=$1 AND kind='earn' AND status='posted' AND decides IS NULL AND created_at >= $2 AND source NOT IN ('daily_activity','active_week')`, [uid, x.toISOString()]);
+      const need = SF() ? (await SF().settings()).activeWeek.days : 5;
+      if (rows.length >= need) await offer("active_week", uid, isoWeek(d));
+    }
+  }
+  /** accepted answer (+ helping a new member when the asker is new) — the event already exists (services/content.js) */
+  async function onAnswer(e) {
+    if (!e?.comment || !e.post) return;
+    const [wa, wn] = [await wants("answer_accepted"), await wants("newcomer_help")]; if (!wa && !wn) return;
+    const c = await db.get("SELECT id, author, status FROM comments WHERE id=$1 AND post=$2", [e.comment, e.post]);
+    const p = await db.get("SELECT author FROM posts WHERE id=$1", [e.post]);
+    if (!c || !p || c.status !== "published" || c.author === p.author) return;
+    if (wa) await offer("answer_accepted", c.author, c.id, { counterpart: p.author });
+    if (wn) {
+      const asker = await db.get("SELECT created_at FROM users WHERE id=$1", [p.author]);
+      const days = SF() ? (await SF().settings()).newcomerDays : 30;
+      if (asker && Date.parse(nowIso()) - Date.parse(asker.created_at) < days * DAY) await offer("newcomer_help", c.author, "q:" + c.id, { counterpart: p.author });
+    }
+  }
+  bus?.on?.("ANSWER_ACCEPTED", (e) => { track(onAnswer(e)); });
   bus?.on?.("ACHIEVEMENT_RECORDED", (e) => { track(onAchievement(e)); });
   /** test / shutdown helper: let queued bus deliveries (setImmediate) start, then wait for every reward in flight */
   const settle = async () => { await new Promise((r) => setImmediate(r)); await new Promise((r) => setImmediate(r)); await Promise.all([...inflight]); };
@@ -251,7 +336,10 @@ module.exports = (ctx, opts = {}) => {
   }
   async function memberReview(user) {
     const rows = await db.all(`SELECT p.*, (SELECT d.status FROM mjt_reward_entries d WHERE d.decides=p.id) decision FROM mjt_reward_entries p WHERE p.user_id=$1 AND p.status='pending' ORDER BY p.created_at DESC LIMIT 50`, [user.id]);
-    return { items: rows.filter((r) => r.decision !== "posted").map((r) => ({ ...entryClient(r), status: r.decision === "rejected" ? "rejected" : "pending", statusLabel: STATUS_AR[r.decision === "rejected" ? "rejected" : "pending"] })) };
+    const items = rows.filter((r) => r.decision !== "posted").map((r) => ({ ...entryClient(r), status: r.decision === "rejected" ? "rejected" : "pending", statusLabel: STATUS_AR[r.decision === "rejected" ? "rejected" : "pending"] }));
+    // v2.165: transfers held by the identity checks (none exist while that switch is off)
+    const holds = ctx.services.mjtSafety ? await ctx.services.mjtSafety.memberHolds(user.id).catch(() => []) : [];
+    return { items: holds.length ? [...items, ...holds].sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1)) : items };
   }
   async function memberWallet(user) {
     const w = await walletOf(user.id, { create: true });
@@ -329,5 +417,5 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/admin/mjt/rewards/wallets/:handle/adjust", admin(async (req) => adminAdjust(req.user, req.params.handle, req.body || {})));
 
   const ready = ensureSources().catch((e) => logger.error?.("mjt rewards init failed", { err: e?.message }));
-  return { ready, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, settle, decide, adminAdjust, walletOf, memberHistory, memberReview, stats, listSources, saveSource, engineSettings };
+  return { ready, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, offer, emit, wants, bonuses, reasonLabel: (c) => REASON_AR[c] || null, settle, decide, adminAdjust, walletOf, memberHistory, memberReview, stats, listSources, saveSource, engineSettings };
 };
