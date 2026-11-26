@@ -250,6 +250,9 @@ test("Pi → MJT purchase answers 501 not_configured; config, supply, admin over
   assert.equal((await new H.Client().req("POST", "/api/mjt/buy", {})).status, 401);
   const cfg = await new H.Client().req("GET", "/api/mjt/config"); assert.equal(cfg.buy.available, false); assert.equal(cfg.buy.reason, "pi_off"); assert.equal(cfg.rate.pointsPerMjt, 1);
   assert.match(cfg.token.stageNote, /ليس عملة على أي بلوكشين/); assert.equal(cfg.earn.kinds.length, 5);
+  // v2.164 (phase 8.0): no Pi-network / later-stage / value wording; buy stays disabled with a clear message
+  assert.doesNotMatch(cfg.token.stageNote, /التجريبية|Testnet|مرحلة لاحقة/); assert.match(cfg.token.stageNote, /بلا قيمة نقدية/);
+  assert.equal(cfg.buy.disabled, true); assert.doesNotMatch(cfg.buy.note, /مرحلة لاحقة/); assert.match(r.error, /لا يُشترى/);
   assert.equal((await new H.Client().req("GET", "/api/mjt/me")).status, 401);
   const o = await mod.req("GET", "/api/admin/mjt"); assert.equal(o.status, 200); assert.equal(o.verify.ok, true); assert.ok(o.batches.length >= 2); assert.ok(o.recent.length > 0);
   assert.equal((await a.req("GET", "/api/admin/mjt")).status, 403);

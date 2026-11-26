@@ -18,7 +18,10 @@
 .mj-acts .btn{min-height:44px}
 .mj-hero .btn{background:white;color:color-mix(in srgb,var(--brand-1) 80%,black)}
 .mj-hero .btn.ghost{background:color-mix(in srgb,currentColor 16%,transparent);color:inherit;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 45%,transparent)}
-.mj-buy-n{margin:var(--s2) 0 0;font-size:var(--fs-xs)}
+.mj-stage a:not(.btn){color:inherit;text-decoration:underline}
+.mj-links{display:flex;flex-wrap:wrap;gap:var(--s2);margin:0 0 var(--s3)}
+.mj-terms .mj-facts{gap:var(--s3)}
+.mj-terms .mj-facts p{margin:2px 0 0}
 .mj-seg{margin-bottom:var(--s3)}
 .mj-n{font-variant-numeric:tabular-nums}
 .mj-hist .li{min-height:60px}
@@ -73,3 +76,5 @@
 .sv-f .chk{display:flex;align-items:center;gap:6px}
 .sv-f input,.sv-f select,#sv-cq input,#sv-pq input,#sv-pq select{min-height:44px}
 #sv-cq,#sv-pq{display:grid;gap:var(--s2);margin:var(--s2) 0 var(--s3)}
+.sv-wal{margin:0 0 var(--s3);display:flex;align-items:center;gap:var(--s2);min-height:60px;text-decoration:none;color:inherit}
+.sv-wal small{display:block;color:var(--muted);font-size:var(--fs-xs);font-weight:400;line-height:1.6}

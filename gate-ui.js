@@ -43,11 +43,11 @@
       <div class="gt-b in"><small>سارة</small>متى لقاء هذا الأسبوع؟</div><div class="gt-b me">الخميس ٨ مساءً</div><div class="gt-b in"><small>منى</small>تمام، أجهّز الكتاب</div>
       <div class="gt-typing"><i></i><i></i><i></i></div></div></div>
      <h2>تواصل بلا حواجز</h2><p>رسائل خاصة ومجموعات مع من يهمّك.</p>`,
-    // +1 MJT = the server's daily sign-in reward (mining.js DEFAULTS.checkin = 1 MJT, once per UTC day)
+    // +1 MJT = the server's daily sign-in reward (mining.js DEFAULTS.checkin = 1 MJT, once per UTC day); v2.164: no «له قيمة» wording
     `<div class="gt-art" aria-hidden="true"><div class="gt-coin"><span>MJT</span></div>
       ${svg(I.spark, "gt-spark s1")}${svg(I.spark, "gt-spark s2")}${svg(I.spark, "gt-spark s3")}
       <span class="gt-pill p1"><em dir="ltr">+1 MJT</em> دخول يومي</span><span class="gt-pill p2">${svg(I.trophy, "ic")}<span>تحدّي الأسبوع</span></span></div>
-     <h2>تفاعلك له قيمة</h2><p>اكسب MJT كل يوم من دخولك ونشاطك.</p>`
+     <h2>ساهم واكسب مكافآت</h2><p>اكسب «مجتمع كوين» من مساهماتك المفيدة ودخولك اليومي — رصيد مكافآت داخل التطبيق.</p>`
   ];
 
   function dock(cfg, demo) {

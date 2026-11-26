@@ -58,12 +58,14 @@ test("admin: #/admin/mjt-services — seeded disabled with no cost; set cost + 3
   await shot(p, "admin-390-light");
 });
 
-test("member: #/rewards → خدمات MJT; confirmation sheet with cost / balance / balance after; success; my services; history; wallet history", async () => {
-  rl(); await go(u, "#/rewards"); await until(u, () => !!document.querySelector('#view a[href="#/mjt/services"]'));
+test("member: #/rewards → #/mjt → خدمات مجتمع كوين; confirmation sheet with cost / balance / balance after; success; my services; history; wallet history", async () => {
+  rl(); await go(u, "#/rewards"); await until(u, () => location.hash === "#/mjt" && !!document.querySelector('#view a[href="#/mjt/services"]')); // v2.164: one wallet page
   assert.equal(await u.evaluate(() => !!window.MPMjtServices), true, "rides the mjt chunk loaded with #/rewards");
+  assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), "9");
   await u.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   rl(); await u.locator('#view a.btn[href="#/mjt/services"]').click(); await until(u, () => !!document.querySelector("[data-buy]"));
-  assert.equal(await u.evaluate(() => document.querySelector("#sv-bal bdi").textContent), "9");
+  assert.equal(await u.evaluate(() => !!document.querySelector("#view .mj-big")), false, "v2.164: the balance is not repeated here");
+  assert.equal(await u.evaluate(() => !!document.querySelector('#view a.sv-wal[href="#/mjt"]')), true, "links to the one wallet page");
   assert.equal(await u.evaluate(() => getComputedStyle(document.querySelector("#view .wrap")).direction), "rtl");
   await textHas(u, /ليس له قيمة نقدية/); await textHas(u, /تحليلات الاستوديو الممتدة/);
   assert.deepEqual(await axe(u), []);
@@ -80,7 +82,8 @@ test("member: #/rewards → خدمات MJT; confirmation sheet with cost / balan
   await until(u, () => /لديك وصول|تملك هذه الخدمة/.test(document.querySelector("#view")?.textContent || ""));
   rl(); await go(u, "#/mjt/services?tab=mine"); await textHas(u, /فعّالة/); await textHas(u, /حتى/);
   rl(); await go(u, "#/mjt/services?tab=history"); await textHas(u, /مكتملة/);
-  rl(); await go(u, "#/rewards?tab=history"); await textHas(u, /خدمة MJT/);
+  rl(); await go(u, "#/mjt?tab=history"); await until(u, () => /شراء/.test(document.querySelector("#mj-hl")?.textContent || ""));
+  rl(); const wh = await u.evaluate(async () => (await (await fetch("/api/mjt/wallet/history", { headers: { "X-Requested-With": "mujtama" } })).json()).items.map((x) => x.label)); assert.ok(wh.includes("خدمة مجتمع كوين"), "one name in reward history");
   rl(); const st = await u.evaluate(async () => (await fetch("/api/studio/overview?days=180", { headers: { "X-Requested-With": "mujtama" } })).status); assert.equal(st, 200, "unlocked server-side");
 });
 

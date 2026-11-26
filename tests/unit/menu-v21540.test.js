@@ -9,7 +9,7 @@ test("every destination listed before stays in the hub (moved, never removed), o
   const m = load(), member = m.items().filter((x) => !x.staff).map((x) => x.r);
   assert.deepEqual(BEFORE.filter((r) => !member.includes(r)), []);
   assert.equal(new Set(member).size, member.length, "no duplicate rows");
-  assert.equal(member.length, 117); // v2.156.0: + membership; v2.160.0: + rewards; v2.161.0: + mjt/services
+  assert.equal(member.length, 118); // v2.156.0: + membership; v2.160.0: + rewards; v2.161.0: + mjt/services; v2.164.0: − rewards (now #/mjt), + mjt/earn, + mjt/terms
 });
 
 test("six member sections, each showing at most six core rows; the rest sit under «أدوات أخرى»", () => {

@@ -299,7 +299,7 @@ module.exports = (ctx, opts = {}) => {
     if (win.cls.unclassified.tx) add("unclassified", `هناك ${win.cls.unclassified.tx} حركة من نوع غير مصنّف في الفترة. راجع جدول التصنيف لمعرفة مصدرها.`);
     if (legacyIn > 0 && legacyIn >= newIn) add("legacy", `${pct(legacyIn, legacyIn + newIn)}% من إصدار الفترة جاء من المسارات القديمة (التعدين، الدخول اليومي، تحويل النقاط…). قرار إبقائها أو تعديلها لك، ولم يُغيَّر فيها شيء.`);
     if (!srcs.phase4.some((s) => s.enabled)) add("sources_off", "كل مصادر المكافآت الجديدة معطّلة؛ لا يوجد إصدار جديد إلا ما تفعّله أنت.");
-    if (svc.enabledCount === 0 && n(ov.balances.total) > 0) add("no_services", "لا توجد خدمة MJT مفعّلة، فلا طريقة لاستخدام الأرصدة الحالية. فكّر في تفعيل خدمة موجودة بتكلفة تختارها من صفحة خدمات MJT.");
+    if (svc.enabledCount === 0 && n(ov.balances.total) > 0) add("no_services", "لا توجد خدمة مجتمع كوين مفعّلة، فلا طريقة لاستخدام الأرصدة الحالية. فكّر في تفعيل خدمة موجودة بتكلفة تختارها من صفحة خدمات مجتمع كوين.");
     else if (ov.period.useRatePct !== null && ov.period.useRatePct < 10) add("low_use", `نسبة استخدام الرصيد في الفترة ${ov.period.useRatePct}% فقط. قد تفيد مراجعة الخدمات المتاحة وتكاليفها.`);
     if (ov.concentration.sharePct !== null && ov.concentration.sharePct >= 50 && ov.concentration.holders >= 10) add("concentration", `أعلى ${ov.concentration.topWallets} محفظة تملك ${ov.concentration.sharePct}% من مجموع الأرصدة. راجع مصادر هذه الأرصدة.`);
     for (const s of srcs.phase4) if (s.budget.reached) add("budget_" + s.key, `مصدر «${s.label}» تجاوز ميزانيته الشهرية (${s.budget.used30d} من ${s.budget.monthly} MJT). يمكنك إيقافه يدوياً إن رأيت ذلك — لن يتوقف تلقائياً.`);

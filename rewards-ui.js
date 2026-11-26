@@ -1,9 +1,9 @@
 /* =====================================================================
  * v2.160 — «محفظة المكافآت»: the MJT internal rewards wallet (phase 4). Rides the lazy `mjt` chunk (index.html, same
  * data-chunk) and its mjt.css; 0 bytes in core. RTL first, mobile / Pi Browser friendly.
- *   #/rewards[?tab=history|review]  balance, earned, spent, pending, how to earn (enabled sources only), recent movements,
- *                                   full history (keyset «المزيد») with source / reason / date / status, entries under review.
- *                                   States: signed out, loading, empty, error (retry), offline (retry when back online).
+ *   #/rewards[?tab=history|review]  v2.164 (phase 8.0): no longer a second wallet — redirects to the one wallet page #/mjt
+ *                                   (#/rewards → #/mjt, ?tab=history → #/mjt?tab=history, ?tab=review → #/mjt?tab=review).
+ *                                   The old member view was removed; its «قيد المراجعة» tab moved to #/mjt?tab=review.
  *   #/admin/rewards                 admin: stats, reward sources (amount, caps, approval, on/off, add / delete), velocity
  *                                   review threshold, pending approve / reject, transaction search + detail, wallet lookup
  *                                   with freeze / unfreeze (reason) and corrective credit / debit (reason, actor audited).
@@ -27,7 +27,7 @@
   const page = (head, body) => { view.innerHTML = `<div class="wrap mj-page">${UI.pageHead({ ...head, id: "rw-h" })}${body}</div>`; $("#rw-h")?.focus({ preventScroll: true }); };
   const busy = async (btn, fn) => { if (btn) btn.disabled = true; try { return await fn(); } catch (e) { say(e.message); return null; } finally { if (btn && btn.isConnected) btn.disabled = false; } };
   const newKey = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* fallback below */ } const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map((x) => x.toString(16).padStart(2, "0")).join(""); };
-  const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل.";
+  const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
   const ST_CLS = { posted: "ok", pending: "warn", rejected: "bad" };
   const offline = () => typeof navigator !== "undefined" && navigator.onLine === false;
   /** error / offline box with a retry button that re-runs `again` */
@@ -45,70 +45,10 @@
       <span class="mj-amt ${neg ? "out" : "in"}">${amt((neg ? "-" : "+") + a)}${i.balanceAfter != null ? `<small>الرصيد ${amt(i.balanceAfter)}</small>` : ""}</span></li>`;
   };
 
-  /* ---------- #/rewards ---------- */
-  async function walletView() {
-    if (!signed()) { page({ title: "محفظة المكافآت", icon: "award" }, UI.empty({ title: "سجّل الدخول", text: "لترى رصيد مكافآتك من مجتمع كوين وسجلّه.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` })); return; }
-    const tab = ["history", "review"].includes(qs().get("tab")) ? qs().get("tab") : "home";
-    page({ title: "محفظة المكافآت", icon: "award", sub: "مكافآت إنجازاتك في مجتمع كوين (MJT)", back: ["#/settings?s=money", "المدفوعات والمحفظة"] }, `<div id="rw-w" aria-busy="true">${skel(4)}</div>`);
-    const box = $("#rw-w");
-    const load = async () => {
-      box.setAttribute("aria-busy", "true"); box.innerHTML = skel(4);
-      let d; try { d = await api("GET", "/api/mjt/wallet"); } catch (e) { box.removeAttribute("aria-busy"); failBox(box, e, load); return; }
-      if (!box.isConnected) return;
-      box.removeAttribute("aria-busy");
-      const w = d.wallet;
-      box.innerHTML = `<section class="f-cover mj-hero" aria-labelledby="rw-bal-l">
-          <span class="mj-lbl" id="rw-bal-l">رصيد المكافآت</span>
-          <p class="mj-big">${amt(w.balance)} <small>MJT</small></p>
-          <dl class="rw-tot"><div><dt>المكتسب</dt><dd>${amt(w.earnedTotal)}</dd></div><div><dt>المستخدم</dt><dd>${amt(w.spentTotal)}</dd></div>${w.pending.count ? `<div><dt>قيد المراجعة</dt><dd>${amt(w.pending.total)}</dd></div>` : ""}</dl>
-          <p class="mj-stage" role="note">${ic("lock", "xs")}<span>${h(d.note || NOTE)}</span></p></section>
-        ${w.frozen ? `<p class="notice warn">${ic("lock")}<span>محفظة مكافآتك موقوفة مؤقتاً للمراجعة؛ ما تكسبه الآن ينتظر المراجعة ولا يضيع. <a href="#/tickets">تواصل مع الدعم</a>.</span></p>` : ""}
-        <nav class="seg mj-seg" aria-label="محفظة المكافآت"><a href="#/rewards" ${tab === "home" ? 'aria-current="page"' : ""}>الملخص</a><a href="#/rewards?tab=history" ${tab === "history" ? 'aria-current="page"' : ""}>السجل الكامل</a><a href="#/rewards?tab=review" ${tab === "review" ? 'aria-current="page"' : ""}>قيد المراجعة${w.pending.count ? ` (${h(w.pending.count)})` : ""}</a></nav>
-        <div id="rw-tab"></div>`;
-      const t = $("#rw-tab");
-      if (tab === "history") historyTab(t);
-      else if (tab === "review") reviewTab(t);
-      else homeTab(t, d);
-    };
-    if (offline()) failBox(box, null, load); else load();
-  }
-  function homeTab(t, d) {
-    t.innerHTML = `<section class="card mj-sec"><h3 class="f-h">${ic("clock")}آخر الحركات</h3>
-        ${d.recent.length ? `<ul class="list mj-hist">${d.recent.map(row).join("")}</ul><p><a class="btn outline" href="#/rewards?tab=history">السجل الكامل</a></p>` : UI.empty({ title: "لا حركات بعد", text: "تُضاف المكافآت تلقائياً عند إنجازات تختارها الإدارة، مثل إكمال دورة." })}</section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("bag")}خدمات MJT</h3><p class="f-hint">استخدم رصيد مكافآتك في خدمات داخل التطبيق تختارها الإدارة.</p><p><a class="btn outline" href="#/mjt/services">خدمات MJT</a></p></section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("award")}كيف تكسب المكافآت</h3>
-        ${d.ways.length ? `<ul class="list mj-kinds">${d.ways.map((x) => `<li class="li"><span class="t"><b>${h(x.label)}</b></span></li>`).join("")}</ul>` : `<p class="f-hint">لا توجد مكافآت مفعّلة الآن. تعلن الإدارة عنها عند تفعيلها.</p>`}
-        <p class="f-hint">لا مكافآت على تسجيل الدخول أو الإعجابات أو الأفعال المتكررة البسيطة. قد تمر بعض المكافآت بمراجعة قبل إضافتها.</p></section>`;
-  }
-  async function historyTab(t) {
-    const load = async () => {
-      t.innerHTML = skel(3);
-      let d; try { d = await api("GET", "/api/mjt/wallet/history"); } catch (e) { failBox(t, e, load); return; }
-      if (!t.isConnected) return;
-      if (!d.items.length) { t.innerHTML = UI.empty({ title: "لا حركات بعد", text: "سيظهر هنا كل ما يُضاف إلى رصيدك أو يُخصم منه." }); return; }
-      t.innerHTML = `<ul class="list mj-hist" id="rw-hl"></ul><div class="f-more"><button type="button" class="btn outline" id="rw-more">المزيد</button></div>`;
-      let next = d.next;
-      const add = (items) => $("#rw-hl").insertAdjacentHTML("beforeend", items.map(row).join(""));
-      const more = () => { if (!next) $("#rw-more")?.closest(".f-more")?.remove(); };
-      add(d.items); more();
-      $("#rw-more")?.addEventListener("click", (e) => busy(e.currentTarget, async () => { const r = await api("GET", "/api/mjt/wallet/history?cursor=" + enc(next)); next = r.next; add(r.items); more(); }));
-    };
-    load();
-  }
-  async function reviewTab(t) {
-    const load = async () => {
-      t.innerHTML = skel(2);
-      let d; try { d = await api("GET", "/api/mjt/wallet/review"); } catch (e) { failBox(t, e, load); return; }
-      if (!t.isConnected) return;
-      t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة لا تُحتسب في رصيدك حتى توافق عليها الإدارة.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
-    };
-    load();
-  }
-
   /* ---------- #/admin/rewards ---------- */
   async function adminView() {
     if (!signed()) { page({ title: "مكافآت مجتمع كوين", icon: "award" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
-    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات MJT</a><a class="btn outline" href="#/admin/mjt-economy">اقتصاد MJT</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
+    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات مجتمع كوين</a><a class="btn outline" href="#/admin/mjt-economy">اقتصاد مجتمع كوين</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
     const box = $("#rw-a");
     const reload = async () => {
       let s, src, pend;
@@ -181,8 +121,10 @@
     reload();
   }
 
-  MPRoutes.extend(() => ({ rewards: () => walletView() }));
+  /** v2.164: #/rewards is an alias of the one wallet page; replace() keeps «back» from bouncing between the two */
+  const redirect = () => { const t = qs().get("tab"); location.replace(t === "history" || t === "review" ? "#/mjt?tab=" + t : "#/mjt"); };
+  MPRoutes.extend(() => ({ rewards: () => redirect() }));
   MPRoutes.add("admin", (a, b, next) => (a === "rewards" ? adminView() : next()));
-  window.MPRewards = { walletView, adminView, version: "2.161.0" };
+  window.MPRewards = { adminView, redirect, version: "2.164.0" };
   if (/^#\/(rewards|admin\/rewards)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

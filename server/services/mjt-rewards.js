@@ -39,7 +39,7 @@ const TX_KIND = { earn: "earn", spend: "spend", adjust_credit: "adjustment", adj
 const KIND_AR = { earn: "مكافأة إنجاز", spend: "استخدام رصيد", adjust_credit: "تصحيح من الإدارة (إضافة)", adjust_debit: "تصحيح من الإدارة (خصم)" };
 const STATUS_AR = { posted: "مُضافة", pending: "قيد المراجعة", rejected: "مرفوضة" };
 const REASON_AR = { wallet_frozen: "المحفظة موقوفة مؤقتاً", requires_approval: "تحتاج موافقة الإدارة", velocity_review: "مراجعة تلقائية لكثرة المكافآت في وقت قصير" };
-const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل.";
+const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
 const ENGINE_DEFAULTS = { velocityPerHour: 10 };
 const IKEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
 const SERVICE_REFUND = "service_refund"; // v2.161: compensating credits of services/mjt-services.js (kind adjust_credit, ledger kind refund)
@@ -232,8 +232,8 @@ module.exports = (ctx, opts = {}) => {
     return { exists: !!a, balance: format(a?.balance || 0), earnedTotal: format(t?.e || 0), spentTotal: format(t?.s || 0), status: a?.status || "active", frozen: !!a && a.status !== "active", movements: Number(t?.n || 0),
       pending: { count: Number(p?.n || 0), total: format(p?.s || 0) }, createdAt: a?.created_at || null };
   }
-  const srcLabel = (k) => REWARDABLE[k] || (k === "admin" ? "الإدارة" : k === SERVICE_REFUND ? "خدمات MJT" : String(k || "").startsWith("service:") ? "خدمات MJT" : k || null);
-  const kindLabel = (kind, source) => (source === SERVICE_REFUND ? "استرداد خدمة" : kind === "spend" && String(source || "").startsWith("service:") ? "خدمة MJT" : KIND_AR[kind] || kind); // v2.161
+  const srcLabel = (k) => REWARDABLE[k] || (k === "admin" ? "الإدارة" : k === SERVICE_REFUND ? "خدمات مجتمع كوين" : String(k || "").startsWith("service:") ? "خدمات مجتمع كوين" : k || null);
+  const kindLabel = (kind, source) => (source === SERVICE_REFUND ? "استرداد خدمة" : kind === "spend" && String(source || "").startsWith("service:") ? "خدمة مجتمع كوين" : KIND_AR[kind] || kind); // v2.161
   const reasonText = (r) => (r ? String(r).split(" · ").map((x) => REASON_AR[x] || x).join(" · ") : null);
   function entryClient(e) {
     if (!e) return null;
