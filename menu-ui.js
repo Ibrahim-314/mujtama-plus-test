@@ -36,7 +36,7 @@
       ["admin/jobs", "مراجعة الوظائف", "brief"], ["admin/contracts", "العقود والنزاعات", "doc"], ["admin/reviews", "التقييمات المهنية", "star"]] }
   ];
   /* screens that are the same page under another address (reachable through the entry they alias) */
-  const ALIAS = { decisions: "account-log", kb: "knowledge", a11y: "settings/display", accessibility: "settings/display", nsettings: "notifsettings", "email-prefs": "emailprefs", "me/purchases": "purchases", "me/supporting": "supporting", share: "home", clips: "shorts" };
+  const ALIAS = { decisions: "account-log", kb: "knowledge", a11y: "settings/display", accessibility: "settings/display", nsettings: "notifsettings", "email-prefs": "emailprefs", "me/purchases": "purchases", "me/supporting": "supporting", share: "home", clips: "shorts", reputation: "me" }; // v2.166: #/reputation is reached from the profile reputation chip (when «السمعة 2» is on)
   /* English / colloquial search words */
   const KW = { messages: "dm chat inbox", library: "saved bookmarks", mjt: "coin token wallet", wallet: "pi payments", settings: "options preferences", jobs: "work freelance", courses: "learn", security: "2fa password passkey",
     "settings/language": "language english", "settings/appearance": "theme dark mode colors", studio: "creator", market: "shop store", help: "support", developers: "api" };
