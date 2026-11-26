@@ -13,7 +13,8 @@
  *       A blocked TRANSFER is not sent and not lost: it waits in mjt_transfer_holds (migration 093) — nothing moves until an
  *       admin approves (the transfer is posted then) or rejects (nothing ever moves).
  *   caps (switch caps.enabled, OFF)           overall earning caps per member: 50 / day, 250 / week (ISO week, UTC), 800 / month
- *       (calendar month, UTC); the daily cap follows the member's contribution level (points_balances.level): levels 1–2 → 30,
+ *       (calendar month, UTC); the daily cap follows the member's contribution level (points_balances.level; v2.166: the unified
+ *       reputation level from services/reputation-levels.js when «السمعة 2» is on): levels 1–2 → 30,
  *       3–4 → 40, 5+ → 50. Counts every reward-engine earn (posted + waiting) and, with countLegacy, the legacy issuance into the
  *       wallet (points rewards, mining, daily sign-in) — the legacy paths themselves are NOT capped or changed here (phase 8.2).
  *       Above the cap a new engine earn is reduced to the room left, or skipped («وصلت حد اليوم»).
@@ -185,7 +186,10 @@ module.exports = (ctx, opts = {}) => {
     const d = clock();
     return { day: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())).toISOString(), week: isoWeekStart(d).toISOString(), month: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString() };
   }
-  async function levelOf(uid, q = db) { const r = await q.get("SELECT level FROM points_balances WHERE user_id=$1", [uid]).catch(() => null); return Number(r?.level || 0) + 1; }
+  async function levelOf(uid, q = db) {
+    const rl8 = await ctx.services.repLevels?.capLevel?.(uid, q).catch(() => null); if (rl8) return rl8; // v2.166: the unified reputation level when «السمعة 2» is on
+    const r = await q.get("SELECT level FROM points_balances WHERE user_id=$1", [uid]).catch(() => null); return Number(r?.level || 0) + 1;
+  }
   async function usedSince(uid, since, S, q = db) {
     const e = await q.get("SELECT COALESCE(SUM(p.amount),0) s FROM mjt_reward_entries p WHERE p.user_id=$1 AND p.kind='earn' AND p.decides IS NULL AND p.created_at >= $2 AND NOT EXISTS (SELECT 1 FROM mjt_reward_entries d WHERE d.decides=p.id AND d.status='rejected')", [uid, since]);
     let n = Number(e?.s || 0);

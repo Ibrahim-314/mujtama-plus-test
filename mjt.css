@@ -81,3 +81,10 @@
 /* v2.165 phase 8.1 admin: «حماية مكافآت مجتمع كوين» + «قائمة المراجعة» (mjt-safety-ui.js) */
 .sf-why{display:grid;gap:4px;font-size:var(--fs-sm);margin:0 0 var(--s3)}
 .sf-why input{min-height:44px}
+/* v2.166 «السمعة 2»: #/reputation levels page + #/admin/mjt-reputation (reputation-ui.js) */
+.rp-me{display:flex;flex-direction:column;gap:6px}
+.rp-lv{margin:0 0 var(--s3)}
+.rp-lv.cur{outline:2px solid var(--accent)}
+.rp-lv ul{margin:6px 0 0;padding-inline-start:18px}
+.rp-lv li{margin:2px 0}
+.rp-soon{font-size:var(--fs-xs);color:var(--muted)}

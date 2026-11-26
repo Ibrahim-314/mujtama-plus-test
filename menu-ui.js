@@ -28,7 +28,7 @@
       ["investigations", "لوحة التحقيقات", "search"], ["safety-cases", "طابور السلامة", "alert"], ["compliance", "الامتثال وحماية البيانات", "lock"], ["status", "حالة النظام", "chart"],
       ["admin/security", "أمان المنصة", "shield"], ["admin/ops", "العمليات والمراقبة", "chart"], ["admin/activation", "التفعيل", "check"], ["admin/pi-activation", "تفعيل مدفوعات Pi", "wallet"], ["admin/pi", "مطابقة مدفوعات Pi", "wallet"],
       ["admin/transfers", "تحويلات قيد المراجعة", "swap"], ["admin/finance", "التقارير المالية والمطابقة", "doc"], ["admin/pricing", "الأسعار والرسوم", "coin"], ["admin/revenue", "الإيرادات والتكاليف", "chart"],
-      ["admin/mjt", "إدارة مجتمع كوين", "coin"], ["admin/rewards", "إدارة مكافآت مجتمع كوين", "award"], ["admin/mjt-services", "إدارة خدمات مجتمع كوين", "bag"], ["admin/mjt-safety", "حماية مكافآت مجتمع كوين", "shield"], ["admin/mjt-review", "قائمة مراجعة مجتمع كوين", "clock"], ["admin/points", "إدارة نقاط المساهمة", "award"], ["admin/beta", "إدارة النسخة التجريبية", "feedback"], ["admin/ai", "إدارة الذكاء", "sparkle"], ["admin/aihub", "إدارة مركز الذكاء", "sparkle"],
+      ["admin/mjt", "إدارة مجتمع كوين", "coin"], ["admin/rewards", "إدارة مكافآت مجتمع كوين", "award"], ["admin/mjt-services", "إدارة خدمات مجتمع كوين", "bag"], ["admin/mjt-safety", "حماية مكافآت مجتمع كوين", "shield"], ["admin/mjt-review", "قائمة مراجعة مجتمع كوين", "clock"], ["admin/mjt-reputation", "السمعة 2", "star"], ["admin/points", "إدارة نقاط المساهمة", "award"], ["admin/beta", "إدارة النسخة التجريبية", "feedback"], ["admin/ai", "إدارة الذكاء", "sparkle"], ["admin/aihub", "إدارة مركز الذكاء", "sparkle"],
       ["admin/i18n", "نصوص الواجهة", "globe"], ["admin/a11y", "تدقيق الوصول", "access"], ["admin/ads", "مراجعة الإعلانات", "mega"], ["admin/market", "نزاعات السوق", "bag"],
       ["admin/digital", "بلاغات المنتجات الرقمية", "box"], ["admin/paid", "استرداد المحتوى المدفوع", "lock"], ["admin/tips", "الإكراميات المعلّقة", "heart"], ["admin/biz", "طلبات الأنشطة المحلية", "store"],
       ["admin/places", "مراجعة الأماكن", "pin"], ["admin/hijri", "إعلانات الرؤية", "moon"], ["admin/charity", "التطوّع والخير", "hand"], ["admin/collabs", "إشراف التعاونات", "link"],
@@ -36,7 +36,7 @@
       ["admin/jobs", "مراجعة الوظائف", "brief"], ["admin/contracts", "العقود والنزاعات", "doc"], ["admin/reviews", "التقييمات المهنية", "star"]] }
   ];
   /* screens that are the same page under another address (reachable through the entry they alias) */
-  const ALIAS = { decisions: "account-log", kb: "knowledge", a11y: "settings/display", accessibility: "settings/display", nsettings: "notifsettings", "email-prefs": "emailprefs", "me/purchases": "purchases", "me/supporting": "supporting", share: "home", clips: "shorts" };
+  const ALIAS = { decisions: "account-log", kb: "knowledge", a11y: "settings/display", accessibility: "settings/display", nsettings: "notifsettings", "email-prefs": "emailprefs", "me/purchases": "purchases", "me/supporting": "supporting", share: "home", clips: "shorts", reputation: "me" }; // v2.166: #/reputation is reached from the profile reputation chip (when «السمعة 2» is on)
   /* English / colloquial search words */
   const KW = { messages: "dm chat inbox", library: "saved bookmarks", mjt: "coin token wallet", wallet: "pi payments", settings: "options preferences", jobs: "work freelance", courses: "learn", security: "2fa password passkey",
     "settings/language": "language english", "settings/appearance": "theme dark mode colors", studio: "creator", market: "shop store", help: "support", developers: "api" };

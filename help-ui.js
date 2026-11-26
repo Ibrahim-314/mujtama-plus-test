@@ -79,7 +79,7 @@
 
   const list = () => window.MPHelpContent || [];
   const myHandle = () => { try { const u = typeof DB !== "undefined" && (DB.users || []).find((x) => x.id === DB.me); return u ? u.handle : ""; } catch { return ""; } };
-  const entryFor = (hash = location.hash) => (isMain(hash, myHandle()) ? null : match(hash, list(), sectionOf(hash, document.getElementById("view") || {})));
+  const entryFor = (hash = location.hash) => (isMain(hash, myHandle()) || (/^#\/reputation\b/.test(hash) && document.querySelector("#view .nf-page")) ? null : match(hash, list(), sectionOf(hash, document.getElementById("view") || {})));
   /* en text lives in its own lazy chunk ("helpcontent-<lang>"), merged once; Arabic is always present (fallback) */
   const merged = { ar: true }, langPend = {};
   function ensureLang(L = curLang()) {

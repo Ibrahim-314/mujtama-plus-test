@@ -100,7 +100,9 @@
     const rep = `<button class="rep-chip" id="rep">${ic("star", "xs")} <b>${fmtN(P.reputation)}</b> سمعة</button>`;
     p?.insertAdjacentHTML("afterend", `${meta ? `<div class="pmeta">${meta}</div>` : ""}${chips}`);
     top.querySelector(".stats")?.insertAdjacentHTML("beforeend", rep);
-    $("#rep")?.addEventListener("click", () => { const b = P.reputationBreakdown || {}; sheet(`<h4 class="u-mt0">${ic("star", "sm")} السمعة: ${P.reputation}</h4><p class="muted">تُحسب من جودة المساهمات لا كثرتها: أفضل ٢٠ منشوراً فقط، والتفاعل «مفيد» أثقل من الإعجاب.</p>${[["quality", "جودة المحتوى"], ["discussion", "نقاشات أثارها"], ["reach", "الوصول"], ["participation", "المشاركة"], ["penalties", "مخالفات"]].map(([k, l]) => `<div class="u-py8 u-bb row"><span class="grow">${l}</span><b dir="ltr">${k === "penalties" && b[k] ? "−" : ""}${b[k] ?? 0}</b></div>`).join("")}<button class="u-mt12 btn block" data-ui="close-sheet">تم</button>`); });
+    const RL = P.repLevel; // v2.166 «السمعة 2»: only when the admin switch is on
+    if (RL) { top.querySelector(".stats")?.insertAdjacentHTML("afterend", `<a class="rep-lvl card" href="#/reputation" id="rep-lvl"><span class="rep-lvl-b">${ic(RL.icon, "sm")}</span><span class="grow"><b>${esc(RL.name)} · ${fmtN(RL.score)}</b><small class="muted">المستوى ${RL.level} من 8</small><progress max="100" value="${RL.progress}" aria-label="${esc(RL.name)}"></progress>${RL.next ? `<small class="muted">${RL.next.remaining} للمستوى التالي: ${esc(RL.next.name)}</small>` : ""}</span></a>`); $("#rep")?.addEventListener("click", () => { location.hash = "#/reputation"; }); }
+    if (!RL) $("#rep")?.addEventListener("click", () => { const b = P.reputationBreakdown || {}; sheet(`<h4 class="u-mt0">${ic("star", "sm")} السمعة: ${P.reputation}</h4><p class="muted">تُحسب من جودة المساهمات لا كثرتها: أفضل ٢٠ منشوراً فقط، والتفاعل «مفيد» أثقل من الإعجاب.</p>${[["quality", "جودة المحتوى"], ["discussion", "نقاشات أثارها"], ["reach", "الوصول"], ["participation", "المشاركة"], ["penalties", "مخالفات"]].map(([k, l]) => `<div class="u-py8 u-bb row"><span class="grow">${l}</span><b dir="ltr">${k === "penalties" && b[k] ? "−" : ""}${b[k] ?? 0}</b></div>`).join("")}<button class="u-mt12 btn block" data-ui="close-sheet">تم</button>`); });
     // follow button states
     const fb = top.querySelector("[data-follow]");
     if (fb && d.relationship) { if (d.relationship.requested) { fb.textContent = "طلب مُرسل"; fb.classList.add("ghost"); } else if (!d.relationship.following && P.private) fb.textContent = "طلب متابعة"; }
@@ -172,7 +174,7 @@
       const cell = (el, n, l) => { if (!el) return null; el.className = "pv3-c"; el.innerHTML = `<b>${n}</b><small>${l}</small>`; return el; };
       const posts = document.createElement("span"); cell(posts, fmtN(nPosts), "المنشورات");
       cell(fers, fmtN(S.followers(u.id).length), "المتابِعون"); cell(fing, fmtN(S.following(u.id).length), "يتابع");
-      if (rep) { rep.className = "rep-chip pv3-c pv3-rep"; rep.innerHTML = `<b>${ic("star", "xs")} ${fmtN(P.reputation)}</b><small>السمعة</small>`; }
+      if (rep) { rep.className = "rep-chip pv3-c pv3-rep"; rep.innerHTML = P.repLevel ? `<b>${ic("star", "xs")} ${fmtN(P.repLevel.score)}</b><small>${esc(P.repLevel.name)}</small>` : `<b>${ic("star", "xs")} ${fmtN(P.reputation)}</b><small>السمعة</small>`; }
       st.classList.add("pv3-stats"); st.replaceChildren(...[posts, fers, fing, rep].filter(Boolean));
     }
     const sc = [...top.querySelectorAll(":scope > .chips")].find(c => !c.classList.contains("expertise")); if (sc && st && sc.compareDocumentPosition(st) & Node.DOCUMENT_POSITION_FOLLOWING) st.after(sc);

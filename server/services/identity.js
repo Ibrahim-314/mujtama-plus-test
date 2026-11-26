@@ -39,7 +39,7 @@ module.exports = (ctx) => {
     const orgs = await db.all("SELECT o.id, o.name, o.handle, o.avatar, m.role FROM org_members m JOIN users o ON o.id=m.org WHERE m.user_id=$1", [u.id]);
     return {
       profile: { ...users().pub(u), bio: u.bio || "", location: u.location || null, links: u.links || [], expertise: u.expertise || [], sections, followers, following, postsCount: locked ? null : posts.length,
-        verifiedLabel: u.verified ? VERIFIED_INFO[u.verified] : null, reputation: rep?.score ?? u.reputation ?? 0, reputationBreakdown: rep?.breakdown || null,
+        verifiedLabel: u.verified ? VERIFIED_INFO[u.verified] : null, reputation: rep?.score ?? u.reputation ?? 0, reputationBreakdown: rep?.breakdown || null, repLevel: await ctx.services.repLevels?.profileLevel?.(u.id).catch(() => undefined),
         achievements: ach.map(a => ({ key: a.key, at: a.at, name: (ACHIEVEMENT_INFO[a.key] || [a.key])[0], description: (ACHIEVEMENT_INFO[a.key] || ["", ""])[1] })),
         orgs: orgs.map(o => ({ id: o.id, name: o.name, handle: o.handle, avatar: o.avatar, role: o.role })), members: u.account_type === "org" ? (await db.all("SELECT u.id, u.name, u.handle, u.avatar, m.role FROM org_members m JOIN users u ON u.id=m.user_id WHERE m.org=$1", [u.id])).map(x => ({ ...x })) : undefined },
       relationship: viewer && !me ? { following: isFollowing, followsYou: await ctx.policy.follows(u.id, viewer.id), requested: !!(await db.get("SELECT 1 x FROM follow_requests WHERE src=$1 AND dst=$2", [viewer.id, u.id])), canMessage: !!(await ctx.policy.messageMode(viewer.id, u)) } : null,

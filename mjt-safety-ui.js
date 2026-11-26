@@ -28,7 +28,7 @@
   const onOff = (on) => `<span class="sbadge ${on ? "ok" : ""}">${on ? "مفعّل" : "متوقف"}</span>`;
   const chk = (name, on, label) => `<label class="chk"><input type="checkbox" name="${name}" ${on ? "checked" : ""}> ${h(label)}</label>`;
   const num = (name, v, label) => `<label>${h(label)}<input name="${name}" inputmode="numeric" value="${h(v)}"></label>`;
-  const nav = (cur) => `<nav class="seg mj-seg" aria-label="حماية مكافآت مجتمع كوين"><a href="#/admin/mjt-safety" ${cur === "safety" ? 'aria-current="page"' : ""}>المفاتيح والسقوف</a><a href="#/admin/mjt-review" ${cur === "review" ? 'aria-current="page"' : ""}>قائمة المراجعة</a></nav>`;
+  const nav = (cur) => `<nav class="seg mj-seg" aria-label="حماية مكافآت مجتمع كوين"><a href="#/admin/mjt-safety" ${cur === "safety" ? 'aria-current="page"' : ""}>المفاتيح والسقوف</a><a href="#/admin/mjt-review" ${cur === "review" ? 'aria-current="page"' : ""}>قائمة المراجعة</a><a href="#/admin/mjt-reputation">السمعة</a></nav>`;
 
   const capTxt = (g) => [[g.dailyCap, "يومياً"], [g.weeklyCap, "أسبوعياً"], [g.monthlyCap, "شهرياً"]].filter(([v]) => v).map(([v, l]) => " · " + h(v) + " " + l).join("");
   /* ---------- #/admin/mjt-safety ---------- */
