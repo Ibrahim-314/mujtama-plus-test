@@ -28,7 +28,7 @@
   const page = (head, body) => { view.innerHTML = `<div class="wrap mj-page">${UI.pageHead({ ...head, id: "sv-h" })}${body}</div>`; $("#sv-h")?.focus({ preventScroll: true }); };
   const busy = async (btn, fn) => { if (btn) btn.disabled = true; try { return await fn(); } catch (e) { say(e.message); return null; } finally { if (btn && btn.isConnected) btn.disabled = false; } };
   const newKey = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* fallback below */ } const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map((x) => x.toString(16).padStart(2, "0")).join(""); };
-  const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل.";
+  const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
   const offline = () => typeof navigator !== "undefined" && navigator.onLine === false;
   const num = (s) => Number(String(s ?? "0").replace(/,/g, "")) || 0;
   const fmt = (x) => { const r = Math.round(x * 1e7) / 1e7; return String(r); };
@@ -41,20 +41,19 @@
 
   /* ---------- #/mjt/services ---------- */
   async function servicesView() {
-    if (!signed()) { page({ title: "خدمات MJT", icon: "bag" }, UI.empty({ title: "سجّل الدخول", text: "لترى الخدمات التي يمكنك الحصول عليها برصيد مكافآتك.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` })); return; }
+    if (!signed()) { page({ title: "خدمات مجتمع كوين", icon: "bag" }, UI.empty({ title: "سجّل الدخول", text: "لترى الخدمات التي يمكنك الحصول عليها برصيد مكافآتك.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` })); return; }
     const tab = ["mine", "history"].includes(qs().get("tab")) ? qs().get("tab") : "home";
-    page({ title: "خدمات MJT", icon: "bag", sub: "استخدم رصيد مكافآتك في خدمات داخل التطبيق", back: ["#/rewards", "محفظة المكافآت"] }, `<div id="sv-w" aria-busy="true">${skel(4)}</div>`);
+    page({ title: "خدمات مجتمع كوين", icon: "bag", sub: "استخدم رصيد مجتمع كوين في خدمات داخل التطبيق", back: ["#/mjt", "مجتمع كوين"] }, `<div id="sv-w" aria-busy="true">${skel(4)}</div>`);
     const box = $("#sv-w");
     const load = async () => {
       box.setAttribute("aria-busy", "true"); box.innerHTML = skel(4);
       let d; try { d = await api("GET", "/api/mjt/services"); } catch (e) { box.removeAttribute("aria-busy"); failBox(box, e, load); return; }
       if (!box.isConnected) return;
       box.removeAttribute("aria-busy");
-      box.innerHTML = `<section class="f-cover mj-hero" aria-labelledby="sv-bal-l"><span class="mj-lbl" id="sv-bal-l">رصيدك الحالي</span>
-          <p class="mj-big" id="sv-bal">${amt(d.wallet.balance)} <small>MJT</small></p>
-          <p class="mj-stage" role="note">${ic("lock", "xs")}<span>${h(d.note || NOTE)}</span></p></section>
+      // v2.164: the balance lives on one page (#/mjt); here a link to it, the confirmation sheet still shows balance before / after
+      box.innerHTML = `<a class="card li sv-wal" href="#/mjt"><span class="ico">${ic("wallet")}</span><span class="t"><b>رصيدك ومحفظتك في «مجتمع كوين»</b><small>${h(d.note || NOTE)}</small></span><span class="chev" aria-hidden="true">←</span></a>
         ${d.wallet.frozen ? `<p class="notice warn">${ic("lock")}<span>محفظة مكافآتك موقوفة مؤقتاً للمراجعة، فلا يمكن استخدام الرصيد الآن. <a href="#/tickets">تواصل مع الدعم</a>.</span></p>` : ""}
-        <nav class="seg mj-seg" aria-label="خدمات MJT"><a href="#/mjt/services" ${tab === "home" ? 'aria-current="page"' : ""}>الخدمات</a><a href="#/mjt/services?tab=mine" ${tab === "mine" ? 'aria-current="page"' : ""}>خدماتي</a><a href="#/mjt/services?tab=history" ${tab === "history" ? 'aria-current="page"' : ""}>السجل</a></nav>
+        <nav class="seg mj-seg" aria-label="خدمات مجتمع كوين"><a href="#/mjt/services" ${tab === "home" ? 'aria-current="page"' : ""}>الخدمات</a><a href="#/mjt/services?tab=mine" ${tab === "mine" ? 'aria-current="page"' : ""}>خدماتي</a><a href="#/mjt/services?tab=history" ${tab === "history" ? 'aria-current="page"' : ""}>السجل</a></nav>
         <div id="sv-tab"></div>`;
       const t = $("#sv-tab");
       if (tab === "mine") mineTab(t); else if (tab === "history") historyTab(t); else listTab(t, d, load);
@@ -76,7 +75,7 @@
     const bal = num(d.wallet.balance);
     t.innerHTML = d.services.length ? `<ul class="sv-list">${d.services.map((s) => card(s, bal, d.wallet.frozen)).join("")}</ul>
         <p class="f-hint">لا يُخصم شيء مقابل ما تملكه بالفعل أو ما تشمله عضويتك. تحفظ كل عملية السعر الذي وافقت عليه.</p>`
-      : UI.empty({ title: "لا خدمات متاحة الآن", text: "تعلن الإدارة عن الخدمات عند تفعيلها. رصيدك محفوظ في محفظة المكافآت.", action: `<a class="btn outline" href="#/rewards">محفظة المكافآت</a>` });
+      : UI.empty({ title: "لا خدمات متاحة الآن", text: "تعلن الإدارة عن الخدمات عند تفعيلها. رصيدك محفوظ في «مجتمع كوين».", action: `<a class="btn outline" href="#/mjt">مجتمع كوين</a>` });
     t.querySelectorAll("[data-buy]").forEach((b) => b.addEventListener("click", () => confirmSheet(d.services.find((x) => x.id === b.dataset.buy), d.wallet, b, reload)));
   }
   /** confirmation sheet: name, what you get, cost, current balance, balance after → purchase (id + price version + ikey only) */
@@ -145,7 +144,7 @@
       if (!t.isConnected) return;
       t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map((x) => `<li class="li"><span class="ico">${ic("bag")}</span><span class="t"><b>${h(x.title)}</b>
           <small>${h(day(x.createdAt))} · ${h(x.termLabel)} · <span class="sbadge ${x.status === "refunded" ? "warn" : "ok"}">${h(x.statusLabel)}</span>${x.refundReason ? ` · ${h(x.refundReason)}` : ""}</small></span><span class="mj-amt out">${amt("-" + x.cost)}</span></li>`).join("")}</ul>
-          <p class="f-hint">تظهر هذه العمليات أيضاً في <a href="#/rewards?tab=history">سجل محفظة المكافآت</a>.</p>`
+          <p class="f-hint">تظهر هذه العمليات أيضاً في <a href="#/mjt?tab=history">سجل مجتمع كوين</a>.</p>`
         : UI.empty({ title: "لا عمليات بعد", text: "سيظهر هنا كل ما حصلت عليه برصيدك وأي استرداد." });
     };
     load();
@@ -153,8 +152,8 @@
 
   /* ---------- #/admin/mjt-services ---------- */
   async function adminView() {
-    if (!signed()) { page({ title: "خدمات MJT", icon: "bag" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
-    page({ title: "إدارة خدمات MJT", icon: "bag", sub: "كتالوج الخدمات التي تُستخدم برصيد المكافآت", back: ["#/admin/rewards", "مكافآت مجتمع كوين"], actions: `<a class="btn outline" href="#/admin/mjt-economy">اقتصاد MJT</a>` }, `<div id="sv-a" aria-busy="true">${skel(5)}</div>`);
+    if (!signed()) { page({ title: "خدمات مجتمع كوين", icon: "bag" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
+    page({ title: "إدارة خدمات مجتمع كوين", icon: "bag", sub: "كتالوج الخدمات التي تُستخدم برصيد المكافآت", back: ["#/admin/rewards", "مكافآت مجتمع كوين"], actions: `<a class="btn outline" href="#/admin/mjt-economy">اقتصاد MJT</a>` }, `<div id="sv-a" aria-busy="true">${skel(5)}</div>`);
     const box = $("#sv-a");
     const reload = async () => {
       let d; try { d = await api("GET", "/api/admin/mjt/services"); } catch (e) { box.removeAttribute("aria-busy"); failBox(box, e, reload); return; }

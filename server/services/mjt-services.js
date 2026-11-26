@@ -55,7 +55,7 @@ const REASON_AR = { owned: "تملك هذه الخدمة بالفعل", free: "�
 /* feature services: only membership features with a real server-side gate. translate / assistant are NOT here — they are metered
  * against the Plus plan's monthly AI caps and cost real AI spend; unlocking them with MJT needs a plan-limit decision first. */
 const FEATURES = { studio_extended: { title: "تحليلات الاستوديو الممتدة", benefit: "تحليلات استوديو المنشئ لفترات أطول (180 و365 يوماً بدل 90).", href: "#/studio" } };
-const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُسحب ولا يُباع ولا يُحوَّل.";
+const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
 const FORBIDDEN_BODY = ["amount", "cost", "price", "units", "total", "mjt"];
 
 /** @param {any} ctx @param {{ now?: () => Date|number }} [opts] */
@@ -82,7 +82,7 @@ module.exports = (ctx, opts = {}) => {
   const courses = () => ctx.services.courses;
   const H = {
     feature: {
-      async validate(target) { if (!FEATURES[target]) throw fail(400, "not_wireable", "هذه الميزة غير قابلة للربط بخدمات MJT"); return { title: FEATURES[target].title, benefit: FEATURES[target].benefit }; },
+      async validate(target) { if (!FEATURES[target]) throw fail(400, "not_wireable", "هذه الميزة غير قابلة للربط بخدمات مجتمع كوين"); return { title: FEATURES[target].title, benefit: FEATURES[target].benefit }; },
       async view(user, s) { return { href: FEATURES[s.target]?.href || null, available: !!FEATURES[s.target] }; },
       async native(user, s) { return M().can(user.id, s.target); },
       async precheck() { /* the entitlement itself is the delivery */ },

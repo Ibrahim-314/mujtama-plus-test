@@ -69,13 +69,14 @@ test("staff: settings entry → #/admin/mjt → ledger check, dry run, apply con
 
 test("member: converted balance, in-app label, earn rules, send with confirm, history (360 dark)", async () => {
   rl(); await go(u, "#/mjt"); await dark(u); await until(u, () => !!document.querySelector(".mj-big"));
-  assert.match(await u.textContent(".mj-big"), /39/); await textHas(u, /ليس عملة على أي بلوكشين/); await textHas(u, /حوّلنا 39 نقطة مساهمة/);
-  assert.match(await u.textContent("#mj-buy-n"), /غير مفعّلة/);
+  assert.match(await u.textContent(".mj-big"), /39/); await textHas(u, /بلا قيمة نقدية/); await textHas(u, /حوّلنا 39 نقطة مساهمة/);
+  // v2.164: no «buy with Pi» entry on the wallet
+  assert.equal(await u.evaluate(() => !!document.querySelector("#mj-buy, #mj-buy-n")), false); assert.doesNotMatch(await u.textContent("#view"), /شراء بـ Pi/);
   assert.ok((await minTap(u, ".mj-hero .btn, .mj-seg a")) >= 44);
   assert.deepEqual(await axe(u), [], "wallet dark"); await shot(u, "wallet-360-dark");
-  rl(); await tap(u, '.mj-seg a[href="#/mjt?tab=earn"]'); await until(u, () => !!document.querySelector(".mj-kinds"));
-  await textHas(u, /1 نقطة مساهمة = 1 MJT/); assert.deepEqual(await axe(u), [], "earn dark"); await shot(u, "earn-360-dark");
-  rl(); await tap(u, '.mj-seg a[href="#/mjt?tab=send"]'); await until(u, () => !!document.querySelector("#mj-sf"));
+  rl(); await tap(u, '.mj-links a[href="#/mjt/earn"]'); await until(u, () => !!document.querySelector(".mj-kinds")); // v2.164: «كيف أكسب» page
+  await textHas(u, /كل نقطة مساهمة جديدة تضيف 1 MJT/); assert.deepEqual(await axe(u), [], "earn dark"); await shot(u, "earn-360-dark");
+  rl(); await go(u, "#/mjt?tab=send"); await until(u, () => !!document.querySelector("#mj-sf"));
   // validation is accessible and local
   await tap(u, "#mj-sf [type=submit]"); await until(u, () => !document.querySelector("#mj-err").hidden);
   await u.fill("#mj-sf [name=to]", "@mjt_admin"); await u.fill("#mj-sf [name=amount]", "2.5"); await u.fill("#mj-sf [name=note]", "شكراً على المراجعة");
@@ -99,7 +100,7 @@ test("staff wallet (390 light), points page links to MJT, Pi redemption gone, CS
   rl(); await go(p, "#/points"); await until(p, () => !!document.querySelector(".pt-mjt"));
   assert.equal(await p.evaluate(() => !!document.querySelector("#pt-rf")), false, "no Pi redemption form while MJT is linked");
   assert.ok((await minTap(p, ".pt-mjt")) >= 44);
-  rl(); const r = await p.evaluate(async () => { try { await Remote.api("POST", "/api/mjt/buy", {}); return "ok"; } catch (e) { return e.message; } }); assert.match(r, /Pi/);
+  rl(); const r = await p.evaluate(async () => { try { await Remote.api("POST", "/api/mjt/buy", {}); return "ok"; } catch (e) { return e.message; } }); assert.match(r, /لا يُشترى/);
   assert.deepEqual(errors, []);
   for (const pg of [p, u]) {
     const inline = await pg.evaluate(() => [...document.querySelectorAll("*")].filter((e) => [...e.attributes].some((a) => /^on/.test(a.name)) || (!!e.getAttribute("style") && !!e.closest("#view .mj-page"))).map((e) => e.outerHTML.slice(0, 160)));

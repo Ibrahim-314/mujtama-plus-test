@@ -94,7 +94,7 @@
   const R = {
     welcome() {
       const me = S.me(), m = C.mjt;
-      const coin = m && m.st === "ok" && m.d && m.d.balance && !m.d.frozen ? `<a class="hb-pill" href="#/mjt">${ic("coin")}<span>رصيد MJT</span> <b data-noi18n dir="ltr">${h(m.d.balance.mjt)}</b></a>` : "";
+      const coin = m && m.st === "ok" && m.d && m.d.balance && !m.d.frozen ? `<a class="hb-pill" href="#/mjt">${ic("coin")}<span>مجتمع كوين</span> <b data-noi18n dir="ltr">${h(m.d.balance.mjt)}</b></a>` : "";
       return `<section class="hb-hi" id="hb-s-welcome" aria-label="الترحيب">${avData(me)}<div class="hb-hi-t"><p class="hb-hi-g"><span>${greet()}</span> <b data-noi18n>${h(me.name)}</b></p><p class="hb-hi-s">مجتمعك، عملك، ونموّك</p>
         <div class="hb-hi-a"><a class="hb-pill" href="#/me">${ic("user")}<span>ملفي الشخصي</span></a>${coin}</div></div></section>`;
     },

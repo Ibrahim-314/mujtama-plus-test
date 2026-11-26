@@ -1,5 +1,27 @@
 [
   {
+    "v": "2.164.0",
+    "date": "2026-11-26",
+    "ar": {
+      "title": "مجتمع كوين في صفحة واحدة",
+      "items": [
+        "رصيدك وسجلّك والإرسال والمكافآت قيد المراجعة صارت كلها في صفحة «مجتمع كوين» وحدها؛ «محفظة المكافآت» تفتح نفس الصفحة",
+        "صفحة جديدة «كيف أكسب» تعرض كل طرق الكسب المفعّلة الآن بمبالغها وحدودها",
+        "صفحة جديدة «شروط مجتمع كوين»: رصيد مكافآت داخلي بلا قيمة نقدية، لا يُحوَّل إلى Pi أو مال، وليس توكن على أي بلوكشين",
+        "أزلنا زر «شراء بـ Pi» لأن مجتمع كوين لا يُشترى، وصحّحنا نصوص المساعدة لتطابق ما يعمل فعلاً"
+      ]
+    },
+    "en": {
+      "title": "Mujtama Coin on one page",
+      "items": [
+        "Your balance, history, sending and rewards under review now all live on the “Mujtama Coin” page; “Rewards wallet” opens the same page",
+        "New “How to earn” page listing every way to earn that is on right now, with its amounts and limits",
+        "New “Mujtama Coin terms” page: an internal rewards balance with no cash value, not convertible to Pi or money, and not a token on any blockchain",
+        "Removed the “Buy with Pi” button because Mujtama Coin can’t be bought, and fixed the help text to match what actually works"
+      ]
+    }
+  },
+  {
     "v": "2.163.0",
     "date": "2026-11-25",
     "ar": {

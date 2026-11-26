@@ -53,22 +53,21 @@ test("admin: #/admin/rewards shows stats + sources (all off, no amount); enable 
   await shot(p, "admin-390-light");
 });
 
-test("member: real achievement → reward; wallet page from settings shows balance, note, history with source, review tab; offline state", async () => {
+test("member: real achievement → reward; v2.164: #/rewards opens the one wallet page #/mjt (balance, note, history, review tab); offline state", async () => {
   await S.app.ctx.services.achievements.record(uid, "course_completed", "course-e2e");
   await S.app.ctx.services.mjtRewards.settle();
-  rl(); await go(u, "#/settings?s=money"); await until(u, () => !!document.querySelector('#view a[href="#/rewards"]'));
+  rl(); await go(u, "#/settings?s=money"); await until(u, () => !!document.querySelector('#view a[href="#/mjt"]'));
+  assert.equal(await u.evaluate(() => !!document.querySelector('#view a[href="#/rewards"]')), false, "no second wallet row in settings");
   assert.equal(await u.evaluate(() => !!window.MPRewards), false, "lazy: not loaded before the route opens");
   await u.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
-  rl(); await go(u, "#/rewards"); await until(u, () => !!document.querySelector(".mj-big"));
+  rl(); await go(u, "#/rewards"); await until(u, () => location.hash === "#/mjt" && !!document.querySelector(".mj-big"));
   assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), "6");
-  await textHas(u, /ليس له قيمة نقدية/); await textHas(u, /إكمال دورة/);
-  assert.equal(await u.evaluate(() => !!document.querySelector('#view a[href*="send"], #view [id*="send"]')), false, "no transfer / send on the rewards wallet");
+  await textHas(u, /بلا قيمة نقدية/);
   assert.deepEqual(await axe(u), []);
   await shot(u, "wallet-360-dark");
-  rl(); await go(u, "#/rewards?tab=history"); await until(u, () => !!document.querySelector("#rw-hl .li"));
-  await textHas(u, /مُضافة/);
-  rl(); await go(u, "#/rewards?tab=review"); await textHas(u, /لا شيء قيد المراجعة/);
-  await uctx.setOffline(true); await go(u, "#/home"); rl(); await go(u, "#/rewards");
+  rl(); await go(u, "#/rewards?tab=history"); await until(u, () => location.hash === "#/mjt?tab=history" && !!document.querySelector("#mj-hl .li"));
+  rl(); await go(u, "#/rewards?tab=review"); await until(u, () => location.hash === "#/mjt?tab=review"); await textHas(u, /لا شيء قيد المراجعة/);
+  await uctx.setOffline(true); await go(u, "#/home"); rl(); await go(u, "#/mjt");
   await textHas(u, /غير متصل|تعذّر/); await uctx.setOffline(false);
   const html = await u.evaluate(() => document.querySelector("#view").innerHTML);
   assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i, "CSP-safe markup");

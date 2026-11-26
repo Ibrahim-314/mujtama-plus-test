@@ -107,7 +107,7 @@ test("purchase with MJT (feature unlock, time-limited): debit once, entitlement 
   clear(); assert.equal((await free1.req("GET", "/api/studio/overview?days=180")).status, 200, "unlocked server-side");
   clear(); const mine = await free1.req("GET", "/api/mjt/services/mine"); assert.equal(mine.items.length, 1); assert.equal(mine.items[0].state, "active"); assert.equal(mine.items[0].permanent, false);
   clear(); const hist = await free1.req("GET", "/api/mjt/services/history"); assert.equal(hist.items.length, 1); assert.equal(hist.items[0].status, "active");
-  clear(); const wh = await free1.req("GET", "/api/mjt/wallet/history"); const sp = wh.items.find((x) => x.kind === "spend"); assert.ok(sp, "appears in wallet history"); assert.equal(sp.label, "خدمة MJT"); assert.equal(sp.source, "خدمات MJT");
+  clear(); const wh = await free1.req("GET", "/api/mjt/wallet/history"); const sp = wh.items.find((x) => x.kind === "spend"); assert.ok(sp, "appears in wallet history"); assert.equal(sp.label, "خدمة مجتمع كوين"); assert.equal(sp.source, "خدمات مجتمع كوين"); // v2.164 one name
   assert.ok(await n("SELECT COUNT(*) n FROM mjt_audit WHERE action='service_purchase' AND actor_id=$1", [free1.id]) === 1);
   // re-access an owned service: never debits again
   const again = await buy(free1, STUDIO, { priceVersion: 2, ikey: key("p") }); assert.equal(again.status, 200); assert.equal(again.alreadyHasAccess, true); assert.equal(again.reason, "owned");

@@ -39,7 +39,9 @@ const DAY = 864e5, HOUR = 3600e3;
 const RATE = UNIT; // minor units per contribution point: 1 point = 1 MJT
 const EARN_KINDS = ["answer_accepted", "engaged_post", "report_confirmed", "wiki_edit", "mentoring"];
 const TOKEN = { name: "مجتمع كوين", nameEn: "Mujtama Coin", symbol: "MJT", decimals: L.DECIMALS, stage: 1,
-  stageNote: "رصيد داخل التطبيق فقط — ليس عملة على أي بلوكشين، ولا يُسحب ولا يُباع. ربطه بشبكة Pi التجريبية مرحلة لاحقة." };
+  stageNote: "رصيد مكافآت داخل التطبيق فقط — بلا قيمة نقدية، ليس عملة على أي بلوكشين، ولا يُشترى ولا يُباع ولا يُسحب." }; // v2.164: no Pi-network / later-stage wording
+/** v2.164: the one answer for «buy MJT» — it is an internal rewards balance, earned only */
+const BUY_OFF = "شراء مجتمع كوين غير متاح: هو رصيد مكافآت داخلي يُكسب بالمساهمة فقط، ولا يُشترى بـ Pi ولا بأي عملة.";
 const KIND_AR = { reward: "مكافأة مساهمة", conversion: "تحويل نقاط المساهمة", conversion_reversal: "إلغاء تحويل النقاط", transfer: "تحويل", tip: "إكرامية", adjustment: "تعديل من الإدارة", clawback: "استرجاع مكافأة محتوى محذوف", spend: "شراء", refund: "استرداد", community_reward: "مكافأة نشاط في مجتمع", community_reward_reversal: "استرجاع مكافأة مجتمع", mining: "تعدين يومي", checkin: "مكافأة الدخول اليومي", earn: "مكافأة إنجاز" }; // v2.160: earn = reward engine (services/mjt-rewards.js) // v2.60: community rewards (services/cintegrations.js)
 const DEFAULTS = {
   rewards: { enabled: true, dailyCap: 150 * UNIT },
@@ -524,7 +526,7 @@ module.exports = (ctx, opts = {}) => {
     let kinds = []; try { const P = await ctx.services.points?.settings?.(); kinds = EARN_KINDS.map((k) => ({ key: k, label: ctx.services.points?.KIND_INFO?.[k] || k, mjt: format((P?.kinds?.[k]?.points || 0) * RATE), dailyCap: P?.kinds?.[k]?.dailyCap ?? null })); } catch { /* points optional */ }
     return { token: TOKEN, rate: { pointsPerMjt: 1, text: "1 نقطة مساهمة = 1 MJT" }, earn: { kinds, dailyCap: format(S.rewards.dailyCap), enabled: !!S.rewards.enabled && (await legacyOn("pointRewards")) },
       transfers: { enabled: !!S.transfers.enabled, maxSingle: format(S.transfers.maxSingle), maxDaily: format(S.transfers.maxDaily), maxPerHour: S.transfers.maxPerHour, minAccountDays: S.transfers.minAccountDays },
-      buy: { available: false, reason: piOn() ? "later_stage" : "pi_off", note: piOn() ? "شراء مجتمع كوين بـ Pi يأتي في مرحلة لاحقة" : "شراء مجتمع كوين بـ Pi غير متاح الآن — مدفوعات Pi غير مفعّلة بعد" },
+      buy: { available: false, disabled: true, reason: piOn() ? "later_stage" : "pi_off", note: BUY_OFF }, // v2.164: no buy entry in the UI; field kept for old clients
       signedIn: !!user };
   }
   async function publicSupply() {
@@ -557,7 +559,7 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/mjt/rooms/:id/tips", A(async (req) => tipSummary(req.user, req.params.id)));
   R.get("/api/mjt/tips/received", A(async (req) => tipsReceived(req.user)));
   R.put("/api/mjt/receive", A(async (req) => setReceive(req.user, req.body?.receive !== false)));
-  R.post("/api/mjt/buy", A(async () => { throw E.off(piOn() ? "شراء مجتمع كوين بـ Pi يأتي في مرحلة لاحقة" : "شراء مجتمع كوين بـ Pi غير متاح الآن — مدفوعات Pi غير مفعّلة بعد"); }));
+  R.post("/api/mjt/buy", A(async () => { throw E.off(BUY_OFF); })); // v2.164: permanently disabled (501 not_configured), no UI entry
   R.get("/api/admin/mjt", staff(async () => adminOverview()));
   R.get("/api/admin/mjt/verify", staff(async () => led.verify()));
   R.put("/api/admin/mjt/settings", admin(async (req) => saveSettings(req.user, req.body)));

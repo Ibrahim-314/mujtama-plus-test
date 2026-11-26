@@ -1,8 +1,11 @@
 /* =====================================================================
  * v2.47 — «مجتمع كوين» (MJT) stage 1 UI (lazy chunk `mjt`, loads after `feat`; styles in mjt.css). 0 bytes in core.
- *   #/mjt[?tab=history|earn|send]   balance (in-app only, not on any blockchain), today's rewards vs the cap, conversion note,
- *                                   history (keyset «المزيد»), how to earn, send to a member (idempotency key per attempt),
- *                                   receive on/off, Pi → MJT purchase shown as unavailable while Pi payments are off
+ *   #/mjt[?tab=history|send|review] v2.164 (phase 8.0): THE one wallet page — balance (internal rewards balance, no cash value),
+ *                                   today's contribution rewards vs their cap, conversion note, history (keyset «المزيد»), send to
+ *                                   a member (idempotency key per attempt), receive on/off, rewards under review (was #/rewards).
+ *                                   No «buy with Pi» entry (POST /api/mjt/buy stays a disabled 501). ?tab=earn → #/mjt/earn.
+ *   #/mjt/earn                      «كيف أكسب»: every earning path that is live right now, read from the server's own settings
+ *   #/mjt/terms                     «شروط مجتمع كوين»
  *   #/admin/mjt                     staff: supply + ledger verification, conversion dry run / apply / rollback, settings,
  *                                   adjustments with a reason, freeze, recent transactions
  * CSP: no inline handlers, no javascript: URLs, no inline styles.
@@ -25,13 +28,16 @@
   const busy = async (btn, fn) => { if (btn) btn.disabled = true; try { return await fn(); } catch (e) { say(e.message); return null; } finally { if (btn && btn.isConnected) btn.disabled = false; } };
   const newKey = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* fallback below */ } const a = new Uint8Array(16); crypto.getRandomValues(a); return [...a].map((x) => x.toString(16).padStart(2, "0")).join(""); };
   const KIND_ICO = { reward: "award", conversion: "swap", conversion_reversal: "swap", transfer: "send", tip: "gift", adjustment: "shield", clawback: "flag", spend: "bag", refund: "refresh" };
-  const STAGE = "رصيد داخل التطبيق فقط — ليس عملة على أي بلوكشين، ولا يُسحب ولا يُباع.";
+  const STAGE = "رصيد مكافآت داخل التطبيق — بلا قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب.";
+  const ST_CLS = { posted: "ok", pending: "warn", rejected: "bad" };
+  const links = () => `<nav class="mj-links" aria-label="روابط مجتمع كوين"><a class="btn outline sm" href="#/mjt/earn">${ic("award")}كيف أكسب</a><a class="btn outline sm" href="#/mjt/services">${ic("bag")}خدمات مجتمع كوين</a><a class="btn outline sm" href="#/mjt/terms">${ic("doc")}الشروط</a></nav>`;
 
   /* ---------- #/mjt ---------- */
   async function walletView() {
     if (!signed()) { page({ title: "مجتمع كوين", icon: "wallet" }, UI.empty({ title: "سجّل الدخول", text: "لترى رصيدك من مجتمع كوين وتكسب المزيد بمساهماتك.", action: `<a class="btn" href="#/settings">تسجيل الدخول</a>` })); return; }
-    const tab = ["history", "earn", "send"].includes(qs().get("tab")) ? qs().get("tab") : "history";
-    page({ title: "مجتمع كوين", icon: "wallet", sub: "MJT — رصيدك داخل التطبيق", back: ["#/settings?s=money", "المدفوعات والمحفظة"] }, `<div id="mj-w">${skel(4)}</div>`);
+    if (qs().get("tab") === "earn") { location.replace("#/mjt/earn"); return; } // v2.164: «طرق الكسب» is its own page now
+    const tab = ["history", "send", "review"].includes(qs().get("tab")) ? qs().get("tab") : "history";
+    page({ title: "مجتمع كوين", icon: "wallet", sub: "Mujtama Coin (MJT) — رصيد مكافآتك داخل التطبيق", back: ["#/settings?s=money", "المدفوعات والمحفظة"] }, `<div id="mj-w">${skel(4)}</div>`);
     const box = $("#mj-w");
     let me, cfg; try { [me, cfg] = await Promise.all([api("GET", "/api/mjt/me"), api("GET", "/api/mjt/config")]); } catch (e) { box.innerHTML = errBox(e); return; }
     if (!box.isConnected) return;
@@ -39,18 +45,17 @@
     box.innerHTML = `<section class="f-cover mj-hero" aria-labelledby="mj-bal-l">
         <span class="mj-lbl" id="mj-bal-l">رصيدك</span>
         <p class="mj-big">${amt(me.balance.mjt)} <small>MJT</small></p>
-        <p class="mj-stage">${ic("lock", "xs")}<span>${h(STAGE)}</span></p>
-        <div class="mj-today"><label for="mj-prog">مكافآت اليوم: ${amt(me.today.earned)} من ${amt(me.today.cap)} MJT</label><progress id="mj-prog" max="${cap}" value="${Math.min(earned, cap)}"></progress></div>
-        <div class="mj-acts"><a class="btn" href="#/mjt?tab=send">${ic("send")}إرسال</a><button type="button" class="btn ghost" id="mj-buy" aria-describedby="mj-buy-n">${ic("coin")}شراء بـ Pi</button></div>
-        <p class="mj-buy-n" id="mj-buy-n">${h(cfg.buy.note)}</p></section>
+        <p class="mj-stage">${ic("lock", "xs")}<span>${h(STAGE)} <a href="#/mjt/terms">الشروط</a></span></p>
+        <div class="mj-today"><label for="mj-prog">مكافآت المساهمات اليوم: ${amt(me.today.earned)} من ${amt(me.today.cap)} MJT</label><progress id="mj-prog" max="${cap}" value="${Math.min(earned, cap)}"></progress></div>
+        <div class="mj-acts"><a class="btn" href="#/mjt?tab=send">${ic("send")}إرسال</a></div></section>
+      ${links()}
       ${me.conversion ? `<p class="notice">${ic("swap")}<span>حوّلنا ${amt(me.conversion.pts)} نقطة مساهمة إلى ${amt(me.conversion.mjt)} MJT بسعر ${h(cfg.rate.text)}. نقاطك ومستواك باقية كما هي.</span></p>` : ""}
       ${me.frozen ? `<p class="notice warn">${ic("lock")}<span>محفظتك موقوفة مؤقتاً للمراجعة: يمكنك الاستلام فقط. <a href="#/tickets">تواصل مع الدعم</a>.</span></p>` : ""}
       ${!me.verified ? `<p class="notice warn" role="alert">${ic("alert")}<span>نراجع رصيدك الآن. لا داعي لأي إجراء.</span></p>` : ""}
-      <nav class="seg mj-seg" aria-label="مجتمع كوين"><a href="#/mjt?tab=history" ${tab === "history" ? 'aria-current="page"' : ""}>السجل</a><a href="#/mjt?tab=earn" ${tab === "earn" ? 'aria-current="page"' : ""}>طرق الكسب</a><a href="#/mjt?tab=send" ${tab === "send" ? 'aria-current="page"' : ""}>إرسال</a></nav>
+      <nav class="seg mj-seg" aria-label="مجتمع كوين"><a href="#/mjt?tab=history" ${tab === "history" ? 'aria-current="page"' : ""}>السجل</a><a href="#/mjt?tab=send" ${tab === "send" ? 'aria-current="page"' : ""}>إرسال</a><a href="#/mjt?tab=review" ${tab === "review" ? 'aria-current="page"' : ""}>قيد المراجعة</a></nav>
       <div id="mj-tab"></div>`;
-    $("#mj-buy").addEventListener("click", (e) => busy(e.currentTarget, async () => { try { await api("POST", "/api/mjt/buy", {}); } catch (err) { say(err.message); } }));
     const t = $("#mj-tab");
-    if (tab === "earn") earnTab(t, cfg);
+    if (tab === "review") reviewTab(t);
     else if (tab === "send") sendTab(t, me, cfg);
     else historyTab(t);
   }
@@ -58,7 +63,7 @@
     t.innerHTML = skel(3);
     let d; try { d = await api("GET", "/api/mjt/history"); } catch (e) { t.innerHTML = errBox(e); return; }
     if (!t.isConnected) return;
-    if (!d.items.length) { t.innerHTML = UI.empty({ title: "لا حركات بعد", text: "ساهم بإجابة مفيدة أو تحسين صفحة في الويكي لتكسب أول مجتمع كوين.", action: `<a class="btn outline" href="#/mjt?tab=earn">طرق الكسب</a>` }); return; }
+    if (!d.items.length) { t.innerHTML = UI.empty({ title: "لا حركات بعد", text: "ساهم بإجابة مفيدة أو تحسين صفحة في الويكي لتكسب أول مجتمع كوين.", action: `<a class="btn outline" href="#/mjt/earn">كيف أكسب</a>` }); return; }
     t.innerHTML = `<ul class="list mj-hist" id="mj-hl"></ul><div class="f-more"><button type="button" class="btn outline" id="mj-more">المزيد</button></div>`;
     let next = d.next;
     const row = (i) => { const neg = i.amount.startsWith("-"); return `<li class="li"><span class="ico">${ic(KIND_ICO[i.kind] || "wallet")}</span><span class="t"><b>${h(i.label)}${i.with ? ` · <bdi>${h(i.with.name || "")}</bdi>` : ""}</b><small>${h(day(i.createdAt))}${i.note ? ` · ${h(i.note)}` : ""}${i.post ? ` · <a href="#/post/${enc(i.post)}">عرض اللقطة</a>` : ""}${i.room ? ` · <a href="#/room/${enc(i.room)}">البث</a>` : ""}</small></span><span class="mj-amt ${neg ? "out" : "in"}">${amt((neg ? "" : "+") + i.amount)}<small>الرصيد ${amt(i.balanceAfter)}</small></span></li>`; };
@@ -67,14 +72,56 @@
     add(d.items); more();
     $("#mj-more")?.addEventListener("click", (e) => busy(e.currentTarget, async () => { const r = await api("GET", "/api/mjt/history?cursor=" + enc(next)); next = r.next; add(r.items); more(); }));
   }
-  function earnTab(t, cfg) {
-    t.innerHTML = `<section class="card mj-sec"><h3 class="f-h">${ic("award")}تكسب مجتمع كوين بمساهماتك</h3>
-        <p class="mj-rate">${h(cfg.rate.text)}</p>
+  /* v2.164: rewards waiting for staff approval (moved here from #/rewards?tab=review; same /api/mjt/wallet/review) */
+  async function reviewTab(t) {
+    t.innerHTML = skel(2);
+    let d; try { d = await api("GET", "/api/mjt/wallet/review"); } catch (e) { t.innerHTML = errBox(e); return; }
+    if (!t.isConnected) return;
+    const row = (i) => `<li class="li"><span class="ico">${ic("award")}</span><span class="t"><b>${h(i.label || i.kindLabel || "")}${i.source ? ` · ${h(i.source)}` : ""}</b><small>${h(day(i.createdAt))}${i.reason ? ` · ${h(i.reason)}` : ""} · <span class="sbadge ${ST_CLS[i.status] || ""}">${h(i.statusLabel || i.status)}</span></small></span><span class="mj-amt in">${amt("+" + String(i.amount).replace(/^-/, ""))}</span></li>`;
+    t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة لا تُحتسب في رصيدك حتى توافق عليها الإدارة.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
+  }
+
+  /* ---------- #/mjt/earn «كيف أكسب» (v2.164) — only what the server says is live right now; no amount is written here ---------- */
+  async function earnView() {
+    page({ title: "كيف أكسب", icon: "award", sub: "طرق كسب مجتمع كوين المفعّلة الآن", back: ["#/mjt", "مجتمع كوين"] }, `<div id="mj-e">${skel(4)}</div>`);
+    const box = $("#mj-e");
+    const opt = (p) => (signed() ? api("GET", p).catch(() => null) : Promise.resolve(null));
+    let cfg, mine, wal, me;
+    try { [cfg, mine, wal, me] = await Promise.all([api("GET", "/api/mjt/config"), opt("/api/mjt/mining"), opt("/api/mjt/wallet"), opt("/api/mjt/me")]); } catch (e) { box.innerHTML = errBox(e); return; }
+    if (!box.isConnected) return;
+    const lg = (me && me.legacy) || {};
+    const sec = (icon, title, body) => `<section class="card mj-sec"><h3 class="f-h">${ic(icon)}${title}</h3>${body}</section>`;
+    const out = [];
+    if (cfg.earn.enabled) out.push(sec("award", "مكافآت المساهمات المفيدة", `<p class="f-hint">كل نقطة مساهمة جديدة تضيف ${amt("1")} MJT إلى رصيدك تلقائياً.</p>
         <ul class="list mj-kinds">${cfg.earn.kinds.map((k) => `<li class="li"><span class="t"><b>${h(k.label)}</b>${k.dailyCap != null ? `<small>حتى ${amt(k.dailyCap)} مرات يومياً</small>` : ""}</span><span class="sbadge role">${amt("+" + k.mjt + " MJT")}</span></li>`).join("")}</ul>
-        <p class="f-hint">بحد أقصى ${amt(cfg.earn.dailyCap)} MJT من المكافآت يومياً. لا تُحتسب المساهمات من حسابات جديدة جداً أو مرتبطة أو مشبوهة، ويُسترجع ما كُسب من محتوى حُذف.${cfg.earn.enabled ? "" : " المكافآت متوقفة مؤقتاً."}</p>
-        <p><a class="btn outline" href="#/points">${ic("trophy")}نقاط المساهمة ومستواك</a></p></section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("help")}عن مجتمع كوين</h3>
-        <ul class="mj-facts"><li>${h(cfg.token.stageNote)}</li><li>لا يُشترى الآن بـ Pi: ${h(cfg.buy.note)}.</li><li>التحويل بين الأعضاء بحدود: ${amt(cfg.transfers.maxSingle)} MJT للتحويل الواحد و${amt(cfg.transfers.maxDaily)} MJT يومياً.</li><li>من هم دون ١٨ سنة يكسبون ولا يحوّلون.</li></ul></section>`;
+        <p class="f-hint">بحد أقصى ${amt(cfg.earn.dailyCap)} MJT من مكافآت المساهمات يومياً. لا تُحتسب المساهمات من حسابات جديدة جداً أو مرتبطة أو مشبوهة، ويُسترجع ما كُسب من محتوى حُذف.</p>
+        <p><a class="btn outline" href="#/points">${ic("trophy")}نقاط المساهمة ومستواك</a></p>`));
+    if (mine && mine.checkin && mine.checkin.on) out.push(sec("calendar", "مكافأة الدخول اليومي", `<p>${amt("+" + mine.checkin.amount + " MJT")} مرة واحدة في اليوم عند فتح التطبيق وأنت مسجّل الدخول (اليوم بتوقيت UTC).</p>`));
+    if (mine && mine.enabled) out.push(sec("star", "التعدين اليومي في مدينة المجتمع", `<p>ابدأ جلسة تعدين مرة كل ${amt(mine.sessionHours)} ساعة من «قاعة مجتمع كوين» في المدينة، واستلم ${amt(mine.rate)} MJT عند انتهائها.</p><p><a class="btn outline" href="#/city/mjt/earn">${ic("star")}افتح التعدين</a></p>`));
+    const ways = (wal && wal.ways) || [];
+    if (ways.length) out.push(sec("trophy", "مكافآت الإنجازات", `<ul class="list mj-kinds">${ways.map((x) => `<li class="li"><span class="t"><b>${h(x.label)}</b></span></li>`).join("")}</ul><p class="f-hint">تُضاف تلقائياً عند الإنجاز، وقد تمر بعضها بمراجعة قبل إضافتها.</p>`));
+    out.push(sec("users", "مكافآت المجتمعات", `<p>بعض المجتمعات يكافئ مالكها الأعضاء على المنشورات والإجابات المقبولة من رصيده هو، بحدود يومية. تظهر داخل المجتمع إذا فعّلها مالكه.</p>`));
+    const recv = [lg.transfers !== false && cfg.transfers.enabled ? "تحويل من عضو آخر" : "", lg.tips !== false ? "إكرامية على لقطتك أو منشورك أو بثّك المباشر" : ""].filter(Boolean);
+    if (recv.length) out.push(sec("gift", "ما يصلك من الأعضاء", `<ul class="mj-facts">${recv.map((x) => `<li>${h(x)}</li>`).join("")}</ul><p class="f-hint">هذا نقل رصيد بين الأعضاء وليس مكافأة جديدة. من هم دون ١٨ سنة يكسبون ولا يحوّلون.</p>`));
+    box.innerHTML = (out.length ? out.join("") : UI.empty({ title: "لا توجد طرق كسب مفعّلة الآن", text: "تعلن الإدارة عنها عند تفعيلها." }))
+      + `<p class="mj-stage">${ic("lock", "xs")}<span>${h(STAGE)} <a href="#/mjt/terms">شروط مجتمع كوين</a></span></p>`
+      + (signed() ? `<p><a class="btn" href="#/mjt">${ic("wallet")}رصيدك وسجلّك</a></p>` : "");
+  }
+
+  /* ---------- #/mjt/terms «شروط مجتمع كوين» (v2.164) ---------- */
+  function termsView() {
+    const items = [
+      ["ما هو مجتمع كوين؟", "مجتمع كوين (Mujtama Coin — MJT) رصيد مكافآت داخلي في تطبيق مجتمع بلس، تكسبه بمساهماتك وتستخدمه داخل التطبيق فقط."],
+      ["بلا قيمة نقدية", "ليس له أي قيمة نقدية، ولا يمثّل مالاً أو استثماراً أو حصة في أي شيء، ولا يعد بأي عائد."],
+      ["لا يُحوَّل إلى Pi أو مال", "لا يُستبدل ولا يُحوَّل إلى Pi أو أي عملة أو مال، ولا يُشترى ولا يُباع ولا يُسحب."],
+      ["ليس توكن على بلوكشين", "ليس عملة رقمية ولا توكن على أي بلوكشين أو شبكة، بما فيها شبكة Pi. هو رقم في سجل داخل التطبيق فقط."],
+      ["تغيير القواعد", "يجوز للإدارة تغيير طرق الكسب والاستخدام وحدودها، مع إشعار الأعضاء مسبقاً داخل التطبيق قبل التطبيق."],
+      ["رصيدك محفوظ", "لا تُسحب الأرصدة من الأعضاء عند تغيير القواعد. قد يُسترجع فقط ما كُسب بالمخالفة، مثل محتوى حُذف أو حسابات مرتبطة أو تلاعب، أو يُصحَّح خطأ بسبب مكتوب في السجل."]
+    ];
+    page({ title: "شروط مجتمع كوين", icon: "doc", sub: "Mujtama Coin (MJT)", back: ["#/mjt", "مجتمع كوين"] },
+      `<section class="card mj-sec mj-terms"><ol class="mj-facts">${items.map(([t, d]) => `<li><b>${h(t)}</b><p>${h(d)}</p></li>`).join("")}</ol>
+        <p class="f-hint">آخر تحديث: الإصدار 2.164.0.</p></section>
+      <p class="mj-acts"><a class="btn outline" href="#/mjt/earn">${ic("award")}كيف أكسب</a><a class="btn outline" href="#/mjt">${ic("wallet")}مجتمع كوين</a></p>`);
   }
   function sendTab(t, me, cfg) {
     const off = !me.send.allowed;
@@ -157,7 +204,8 @@
   MPRoutes.extend((a, b, prev) => {
     return { mjt: () => walletView() };
   });
+  MPRoutes.add("mjt", (a, b, next) => (a === "earn" ? earnView() : a === "terms" ? termsView() : next()));
   MPRoutes.add("admin", (a, b, next) => (a === "mjt" ? adminView() : next()));
-  window.MPMjt = { walletView, adminView, version: "2.47.0" };
+  window.MPMjt = { walletView, earnView, termsView, adminView, version: "2.164.0" };
   if (/^#\/(mjt|admin\/mjt)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();
