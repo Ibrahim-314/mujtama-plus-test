@@ -156,6 +156,11 @@ module.exports = (ctx, opts = {}) => {
   const scan = () => (scanning ||= (async () => {
     const S = await settings(), t = Date.parse(nowIso()), out = { answer_accepted: 0, engaged_post: 0, report_confirmed: 0, wiki_edit: 0, mentoring: 0, skipped: {} };
     const fl = await flagged();
+    /* v2.165 MJT phase 8.1: the same scan offers the new reward-engine sources (services/mjt-rewards.js offer()). Each source has
+     * its own admin switch, OFF by default: while off, nothing below is called and the scan is exactly the v2.164 one. */
+    const RW = ctx.services.mjtRewards, want = {};
+    for (const k of ["useful_post", "report_confirmed", "wiki_edit", "friend_active"]) want[k] = !!(RW?.wants && (await RW.wants(k).catch(() => false)));
+    const offer = async (type, uid, ref, o) => { try { await RW.offer(type, uid, ref, o); } catch { /* never breaks the points scan */ } };
     const note = (k, r) => { if (r.awarded) out[k]++; else if (r.reason !== "duplicate") out.skipped[r.reason] = (out.skipped[r.reason] || 0) + 1; };
     const ageAt = (u, at) => (Date.parse(at) - Date.parse(u)) / DAY;
     // 1. accepted answers (+ mentoring when the asker was a newcomer)
@@ -168,27 +173,32 @@ module.exports = (ctx, opts = {}) => {
     }
     // 2. posts with meaningful engagement from distinct, trusted, unlinked, non-flagged accounts
     const since = new Date(t - 14 * DAY).toISOString(), settled = new Date(t - 3600e3).toISOString(), engAge = new Date(t - S.engagerMinAgeDays * DAY).toISOString();
-    const cands = await db.all(`SELECT p.id, p.author FROM posts p WHERE p.status='published' AND p.type<>'question' AND p.created_at > $1 AND p.created_at < $2 AND p.repost_of IS NULL AND
+    const cands = await db.all(`SELECT p.id, p.author, p.created_at FROM posts p WHERE p.status='published' AND p.type<>'question' AND p.created_at > $1 AND p.created_at < $2 AND p.repost_of IS NULL AND
       (SELECT COUNT(DISTINCT x.u) FROM (SELECT r.user_id u FROM reactions r WHERE r.target=p.id AND r.type IN ('useful','insightful','support','like') UNION SELECT c.author u FROM comments c WHERE c.post=p.id AND c.status='published') x WHERE x.u<>p.author) >= $3 LIMIT 500`, [since, settled, S.engagementMin]);
     for (const p of cands) {
-      if (await db.get("SELECT 1 x FROM points_awards WHERE user_id=$1 AND kind='engaged_post' AND source_id=$2", [p.author, p.id])) continue;
+      if (!want.useful_post && (await db.get("SELECT 1 x FROM points_awards WHERE user_id=$1 AND kind='engaged_post' AND source_id=$2", [p.author, p.id]))) continue;
       const people = await db.all(`SELECT DISTINCT x.u, us.created_at FROM (SELECT r.user_id u FROM reactions r WHERE r.target=$1 AND r.type IN ('useful','insightful','support','like') UNION SELECT c.author u FROM comments c WHERE c.post=$1 AND c.status='published' AND LENGTH(c.text) >= 10) x JOIN users us ON us.id=x.u WHERE x.u<>$2 AND us.status='active' AND us.created_at < $3`, [p.id, p.author, engAge]);
       let n = 0; for (const e of people) if (!fl.has(e.u) && !(await linked(p.author, e.u))) n++;
-      if (n >= S.engagementMin) note("engaged_post", await award(p.author, "engaged_post", p.id, { flagged: fl, reason: `engagers:${n}` }));
+      if (n >= S.engagementMin) { note("engaged_post", await award(p.author, "engaged_post", p.id, { flagged: fl, reason: `engagers:${n}` })); if (want.useful_post && !fl.has(p.author)) await offer("useful_post", p.author, p.id, { at: p.created_at }); }
     }
     // 3. reports that staff / moderators actioned
-    for (const r of await db.all("SELECT id, by_user FROM reports WHERE status='actioned' AND resolved_at > $1", [new Date(t - 30 * DAY).toISOString()])) note("report_confirmed", await award(r.by_user, "report_confirmed", r.id, { flagged: fl }));
+    for (const r of await db.all("SELECT id, by_user, resolved_at FROM reports WHERE status='actioned' AND resolved_at > $1", [new Date(t - 30 * DAY).toISOString()])) { note("report_confirmed", await award(r.by_user, "report_confirmed", r.id, { flagged: fl })); if (want.report_confirmed && r.by_user) await offer("report_confirmed", r.by_user, r.id, { at: r.resolved_at }); }
     // 4. substantial wiki edits (one award per page per day)
     for (const w of await db.all("SELECT r.id, r.page, r.version, r.body, r.author, r.created_at FROM wiki_revisions r JOIN wiki_pages p ON p.id=r.page WHERE r.created_at > $1 ORDER BY r.created_at", [since])) {
       const prev = w.version > 1 ? await db.get("SELECT body FROM wiki_revisions WHERE page=$1 AND version < $2 ORDER BY version DESC LIMIT 1", [w.page, w.version]) : null;
       const delta = Math.abs(String(w.body || "").length - String(prev?.body || "").length);
       const changed = prev ? delta >= S.wikiMinChars || (String(w.body) !== String(prev.body) && String(w.body).length >= S.wikiMinChars && delta >= S.wikiMinChars / 2) : String(w.body || "").length >= S.wikiMinChars;
-      if (changed) note("wiki_edit", await award(w.author, "wiki_edit", `${w.page}:${dayOf(w.created_at)}`, { flagged: fl }));
+      if (changed) { note("wiki_edit", await award(w.author, "wiki_edit", `${w.page}:${dayOf(w.created_at)}`, { flagged: fl })); if (want.wiki_edit) await offer("wiki_edit", w.author, `${w.page}:${dayOf(w.created_at)}`, { at: w.created_at }); }
     }
     // 5. mentoring: a member referred by an ambassador who is still active and contributing after 7 days
     for (const r of await db.all("SELECT a.user_id, a.ambassador_id FROM ambassador_referrals a JOIN users u ON u.id=a.user_id WHERE u.status='active' AND a.created_at < $1 AND a.created_at > $2", [new Date(t - 7 * DAY).toISOString(), new Date(t - 60 * DAY).toISOString()])) {
       const active = await db.get("SELECT 1 x FROM posts WHERE author=$1 AND status='published' UNION SELECT 1 x FROM comments WHERE author=$1 AND status='published' LIMIT 1", [r.user_id]);
       if (active) note("mentoring", await award(r.ambassador_id, "mentoring", "ref:" + r.user_id, { counterpart: r.user_id, flagged: fl }));
+    }
+    // v2.165: «دعوة صديق بقي نشطاً 14 يوماً» (MJT source friend_active, OFF by default)
+    if (want.friend_active) for (const r of await db.all("SELECT a.user_id, a.ambassador_id, a.created_at FROM ambassador_referrals a JOIN users u ON u.id=a.user_id WHERE u.status='active' AND a.created_at < $1 AND a.created_at > $2", [new Date(t - 14 * DAY).toISOString(), new Date(t - 90 * DAY).toISOString()])) {
+      const active = await db.get("SELECT 1 x FROM posts WHERE author=$1 AND status='published' AND created_at >= $2 UNION SELECT 1 x FROM comments WHERE author=$1 AND status='published' AND created_at >= $2 LIMIT 1", [r.user_id, new Date(Date.parse(r.created_at) + 7 * DAY).toISOString()]);
+      if (active && r.ambassador_id !== r.user_id) await offer("friend_active", r.ambassador_id, "ref:" + r.user_id, { counterpart: r.user_id, at: new Date(Date.parse(r.created_at) + 14 * DAY).toISOString() });
     }
     return out;
   })().finally(() => { scanning = null; }));

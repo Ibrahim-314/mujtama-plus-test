@@ -281,6 +281,7 @@ module.exports = (ctx, opts = {}) => {
     const st = oneOf(b.status, Object.keys(ATT), null); if (!st) throw E.bad("حالة حضور غير صالحة");
     if (!MEMBER_ROLES.includes(await roleOf(s.community_id, uid))) throw E.nf("ليس عضواً في المجموعة");
     await mark(sid, s.community_id, uid, st, user.id, false);
+    if ((st === "present" || st === "late") && uid !== user.id) ctx.services.mjtRewards?.emit?.("study_session", uid, sid, { counterpart: user.id }); // v2.165: MJT source «حضور جلسة دراسة» — teacher-confirmed only (OFF by default)
     return { ok: true, attendance: st };
   }
   async function sessionAttendance(user, sid) {

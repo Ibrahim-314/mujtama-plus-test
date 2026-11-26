@@ -48,7 +48,7 @@
   /* ---------- #/admin/rewards ---------- */
   async function adminView() {
     if (!signed()) { page({ title: "مكافآت مجتمع كوين", icon: "award" }, UI.empty({ title: "للإدارة فقط", text: "هذه الصفحة لمديري المنصة." })); return; } // the server decides (403 for members)
-    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات مجتمع كوين</a><a class="btn outline" href="#/admin/mjt-economy">اقتصاد مجتمع كوين</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
+    page({ title: "مكافآت مجتمع كوين", icon: "award", sub: "رصيد مكافآت داخلي بلا قيمة نقدية", back: ["#/admin", "لوحة الإدارة"], actions: `<a class="btn outline" href="#/admin/mjt-services">خدمات مجتمع كوين</a><a class="btn outline" href="#/admin/mjt-economy">اقتصاد مجتمع كوين</a><a class="btn outline" href="#/admin/mjt-safety">الحماية والسقوف</a><a class="btn outline" href="#/admin/mjt-review">قائمة المراجعة</a>` }, `<div id="rw-a" aria-busy="true">${skel(5)}</div>`);
     const box = $("#rw-a");
     const reload = async () => {
       let s, src, pend;

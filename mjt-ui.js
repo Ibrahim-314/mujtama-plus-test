@@ -146,7 +146,9 @@
       busy(e.submitter, async () => {
         try {
           const r = await api("POST", "/api/mjt/transfers", { to, amount, note: f.note.value.trim() || undefined, ikey });
-          ikey = newKey(); say(`أُرسل ${r.transfer.amount} MJT إلى ${r.transfer.to?.name || "@" + to}`); location.hash = "#/mjt?tab=history";
+          ikey = newKey();
+          if (r.pending) { say("التحويل قيد المراجعة — لم يُخصم شيء من رصيدك"); location.hash = "#/mjt?tab=review"; return; } // v2.165: held by the identity checks (only when an admin turned them on)
+          say(`أُرسل ${r.transfer.amount} MJT إلى ${r.transfer.to?.name || "@" + to}`); location.hash = "#/mjt?tab=history";
         } catch (x) { err.textContent = x.message; err.hidden = false; }
       });
     });

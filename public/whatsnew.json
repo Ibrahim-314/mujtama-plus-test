@@ -1,4 +1,5 @@
 [
+  {"v": "2.165.0", "date": "2026-11-26", "ar": {"title": "حماية مكافآت مجتمع كوين (للإدارة)", "items": ["صفحة جديدة للإدارة «حماية مكافآت مجتمع كوين»: ضوابط الهوية والحسابات المرتبطة، والسقوف الشاملة للكسب، ومصادر كسب جديدة — كلها متوقفة حتى تشغّلها الإدارة", "صفحة «قائمة مراجعة مجتمع كوين» للموافقة على المكافآت والتحويلات المعلّقة أو رفضها", "لا تغيير على الأعضاء: الكسب والتعدين ومكافأة الدخول والتحويل تعمل كما هي، ولم يتغيّر أي رصيد"]}, "en": {"title": "Mujtama Coin protection (admins)", "items": ["New admin page “Mujtama Coin protection”: identity and linked-account checks, overall earning caps and new earn sources — all off until an admin turns them on", "New “Mujtama Coin review queue” page to approve or reject held rewards and transfers", "No change for members: earning, mining, the sign-in reward and transfers work as before, and no balance changed"]}},
   {
     "v": "2.164.0",
     "date": "2026-11-26",
