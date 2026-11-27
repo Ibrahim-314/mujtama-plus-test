@@ -3,7 +3,7 @@
  * Member (360): creates a professional profile in #/cv, adds experience + education + portfolio, reorders, sets skills,
  *   languages & links, privacy (members only, links followers-only); opens the printable /cv page; previews as a stranger.
  * Staff (first account → admin, 390): sees the badge link on the social profile, opens #/cv/:handle, finds the member in
- *   #/talent (search + filter sheet), reports flow + #/admin/pro hide / restore. Studio stats from the post menu load the lazy
+ *   #/talent (search + filter sheet), reports flow (decided by the automatic rules, v2.167). Studio stats from the post menu load the lazy
  *   creation chunk (core budget move).
  * axe: no serious/critical WCAG A/AA issues on every new screen (light + dark); no page errors; lazy chunk; no inline
  * handlers / styles / javascript: URLs; tap targets ≥ 44 px. Screenshots (390 light, 360 dark) → tests/visual/output/p76-*. */
@@ -123,12 +123,11 @@ test("staff: profile badge, member view, talent directory + filters, report, mod
   rl(); const r = await fetch(S.base + "/api/auth/register", { method: "POST", headers: H(), body: JSON.stringify({ name: "مبلّغ", handle: "p76_rep", password: "secret123" }) });
   const ck = r.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
   const rep = await fetch(S.base + "/api/pro/u/p76_sara/report", { method: "POST", headers: { ...H(), Cookie: ck }, body: JSON.stringify({ reason: "fake", note: "شهادة غير صحيحة" }) }); assert.equal(rep.status, 200);
-  await go(p, "#/admin/pro"); await until(p, () => !!document.querySelector('[data-mod="hide"]')); assert.deepEqual(await axe(p), []);
-  await tap(p, '[data-mod="hide"]'); await until(p, () => !!document.querySelector('[data-mod="restore"]'));
-  assert.ok(await S.app.ctx.db.get("SELECT 1 x FROM notifications WHERE kind='pro_hidden'"));
-  await shot(p, "admin-390-light");
-  await tap(p, '[data-mod="restore"]'); await until(p, () => !document.querySelector('[data-mod="restore"]'));
-  for (const hash of ["#/talent", "#/cv/p76_sara", "#/admin/pro"]) { await dark(p); await go(p, hash); await p.waitForTimeout(500); assert.deepEqual(await axe(p), [], hash + " dark"); }
+  // v2.167: #/admin/pro was removed — reports are decided by the automatic rules after 7 days (not upheld → dismissed, profile stays)
+  assert.ok(await S.app.ctx.db.get("SELECT 1 x FROM pro_reports WHERE status='open'"), "the report is recorded");
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 8 * 864e5) });
+  await go(p, "#/talent"); await until(p, () => !!document.querySelector(".wk-card")); await textHas(p, /سارة المطوّرة/);
+  for (const hash of ["#/talent", "#/cv/p76_sara"]) { await dark(p); await go(p, hash); await p.waitForTimeout(500); assert.deepEqual(await axe(p), [], hash + " dark"); }
   await u.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
   await go(u, "#/talent"); await u.waitForTimeout(500); await dark(u); await u.waitForTimeout(700); /* v2.54: let colour transitions finish before axe (was 200 ms → mid-transition contrast flake) */ assert.deepEqual(await axe(u), [], "talent dark 360"); await shot(u, "talent-360-dark");
   // studio stats from the post menu (lazy creation chunk)

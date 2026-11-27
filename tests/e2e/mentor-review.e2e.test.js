@@ -1,4 +1,4 @@
-/* مسار الإرشاد M5-2 «مراجَع من الفريق» — staff toggle in #/admin/mentors → badge on #/mentor/:handle and the directory card.
+/* مسار الإرشاد M5-2 «مراجَع من الفريق» — reviewed flag (v2.167: set by the owner tools, the admin page was removed) → badge on #/mentor/:handle and the directory card.
  * The first account is admin (staff). A second mentor accepts minors and is unreviewed: its dashboard shows the review notice,
  * the admin list shows a warning row + flag and the «تحتاج مراجعة» filter; nothing is blocked. Toggle on → badge appears;
  * reviewed / unreviewed filters. 390 light AR, 1440 dark EN (LTR): axe 0 serious/critical, no horizontal overflow.
@@ -41,35 +41,27 @@ test("mentor dashboard: review notice for an unreviewed mentor accepting minors 
   await shot(pm, "390-light-ar-dashboard-notice"); await c2.close();
 });
 
-test("390 light AR: admin warning row + filter, toggle → badge on profile and directory card", async () => {
-  await go(p, "#/admin/mentors", "#mt-a-list");
-  assert.ok(await p.$("#mt-rev-flag"), "flag notice");
-  assert.equal((await p.$$(".mt-rev-warn")).length, 1, "warning row for the minors mentor");
-  await go(p, "#/admin/mentors?tab=minors", "#mt-a-list"); assert.equal((await p.$$("#mt-a-list > li")).length, 1);
-  await go(p, "#/admin/mentors?tab=reviewed", ".seg"); assert.equal(await p.$("#mt-a-list"), null, "no reviewed mentors yet");
-  await go(p, "#/admin/mentors", "#mt-a-list");
-  assert.deepEqual(await axe(p), [], "axe admin 390 light"); assert.ok(await noOverflow(p)); await shot(p, "390-light-ar-admin-before");
-  const btn = await p.$('[data-rv="1"]'); assert.equal(await btn.getAttribute("aria-pressed"), "false");
-  await btn.click(); await p.waitForSelector('[data-rv="0"][aria-pressed="true"]', { timeout: 10000 });
-  assert.equal((await p.$$(".mt-rev-warn")).length, 0, "warning row gone after review");
-  await shot(p, "390-light-ar-admin-after");
-  await go(p, "#/admin/mentors?tab=reviewed", "#mt-a-list"); assert.equal((await p.$$("#mt-a-list > li")).length, 1);
+/* v2.167: #/admin/mentors (and its toggle) was removed. The member-facing parts stay: the badge is set by the owner tools /
+ * service (setReviewed), used here as a fixture, and members see it on the profile and directory card. */
+const reviewed = async (on) => { const u = await S.app.ctx.db.get("SELECT id FROM users WHERE handle='mrv_mentor'"); await S.app.ctx.services.mentors.setReviewed({ id: "system" }, u.id, { reviewed: on }); };
+
+test("390 light AR: the admin mentors page is gone; reviewed → badge on profile and directory card", async () => {
+  await go(p, "#/mentor/mrv_mentor", ".mt-hero"); assert.equal(await p.$(".mt-hero .mt-rev"), null, "no badge before review");
+  await reviewed(true);
   await go(p, "#/mentor/mrv_mentor", ".mt-hero"); assert.match(await p.textContent(".mt-hero .mt-rev"), /مراجَع من الفريق/);
   assert.deepEqual(await axe(p), [], "axe profile 390 light"); assert.ok(await noOverflow(p)); await shot(p, "390-light-ar-profile-badge");
   await go(p, "#/mentors?tab=find", ".mt-card"); assert.ok(await p.$('.mt-card[href="#/mentor/mrv_mentor"] .mt-rev'), "badge on directory card");
   await shot(p, "390-light-ar-directory-badge");
 });
 
-test("1440 dark EN (LTR): badge + admin translated, axe 0, no overflow; clear removes badge", async () => {
+test("1440 dark EN (LTR): badge translated, axe 0, no overflow; clearing the review removes the badge", async () => {
   await p.setViewportSize({ width: 1440, height: 900 }); await p.emulateMedia({ colorScheme: "dark" });
   await p.waitForFunction(() => !!window.MPI18n?.setLang, null, { timeout: 15000 });
   await p.evaluate(() => window.MPI18n.setLang("en")); await p.waitForFunction(() => document.documentElement.dir === "ltr");
   await p.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   await go(p, "#/mentor/mrv_mentor", ".mt-hero"); assert.match(await p.textContent(".mt-hero .mt-rev"), /Reviewed by the team/);
   assert.deepEqual(await axe(p), [], "axe profile 1440 dark en"); assert.ok(await noOverflow(p)); await shot(p, "1440-dark-en-profile-badge");
-  await go(p, "#/admin/mentors", "#mt-a-list"); assert.match(await p.textContent(".seg"), /Not reviewed/);
-  assert.deepEqual(await axe(p), [], "axe admin 1440 dark en"); assert.ok(await noOverflow(p)); await shot(p, "1440-dark-en-admin");
-  await (await p.$('[data-rv="0"]')).click(); await p.waitForSelector(".mt-rev-warn", { timeout: 10000 });
+  await reviewed(false);
   await go(p, "#/mentor/mrv_mentor", ".mt-hero"); assert.equal(await p.$(".mt-hero .mt-rev"), null, "badge cleared");
   await p.evaluate(() => window.MPI18n.setLang("ar"));
 });

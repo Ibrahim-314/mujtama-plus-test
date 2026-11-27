@@ -236,6 +236,9 @@
     box.innerHTML = `${r.businesses.length ? `<ul class="bz-ul">${r.businesses.map((b) => `<li><a class="bz-grow" href="${h(b.href)}"><b>${h(b.name)}</b> ${verified(b.verified)}<div class="u-m0 bz-sub">${h(b.categoryLabel || "")}${b.city ? ` · ${h(b.city)}` : ""}</div></a>${b.status !== "approved" ? `<span class="bz-st ${b.status === "pending" ? "pending" : "rejected"}">${b.status === "pending" ? "بانتظار المراجعة" : "مرفوض"}</span>` : b.mine ? `<a class="u-mh44 btn ghost" href="#/biz/${enc(b.id)}/edit">تعديل</a>` : ""}</li>`).join("")}</ul>` : `<div class="empty"><b>لا أنشطة لك بعد</b>أضف نشاطك ليجده عملاء يقبلون الدفع بـ Pi في مدينتك.<br><a class="btn" href="#/biz/new"><svg class=ix aria-hidden=true><use href=#i-plus /></svg>أضف نشاطك</a></div>`}
       ${r.claims.length ? `<h3>طلبات الإدارة</h3><ul class="bz-ul">${r.claims.map((c) => `<li><a class="bz-grow" href="#/biz/${enc(c.placeId)}"><b>${h(c.name)}</b><div class="u-m0 bz-sub">${rel(c.at)}${c.note ? ` · ${h(c.note)}` : ""}</div></a><span class="bz-st ${c.status}">${ST[c.status] || c.status}</span></li>`).join("")}</ul>` : ""}`;
   }
+  MPRoutes.extend((a, b, base) => {
+    return { biz: () => (!a ? listView() : a === "new" ? newView() : a === "mine" ? mineView() : b === "edit" ? editView(a) : bizView(a)) };
+  });
   /* v2.167: #/admin/biz removed — ownership claims are granted automatically to Pi-verified accounts (services/auto-rules.js) */
   window.MPBiz = { listView, bizView, newView, editView, mineView, version: "__APP_VERSION__" };
   if (/^#\/biz\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();

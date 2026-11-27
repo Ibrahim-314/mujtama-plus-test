@@ -151,6 +151,7 @@
     load();
   }
 
+  MPRoutes.add("mjt", (a, b, next) => (a === "services" ? servicesView() : next()));
   /* v2.167: #/admin/mjt-services removed — prices are fixed (server/config/app-defaults.js) */
   window.MPMjtServices = { servicesView, version: "2.167.0" };
   if (/^#\/mjt\/services\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();

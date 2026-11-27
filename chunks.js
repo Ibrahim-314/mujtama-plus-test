@@ -30,7 +30,7 @@
     nearby: ["nearby", "place", "places", "cities", "city"],
     study: ["study"],
     series: ["scheduled", "drafts", "series"],
-    biz: ["biz", "admin/biz"],
+    biz: ["biz"],
     courses: ["courses", "course"],
     collabs: ["collabs"],
     hijri: ["hijri", "season", "admin/hijri"],
