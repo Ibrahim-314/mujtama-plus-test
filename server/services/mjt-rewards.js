@@ -73,7 +73,7 @@ module.exports = (ctx, opts = {}) => {
   const OPEN = "NOT EXISTS (SELECT 1 FROM mjt_reward_entries d WHERE d.decides=p.id)";
 
   /* ---------- engine settings (velocity) — v2.167: fixed (app-defaults mjt.engine) ---------- */
-  async function engineSettings() { return { ...ENGINE_DEFAULTS }; }
+  async function engineSettings() { return { ...ENGINE_DEFAULTS, ...(opts.testEngine || {}) }; } // testEngine: test harness only (server/test), never set in production
 
   /* ---------- sources ---------- */
   /** v2.167: every source of the approved earn table is ON with its fixed amount and caps (app-defaults mjt.sources). The rows are
@@ -315,5 +315,5 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/mjt/wallet/review", member(async (req) => memberReview(req.user)));
 
   const ready = ensureSources().catch((e) => logger.error?.("mjt rewards init failed", { err: e?.message }));
-  return { ready, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, offer, emit, wants, bonuses, reasonLabel: (c) => REASON_AR[c] || null, settle, decide, walletOf, memberHistory, memberReview, listSources, engineSettings, LEGACY_LABELS };
+  return { ready, ensureSources, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, offer, emit, wants, bonuses, reasonLabel: (c) => REASON_AR[c] || null, settle, decide, walletOf, memberHistory, memberReview, listSources, engineSettings, LEGACY_LABELS };
 };

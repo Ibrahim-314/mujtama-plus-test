@@ -81,16 +81,17 @@ test("catalog ships disabled with no cost and no term; only real capabilities ca
   clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "course", target: freeCourse })).code, "not_premium");
   clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "post", target: "x" })).code, "bad_kind");
   clear(); const c = await AD(admin, "GET", "/api/admin/mjt/services/candidates?kind=course"); assert.deepEqual(c.items.map((x) => x.target), [course], "only paid courses are candidates");
-  assert.equal((await RW().listSources()).sources.every((x) => !x.enabled && x.amount === null), true, "phase-4 sources untouched");
+  // v2.167: the earn sources are fixed ON from app-defaults (no admin setup); the services catalog did not change them
+  const DEF = require("../config/app-defaults");
+  for (const x of (await RW().listSources()).sources.filter((x) => DEF.mjt.sources[x.key])) { assert.equal(x.enabled, true, x.key); assert.equal(x.amount, String(DEF.mjt.sources[x.key].amount), x.key); }
 });
 
-test("admin endpoints: members 403, signed out 401", async () => {
+test("v2.167: the admin services API is gone (404 for everyone); members' own API stays", async () => {
   for (const [m, p, b] of [["GET", "/api/admin/mjt/services"], ["GET", "/api/admin/mjt/services/candidates?kind=course"], ["GET", "/api/admin/mjt/services/purchases"], ["GET", "/api/admin/mjt/services/" + STUDIO],
     ["POST", "/api/admin/mjt/services", { kind: "course", target: course }], ["PUT", "/api/admin/mjt/services/" + STUDIO, { cost: 1, term: "permanent", enabled: true }], ["POST", "/api/admin/mjt/services/purchases/x/refund", { reason: "محاولة عضو عادي" }]]) {
-    clear(); assert.equal((await free1.req(m, p, b)).status, 403, `${m} ${p}`);
-    clear(); assert.equal((await new H.Client().req(m, p, b)).status, 401, `${m} ${p} signed out`);
+    for (const cl of [free1, admin, new H.Client()]) { clear(); assert.equal((await cl.req(m, p, b)).status, 404, `${m} ${p}`); }
   }
-  const s = await AD(admin, "GET", "/api/admin/mjt/services/" + STUDIO); assert.equal(s.service.enabled, false, "member attempts changed nothing");
+  const s = await AD(admin, "GET", "/api/admin/mjt/services/" + STUDIO); assert.equal(s.service.enabled, false, "HTTP attempts changed nothing");
   clear(); assert.equal((await new H.Client().req("GET", "/api/mjt/services")).status, 401);
 });
 
@@ -208,7 +209,8 @@ test("course content unlock: admin registers a paid course (disabled), sets a pe
   clear(); assert.equal((await free2.req("GET", "/api/course-lessons/" + lessonId)).status, 200);
   const again = await buy(free2, courseSvc.id, { priceVersion: courseSvc.priceVersion, ikey: key("c") }); assert.equal(again.reason, "owned");
   assert.equal(before - (await bal(free2.id)), 4 * UNIT, "no second debit");
-  assert.equal(await bal(teacher.id), 10 * UNIT);
+  // v2.167: the course creator automatically receives 50% of each MJT sale (source course_sale) — 4 MJT → 2 MJT
+  assert.equal(await bal(teacher.id), 12 * UNIT);
 });
 
 test("idempotency: same key replays without a second debit; parallel purchases (different or same key) debit exactly once", async () => {

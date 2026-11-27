@@ -8,7 +8,7 @@
 /** @param {any} H the harness from boot() */
 function shim(H) {
   const S = () => H.app.ctx.services, db = () => H.app.ctx.db;
-  const ok = async (fn) => { try { const r = await fn(); return { status: 200, ...(r && typeof r === "object" && !Array.isArray(r) ? r : { result: r }) }; } catch (e) { return { status: e.status || 500, error: e.message, code: e.code }; } };
+  const ok = async (fn) => { try { const r = await fn(); return { status: 200, ...(r && typeof r === "object" && !Array.isArray(r) ? r : { result: r }) }; } catch (e) { return { status: e.status || 500, error: e.message, code: e.code, ...(e.details && typeof e.details === "object" ? e.details : {}) }; } };
   const routes = [
     ["POST", /^\/api\/admin\/mjt\/adjust$/, (a, m, b) => S().mjt.adjust(a, b)],
     ["POST", /^\/api\/admin\/mjt\/accounts\/([^/]+)\/freeze$/, (a, m, b) => S().mjt.freeze(a, decodeURIComponent(m[1]), b)],
@@ -25,11 +25,20 @@ function shim(H) {
     ["GET", /^\/api\/admin\/ai\/finance$/, (a, m, b, q) => S().ai.finance(q)],
     ["POST", /^\/api\/admin\/mjt\/rewards\/entries\/([^/]+)\/approve$/, (a, m, b) => S().mjtRewards.decide(a, decodeURIComponent(m[1]), b || {}, true)],
     ["POST", /^\/api\/admin\/mjt\/rewards\/entries\/([^/]+)\/reject$/, (a, m, b) => S().mjtRewards.decide(a, decodeURIComponent(m[1]), b || {}, false)],
+    ["GET", /^\/api\/admin\/mjt\/review$/, (a, m, b, q) => S().mjtSafety.queue(q)],
     ["POST", /^\/api\/admin\/mjt\/review\/earn\/([^/]+)\/approve$/, (a, m, b) => S().mjtRewards.decide(a, decodeURIComponent(m[1]), b || {}, true)],
     ["POST", /^\/api\/admin\/mjt\/review\/earn\/([^/]+)\/reject$/, (a, m, b) => S().mjtRewards.decide(a, decodeURIComponent(m[1]), b || {}, false)],
     ["POST", /^\/api\/admin\/mjt\/review\/transfer\/([^/]+)\/approve$/, (a, m, b) => S().mjtSafety.decideHold(a, decodeURIComponent(m[1]), b || {}, true)],
     ["POST", /^\/api\/admin\/mjt\/review\/transfer\/([^/]+)\/reject$/, (a, m, b) => S().mjtSafety.decideHold(a, decodeURIComponent(m[1]), b || {}, false)],
+    ["GET", /^\/api\/admin\/mjt\/services$/, () => S().mjtServices.adminList()],
+    ["GET", /^\/api\/admin\/mjt\/services\/candidates$/, (a, m, b, q) => S().mjtServices.candidates(q)],
+    ["GET", /^\/api\/admin\/mjt\/services\/purchases$/, (a, m, b, q) => S().mjtServices.purchases(q)],
+    ["GET", /^\/api\/admin\/mjt\/services\/([^/]+)$/, (a, m) => S().mjtServices.detail(decodeURIComponent(m[1]))],
+    ["POST", /^\/api\/admin\/mjt\/services$/, (a, m, b) => S().mjtServices.register(a, b)],
+    ["PUT", /^\/api\/admin\/mjt\/services\/([^/]+)$/, (a, m, b) => S().mjtServices.edit(a, decodeURIComponent(m[1]), b)],
     ["POST", /^\/api\/admin\/mjt\/services\/purchases\/([^/]+)\/refund$/, (a, m, b) => S().mjtServices.refund(a, decodeURIComponent(m[1]), b || {})],
+    ["POST", /^\/api\/admin\/mjt\/rewards\/wallets\/([^/]+)\/freeze$/, (a, m, b) => S().mjt.freeze(a, decodeURIComponent(m[1]), b)],
+    ["GET", /^\/api\/admin\/membership\/limits$/, async () => ({ limits: await S().membership.quotas() })],
     ["POST", /^\/api\/admin\/reputation\/penalties$/, (a, m, b) => S().repLevels.applyPenalty(a, b || {})],
     ["POST", /^\/api\/admin\/reputation\/penalties\/([^/]+)\/revoke$/, (a, m, b) => S().repLevels.revokePenalty(a, decodeURIComponent(m[1]), b || {})]
   ];
