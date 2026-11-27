@@ -508,39 +508,7 @@
     draw();
   }
 
-  /* =================== #/admin/ads/review — review queue =================== */
-  async function reviewView() {
-    const t = begin();
-    view.innerHTML = `<div class="wrap ad-page">${head("#/admin", "الإدارة", "مراجعة الإعلانات", "doc")}<p class="u-m0 u-mb10 muted">راجِع المنشور والاستهداف قبل النشر. الرفض يتطلب سبباً يُرسل للمعلن.</p><div id="ad-rq" aria-busy="true"><div class="skel"></div></div></div>`;
-    focusH();
-    let r; try { r = await api("GET", "/api/admin/ads/review"); } catch (e) { if (live(t)) fail("#ad-rq", e); return; }
-    if (!live(t)) return;
-    const items = list(r, "items", "campaigns").map(x => ({ ...norm(x), advertiser: x.advertiser || x.owner || {}, automod: x.automod || x.flags || null, submittedAt: x.submittedAt || x.submitted_at || x.updatedAt })), box = view.querySelector("#ad-rq");
-    box.removeAttribute("aria-busy");
-    const sr = list(r, "reasons").filter(x => x && x.code), RJ = sr.length ? sr.map(x => [x.code, (REJECT.find(z => z[0] === x.code) || [0, x.label || x.code])[1]]) : REJECT; // server codes win
-    const empty = () => { box.innerHTML = `<p class="card muted" role="status">لا حملات بانتظار المراجعة.</p>`; };
-    if (!items.length) return empty();
-    box.innerHTML = items.map(c => { const tg = c.targeting, a = c.advertiser, rid = "ad-r-" + h(c.id), flags = c.automod ? list(c.automod, "labels", "flags", "explanations", "reasons") : [];
-      return `<article class="card" data-ad-rv="${h(c.id)}" aria-labelledby="${rid}"><h3 id="${rid}" class="u-t-lg u-m0 u-mb4">${h(c.name || "حملة")}</h3>
-        <small class="muted">من ${h(a.name || "")} ${a.handle ? `<a href="#/u/${enc(a.handle)}">@${h(a.handle)}</a>` : ""}${c.submittedAt ? " · " + h(dayF(c.submittedAt, { dateStyle: "medium", timeStyle: "short" })) : ""}</small>
-        <blockquote style="margin:8px 0;padding:8px 12px;border-inline-start:4px solid var(--line);background:var(--bg-2);border-radius:10px">${h(preview(c.post || (typeof S !== "undefined" && S.post(c.postId)) || {}))}${c.postId ? ` <a href="#/post/${enc(c.postId)}">فتح المنشور</a>` : ""}</blockquote>
-        <dl class="ad-dl"><dt>المواضيع</dt><dd>${tg.topics.length ? tg.topics.map(x => h(topicName(x))).join("، ") : "عام"}</dd><dt>اللغة / البلد</dt><dd>${tg.languages.map(x => h(nameOf(LANGS, x))).join("، ") || "الكل"} / ${tg.countries.map(x => h(nameOf(COUNTRIES, x))).join("، ") || "الكل"}</dd><dt>الميزانية</dt><dd>${pi(c.budgetTotal)} · ${h(dayF(c.startAt))} – ${h(dayF(c.endAt))}</dd></dl>
-        ${flags.length ? `<p class="ad-note"><b>الفحص الآلي:</b> ${flags.map(x => h(typeof x === "object" ? x.label || x.code : reasonText(x))).join("، ")}</p>` : ""}
-        <fieldset><legend>أسباب الرفض</legend><div class="ad-checks">${RJ.map(([k, n]) => `<label><input type="checkbox" value="${k}" data-ad-rs><span>${h(n)}</span></label>`).join("")}</div></fieldset>
-        <label class="ad-f"><span>ملاحظة للمعلن (اختيارية)</span><textarea data-ad-note maxlength="500" rows="2"></textarea></label><p class="ad-err" data-ad-err role="alert"></p>
-        <div class="ad-btns"><button type="button" class="btn" data-ad-dec="approve">✓ موافقة</button><button type="button" class="btn ghost" data-ad-dec="reject">✕ رفض</button></div></article>`; }).join("");
-    box.querySelectorAll("[data-ad-dec]").forEach(b => b.onclick = async () => {
-      const art = b.closest("[data-ad-rv]"), cid = art.dataset.adRv, decision = b.dataset.adDec, er = art.querySelector("[data-ad-err]");
-      const reasons = decision === "reject" ? [...art.querySelectorAll("[data-ad-rs]:checked")].map(x => x.value) : [], note = art.querySelector("[data-ad-note]").value.trim();
-      if (decision === "reject" && !reasons.length) { er.textContent = ERR.reasons_required; art.querySelector("[data-ad-rs]").focus(); return; }
-      art.querySelectorAll("button").forEach(x => (x.disabled = true)); er.textContent = "";
-      try { await api("POST", `/api/admin/ads/review/${enc(cid)}`, { decision, reasons, note }); }
-      catch (e) { art.querySelectorAll("button").forEach(x => (x.disabled = false)); er.textContent = errText(e); return; }
-      const next = art.nextElementSibling || art.previousElementSibling; art.remove();
-      const m = decision === "approve" ? "تمت الموافقة على الحملة" : "رُفضت الحملة وأُبلغ المعلن"; toast(m); say(m);
-      if (!box.querySelector("[data-ad-rv]")) empty(); else next?.querySelector("h3")?.setAttribute("tabindex", "-1"), next?.querySelector("h3")?.focus();
-    });
-  }
+  /* v2.167: #/admin/ads/review removed — campaigns are reviewed automatically (automod + reputation; services/auto-rules.js) */
 
   /* =================== routes + entry points =================== */
   function adsRoute(a, b) {
@@ -557,15 +525,10 @@
   MPRoutes.extend((a, b, prev) => {
     return { ads: () => adsRoute(a, b) };
   });
-  MPRoutes.add("admin", (a, b, next) => {
-        if (a === "ads") return !b || b.split("?")[0] === "review" ? reviewView() : Views.notFound();
-        next();
-        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("ad-adm")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", card("ad-adm", "#/admin/ads/review", "doc", "مراجعة الإعلانات", "الموافقة على الحملات الإعلانية أو رفضها قبل النشر")); });
-      });
   MPRoutes.add("settings", (a, b, next) => (a === "ads" ? prefsView() : next()));
-  window.MPAds = { list: listView, wizard, dashboard, prefs: prefsView, review: reviewView, why, mark, bucketText, kv, version: "2.13.0" };
+  window.MPAds = { list: listView, wizard, dashboard, prefs: prefsView, why, mark, bucketText, kv, version: "2.13.0" };
   if (typeof DB !== "undefined" && DB.onboarded) {
-    if (/^#\/(ads|settings\/ads|admin\/ads)(\/|$|\?)/.test(location.hash)) route();
+    if (/^#\/(ads|settings\/ads)(\/|$|\?)/.test(location.hash)) route();
     else if (/^#\/settings\/?(\?|$)/.test(location.hash)) setCard();
     else if (/^#?\/?(home)?$|^#\/home/.test(location.hash || "#/home") && promotedMap(typeof feedMode !== "undefined" ? feedMode : "for")?.size && document.getElementById("sheet")?.classList.contains("hidden") && typeof rerender === "function") rerender();
   }

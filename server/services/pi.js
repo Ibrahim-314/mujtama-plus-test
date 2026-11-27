@@ -1,6 +1,6 @@
 /* Pi Service (phase 36 — Full Pi integration). The single server-side integration point with the Pi Platform API.
- * 1. Config: PI_ENABLED (off by default), PI_NETWORK testnet by default; mainnet ONLY with PI_NETWORK=mainnet AND
- *    PI_MAINNET_CONFIRM=1 (otherwise it silently stays on testnet and the config route says so).
+ * 1. Config: PI_ENABLED (off by default). v2.167: the network is FIXED to testnet (server/config/app-defaults.js); the
+ *    Mainnet path (PI_NETWORK=mainnet + PI_MAINNET_CONFIRM=1) was removed — any Mainnet payment is refused.
  * 2. Sign-in / linking (phase 36b, Pi App Studio): the client's Pi accessToken is exchanged server-side, once, with the
  *    App Studio backend (POST PI_APPSTUDIO_URL {accessToken} → {sessionToken, user:{uid, username}}); only that uid/username
  *    is trusted (never anything the browser sends). The result is then linked to the signed-in account, used to sign in
@@ -46,8 +46,7 @@ module.exports = (ctx, opts = {}) => {
   const enabled = opts.env ? env.PI_ENABLED === "1" : !!config.piEnabled || env.PI_ENABLED === "1";
   const apiKey = (opts.env ? env.PI_API_KEY : config.piApiKey || env.PI_API_KEY) || null;
   const apiUrl = String((opts.env ? env.PI_API_URL : null) || config.piApi || env.PI_API_URL || "https://api.minepi.com").replace(/\/+$/, "");
-  const mainnetAsked = env.PI_NETWORK === "mainnet";
-  const network = mainnetAsked && env.PI_MAINNET_CONFIRM === "1" ? "mainnet" : "testnet";
+  const network = require("../config/app-defaults").network; // v2.167: always "testnet" — no Mainnet path
   const sandbox = network === "testnet" && env.PI_SANDBOX !== "0";
   const appId = env.PI_APP_ID ? String(env.PI_APP_ID).slice(0, 100) : undefined;
   const maxAmount = Math.max(0.0000001, +env.PI_MAX_AMOUNT || 1000);
@@ -55,7 +54,7 @@ module.exports = (ctx, opts = {}) => {
   const explorerBase = env.PI_EXPLORER_URL || "https://blockexplorer.minepi.com";
   const piNetworkName = network === "mainnet" ? "Pi Network" : "Pi Testnet";
   const intentTtlMs = (+env.PI_INTENT_TTL_HOURS || 24) * 3600e3;
-  if (enabled && mainnetAsked && network !== "mainnet") logger.warn?.("PI_NETWORK=mainnet ignored: PI_MAINNET_CONFIRM=1 is required; staying on testnet");
+  if (enabled && env.PI_NETWORK === "mainnet") logger.warn?.("PI_NETWORK=mainnet ignored: this app runs on the Pi Testnet only (v2.167)");
   const authEnabled = env.PI_AUTH_ENABLED !== "0" && env.PI_AUTH_ENABLED !== "false";
   const appStudioUrl = (() => {
     const raw = String(env.PI_APPSTUDIO_URL || APPSTUDIO_LOGIN).trim();
@@ -578,7 +577,7 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/admin/pi/payments/:id/refund", admin(async (req) => refund(req.user, req.params.id, req.body)));
 
   /* phase 51: activation diagnostics (never returns the key itself) + a harmless key probe */
-  const diag = () => ({ enabled, authEnabled, apiKeyPresent: !!apiKey, network, sandbox, mainnetAsked, mainnetConfirmed: env.PI_MAINNET_CONFIRM === "1", appId: appId || null, purposes: [...purposes], maxAmount, apiHost: (() => { try { return new URL(apiUrl).host; } catch { return null; } })() });
+  const diag = () => ({ enabled, authEnabled, apiKeyPresent: !!apiKey, network, sandbox, mainnetAsked: false, mainnetConfirmed: false, appId: appId || null, purposes: [...purposes], maxAmount, apiHost: (() => { try { return new URL(apiUrl).host; } catch { return null; } })() });
   async function keyCheck() { // GET a payment id that cannot exist: 404 = key accepted, 401/403 = key refused
     if (!apiKey) return { ok: false, reason: "no_key" };
     try { const r = await piFetch("/v2/payments/mp-activation-probe-" + Date.now()); return r.status === 401 || r.status === 403 ? { ok: false, reason: "key_refused", status: r.status } : { ok: r.status === 404 || r.ok, status: r.status, reason: r.status === 404 || r.ok ? "key_accepted" : "unexpected" }; }

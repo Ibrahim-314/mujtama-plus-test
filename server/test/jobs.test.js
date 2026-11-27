@@ -9,6 +9,7 @@ const { boot } = require("./helpers");
 
 let H, adminC, emp, sara, omar, kid, anon, job, free, app1, app2;
 const db = () => H.app.ctx.db;
+const J = () => H.app.ctx.services.jobs, AR = () => H.app.ctx.services.autoRules; // v2.167: no staff queue — automatic rules
 async function mk(handle, name) {
   H.app.ctx.rl.w.clear();
   const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: name || "عضو " + handle, handle, password: "secret123" });
@@ -47,13 +48,16 @@ test("posting: validation, anti-scam review, new accounts reviewed, staff approv
   // a brand-new account is reviewed once
   const fresh = await mk("jb_fresh"); r = await fresh.req("POST", "/api/jobs", { ...JOB, title: "مصمم شعارات لمشروع ناشئ" }); assert.equal(r.reasons[0].key, "new");
   // staff
-  assert.equal((await emp.req("GET", "/api/admin/jobs")).status, 403);
-  let a = await adminC.req("GET", "/api/admin/jobs"); assert.equal(a.review.length, 2);
-  assert.equal((await adminC.req("POST", "/api/admin/jobs/" + scam, { action: "remove" })).status, 400);
-  a = await adminC.req("POST", "/api/admin/jobs/" + scam, { action: "remove", reason: "يطلب رسوماً وعبارة المرور" }); assert.equal(a.review.length, 1);
+  assert.equal((await emp.req("GET", "/api/admin/jobs")).status, 404);
+  assert.equal((await adminC.req("GET", "/api/admin/jobs")).status, 404, "v2.167: the staff queue is gone");
+  let a = await J().adminView(); assert.equal(a.review.length, 2);
+  assert.equal(await J().moderate(AR().SYS, scam, { action: "remove" }).then(() => 200, (e) => e.status), 400);
+  a = await J().moderate(AR().SYS, scam, { action: "remove", reason: "يطلب رسوماً وعبارة المرور" }); assert.equal(a.review.length, 1);
   assert.ok((await kinds(emp.id)).includes("job_removed"));
   assert.equal((await emp.req("GET", "/api/jobs/" + scam)).job.removedReason, "يطلب رسوماً وعبارة المرور");
-  await adminC.req("POST", "/api/admin/jobs/" + r.id, { action: "approve" }); assert.ok((await kinds(fresh.id)).includes("job_approved"));
+  assert.equal((await AR().publish(new Date())).jobs, 0, "a held post from a new account waits");
+  assert.equal((await AR().publish(new Date(Date.now() + 25 * 3600e3))).jobs, 1, "published automatically after 24 h with no report");
+  assert.ok((await kinds(fresh.id)).includes("job_approved")); assert.equal((await sara.req("GET", "/api/jobs/" + r.id)).job.status, "open");
   // freelance project
   r = await emp.req("POST", "/api/jobs", { kind: "freelance", title: "تصميم هوية بصرية لمتجر", body: "نحتاج شعاراً وألواناً وخطوطاً ودليل استخدام مختصر لمتجر قهوة مختصة في الرياض، مع ملفات قابلة للتعديل.", category: "design", skills: ["تصميم شعارات"], mode: "remote", payType: "fixed", payMin: 100, payMax: 300, questions: [] });
   assert.equal(r.status, 200, r.error); free = r.id;
@@ -121,8 +125,9 @@ test("state changes, reports → paused, staff dismiss; minors; blocked; Pi boos
   assert.equal((await adminC.req("POST", `/api/jobs/${free}/report`, { reason: "fake" })).flagged, true);
   assert.equal((await anon.req("GET", "/api/jobs/" + free)).job.status, "paused"); assert.ok((await kinds(emp.id)).includes("job_review"));
   assert.equal((await emp.req("POST", `/api/jobs/${free}/state`, { status: "open" })).code, "flagged");
-  const a = await adminC.req("GET", "/api/admin/jobs"); assert.equal(a.reports[0].reports.length, 3);
-  await adminC.req("POST", "/api/admin/jobs/" + free, { action: "dismiss" });
+  const a = await J().adminView(); assert.equal(a.reports[0].reports.length, 3);
+  assert.equal((await AR().reports(new Date())).jobsRestored, undefined, "reports are not decided before 7 days");
+  assert.equal((await AR().reports(new Date(Date.now() + 8 * 864e5))).jobsRestored, 1, "not upheld by 6 trusted reporters → reopened automatically");
   assert.equal((await anon.req("GET", "/api/jobs/" + free)).job.status, "open");
   // minors: only unpaid, minors-ok postings
   await kid.req("PUT", "/api/pro/me", { headline: "طالب مهتم بالتصميم", visibility: "followers" });

@@ -68,11 +68,12 @@ test("threat → escalated with a system report for admins; admin removal create
   const p = (await U.req("POST", "/api/posts", { text: "اعرف وين ساكن وراح اذبحك" })).post; await settle();
   const item = await AM.itemFor("post", p.id); assert.equal(item.state, "escalated"); assert.ok(item.reasons.includes("threat"));
   const dash = await ADM.req("GET", "/api/admin/dashboard"); assert.ok(dash.reports.some(r => r.target === p.id && r.by_user === "system"));
-  const q = await ADM.req("GET", "/api/admin/automod"); const qi = q.items.find(i => i.target === p.id); assert.ok(qi && qi.categories.threat >= 0.8);
-  assert.equal((await U.req("GET", "/api/admin/automod")).status, 403);
-  const r = await ADM.req("POST", "/api/admin/automod/" + qi.id, { action: "remove", reason: "تهديد صريح" }); assert.ok(r.decision);
+  // v2.167: the staff queue is gone (404); an escalated item is never published by the automatic rules
+  assert.equal((await ADM.req("GET", "/api/admin/automod")).status, 404); assert.equal((await U.req("GET", "/api/admin/automod")).status, 404);
+  assert.equal((await ADM.req("POST", "/api/admin/automod/" + item.id, { action: "release" })).status, 404);
+  await ctx.services.autoRules.publish(new Date(Date.now() + 25 * 3600e3)); assert.equal(await status("posts", p.id), "held", "escalated stays hidden");
+  const r = { decision: await AM.remove(item, "system", "تهديد صريح") }; assert.ok(r.decision);
   assert.equal(await status("posts", p.id), "removed");
-  assert.equal((await ADM.req("POST", "/api/admin/automod/" + qi.id, { action: "release" })).status, 409);
   const ap = await U.req("POST", "/api/appeals", { decision: r.decision, text: "كنت أمزح مع صديقي" }); assert.ok(ap.id, "the normal appeal flow applies");
 });
 
@@ -87,9 +88,8 @@ test("smart delay: borderline post waits, then publishes; a reported one escalat
   const r = await AM.releaseDue(); assert.equal(r.released, 1); assert.equal(r.escalated, 1);
   assert.equal(await status("posts", a.id), "published"); assert.equal((await V.req("GET", "/api/posts/" + a.id)).status, 200);
   assert.equal(await status("posts", b.id), "held"); assert.equal((await AM.itemFor("post", b.id)).state, "escalated");
-  it = (await ADM.req("GET", "/api/admin/automod")).items.find(i => i.target === b.id);
-  await ADM.req("POST", "/api/admin/automod/" + it.id, { action: "release", reason: "نقد مقبول" });
-  assert.equal(await status("posts", b.id), "published");
+  await ctx.services.autoRules.publish(new Date(Date.now() + 25 * 3600e3));
+  assert.equal(await status("posts", b.id), "held", "v2.167: a reported, escalated post is not published automatically");
 });
 
 test("malicious links: mismatched display text, shorteners from new accounts, admin domain list", async () => {
@@ -170,7 +170,7 @@ test("zero-window gate (optional content.js hook): held before insert, released 
   const published = []; ctx.bus.on("POST_PUBLISHED", e => published.push(e.post?.id));
   ctx.bus.emit("POST_CREATED", { post: await db().get("SELECT * FROM posts WHERE id=$1", [pid]), actor: V.id }); await settle();
   const it = await AM.itemFor("post", pid); assert.equal(it.source, "precheck"); assert.equal(it.prev_status, "published"); assert.equal(published.length, 0);
-  const qi = (await ADM.req("GET", "/api/admin/automod")).items.find(i => i.target === pid);
-  await ADM.req("POST", "/api/admin/automod/" + qi.id, { action: "release" }); await sleep(50);
+  assert.equal((await ctx.services.autoRules.publish(new Date())).automod, 0, "not before 24 h (author below level 3)");
+  assert.ok((await ctx.services.autoRules.publish(new Date(Date.now() + 25 * 3600e3))).automod >= 1, "v2.167: released automatically after 24 h with no report"); await sleep(50);
   assert.equal(await status("posts", pid), "published"); assert.deepEqual(published, [pid]);
 });

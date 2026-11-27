@@ -29,6 +29,7 @@ const crypto = require("node:crypto");
 const { E, HttpError, str } = require("../lib/core");
 const L = require("../lib/mjt-ledger");
 const { UNIT, SYS, userAcc, format } = L;
+const DEF = require("../config/app-defaults");
 
 const HOUR = 3600e3, DAY = 24 * HOUR;
 /* achievement types (services/achievements.js) that may become reward sources; saved_search_created and collection_created
@@ -50,8 +51,9 @@ const REASON_AR = { wallet_frozen: "المحفظة موقوفة مؤقتاً", r
   /* v2.165 identity checks (services/mjt-safety.js) */
   account_too_new: "عمر الحساب أقل من الحد", pi_required: "الحساب غير موثّق بـ Pi", integrity_flagged: "مراجعة أمان للحساب", linked_counterpart: "حساب مرتبط بالطرف الآخر", own_content: "محتوى العضو نفسه", linked_cluster: "حسابات مرتبطة", fan_in: "تحويلات كثيرة إلى حساب واحد" };
 const NOTE = "مجتمع كوين (MJT) رصيد مكافآت داخلي فقط: ليس له قيمة نقدية، ولا يُشترى ولا يُباع ولا يُسحب، ولا يُحوَّل إلى Pi أو مال.";
-const ENGINE_DEFAULTS = { velocityPerHour: 10 };
-const IKEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
+const ENGINE_DEFAULTS = DEF.mjt.engine;
+/** v2.167: legacy issuance that waits for the identity checks goes through this journal too (source = its path) */
+const LEGACY_LABELS = { checkin: "مكافأة الدخول اليومي", mining: "التعدين اليومي", course_sale: "نصيبك من بيع دورتك بمجتمع كوين" };
 const SERVICE_REFUND = "service_refund"; // v2.161: compensating credits of services/mjt-services.js (kind adjust_credit, ledger kind refund)
 
 /** @param {any} ctx @param {{ now?: () => Date|number }} [opts] */
@@ -67,62 +69,32 @@ module.exports = (ctx, opts = {}) => {
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return JSON.parse(v) ?? d; } catch { return d; } };
   const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const member = (fn) => A(async (req, res) => { if (!rl.hit("mjt_wallet", req.user.id)) throw E.rate(); return fn(req, res); });
-  const admin = (fn) => A(async (req, res) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); if (!rl.hit("mjt_admin", req.user.id)) throw E.rate(); return fn(req, res); });
   const audit = (q, action, actor, target, txId, detail) => q.run("INSERT INTO mjt_audit(action,actor_id,target,tx_id,detail,created_at) VALUES($1,$2,$3,$4,$5,$6)", [action, actor || null, target || null, txId || null, JSON.stringify(detail || {}), nowIso()]);
-  const userByHandle = (h) => db.get("SELECT id, handle, name FROM users WHERE LOWER(handle)=LOWER($1)", [String(h || "").replace(/^@/, "").slice(0, 60)]);
-  /** a whole, positive number of MJT typed by an admin → minor units (integers only: no fractions, no floats) */
-  const wholeMjt = (v, max = 10000) => { const s = String(v ?? "").trim().replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))); if (!/^\d{1,6}$/.test(s) || +s < 1 || +s > max) throw fail(400, "bad_amount", `المبلغ عدد صحيح من 1 إلى ${max}`); return +s * UNIT; };
   const OPEN = "NOT EXISTS (SELECT 1 FROM mjt_reward_entries d WHERE d.decides=p.id)";
 
-  /* ---------- engine settings (velocity) ---------- */
-  async function engineSettings() { return { ...ENGINE_DEFAULTS, ...parse((await db.get("SELECT value FROM mjt_settings WHERE key='rewards_engine'"))?.value, {}) }; }
-  async function saveEngineSettings(user, b = {}) {
-    const next = { ...(await engineSettings()) };
-    if (b.velocityPerHour !== undefined) next.velocityPerHour = int(b.velocityPerHour, next.velocityPerHour, 1, 1000);
-    await db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('rewards_engine',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(next), user.id, nowIso()]);
-    await audit(db, "rewards_settings", user.id, null, null, next); ctx.audit?.("mjt_rewards_settings", "mjt", null, user.id);
-    return { settings: next };
-  }
+  /* ---------- engine settings (velocity) — v2.167: fixed (app-defaults mjt.engine) ---------- */
+  async function engineSettings() { return { ...ENGINE_DEFAULTS }; }
 
   /* ---------- sources ---------- */
+  /** v2.167: every source of the approved earn table is ON with its fixed amount and caps (app-defaults mjt.sources). The rows are
+   *  synced at boot; a source switched on now pays only for events from this moment (no back-pay). Sources outside the table
+   *  (team_created) keep their stored state (no approved amount → nothing pays). */
   async function ensureSources() {
     const at = nowIso();
     for (const [key, label] of Object.entries(REWARDABLE)) { const c = SEED_CAPS[key] || [null, null, null]; await db.run("INSERT INTO mjt_reward_sources(key,label,amount,daily_cap,weekly_cap,monthly_cap,max_per_ref,requires_approval,enabled,updated_by,created_at,updated_at) VALUES($1,$2,NULL,$4,$5,$6,1,0,0,'system',$3,$3) ON CONFLICT DO NOTHING", [key, label, at, c[0], c[1], c[2]]); }
+    for (const [key, d] of Object.entries(DEF.mjt.sources)) {
+      const cur = await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [key]); if (!cur) continue;
+      const want = { amount: d.amount * UNIT, daily_cap: d.daily ?? null, weekly_cap: d.weekly ?? null, monthly_cap: d.monthly ?? null };
+      const same = Number(cur.enabled) === 1 && Number(cur.requires_approval) === 0 && Number(cur.amount) === want.amount && nOrNull(cur.daily_cap) === want.daily_cap && nOrNull(cur.weekly_cap) === want.weekly_cap && nOrNull(cur.monthly_cap) === want.monthly_cap;
+      if (same) continue;
+      await db.run("UPDATE mjt_reward_sources SET amount=$2, daily_cap=$3, weekly_cap=$4, monthly_cap=$5, requires_approval=0, enabled=1, updated_by='defaults', updated_at=$6 WHERE key=$1", [key, want.amount, want.daily_cap, want.weekly_cap, want.monthly_cap, at]);
+      if (!Number(cur.enabled)) await markSince(key, at, "defaults");
+      await audit(db, "reward_source_defaults", "system", key, null, { amount: d.amount, daily: want.daily_cap, weekly: want.weekly_cap, monthly: want.monthly_cap });
+    }
   }
   const nOrNull = (v) => (v === null || v === undefined ? null : Number(v));
   const srcClient = (r) => ({ key: r.key, label: r.label, amount: r.amount === null || r.amount === undefined ? null : format(r.amount), dailyCap: nOrNull(r.daily_cap), weeklyCap: nOrNull(r.weekly_cap), monthlyCap: nOrNull(r.monthly_cap), maxPerRef: nOrNull(r.max_per_ref), requiresApproval: !!Number(r.requires_approval), enabled: !!Number(r.enabled), updatedAt: r.updated_at });
   async function listSources() { return { sources: (await db.all("SELECT * FROM mjt_reward_sources ORDER BY key")).map(srcClient), rewardable: Object.keys(REWARDABLE) }; }
-  async function saveSource(user, key, b = {}, { create = false } = {}) {
-    key = String(key || b.key || "");
-    const cur = await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [key]);
-    if (create) { if (!REWARDABLE[key]) throw fail(400, "not_rewardable", "هذا النوع لا يصلح مصدراً للمكافآت"); if (cur) throw fail(409, "exists", "المصدر موجود"); }
-    else if (!cur) throw E.nf("المصدر غير موجود");
-    const capOf = (v, old) => (v === undefined ? old : v === null || v === "" ? null : int(v, null, 1, 1000));
-    const next = {
-      label: b.label !== undefined ? str(b.label, 60, { required: true, min: 2 }) : cur?.label || REWARDABLE[key],
-      amount: b.amount !== undefined ? (b.amount === null || b.amount === "" ? null : wholeMjt(b.amount)) : cur ? nOrNull(cur.amount) : null,
-      daily_cap: capOf(b.dailyCap, cur ? nOrNull(cur.daily_cap) : null), weekly_cap: capOf(b.weeklyCap, cur ? nOrNull(cur.weekly_cap) : null), monthly_cap: capOf(b.monthlyCap, cur ? nOrNull(cur.monthly_cap) : null),
-      max_per_ref: b.maxPerRef !== undefined ? (b.maxPerRef === null || b.maxPerRef === "" ? null : int(b.maxPerRef, 1, 1, 100)) : cur ? nOrNull(cur.max_per_ref) : 1,
-      requires_approval: b.requiresApproval !== undefined ? (b.requiresApproval ? 1 : 0) : cur ? Number(cur.requires_approval) : 0,
-      enabled: b.enabled !== undefined ? (b.enabled ? 1 : 0) : cur ? Number(cur.enabled) : 0
-    };
-    if (next.enabled && next.amount === null) throw fail(400, "amount_required", "حدّد مبلغ المكافأة قبل تفعيل المصدر");
-    const at = nowIso(), vals = [key, next.label, next.amount, next.daily_cap, next.weekly_cap, next.monthly_cap, next.max_per_ref, next.requires_approval, next.enabled, user.id, at];
-    if (create) await db.run("INSERT INTO mjt_reward_sources(key,label,amount,daily_cap,weekly_cap,monthly_cap,max_per_ref,requires_approval,enabled,updated_by,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11)", vals);
-    else await db.run("UPDATE mjt_reward_sources SET label=$2, amount=$3, daily_cap=$4, weekly_cap=$5, monthly_cap=$6, max_per_ref=$7, requires_approval=$8, enabled=$9, updated_by=$10, updated_at=$11 WHERE key=$1", vals);
-    if (next.enabled && !(cur && Number(cur.enabled))) await markSince(key, at, user.id); // v2.165: events before this moment never pay (no back-pay)
-    await audit(db, create ? "reward_source_created" : "reward_source_saved", user.id, key, null, { before: cur ? srcClient(cur) : null, after: srcClient({ key, ...next, updated_at: at }) });
-    ctx.audit?.("mjt_reward_source_saved", key, JSON.stringify({ enabled: !!next.enabled, amount: next.amount === null ? null : format(next.amount) }), user.id);
-    return { source: srcClient(await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [key])) };
-  }
-  async function deleteSource(user, key) {
-    const cur = await db.get("SELECT * FROM mjt_reward_sources WHERE key=$1", [String(key)]); if (!cur) throw E.nf("المصدر غير موجود");
-    if (Number((await db.get("SELECT COUNT(*) n FROM mjt_reward_entries WHERE source=$1", [cur.key])).n)) throw fail(409, "in_use", "للمصدر حركات مسجّلة؛ عطّله بدلاً من حذفه");
-    await db.run("DELETE FROM mjt_reward_sources WHERE key=$1", [cur.key]);
-    await audit(db, "reward_source_deleted", user.id, cur.key, null, { before: srcClient(cur) });
-    return { ok: true };
-  }
-
   /* v2.165: when each source was last switched on — offer() pays only events that happened after it */
   async function sinceMap() { return parse((await db.get("SELECT value FROM mjt_settings WHERE key='reward_since'"))?.value, {}) || {}; }
   async function markSince(key, at, by) { const m = { ...(await sinceMap()), [key]: at }; await db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('reward_since',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(m), by, at]); }
@@ -159,7 +131,7 @@ module.exports = (ctx, opts = {}) => {
         await insertEntry(t, e); return { entry: e, pending: true };
       }
       const a = o.amount;
-      const lines = dir > 0 ? [{ account: SYS.mint, amount: -a }, { account: acc, amount: a }] : [{ account: acc, amount: -a }, { account: o.kind === "spend" ? SYS.treasury : SYS.burn, amount: a }];
+      const lines = dir > 0 ? [{ account: SYS.mint, amount: -a }, { account: acc, amount: a }] : [{ account: acc, amount: -a }, { account: o.kind === "spend" && !DEF.mjt.burnSpends ? SYS.treasury : SYS.burn, amount: a }];
       const r = await led().post(t, { ikey: "rw:" + o.ikey, kind: o.txKind || TX_KIND[o.kind], actorId: o.actorId || null, userId: uid, refType: o.source ? "reward:" + o.source : "rewards", refId: base.ref, memo: base.reason, allowFrozen: adjust, lines });
       if (r.replayed) return { entry: null, replayed: true, txId: r.tx.id };
       const bal = Number((await t.get("SELECT balance FROM mjt_accounts WHERE id=$1", [acc])).balance);
@@ -297,17 +269,6 @@ module.exports = (ctx, opts = {}) => {
     return { entry: entryClient(e) };
   }
 
-  /* ---------- admin corrective credit / debit ---------- */
-  async function adminAdjust(user, handle, b = {}) {
-    const u = await userByHandle(handle); if (!u) throw E.nf("الحساب غير موجود");
-    const ikeyIn = String(b.ikey || ""); if (!IKEY_RE.test(ikeyIn)) throw fail(400, "ikey_required", "مفتاح العملية مطلوب");
-    const dir = b.direction === "debit" ? -1 : b.direction === "credit" ? 1 : 0; if (!dir) throw fail(400, "bad_direction", "اختر إضافة أو خصم");
-    const amount = wholeMjt(b.amount), reason = str(b.reason, 300, { required: true, min: 5 });
-    const r = await move(dir, u.id, { kind: dir > 0 ? "adjust_credit" : "adjust_debit", amount, reason, ikey: `adj:${user.id}:${ikeyIn}`, actorId: user.id, source: "admin" });
-    if (r.entry && !r.replayed) { await audit(db, dir > 0 ? "reward_adjust_credit" : "reward_adjust_debit", user.id, u.id, r.entry.tx_id, { amount: format(amount), reason }); ctx.audit?.("mjt_reward_adjusted", u.id, `${dir > 0 ? "+" : "-"}${format(amount)} MJT: ${reason}`, user.id); }
-    return { replayed: !!r.replayed, entry: r.entry ? entryClient(r.entry) : null, wallet: await walletOf(u.id) };
-  }
-
   /* ---------- reads ---------- */
   async function walletOf(uid, { create = false } = {}) {
     if (create) await led().ensureAccount(db, userAcc(uid));
@@ -317,7 +278,7 @@ module.exports = (ctx, opts = {}) => {
     return { exists: !!a, balance: format(a?.balance || 0), earnedTotal: format(t?.e || 0), spentTotal: format(t?.s || 0), status: a?.status || "active", frozen: !!a && a.status !== "active", movements: Number(t?.n || 0),
       pending: { count: Number(p?.n || 0), total: format(p?.s || 0) }, createdAt: a?.created_at || null };
   }
-  const srcLabel = (k) => REWARDABLE[k] || (k === "admin" ? "الإدارة" : k === SERVICE_REFUND ? "خدمات مجتمع كوين" : String(k || "").startsWith("service:") ? "خدمات مجتمع كوين" : k || null);
+  const srcLabel = (k) => REWARDABLE[k] || LEGACY_LABELS[k] || (k === "admin" ? "الإدارة" : k === SERVICE_REFUND ? "خدمات مجتمع كوين" : String(k || "").startsWith("service:") ? "خدمات مجتمع كوين" : k || null);
   const kindLabel = (kind, source) => (source === SERVICE_REFUND ? "استرداد خدمة" : kind === "spend" && String(source || "").startsWith("service:") ? "خدمة مجتمع كوين" : KIND_AR[kind] || kind); // v2.161
   const reasonText = (r) => (r ? String(r).split(" · ").map((x) => REASON_AR[x] || x).join(" · ") : null);
   function entryClient(e) {
@@ -348,74 +309,11 @@ module.exports = (ctx, opts = {}) => {
     return { wallet: w, recent: recent.items, ways: sources, note: NOTE };
   }
 
-  async function stats() {
-    const s = await led().supply();
-    // v2.162 fix: service refunds (refundCredit: kind adjust_credit, source service_refund) are refunds, not admin credits — they
-    // were counted in «issued» / adjustCredit before
-    const j = await db.all("SELECT kind, CASE WHEN source=$1 THEN 1 ELSE 0 END rf, COALESCE(SUM(amount),0) a FROM mjt_reward_entries WHERE status='posted' GROUP BY 1, 2", [SERVICE_REFUND]);
-    const sum = (k) => j.filter((r) => k.includes(r.kind) && !Number(r.rf)).reduce((x, r) => x + Number(r.a), 0);
-    const refunds = j.filter((r) => Number(r.rf)).reduce((x, r) => x + Number(r.a), 0);
-    const bySource = await db.all("SELECT source, status, COUNT(*) n, COALESCE(SUM(amount),0) a FROM mjt_reward_entries WHERE kind='earn' AND (status='posted' OR (status='pending' AND decides IS NULL)) GROUP BY source, status");
-    const src = {}; for (const r of bySource) { const k = r.source || "—"; src[k] ||= { source: k, label: srcLabel(k), posted: 0, issued: 0, pending: 0 }; if (r.status === "posted") { src[k].posted += Number(r.n); src[k].issued += Number(r.a); } else src[k].pending += Number(r.n); }
-    const pend = await db.get(`SELECT COUNT(*) n FROM mjt_reward_entries p WHERE p.status='pending' AND ${OPEN}`);
-    const wallets = await db.get("SELECT COUNT(*) n, COALESCE(SUM(CASE WHEN status='active' THEN 1 ELSE 0 END),0) a, COALESCE(SUM(CASE WHEN status<>'active' THEN 1 ELSE 0 END),0) f FROM mjt_accounts WHERE kind='user'");
-    const tx = await db.get("SELECT COUNT(*) n FROM mjt_tx"), rtx = await db.get("SELECT COUNT(*) n FROM mjt_reward_entries WHERE status='posted'");
-    return { note: NOTE, totalBalances: format(s.users), rewards: { issued: format(sum(CREDIT)), earned: format(sum(["earn"])), adjustCredit: format(sum(["adjust_credit"])), refunds: format(refunds), spent: format(sum(["spend"])), adjustDebit: format(sum(["adjust_debit"])), postedEntries: Number(rtx?.n || 0), pending: Number(pend?.n || 0) },
-      ledger: { minted: format(s.minted), burned: format(s.burned), circulating: format(s.circulating), txCount: Number(tx?.n || 0) },
-      wallets: { total: Number(wallets?.n || 0), active: Number(wallets?.a || 0), frozen: Number(wallets?.f || 0) },
-      bySource: Object.values(src).map((x) => ({ ...x, issued: format(x.issued) })), settings: await engineSettings() };
-  }
-  async function searchEntries(q = {}) {
-    const w = [], a = [];
-    const add = (sql, v) => { a.push(v); w.push(sql.replace("?", "$" + a.length)); };
-    if (["posted", "pending", "rejected"].includes(q.status)) add("p.status = ?", q.status);
-    if (q.status === "open") w.push(`p.status='pending' AND ${OPEN}`);
-    if ([...CREDIT, ...DEBIT].includes(q.kind)) add("p.kind = ?", q.kind);
-    if (q.source) add("p.source = ?", String(q.source).slice(0, 40));
-    if (q.handle) { const u = await userByHandle(q.handle); if (!u) return { items: [], next: null }; add("p.user_id = ?", u.id); }
-    if (q.cursor) add("p.created_at < ?", String(q.cursor).slice(0, 40));
-    const lim = int(q.limit, 30, 1, 100);
-    const rows = await db.all(`SELECT p.*, u.handle FROM mjt_reward_entries p LEFT JOIN users u ON u.id=p.user_id ${w.length ? "WHERE " + w.join(" AND ") : ""} ORDER BY p.created_at DESC, p.id DESC LIMIT ${lim + 1}`, a);
-    return { items: rows.slice(0, lim).map((r) => ({ ...entryClient(r), handle: r.handle || null })), next: rows.length > lim ? rows[lim - 1].created_at : null };
-  }
-  async function entryDetail(eid) {
-    const e = await db.get("SELECT p.*, u.handle FROM mjt_reward_entries p LEFT JOIN users u ON u.id=p.user_id WHERE p.id=$1", [String(eid)]); if (!e) throw E.nf();
-    const decision = await db.get("SELECT * FROM mjt_reward_entries WHERE decides=$1", [e.id]);
-    const of = e.decides ? await db.get("SELECT * FROM mjt_reward_entries WHERE id=$1", [e.decides]) : null;
-    const actor = e.actor_id ? await db.get("SELECT handle FROM users WHERE id=$1", [e.actor_id]) : null;
-    const tx = e.tx_id ? await db.get("SELECT id, kind, amount, memo, created_at FROM mjt_tx WHERE id=$1", [e.tx_id]) : null;
-    return { entry: { ...entryClient(e), handle: e.handle || null, actor: actor?.handle || null, idempotencyKey: e.idempotency_key }, decision: entryClient(decision), decides: entryClient(of), tx: tx ? { id: tx.id, kind: tx.kind, amount: format(tx.amount), memo: tx.memo, createdAt: tx.created_at } : null };
-  }
-  async function walletLookup(handle) {
-    const u = await userByHandle(handle); if (!u) throw E.nf("الحساب غير موجود");
-    const recent = await db.all("SELECT * FROM mjt_reward_entries WHERE user_id=$1 ORDER BY created_at DESC, id DESC LIMIT 20", [u.id]);
-    const log = await db.all("SELECT action, actor_id, detail, created_at FROM mjt_audit WHERE target=$1 AND action IN ('freeze','unfreeze','reward_adjust_credit','reward_adjust_debit','reward_approved','reward_rejected') ORDER BY id DESC LIMIT 20", [u.id]);
-    return { user: { handle: u.handle, name: u.name }, wallet: await walletOf(u.id), entries: recent.map(entryClient), audit: log.map((x) => ({ action: x.action, detail: parse(x.detail, {}), at: x.created_at })) };
-  }
-  async function setFrozen(user, handle, b = {}) {
-    const r = await ctx.services.mjt.freeze(user, handle, b); // reason required (≥ 5 chars), mjt_audit + hash-chained audit
-    return { ...r, wallet: await walletOf((await userByHandle(handle)).id) };
-  }
-
   /* ---------- routes ---------- */
   R.get("/api/mjt/wallet", member(async (req) => memberWallet(req.user)));
   R.get("/api/mjt/wallet/history", member(async (req) => memberHistory(req.user, req.query)));
   R.get("/api/mjt/wallet/review", member(async (req) => memberReview(req.user)));
-  R.get("/api/admin/mjt/rewards/stats", admin(async () => stats()));
-  R.get("/api/admin/mjt/rewards/settings", admin(async () => ({ settings: await engineSettings() })));
-  R.put("/api/admin/mjt/rewards/settings", admin(async (req) => saveEngineSettings(req.user, req.body || {})));
-  R.get("/api/admin/mjt/rewards/sources", admin(async () => listSources()));
-  R.post("/api/admin/mjt/rewards/sources", admin(async (req) => saveSource(req.user, req.body?.key, req.body || {}, { create: true })));
-  R.put("/api/admin/mjt/rewards/sources/:key", admin(async (req) => saveSource(req.user, req.params.key, req.body || {})));
-  R.del("/api/admin/mjt/rewards/sources/:key", admin(async (req) => deleteSource(req.user, req.params.key)));
-  R.get("/api/admin/mjt/rewards/entries", admin(async (req) => searchEntries(req.query)));
-  R.get("/api/admin/mjt/rewards/entries/:id", admin(async (req) => entryDetail(req.params.id)));
-  R.post("/api/admin/mjt/rewards/entries/:id/approve", admin(async (req) => decide(req.user, req.params.id, req.body || {}, true)));
-  R.post("/api/admin/mjt/rewards/entries/:id/reject", admin(async (req) => decide(req.user, req.params.id, req.body || {}, false)));
-  R.get("/api/admin/mjt/rewards/wallets/:handle", admin(async (req) => walletLookup(req.params.handle)));
-  R.post("/api/admin/mjt/rewards/wallets/:handle/freeze", admin(async (req) => setFrozen(req.user, req.params.handle, req.body || {})));
-  R.post("/api/admin/mjt/rewards/wallets/:handle/adjust", admin(async (req) => adminAdjust(req.user, req.params.handle, req.body || {})));
 
   const ready = ensureSources().catch((e) => logger.error?.("mjt rewards init failed", { err: e?.message }));
-  return { ready, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, offer, emit, wants, bonuses, reasonLabel: (c) => REASON_AR[c] || null, settle, decide, adminAdjust, walletOf, memberHistory, memberReview, stats, listSources, saveSource, engineSettings };
+  return { ready, REWARDABLE, NOTE, SERVICE_REFUND, credit, debit, refundCredit, canSpend, onAchievement, offer, emit, wants, bonuses, reasonLabel: (c) => REASON_AR[c] || null, settle, decide, walletOf, memberHistory, memberReview, listSources, engineSettings, LEGACY_LABELS };
 };

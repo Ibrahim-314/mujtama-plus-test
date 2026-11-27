@@ -3,6 +3,7 @@
  * direct API calls (no session, a forged tier in the body) · usage shown with used / allowed / what to do · nothing deleted. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 let H, admin, free, plus; const joiners = [];
 const db = () => H.app.ctx.db;
@@ -17,7 +18,7 @@ const mk = async (handle) => {
   await db().run("UPDATE users SET created_at=$1 WHERE id=$2", [new Date(Date.now() - 30 * 864e5).toISOString(), c.id]);
   return c;
 };
-const grantPlus = async (c) => { clear(); const r = await admin.req("POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
+const grantPlus = async (c) => { clear(); const r = await AD(admin, "POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
 const fillSaved = async (c, k, pre) => { for (let i = 0; i < k; i++) await db().run("INSERT INTO saved_searches(id,user_id,q,filters,alert,last_checked,new_count,created_at) VALUES($1,$2,$3,$4,1,$5,0,$5)", [pre + i, c.id, "q" + pre + i, "{}", now()]); };
 const fillCols = async (c, k, pre) => { for (let i = 0; i < k; i++) await db().run("INSERT INTO collections(id,owner,name,position,updated_at,created_at) VALUES($1,$2,$3,$4,$5,$5)", [pre + i, c.id, "م" + i, i, now()]); };
 
@@ -58,7 +59,7 @@ test("direct API: a forged tier in the body changes nothing; no session → 401"
   assert.equal(r.status, 409, "still Free");
   clear(); assert.equal((await new H.Client().req("POST", "/api/collections", { name: "x" })).status, 401);
   clear(); assert.equal((await new H.Client().req("POST", "/api/teams", { name: "فريق مجهول" })).status, 401);
-  clear(); assert.equal((await free.req("PUT", "/api/admin/membership/limits", { limits: { collections: { free: 9999 } } })).status, 403);
+  clear(); assert.equal((await AD(free, "PUT", "/api/admin/membership/limits", { limits: { collections: { free: 9999 } } })).status, 404);
 });
 
 test("parallel requests can't cross a ceiling: saved searches, collections, teams", async () => {
@@ -96,7 +97,10 @@ test("the guard undoes only its own row when another instance raced it (post-ins
 });
 
 test("team members: parallel joins through one link stop at the owner's ceiling; invite uses are given back", async () => {
-  clear(); await admin.req("PUT", "/api/admin/membership/limits", { limits: { team_members: { free: 4 } } });
+  // v2.167: the numbers are fixed (50 / 150); this test needs a small ceiling, so it stubs the membership limit for team_members
+  const realLimit = M().limitFor; let cap = { free: 4, plus: 150 };
+  M().limitFor = async (uid, key, env) => { const r = await realLimit(uid, key, env); return key !== "team_members" ? r : { ...r, free: cap.free, plus: cap.plus, limit: r.tier === "plus" ? cap.plus : cap.free }; };
+  try {
   const owner = await mk("p3_owner");
   clear(); const t = await owner.req("POST", "/api/teams", { name: "فريق الروابط", kind: "project" }); assert.equal(t.status, 200, t.error);
   clear(); const inv = await owner.req("POST", `/api/teams/${t.id}/invites`, { link: true, days: 7 }); assert.ok(inv.code, inv.error);
@@ -111,9 +115,9 @@ test("team members: parallel joins through one link stop at the owner's ceiling;
   clear(); const more = await joiners[5].req("POST", "/api/teams/join", { code: inv.code });
   if (rs[5].status === 200) assert.equal(more.code, "member"); else assert.equal(more.status, 200, more.error);
   // lowering the number never removes anybody
-  clear(); await admin.req("PUT", "/api/admin/membership/limits", { limits: { team_members: { free: 2, plus: 2 } } });
+  cap = { free: 2, plus: 2 };
   assert.ok(await n("SELECT COUNT(*) n FROM wt_members WHERE team_id=$1", [t.id]) >= 4, "members kept");
-  clear(); await admin.req("PUT", "/api/admin/membership/limits", { limits: { team_members: { free: 50, plus: 150 } } });
+  } finally { M().limitFor = realLimit; }
 });
 
 test("membership changes: upgrade raises at once; expiry and revoke return Free ceilings and delete nothing", async () => {
@@ -125,7 +129,7 @@ test("membership changes: upgrade raises at once; expiry and revoke return Free 
   clear(); assert.equal((await c.req("POST", "/api/collections", { name: "مع Plus" })).status, 200);
   await fillCols(c, 10, "cz");
   const had = await n("SELECT COUNT(*) n FROM collections WHERE owner=$1", [c.id]);
-  clear(); assert.equal((await admin.req("POST", "/api/admin/ai/grants/revoke", { user: c.handle })).status, 200);
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/ai/grants/revoke", { user: c.handle })).status, 200);
   assert.equal(await M().isPlus(c.id), false);
   clear(); const r = await c.req("POST", "/api/collections", { name: "بعد الإلغاء" });
   assert.equal(r.status, 409); assert.match(r.error, new RegExp(`${had} من 50`));
@@ -137,13 +141,13 @@ test("membership changes: upgrade raises at once; expiry and revoke return Free 
 
 test("AI: the assistant's per-member cap is unset until an admin sets one; then the server enforces it", async () => {
   const AI = H.app.ctx.services.ai, c = await mk("p3_ai");
-  clear(); const pl = (await admin.req("GET", "/api/admin/ai/plans")); const cur = (pl.plans || pl).find((x) => x.slug === "ai_plus");
+  clear(); const pl = (await AD(admin, "GET", "/api/admin/ai/plans")); const cur = (pl.plans || pl).find((x) => x.slug === "ai_plus");
   assert.equal(cur.limits.assistant, null, "not set yet → no invented number");
-  clear(); const up = await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 500, costUsd: 1 } } });
+  clear(); const up = await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 500, costUsd: 1 } } });
   assert.equal(up.status, 200, up.error); assert.equal(up.plan.limits.assistant.chars, 500);
   await AI.meter(c.id, "assistant", { chars: 480 });
   await assert.rejects(AI.checkCaps(c.id, "assistant", up.plan.limits.assistant, 50), (x) => x.status === 429);
-  clear(); assert.equal((await c.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 1e7, costUsd: 9 } } })).status, 403);
-  clear(); const off = await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: null } });
+  clear(); assert.equal((await AD(c, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 1e7, costUsd: 9 } } })).status, 404);
+  clear(); const off = await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: null } });
   assert.equal(off.status, 200, off.error); assert.equal(off.plan.limits.assistant, null);
 });

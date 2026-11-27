@@ -60,7 +60,7 @@ test("configured: testnet ready over https, mainnet guarded, key probe, validati
     const admin = await mk(H, "pb_admin", "admin"), user = await mk(H, "pb_user");
     const c = await admin.req("GET", "/api/admin/pi/activation");
     assert.equal(c.mode, "sandbox"); assert.equal(c.network, "testnet");
-    assert.deepEqual(c.missing, ["network"], JSON.stringify(c.missing)); // mainnet asked without PI_MAINNET_CONFIRM
+    assert.deepEqual(c.missing, [], JSON.stringify(c.missing)); // v2.167: PI_NETWORK=mainnet is simply ignored (testnet only)
     assert.ok(!JSON.stringify(c).includes(KEY), "never leaks the key");
     assert.equal(c.items.find((i) => i.key === "domain").value, "mjt.example");
     const p = await admin.req("POST", "/api/admin/pi/activation/probe"); assert.equal(p.ok, true); assert.equal(p.reason, "key_accepted");
@@ -80,13 +80,13 @@ test("configured: testnet ready over https, mainnet guarded, key probe, validati
   } finally { await H.app.close(); }
 });
 
-test("mainnet confirmed: wallet address becomes required; refused key is reported", async () => {
+test("v2.167 testnet only: even PI_MAINNET_CONFIRM=1 stays on the sandbox; refused key is reported", async () => {
   const env = { PI_ENABLED: "1", PI_API_KEY: "wrong", PI_API_URL: "https://pi.stub", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" };
   const H = await boot({ ...OFF_OPTS, piOpts: { env, fetch: fakeFetch, jobs: false }, piActivationOpts: { env: { ...env, PUBLIC_URL: "https://mjt.example", PI_WALLET_ADDRESS: "nope" } } });
   try {
     const admin = await mk(H, "pc_admin", "admin");
     const c = await admin.req("GET", "/api/admin/pi/activation");
-    assert.equal(c.mode, "mainnet"); assert.ok(c.missing.includes("wallet")); assert.ok(c.items.find((i) => i.key === "wallet").fix.includes("G"));
+    assert.equal(c.mode, "sandbox"); assert.equal(c.network, "testnet"); assert.ok(!c.missing.includes("wallet"));
     assert.equal((await admin.req("POST", "/api/admin/pi/activation/probe")).reason, "key_refused");
   } finally { await H.app.close(); }
 });

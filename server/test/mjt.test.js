@@ -8,6 +8,18 @@
  * spend/refund primitives. SQLite + PostgreSQL (TEST_DATABASE_URL). */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
+/* v2.167 test-only rules (the admin settings route is gone): same shape and validation the old PUT /api/admin/mjt/settings had */
+const RULES = { rewards: {}, transfers: { minAccountDays: 7 } }; // v2.74.2 default 0; these tests cover a configured wait
+const toU = (v) => (typeof v === "string" ? Math.round(Number(v) * 1e7) : v);
+function setRules(b) {
+  const next = { rewards: { ...RULES.rewards }, transfers: { ...RULES.transfers } };
+  for (const sec of ["rewards", "transfers"]) for (const [k, v] of Object.entries(b[sec] || {})) next[sec][k] = ["dailyCap", "maxSingle", "maxDaily"].includes(k) ? toU(v) : v;
+  const ms = next.transfers.maxSingle ?? 500e7, md = next.transfers.maxDaily ?? 2000e7;
+  if (ms > md) return { status: 400, code: "settings_invalid" };
+  Object.assign(RULES.rewards, next.rewards); Object.assign(RULES.transfers, next.transfers);
+  return { status: 200, settings: { rewards: { dailyCap: RULES.rewards.dailyCap === undefined ? undefined : String(RULES.rewards.dailyCap / 1e7) } } };
+}
 const L = require("../lib/mjt-ledger");
 
 let H, staff, mod, a, b, c, kid, newbie;
@@ -33,11 +45,13 @@ const bal = async (u) => (await u.req("GET", "/api/mjt/me")).balance.mjt;
 const pointsSnapshot = async () => JSON.stringify([await db().all("SELECT * FROM points_awards ORDER BY id"), await db().all("SELECT * FROM points_balances ORDER BY user_id"), await db().all("SELECT * FROM points_redemptions ORDER BY id")]);
 
 test.before(async () => {
-  H = await boot({ mjtOpts: { autoConvert: false, jobs: false }, pointsOpts: { jobs: false } });
+  // v2.167: the MJT rules are fixed (app-defaults). This file covers the ledger, conversion and the transfer rules themselves, so it
+  // drives the limits through the test-only override (never set in production) and leaves the identity checks to mjt-safety tests.
+  H = await boot({ mjtOpts: { autoConvert: false, jobs: false, testRules: RULES }, mjtSafetyOpts: { testSettings: { identity: { enabled: false }, caps: { enabled: false } } }, pointsOpts: { jobs: false } });
   await M().ready;
   staff = await mk("mj_staff"); mod = await mk("mj_mod"); a = await mk("mj_a"); b = await mk("mj_b"); c = await mk("mj_c"); kid = await mk("mj_kid"); newbie = await mk("mj_new", false);
   await db().run("UPDATE users SET role='admin' WHERE id=$1", [staff.id]); await db().run("UPDATE users SET role='moderator' WHERE id=$1", [mod.id]);
-  await H.app.ctx.services.mjt.dropMinAge(); assert.equal((await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { minAccountDays: 7 } })).status, 200); // v2.74.2 default 0; tests cover a configured wait
+  await H.app.ctx.services.mjt.dropMinAge();
   const real = H.app.ctx.services.minors.minorIds; H.app.ctx.services.minors.minorIds = async (ids) => { const s = await real(ids); if (ids.includes(kid.id)) s.add(kid.id); return s; };
 });
 test.after(() => H.app.close());
@@ -81,13 +95,13 @@ test("conversion: dry run (nothing written) → apply (rate 1:1, points untouche
   const launch = await M().launchAt(); // fixed at first boot, after these awards
   assert.ok(launch > OLD);
   const before = await pointsSnapshot();
-  const dry = await staff.req("GET", "/api/admin/mjt/conversion/dry-run"); assert.equal(dry.status, 200, dry.error);
+  const dry = await AD(staff, "GET", "/api/admin/mjt/conversion/dry-run"); assert.equal(dry.status, 200, dry.error);
   assert.equal(dry.dryRun, true); assert.equal(dry.totals.users, 3); assert.equal(dry.totals.pts, 30 + 6 + 5); assert.equal(dry.totals.amount, "41"); assert.equal(dry.totals.excludedPts, 1300); assert.equal(dry.totals.redeemedPts, 4);
   const ra = dry.users.find((u) => u.handle === "mj_a"); assert.deepEqual([ra.earned, ra.penalties, ra.excluded, ra.pts, ra.mjt], [35, -5, 1000, 30, "30"]);
   assert.equal(Number((await db().get("SELECT COUNT(*) n FROM mjt_tx")).n), 0, "dry run writes no transaction");
   assert.equal(Number((await db().get("SELECT COUNT(*) n FROM mjt_point_links")).n), 0);
-  assert.equal((await a.req("GET", "/api/admin/mjt/conversion/dry-run")).status, 403);
-  const ap = await staff.req("POST", "/api/admin/mjt/conversion", {}); assert.equal(ap.status, 200, ap.error);
+  assert.equal((await AD(a, "GET", "/api/admin/mjt/conversion/dry-run")).status, 404);
+  const ap = await AD(staff, "POST", "/api/admin/mjt/conversion", {}); assert.equal(ap.status, 200, ap.error);
   assert.equal(ap.applied, true); assert.equal(ap.batch.users, 3); assert.equal(ap.batch.amount, "41"); assert.equal(ap.batch.rate, "1");
   assert.equal(await bal(a), "30"); assert.equal(await bal(b), "6"); assert.equal(await bal(kid), "5"); assert.equal(await bal(c), "0");
   assert.equal(await pointsSnapshot(), before, "points tables are never written");
@@ -95,9 +109,9 @@ test("conversion: dry run (nothing written) → apply (rate 1:1, points untouche
   const h = await a.req("GET", "/api/mjt/history"); assert.equal(h.items[0].kind, "conversion"); assert.equal(h.items[0].label, "تحويل نقاط المساهمة"); assert.equal(h.items[0].amount, "30");
   // re-run: nobody twice
   assert.deepEqual(await M().convert("system"), { applied: false, reason: "nothing_to_convert" });
-  assert.equal((await staff.req("POST", "/api/admin/mjt/conversion", {})).applied, false);
+  assert.equal((await AD(staff, "POST", "/api/admin/mjt/conversion", {})).applied, false);
   assert.equal(await bal(a), "30");
-  const v = await staff.req("GET", "/api/admin/mjt/verify"); assert.equal(v.ok, true, v.problems?.join());
+  const v = await AD(staff, "GET", "/api/admin/mjt/verify"); assert.equal(v.ok, true, v.problems?.join());
   assert.equal(v.supply.minted, 41 * L.UNIT);
   const sup = await new H.Client().req("GET", "/api/mjt/supply"); assert.equal(sup.circulating, "41"); assert.equal(sup.conversion.users, 3); assert.equal(sup.conversion.mjt, "41"); assert.equal(sup.token.symbol, "MJT");
 });
@@ -105,22 +119,22 @@ test("conversion: dry run (nothing written) → apply (rate 1:1, points untouche
 test("rollback: blocked while converted MJT is spent; dry run; then all-or-nothing reversal and re-apply", async () => {
   const batch = (await db().get("SELECT id FROM mjt_conversion_batches WHERE status='applied'")).id;
   const sp = await M().spend(a.id, 25 * L.UNIT, { ikey: "rb_spend_1", refId: "test" });
-  const dr = await staff.req("POST", `/api/admin/mjt/conversion/${batch}/rollback`, { dryRun: true }); assert.equal(dr.possible, false); assert.equal(dr.blocked, 1); assert.equal(dr.blockedUsers[0].handle, "mj_a");
-  const rb = await staff.req("POST", `/api/admin/mjt/conversion/${batch}/rollback`, {}); assert.equal(rb.status, 409); assert.equal(rb.code, "rollback_blocked"); assert.equal(rb.blocked, 1);
+  const dr = await AD(staff, "POST", `/api/admin/mjt/conversion/${batch}/rollback`, { dryRun: true }); assert.equal(dr.possible, false); assert.equal(dr.blocked, 1); assert.equal(dr.blockedUsers[0].handle, "mj_a");
+  const rb = await AD(staff, "POST", `/api/admin/mjt/conversion/${batch}/rollback`, {}); assert.equal(rb.status, 409); assert.equal(rb.code, "rollback_blocked"); assert.equal(rb.blocked, 1);
   assert.equal(await bal(a), "5"); assert.equal(await bal(b), "6", "a blocked rollback changes nothing");
   await M().refund(sp.tx.id);
   assert.equal((await M().refund(sp.tx.id)).replayed, true, "refund twice = once");
   assert.equal(await bal(a), "30");
   const before = await pointsSnapshot();
-  const ok = await staff.req("POST", `/api/admin/mjt/conversion/${batch}/rollback`, {}); assert.equal(ok.status, 200, ok.error); assert.equal(ok.rolledBack, true); assert.equal(ok.users, 3);
+  const ok = await AD(staff, "POST", `/api/admin/mjt/conversion/${batch}/rollback`, {}); assert.equal(ok.status, 200, ok.error); assert.equal(ok.rolledBack, true); assert.equal(ok.users, 3);
   for (const u of [a, b, kid]) assert.equal(await bal(u), "0");
   assert.equal(await pointsSnapshot(), before);
   assert.equal(Number((await db().get("SELECT COUNT(*) n FROM mjt_point_links WHERE batch_id=$1 AND status<>'rolled_back'", [batch])).n), 0);
-  assert.equal((await staff.req("POST", `/api/admin/mjt/conversion/${batch}/rollback`, {})).code, "already_rolled_back");
+  assert.equal((await AD(staff, "POST", `/api/admin/mjt/conversion/${batch}/rollback`, {})).code, "already_rolled_back");
   assert.equal((await M().settings()).conversion.auto, false, "no automatic re-conversion after a rollback");
   assert.equal((await M().verify()).ok, true);
   // re-apply: a new batch converts the same awards again, exactly once
-  const again = await staff.req("POST", "/api/admin/mjt/conversion", {}); assert.equal(again.applied, true); assert.notEqual(again.batch.id, batch); assert.equal(again.batch.amount, "41");
+  const again = await AD(staff, "POST", "/api/admin/mjt/conversion", {}); assert.equal(again.applied, true); assert.notEqual(again.batch.id, batch); assert.equal(again.batch.amount, "41");
   assert.equal(await bal(a), "30"); assert.equal((await M().settings()).conversion.auto, true);
   assert.equal((await M().convert()).applied, false);
   const s = await M().supply(); assert.equal(s.circulating, 41 * L.UNIT); assert.equal((await M().verify()).ok, true);
@@ -128,7 +142,7 @@ test("rollback: blocked while converted MJT is spent; dry run; then all-or-nothi
 
 test("rewards: new points awards mint MJT once, capped per day; rewards off; reconcile; clawback never below zero", async () => {
   await staff.req("PUT", "/api/admin/points/settings", { cooldownSec: 0, minTrust: 0, minAccountDays: 0 });
-  assert.equal((await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { dailyCap: "20" } })).settings.rewards.dailyCap, "20");
+  assert.equal(setRules({ rewards: { dailyCap: "20" } }).settings.rewards.dailyCap, "20");
   const r1 = await P().award(b.id, "answer_accepted", "q_mj1"); assert.equal(r1.awarded, true, r1.reason); assert.equal(r1.mjt.minted, true);
   assert.equal(await bal(b), "21"); // 6 converted + 15
   const r2 = await P().award(b.id, "answer_accepted", "q_mj2"); assert.equal(r2.mjt.minted, true); assert.equal(await bal(b), "26", "capped to the 5 MJT left today");
@@ -138,9 +152,9 @@ test("rewards: new points awards mint MJT once, capped per day; rewards off; rec
   const aw2 = await db().get("SELECT * FROM points_awards WHERE source_id='q_mj2'");
   assert.equal((await M().onAward(aw2)).reason, "duplicate");
   // rewards off → skipped (and never paid later)
-  await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { enabled: false, dailyCap: "150" } });
+  setRules({ rewards: { enabled: false, dailyCap: "150" } });
   const r4 = await P().award(a.id, "wiki_edit", "w_mj4"); assert.equal(r4.mjt.reason, "rewards_off");
-  await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { enabled: true } });
+  setRules({ rewards: { enabled: true } });
   assert.equal((await M().reconcile()).minted, 0);
   // a missed hook is repaired by the reconcile job
   const lost = await award(a.id, "mentoring", 20, { ago: -0.0001 }); await db().run("UPDATE points_awards SET created_at=$1 WHERE id=$2", [new Date().toISOString(), lost]);
@@ -204,36 +218,36 @@ test("transfers: limits and safety rules", async () => {
   const I = H.app.ctx.services.integrity, realLinked = I.linkedAccounts; I.linkedAccounts = async (u) => new Map(u === a.id ? [[c.id, "device"]] : []);
   assert.equal((await send(a, "mj_c", "1")).code, "linked_accounts"); I.linkedAccounts = realLinked;
   // frozen wallet: cannot send, still receives
-  assert.equal((await mod.req("POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true, reason: "مراجعة نشاط" })).status, 403, "admins only");
-  assert.equal((await staff.req("POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true })).status, 400, "reason required");
-  assert.equal((await staff.req("POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true, reason: "مراجعة نشاط" })).frozen, true);
+  assert.equal((await AD(mod, "POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true, reason: "مراجعة نشاط" })).status, 404, "admins only");
+  assert.equal((await AD(staff, "POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true })).status, 400, "reason required");
+  assert.equal((await AD(staff, "POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: true, reason: "مراجعة نشاط" })).frozen, true);
   assert.equal((await send(a, "mj_c", "1")).code, "account_frozen");
   await assert.rejects(() => M().spend(a.id, 1, { ikey: "frozen_spend" }), (e) => e.code === "account_frozen");
   assert.equal((await send(c, "mj_a", "0.5")).status, 200, "a frozen wallet still receives");
-  await staff.req("POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: false, reason: "انتهت المراجعة" });
+  await AD(staff, "POST", "/api/admin/mjt/accounts/mj_a/freeze", { frozen: false, reason: "انتهت المراجعة" });
   // daily + hourly limits
-  await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { maxDaily: "20", maxSingle: "10", maxPerHour: 2 } });
+  setRules({ transfers: { maxDaily: "20", maxSingle: "10", maxPerHour: 2 } });
   assert.equal((await send(a, "mj_c", "6")).status, 200); // 12.5 already today
   assert.equal((await send(a, "mj_c", "2")).code, "daily_limit");
-  await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { maxDaily: "2000", maxSingle: "500" } });
+  setRules({ transfers: { maxDaily: "2000", maxSingle: "500" } });
   assert.equal((await send(a, "mj_c", "1")).code, "hourly_limit");
-  await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { maxPerHour: 10, enabled: false } });
+  setRules({ transfers: { maxPerHour: 10, enabled: false } });
   assert.equal((await send(a, "mj_c", "1")).code, "transfers_off");
-  assert.equal((await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { maxSingle: "3000", maxDaily: "2000" } })).status, 400);
-  await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { enabled: true } });
+  assert.equal(setRules({ transfers: { maxSingle: "3000", maxDaily: "2000" } }).status, 400);
+  setRules({ transfers: { enabled: true } });
   assert.equal((await M().verify()).ok, true);
 });
 
 test("staff adjustments: admin only, reason, no negative balance, idempotent, audited + notified", async () => {
-  const adj = (u, body) => u.req("POST", "/api/admin/mjt/adjust", { ikey: key(), ...body });
-  assert.equal((await adj(mod, { handle: "mj_c", amount: "5", reason: "تعويض خطأ" })).status, 403);
+  const adj = (u, body) => AD(u, "POST", "/api/admin/mjt/adjust", { ikey: key(), ...body });
+  assert.equal((await adj(mod, { handle: "mj_c", amount: "5", reason: "تعويض خطأ" })).status, 404);
   assert.equal((await adj(staff, { handle: "mj_c", amount: "5" })).status, 400);
   assert.equal((await adj(staff, { handle: "mj_c", amount: "20000", reason: "تعويض خطأ" })).code, "adjust_max");
   const cb = Number((await c.req("GET", "/api/mjt/me")).balance.units);
   const k = key();
-  const r = await staff.req("POST", "/api/admin/mjt/adjust", { ikey: k, handle: "mj_c", amount: "5", reason: "تعويض عن خطأ تقني" }); assert.equal(r.status, 200, r.error);
+  const r = await AD(staff, "POST", "/api/admin/mjt/adjust", { ikey: k, handle: "mj_c", amount: "5", reason: "تعويض عن خطأ تقني" }); assert.equal(r.status, 200, r.error);
   assert.equal(Number(r.balance.units), cb + 5 * L.UNIT);
-  assert.equal((await staff.req("POST", "/api/admin/mjt/adjust", { ikey: k, handle: "mj_c", amount: "5", reason: "تعويض عن خطأ تقني" })).replayed, true);
+  assert.equal((await AD(staff, "POST", "/api/admin/mjt/adjust", { ikey: k, handle: "mj_c", amount: "5", reason: "تعويض عن خطأ تقني" })).replayed, true);
   assert.equal(Number((await c.req("GET", "/api/mjt/me")).balance.units), cb + 5 * L.UNIT);
   assert.equal((await adj(staff, { handle: "mj_c", amount: "-100000", reason: "تصحيح رصيد" })).code, "adjust_max");
   assert.equal((await adj(staff, { handle: "mj_c", amount: "-9999", reason: "تصحيح رصيد" })).code, "insufficient_balance");
@@ -254,9 +268,10 @@ test("Pi → MJT purchase answers 501 not_configured; config, supply, admin over
   assert.doesNotMatch(cfg.token.stageNote, /التجريبية|Testnet|مرحلة لاحقة/); assert.match(cfg.token.stageNote, /بلا قيمة نقدية/);
   assert.equal(cfg.buy.disabled, true); assert.doesNotMatch(cfg.buy.note, /مرحلة لاحقة/); assert.match(r.error, /لا يُشترى/);
   assert.equal((await new H.Client().req("GET", "/api/mjt/me")).status, 401);
-  const o = await mod.req("GET", "/api/admin/mjt"); assert.equal(o.status, 200); assert.equal(o.verify.ok, true); assert.ok(o.batches.length >= 2); assert.ok(o.recent.length > 0);
-  assert.equal((await a.req("GET", "/api/admin/mjt")).status, 403);
-  assert.equal((await mod.req("PUT", "/api/admin/mjt/settings", { rewards: { enabled: false } })).status, 403);
+  const o = await AD(staff, "GET", "/api/admin/mjt"); assert.equal(o.status, 200); assert.equal(o.verify.ok, true); assert.ok(o.batches.length >= 2); assert.ok(o.recent.length > 0);
+  assert.equal((await mod.req("GET", "/api/admin/mjt")).status, 404, "v2.167: the admin MJT API is gone");
+  assert.equal((await AD(a, "GET", "/api/admin/mjt")).status, 404);
+  assert.equal((await AD(mod, "PUT", "/api/admin/mjt/settings", { rewards: { enabled: false } })).status, 404);
 });
 
 test("spend / refund primitives: no overspend, idempotent", async () => {

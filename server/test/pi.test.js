@@ -94,7 +94,7 @@ test("config: payments off by default (501 everywhere but /config and sign-in), 
   }
   assert.equal(mount({ PI_ENABLED: "1", PI_NETWORK: "mainnet" }).s.network, "testnet", "mainnet without confirmation stays on testnet");
   const main = mount({ PI_ENABLED: "1", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" });
-  assert.deepEqual(await main.router.match("GET", "/api/pi/config").handler({}), { enabled: true, authEnabled: true, network: "mainnet", sandbox: false });
+  assert.deepEqual(await main.router.match("GET", "/api/pi/config").handler({}), { enabled: true, authEnabled: true, network: "testnet", sandbox: true }, "v2.167: testnet only — no Mainnet path even with the confirmation");
   const live = await new H.Client().req("GET", "/api/pi/config");
   assert.equal(live.status, 200); assert.deepEqual(live.body, { enabled: true, authEnabled: true, network: "testnet", sandbox: true, appId: "mujtama-test" });
 });
@@ -500,7 +500,7 @@ test("v2.149.9: PI_AUTH_VERIFY=platform verifies the token with GET /v2/me (Bear
   await assert.rejects(() => r.match("POST", "/api/pi/auth").handler({ body: { accessToken: "forged" }, ip: "1", csrfOk: true }, {}), (e) => e.status === 401 && e.code === "pi_invalid");
   assert.equal((await mk({ PI_SDK_SANDBOX: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, true);
   assert.equal((await mk({}).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
-  assert.equal((await mk({ PI_SDK_SANDBOX: "1", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, undefined);
+  assert.equal((await mk({ PI_SDK_SANDBOX: "1", PI_NETWORK: "mainnet", PI_MAINNET_CONFIRM: "1" }).match("GET", "/api/pi/config").handler({}, {})).sdkSandbox, true, "v2.167: still testnet");
 });
 
 test("v2.149.11: one tap — an unknown Pi account is created + signed in, the next tap signs into the same account; PI_AUTH_AUTOCREATE=0 keeps needsLink", async () => {

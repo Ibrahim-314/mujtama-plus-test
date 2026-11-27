@@ -328,22 +328,10 @@
     $("#nb-cshare")?.addEventListener("click", () => shareLink("#/city/" + enc(d.city), `${d.city} على مجتمع بلس — فعاليات وأماكن ومجتمعات`));
   }
 
-  /* ---------- #/admin/places ---------- */
-  async function adminView() {
-    const st = qs().get("status") || "pending";
-    page("مراجعة الأماكن", `<div class="nb-chips" role="tablist">${[["pending", "بانتظار المراجعة"], ["review", "مخفية بعد بلاغات"], ["rejected", "مرفوضة"], ["approved", "معتمدة"]].map(([k, l]) => `<a class="btn ghost" href="#/admin/places?status=${k}" ${k === st ? 'aria-current="page"' : ""}>${l}</a>`).join("")}</div><div id="nb-q"><div class="skel"></div></div>`, ["#/admin", "الإدارة"]);
-    let d; try { d = await api("GET", "/api/admin/places?status=" + enc(st)); } catch (e) { if (!$("#nb-q")) return; $("#nb-q").innerHTML = errBox(e); return; }
-    if (!$("#nb-q")) return; $("#nb-q").innerHTML = d.places.length ? d.places.map((p) => `<div class="nb-card" id="nb-q-${h(p.id)}"><b>${iconOf(p)} ${h(p.name)}</b> <span class="nb-st">${h(p.categoryLabel)}</span> ${p.risk >= 0.5 ? `<span class="nb-st rejected">خطورة ${Math.round(p.risk * 100)}%</span>` : ""}
-      <div class="u-t-sm muted">${h(p.city || "")} · أضافه <bdi dir="ltr">@${h(p.submittedBy.handle || "?")}</bdi>${p.reasons.length ? " · " + h(p.reasons.join("، ")) : ""}</div>${p.descr ? `<p class="u-my6">${h(p.descr)}</p>` : ""}${p.address ? `<div class="u-t-sm muted">${h(p.address)}</div>` : ""}
-      ${p.reportReasons.length ? `<div class="nb-note">البلاغات: ${p.reportReasons.map((r) => `${h(r.label)} (${r.n})`).join("، ")}</div>` : ""}
-      <div class="nb-row"><a class="btn ghost" href="https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=18/${p.lat}/${p.lng}" target="_blank" rel="noopener">الموقع</a><label class="grow">ملاحظة للعضو<input data-note="${h(p.id)}" maxlength="300"></label><button type="button" class="btn" data-rv="approve" data-id="${h(p.id)}">قبول</button><button type="button" class="btn ghost" data-rv="reject" data-id="${h(p.id)}">رفض</button></div></div>`).join("") : `<div class="empty">لا شيء هنا</div>`;
-    view.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", async () => { try { await api("POST", `/api/admin/places/${enc(b.dataset.id)}/review`, { decision: b.dataset.rv, note: view.querySelector(`[data-note="${b.dataset.id}"]`)?.value || "" }); document.getElementById("nb-q-" + b.dataset.id)?.remove(); say(b.dataset.rv === "approve" ? "قُبل المكان" : "رُفض المكان"); } catch (e) { say(e.message); } }));
-  }
-
+  /* v2.167: #/admin/places removed — places publish automatically (services/auto-rules.js) */
   MPRoutes.extend((a, b, prev) => {
     return { nearby: () => nearbyView(), place: () => placeView(a), places: () => (a === "new" ? placeForm() : a === "edit" ? placeForm(b) : a === "saved" ? savedView() : mineView()), cities: () => citiesView(), city: () => (a ? cityView(a) : citiesView()) };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "places" ? adminView() : next()));
-  window.MPNearby = { nearbyView, placeView, placeForm, mineView, citiesView, cityView, adminView, mountMap, geohash, version: "__APP_VERSION__" };
-  if (/^#\/(nearby|place|places|cities|city|admin\/places)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+  window.MPNearby = { nearbyView, placeView, placeForm, mineView, citiesView, cityView, mountMap, geohash, version: "__APP_VERSION__" };
+  if (/^#\/(nearby|place|places|cities|city)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

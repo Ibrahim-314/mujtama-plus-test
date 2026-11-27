@@ -115,7 +115,7 @@ function moreMenu(pid) {
   const s = sheet(`<div class="menu">
     <button data-a="why"><svg class=ei aria-hidden=true><use href=#i-bulb /></svg> لماذا أرى هذا؟</button>
     ${mine ? `<button data-a="edit"><svg class=ei aria-hidden=true><use href=#i-pen /></svg> تعديل</button><button data-a="del" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-trash /></svg> حذف</button>` :
-      `<button data-a="ni"><svg class=ei aria-hidden=true><use href=#i-eyeOff /></svg> غير مهتم</button><button data-a="mt"><svg class=ei aria-hidden=true><use href=#i-volumeX /></svg> كتم موضوع ${esc(S.topic(p.topic)?.name || "")}</button><button data-a="mu"><svg class=ei aria-hidden=true><use href=#i-bellOff /></svg> كتم ${esc(u.name)}</button><button data-a="bl"><svg class=ei aria-hidden=true><use href=#i-ban /></svg> حظر ${esc(u.name)}</button><button data-a="rep" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-flag /></svg> إبلاغ</button>`}
+      `${p.visibility === "public" || !p.visibility ? `<button data-a="appr"><svg class=ei aria-hidden=true><use href=#i-heart /></svg> تقدير بمجتمع كوين</button>` : ""}<button data-a="ni"><svg class=ei aria-hidden=true><use href=#i-eyeOff /></svg> غير مهتم</button><button data-a="mt"><svg class=ei aria-hidden=true><use href=#i-volumeX /></svg> كتم موضوع ${esc(S.topic(p.topic)?.name || "")}</button><button data-a="mu"><svg class=ei aria-hidden=true><use href=#i-bellOff /></svg> كتم ${esc(u.name)}</button><button data-a="bl"><svg class=ei aria-hidden=true><use href=#i-ban /></svg> حظر ${esc(u.name)}</button><button data-a="rep" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-flag /></svg> إبلاغ</button>`}
   </div>`);
   s.querySelectorAll("[data-a]").forEach(b => b.onclick = () => {
     const a = b.dataset.a;
@@ -128,8 +128,15 @@ function moreMenu(pid) {
     if (a === "mu") { Cmd.mute("users", p.author); toast("تم الكتم"); }
     if (a === "bl") { Cmd.block(p.author); toast("تم الحظر"); }
     if (a === "rep") return reportFlow(pid, "post");
+    if (a === "appr") return apprFlow(pid);
     rerender();
   });
+}
+/* v2.167 «تقدير»: burn 5 / 10 / 25 MJT to appreciate a public post (server: POST /api/mjt/posts/:id/appreciate) */
+function apprFlow(pid) {
+  const s = sheet(`<h4>تقدير المنشور</h4><p class="muted">يُحرق المبلغ من رصيد مجتمع كوين، ويكسب صاحب المنشور سمعة.</p><div class="u-g8 row">${[5, 10, 25].map(v => `<button class="btn grow" data-v="${v}">${v} MJT</button>`).join("")}</div>`);
+  const key = "ap" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  s.querySelectorAll("[data-v]").forEach(b => b.onclick = async () => { b.disabled = true; try { await Remote.api("POST", "/api/mjt/posts/" + encodeURIComponent(pid) + "/appreciate", { amount: +b.dataset.v, ikey: key + b.dataset.v }); closeSheet(); toast("شكراً لتقديرك ✓"); } catch (e) { b.disabled = false; toast(e.message || "تعذّر التقدير"); } });
 }
 function reportFlow(target, kind) {
   const reasons = ["Spam / محتوى مزعج", "انتحال شخصية", "محتوى ضار", "تحرش أو إساءة", "معلومات مضللة", "أخرى"];

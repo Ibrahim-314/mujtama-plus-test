@@ -1,6 +1,8 @@
 /* AI subscriptions & entitlements — «مجتمع بلس Plus» (phase 41, generic for phase 42+). Contract: docs/integration/p41-contract.md.
  * • Plans bundle feature keys (`translate` now; `assistant` and later AI systems just add keys). Monthly period (AI_PERIOD_DAYS).
- *   Price is never hard-coded: AI_PLAN_PRICE seeds it, an admin edits it (price_set_by=admin wins over env); no price → 409 price_unset.
+ *   v2.167: the price comes from server/config/app-defaults.js plusPricePi(): env PLUS_PRICE_PI (AI_PLAN_PRICE as an alias),
+ *   default 10 Pi / 30 days (owner, 2026-11-27); it is re-applied at every boot (price_set_by='defaults'). No admin pricing,
+ *   no admin grants. Manual renewal only (no auto-renew). A non-number in the env → no price → 409 price_unset.
  * • Subscribe = one Pi payment per period (purpose `ai`) through ctx.services.pi.createIntent; effects only on bus events
  *   PI_PAYMENT_COMPLETED / CANCELLED / REFUNDED. Renewing early extends from the current end. Cancel = no renewal, access to the end.
  * • Ledger (lib/ledger.js): `user:<id>:pi_out` → `platform:ai` (source ai); refunds post the reversing journal and cut the period.
@@ -10,6 +12,7 @@
  * • Minors cannot buy (403 minor_restricted), like tips/paid/ads. Pi off → 409 not_configured «مدفوعات Pi غير مفعّلة بعد». */
 const { E, HttpError, id } = require("../lib/core");
 const { toUnits, pi, ACC, createLedger } = require("../lib/ledger");
+const DEF = require("../config/app-defaults");
 
 const DAY = 864e5;
 const OFF = "مدفوعات Pi غير مفعّلة بعد";
@@ -37,7 +40,7 @@ module.exports = (ctx, opts = {}) => {
     translateUsd: num("AI_TRANSLATE_MONTHLY_USD", 0.5),
     budgetUsd: num("AI_PROVIDER_MONTHLY_USD", 5),
     piUsd: env.AI_PI_USD_RATE ? num("AI_PI_USD_RATE", 0) || null : null,
-    envPrice: env.AI_PLAN_PRICE !== undefined && env.AI_PLAN_PRICE !== "" && Number(env.AI_PLAN_PRICE) > 0 ? toUnits(Number(env.AI_PLAN_PRICE)) : null
+    envPrice: (() => { const p = DEF.plusPricePi(env); return p ? toUnits(p) : null; })()
   };
   const { postJournal } = createLedger({ now: nowIso });
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { const x = JSON.parse(v); return x ?? d; } catch { return d; } };
@@ -58,9 +61,10 @@ module.exports = (ctx, opts = {}) => {
   const ensurePlans = () => (ready ||= (async () => {
     const at = nowIso();
     await db.run("INSERT INTO ai_plans(id,slug,name,features,price,price_set_by,period_days,limits,active,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,'{}',1,$8,$8) ON CONFLICT DO NOTHING",
-      [id("aip"), DEFAULT_PLAN.slug, DEFAULT_PLAN.name, JSON.stringify(DEFAULT_PLAN.features), cfg.envPrice, cfg.envPrice ? "env" : null, cfg.periodDays, at]);
+      [id("aip"), DEFAULT_PLAN.slug, DEFAULT_PLAN.name, JSON.stringify(DEFAULT_PLAN.features), cfg.envPrice, cfg.envPrice ? "defaults" : null, cfg.periodDays, at]);
     await db.run("UPDATE ai_plans SET name=$1, updated_at=$2 WHERE slug=$3 AND name=$4", [DEFAULT_PLAN.name, at, DEFAULT_PLAN.slug, LEGACY_NAME]); // v2.156: «مجتمع بلس Plus» → Plus (an admin-chosen name stays)
-    if (cfg.envPrice) await db.run("UPDATE ai_plans SET price=$1, price_set_by='env', updated_at=$2 WHERE slug=$3 AND (price_set_by IS NULL OR price_set_by='env') AND (price IS NULL OR price<>$1)", [cfg.envPrice, at, DEFAULT_PLAN.slug]);
+    // v2.167: the fixed price wins over any earlier admin value (existing subscribers keep their period; pricing.js grandfathering unchanged)
+    if (cfg.envPrice) await db.run("UPDATE ai_plans SET price=$1, price_set_by='defaults', updated_at=$2 WHERE slug=$3 AND (price IS NULL OR price<>$1 OR price_set_by IS NULL OR price_set_by<>'defaults')", [cfg.envPrice, at, DEFAULT_PLAN.slug]);
   })().catch((e) => { ready = null; throw e; }));
   const planBySlug = async (slug) => { await ensurePlans(); return db.get("SELECT * FROM ai_plans WHERE slug=$1", [slug]); };
   const planById = (pid) => db.get("SELECT * FROM ai_plans WHERE id=$1", [pid]);
@@ -73,7 +77,7 @@ module.exports = (ctx, opts = {}) => {
       assistant: aOk ? { chars: Math.floor(+a.chars), costUsd: +a.costUsd } : null };
   }
   const planClient = (p) => ({ slug: p.slug, name: p.name, features: parse(p.features, []), featureLabels: parse(p.features, []).map((k) => FEATURES[k] || k),
-    price: p.price == null ? null : pi(p.price), ...(p.price == null ? { priceNote: "لم يُحدَّد سعر الاشتراك بعد" } : {}), currency: "PI", periodDays: Number(p.period_days), limits: limitsOf(p), active: !!Number(p.active) });
+    price: p.price == null ? null : pi(p.price), ...(p.price == null ? { priceNote: "السعر يُحدد قريباً" } : {}), currency: "PI", periodDays: Number(p.period_days), limits: limitsOf(p), active: !!Number(p.active) });
 
   /* ======================= subscriptions ======================= */
   const subRow = (uid, pid) => db.get("SELECT * FROM ai_subscriptions WHERE user_id=$1 AND plan_id=$2", [uid, pid]);
@@ -224,8 +228,6 @@ module.exports = (ctx, opts = {}) => {
   }
 
   /* ======================= admin ======================= */
-  const isAdmin = (u) => u?.role === "admin";
-  const admin = (fn) => A(async (req, res) => { if (!isAdmin(req.user)) throw E.forbid("للإدارة فقط"); return fn(req, res); });
   async function updatePlan(user, slug, b) {
     const p = await planBySlug(slug); if (!p) throw fail(404, "plan_not_found", "الخطة غير موجودة");
     const set = {}, bad = () => fail(400, "plan_invalid", "بيانات الخطة غير صالحة");
@@ -336,14 +338,9 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/ai/subscribe", A(async (req) => subscribe(req.user, req.body || {})));
   R.post("/api/ai/subscription/cancel", A(async (req) => cancel(req.user, req.body || {}, true)));
   R.post("/api/ai/subscription/resume", A(async (req) => cancel(req.user, req.body || {}, false)));
-  R.get("/api/admin/ai/plans", admin(async () => { await ensurePlans(); return { plans: (await db.all("SELECT * FROM ai_plans ORDER BY created_at")).map((p) => ({ ...planClient(p), priceSetBy: p.price_set_by || null })) }; }));
-  R.put("/api/admin/ai/plans/:slug", admin(async (req) => updatePlan(req.user, req.params.slug, req.body || {})));
-  R.post("/api/admin/ai/grants", admin(async (req) => grant(req.user, req.body || {})));
-  R.post("/api/admin/ai/grants/revoke", admin(async (req) => revoke(req.user, req.body || {})));
-  R.get("/api/admin/ai/subscribers", admin(async (req) => subscribers(req.query || {})));
-  R.get("/api/admin/ai/finance", admin(async (req) => finance(req.query || {})));
+  // v2.167: the admin AI API (plans / price, grants, subscribers, finance) was removed — price and limits are fixed in app-defaults
 
-  return { config: cfg, entitled, requireFeature, checkCaps, meter, maintain, settle, finance, FEATURES, ensurePlans,
+  return { config: cfg, updatePlan, grant, revoke, subscribers, entitled, requireFeature, checkCaps, meter, maintain, settle, finance, FEATURES, ensurePlans,
     subscribe, cancel, planBySlug, planClient, subRow, subClient, isLive, liveSubs, piOn, isMinor }; // v2.156: used by services/membership.js
 };
 Object.assign(module.exports, { FEATURES, DEFAULT_PLAN });

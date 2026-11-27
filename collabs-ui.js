@@ -8,7 +8,7 @@
  *   #/collabs/creators · #/collabs/kit/:handle · #/collabs/offer/:handle   discover creators, media kit, send an offer
  *   #/collabs/brand                  brand profile · #/collabs/library  public library of disclosed partnerships
  *   #/collabs/about                  what the labels mean · #/collabs/disclose/:post · #/collabs/report/:post
- *   #/admin/collabs                  staff: held campaigns, undisclosed-ad reports, brands
+ *   (v2.167 removed) #/admin/collabs                  staff: held campaigns, undisclosed-ad reports, brands
  * CSP: no inline handlers, no javascript: URLs.
  * ===================================================================== */
 (function CollabsUI() {
@@ -26,7 +26,6 @@
   const signed = () => typeof DB !== "undefined" && !!DB.me;
   const rel = (iso) => (typeof relTime === "function" ? relTime(iso) : "");
   const dateAr = (iso) => new Date(iso).toLocaleDateString("ar-SA-u-ca-gregory-nu-arab", { day: "numeric", month: "long" });
-  const isAdmin = () => { try { return S.me()?.role === "admin"; } catch { return false; } };
   const KIND = { sponsored: ["", "محتوى مدفوع"], gifted: ["", "هدية"], affiliate: ["", "رابط عمولة"], collab: ["", "تعاون بين صنّاع"] };
   const STATUS = { proposed: ["warn", "قيد التفاوض"], active: ["acc", "ساري"], completed: ["ok", "مكتمل"], declined: ["", "مرفوض"], cancelled: ["", "ملغى"] };
   const FMT = { post: "منشور", article: "مقال", video: "فيديو", short: "فيديو قصير", story: "قصة", live: "بث مباشر", audio: "صوتي" };
@@ -151,7 +150,7 @@
     const f = $("#cb-cf"); wireDl(f);
     f.addEventListener("submit", async (e) => { e.preventDefault();
       const body = { title: f.title.value.trim(), summary: f.summary.value.trim(), deliverables: readDl(f), fee: f.fee.value === "" ? null : +f.fee.value, slots: +f.slots.value, deadline: f.deadline.value || null, categories: f.category.value ? [f.category.value] : [], formats: [...new Set(readDl(f).map((d) => d.format))] };
-      try { const r = id ? await api("PATCH", "/api/collabs/campaigns/" + enc(id), body) : await api("POST", "/api/collabs/campaigns", body); say(r.campaign.status === "review" ? "أُحيلت الحملة لمراجعة فريق المنصة" : "✓ نُشرت الحملة"); location.hash = "#/collabs/c/" + enc(r.campaign.id); } catch (x) { if (x.code === "no_brand") location.hash = "#/collabs/brand"; say(x.message); } });
+      try { const r = id ? await api("PATCH", "/api/collabs/campaigns/" + enc(id), body) : await api("POST", "/api/collabs/campaigns", body); say(r.campaign.status === "review" ? "ستُنشر الحملة تلقائياً خلال 24 ساعة ما لم يُبلَّغ عنها" : "✓ نُشرت الحملة"); location.hash = "#/collabs/c/" + enc(r.campaign.id); } catch (x) { if (x.code === "no_brand") location.hash = "#/collabs/brand"; say(x.message); } });
   }
 
   /* =================== campaign page =================== */
@@ -310,30 +309,11 @@
     $("#cb-rpf").addEventListener("submit", async (e) => { e.preventDefault(); const f = e.target; try { await api("POST", `/api/posts/${enc(pid)}/undisclosed-report`, { brand: f.brand.value.trim() || undefined, note: f.note.value.trim() || undefined }); say("✓ شكراً، وصل بلاغك"); location.hash = "#/post/" + enc(pid); } catch (x) { say(x.message); } });
   }
 
-  /* =================== #/admin/collabs =================== */
-  async function adminView() {
-    page("إشراف التعاونات", `<div id="cb-ad">${skel(3)}</div>`, ["#/collabs", "التعاونات"]);
-    const draw = (d) => { const box = $("#cb-ad"); if (!box) return; const T = d.totals;
-      box.innerHTML = `<div class="cb-k"><div><b>${AR(T.deals)}</b><span>اتفاق</span></div><div><b>${AR(T.active)}</b><span>ساري</span></div><div><b>${AR(T.disclosed)}</b><span>منشور مُفصح</span></div><div><b>${AR(T.openKits)}</b><span>صانع مفتوح</span></div></div>
-        <h3>حملات بانتظار المراجعة</h3>${d.held.length ? `<ul class="cb-dl">${d.held.map((c) => `<li><div class="hd"><b>${h(c.title)}</b>${chip("", c.brand.name || "")}</div><p class="u-m0 cb-sub">${h(c.summary.slice(0, 240))}</p><div class="u-m0 cb-row"><button class="btn" type="button" data-camp="${h(c.id)}" data-dec="approve">قبول</button><button class="btn ghost" type="button" data-camp="${h(c.id)}" data-dec="reject">إزالة</button></div></li>`).join("")}</ul>` : `<div class="empty cb-empty">لا حملات معلّقة ✓</div>`}
-        <h3>بلاغات إعلانات بلا إفصاح</h3>${d.reports.length ? `<ul class="cb-dl">${d.reports.map((r) => `<li><div class="hd"><b><a href="#/post/${enc(r.postId)}">${h(r.excerpt || "منشور")}</a></b>${chip("warn", `${AR(r.count)} بلاغ`)}</div><span class="m">@${h(r.author.handle || "")}${r.brand ? " · العلامة المذكورة: " + h(r.brand) : ""}${r.note ? " · " + h(r.note) : ""}</span><form data-rep="${h(r.postId)}"><input name="brand" value="${h(r.brand || "")}" placeholder="اسم العلامة" aria-label="اسم العلامة" class="u-f1 u-mh44 u-mw0"><button class="btn" type="submit">وسم كمدفوع</button><button class="btn ghost" type="button" data-dismiss="${h(r.postId)}">رفض</button></form></li>`).join("")}</ul>` : `<div class="empty cb-empty">لا بلاغات ✓</div>`}
-        <h3>العلامات</h3>${d.brands.length ? `<ul class="cb-dl">${d.brands.map((b) => `<li><div class="hd"><b>${h(b.name)}</b>${chip("", b.categoryLabel)}${b.verified ? chip("ok", "موثّقة") : ""}${b.status === "suspended" ? chip("bad", "موقوفة") : ""}</div><span class="m">${AR(b.deals)} اتفاق</span><div class="u-m0 cb-row"><button class="btn ghost" type="button" data-brand="${h(b.id)}" data-set='${b.verified ? '{"verified":false}' : '{"verified":true}'}'>${b.verified ? "إلغاء التوثيق" : "توثيق"}</button><button class="btn ghost" type="button" data-brand="${h(b.id)}" data-set='${b.status === "suspended" ? '{"status":"active"}' : '{"status":"suspended"}'}'>${b.status === "suspended" ? "إعادة التفعيل" : "إيقاف"}</button></div></li>`).join("")}</ul>` : `<div class="empty cb-empty">لا علامات بعد</div>`}`; };
-    let d; try { d = await api("GET", "/api/admin/collabs"); } catch (e) { const b = $("#cb-ad"); if (b) b.innerHTML = errBox(e); return; }
-    draw(d);
-    const box = $("#cb-ad");
-    box.addEventListener("click", async (e) => { const b = e.target.closest("button"); if (!b) return;
-      try {
-        if (b.dataset.camp) draw(await api("POST", "/api/admin/collabs/campaigns/" + enc(b.dataset.camp), { decision: b.dataset.dec, note: b.dataset.dec === "reject" ? prompt("سبب الإزالة") || undefined : undefined }));
-        else if (b.dataset.dismiss) draw(await api("POST", "/api/admin/collabs/reports/" + enc(b.dataset.dismiss), { decision: "dismiss" }));
-        else if (b.dataset.brand) draw(await api("POST", "/api/admin/collabs/brands/" + enc(b.dataset.brand), JSON.parse(b.dataset.set)));
-      } catch (x) { say(x.message); } });
-    box.addEventListener("submit", async (e) => { e.preventDefault(); const f = e.target; if (!f.dataset.rep) return; try { draw(await api("POST", "/api/admin/collabs/reports/" + enc(f.dataset.rep), { decision: "label", kind: "sponsored", brand: f.brand.value.trim() })); say("✓ وُسم المنشور"); } catch (x) { say(x.message); } });
-  }
+  /* v2.167: #/admin/collabs removed — campaigns held by the safety checks publish automatically (server/services/auto-rules.js) */
 
   MPRoutes.extend((a, b, base) => {
     return { collabs: () => (!a ? hubView() : a === "c" ? (seg(4) === "edit" ? campaignForm(b) : campaignView(b)) : a === "new" ? campaignForm(null) : a === "d" ? dealView(b) : a === "creators" ? creatorsView() : a === "kit" ? kitView(b) : a === "offer" ? offerView(b) : a === "brand" ? brandView() : a === "b" ? brandPageView(b) : a === "library" ? libraryView() : a === "about" ? aboutView() : a === "disclose" ? discloseView(b) : a === "report" ? reportView(b) : hubView()) };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "collabs" ? (isAdmin() ? adminView() : page("إشراف التعاونات", `<div class="empty cb-empty">للإدارة فقط</div>`)) : next()));
-  window.MPCollabs = { hubView, dealView, campaignView, kitView, libraryView, aboutView, adminView, version: "__APP_VERSION__" };
+  window.MPCollabs = { hubView, dealView, campaignView, kitView, libraryView, aboutView, version: "__APP_VERSION__" };
   if (/^#\/(collabs|admin\/collabs)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

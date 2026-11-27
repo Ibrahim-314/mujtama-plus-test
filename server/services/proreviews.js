@@ -50,7 +50,6 @@ module.exports = (ctx, opts = {}) => {
   const DAY = 864e5;
   const WINDOW = +(env.PR_WINDOW_DAYS || 30) * DAY, TEAM_MIN = +(env.PR_TEAM_MIN_DAYS || 3) * DAY, MIN_ACC = +(env.PR_MIN_ACCOUNT_DAYS || 7) * DAY;
   const MIN_ENG = +(env.PR_MIN_ENGAGEMENT_HOURS || 24) * 36e5, FLAG_AT = +(env.PR_FLAG_REPORTS || 3), ENDORSE_MAX = +(env.PR_ENDORSE_MAX || 5);
-  const admin = (fn) => A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req); });
   const notify = async (uid, kind, ref, actor = null) => { if (!uid || uid === actor) return; try { await ctx.services.notify?.notify(uid, kind, { ref, actor }); } catch { /* best effort */ } };
   const isMinor = async (uid) => { try { return !!(await ctx.services.minors?.isMinorUser?.(uid)); } catch { return false; } };
   const fail = (status, code, msg) => Object.assign(status === 403 ? E.forbid(msg) : status === 409 ? E.conflict(msg) : status === 404 ? E.nf(msg) : E.bad(msg), { code });
@@ -350,8 +349,7 @@ module.exports = (ctx, opts = {}) => {
   R.patch("/api/proreviews/:id", A(async (req) => edit(req.user, req.params.id, req.body || {})));
   R.put("/api/proreviews/:id/response", A(async (req) => respond(req.user, req.params.id, req.body || {})));
   R.post("/api/proreviews/:id/report", A(async (req) => report(req.user, req.params.id, req.body || {})));
-  R.get("/api/admin/proreviews", admin(async () => adminView()));
-  R.post("/api/admin/proreviews/:id", admin(async (req) => moderate(req.user, req.params.id, req.body || {})));
+  /* v2.167: /api/admin/proreviews/* removed — flagged reviews are decided by services/auto-rules.js */
 
-  return { card, cards, summaryOf, engagements, sweep, ROLES, CRIT };
+  return { card, cards, summaryOf, engagements, sweep, adminView, moderate, ROLES, CRIT };
 };

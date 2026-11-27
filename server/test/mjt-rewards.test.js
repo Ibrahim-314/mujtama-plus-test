@@ -4,6 +4,7 @@
  * a forged client amount is ignored · Free / Plus quotas unchanged · the shared ledger still verifies. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 const { UNIT } = require("../lib/mjt-ledger");
 
 let H, admin, a, b, c;
@@ -21,7 +22,7 @@ const mk = async (handle) => {
 };
 let k = 0; const key = (p = "t") => `${p}_${Date.now()}_${k++}`;
 const achieve = async (uid, type, ref, meta) => { await ACH().record(uid, type, ref, meta); await RW().settle(); };
-const setSource = async (keyName, body) => { clear(); const r = await admin.req("PUT", "/api/admin/mjt/rewards/sources/" + keyName, body); assert.equal(r.status, 200, r.error); return r.source; };
+const setSource = async (keyName, body) => { clear(); const r = await AD(admin, "PUT", "/api/admin/mjt/rewards/sources/" + keyName, body); assert.equal(r.status, 200, r.error); return r.source; };
 
 test.before(async () => {
   H = await boot({ mjtOpts: { autoConvert: false, jobs: false } });
@@ -43,12 +44,12 @@ test("migration 090 is additive and reversible", async () => {
 });
 
 test("every source ships disabled with no amount; a disabled source pays nothing; login / likes / saves are not sources", async () => {
-  const s = await admin.req("GET", "/api/admin/mjt/rewards/sources"); assert.equal(s.status, 200, s.error);
+  const s = await AD(admin, "GET", "/api/admin/mjt/rewards/sources"); assert.equal(s.status, 200, s.error);
   assert.ok(s.sources.length >= 4);
   for (const x of s.sources) { assert.equal(x.enabled, false, x.key); assert.equal(x.amount, null, x.key); }
   for (const bad of ["login", "checkin", "like", "react", "saved_search_created", "collection_created"]) assert.ok(!s.rewardable.includes(bad), bad);
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/sources", { key: "saved_search_created" })).code, "not_rewardable");
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/mjt/rewards/sources/quiz_passed", { enabled: true })).code, "amount_required", "cannot enable without an amount");
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/sources", { key: "saved_search_created" })).code, "not_rewardable");
+  clear(); assert.equal((await AD(admin, "PUT", "/api/admin/mjt/rewards/sources/quiz_passed", { enabled: true })).code, "amount_required", "cannot enable without an amount");
   const tx0 = await n("SELECT COUNT(*) n FROM mjt_tx");
   await achieve(a.id, "quiz_passed", "lesson-disabled");
   assert.equal(await n("SELECT COUNT(*) n FROM mjt_tx"), tx0); assert.equal(await n("SELECT COUNT(*) n FROM mjt_reward_entries WHERE user_id=$1", [a.id]), 0);
@@ -130,17 +131,17 @@ test("approval flow: pending → approve posts once; reject needs a reason; noth
   await achieve(c.id, "article_published", "post-1"); await achieve(c.id, "article_published", "post-2");
   assert.equal(await bal(c.id), before, "pending pays nothing yet");
   const rv = await c.req("GET", "/api/mjt/wallet/review"); assert.equal(rv.items.length, 2); assert.equal(rv.items[0].status, "pending");
-  const open = await admin.req("GET", "/api/admin/mjt/rewards/entries?status=open&handle=rw_c"); assert.equal(open.items.length, 2);
+  const open = await AD(admin, "GET", "/api/admin/mjt/rewards/entries?status=open&handle=rw_c"); assert.equal(open.items.length, 2);
   const [p1, p2] = open.items;
-  clear(); const ap = await admin.req("POST", `/api/admin/mjt/rewards/entries/${p1.id}/approve`, {}); assert.equal(ap.status, 200, ap.error); assert.equal(ap.entry.status, "posted");
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/rewards/entries/${p1.id}/approve`, {})).status, 409, "decided once");
+  clear(); const ap = await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p1.id}/approve`, {}); assert.equal(ap.status, 200, ap.error); assert.equal(ap.entry.status, "posted");
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p1.id}/approve`, {})).status, 409, "decided once");
   assert.equal(await bal(c.id) - before, 4 * UNIT);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/rewards/entries/${p2.id}/reject`, {})).status, 400, "reason required");
-  clear(); const rj = await admin.req("POST", `/api/admin/mjt/rewards/entries/${p2.id}/reject`, { reason: "مقال مكرر من مصدر آخر" }); assert.equal(rj.status, 200, rj.error);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/rewards/entries/${p2.id}/approve`, {})).status, 409);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p2.id}/reject`, {})).status, 400, "reason required");
+  clear(); const rj = await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p2.id}/reject`, { reason: "مقال مكرر من مصدر آخر" }); assert.equal(rj.status, 200, rj.error);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p2.id}/approve`, {})).status, 409);
   assert.equal(await bal(c.id) - before, 4 * UNIT, "rejected never pays");
   const orig = await db().get("SELECT status FROM mjt_reward_entries WHERE id=$1", [p2.id]); assert.equal(orig.status, "pending", "original row untouched; the decision is a new row");
-  const det = await admin.req("GET", "/api/admin/mjt/rewards/entries/" + p2.id); assert.equal(det.decision.status, "rejected");
+  const det = await AD(admin, "GET", "/api/admin/mjt/rewards/entries/" + p2.id); assert.equal(det.decision.status, "rejected");
   const rv2 = await c.req("GET", "/api/mjt/wallet/review"); assert.deepEqual(rv2.items.map((x) => x.status), ["rejected"]);
   await setSource("article_published", { enabled: false });
 });
@@ -148,45 +149,45 @@ test("approval flow: pending → approve posts once; reject needs a reason; noth
 test("freeze: earning waits as pending, spending is refused, pending stays pending until unfrozen; reason required", async () => {
   const u = await mk("rw_frz");
   await RW().credit(u.id, { amount: 3 * UNIT, ikey: key("f") });
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: true })).status, 400, "reason required");
-  clear(); const fr = await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: true, reason: "مراجعة أمنية للحساب" }); assert.equal(fr.status, 200, fr.error); assert.equal(fr.wallet.frozen, true);
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: true })).status, 400, "reason required");
+  clear(); const fr = await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: true, reason: "مراجعة أمنية للحساب" }); assert.equal(fr.status, 200, fr.error); assert.equal(fr.wallet.frozen, true);
   await assert.rejects(() => RW().debit(u.id, { amount: UNIT, ikey: key("f") }), (e) => e.code === "account_frozen");
   assert.equal((await RW().canSpend(u.id, UNIT)).reason, "account_frozen");
   await setSource("course_completed", { amount: 7, enabled: true });
   await achieve(u.id, "course_completed", "c-frozen");
   assert.equal(await bal(u.id), 3 * UNIT);
   const p = await db().get("SELECT * FROM mjt_reward_entries WHERE user_id=$1 AND status='pending'", [u.id]); assert.match(p.reason, /wallet_frozen/);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/rewards/entries/${p.id}/approve`, {})).code, "account_frozen", "pending stays pending while frozen");
-  clear(); await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: false, reason: "انتهت المراجعة الأمنية" });
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/rewards/entries/${p.id}/approve`, {})).status, 200);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p.id}/approve`, {})).code, "account_frozen", "pending stays pending while frozen");
+  clear(); await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_frz/freeze", { frozen: false, reason: "انتهت المراجعة الأمنية" });
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/rewards/entries/${p.id}/approve`, {})).status, 200);
   assert.equal(await bal(u.id), 10 * UNIT);
   assert.ok(await n("SELECT COUNT(*) n FROM mjt_audit WHERE target=$1 AND action IN ('freeze','unfreeze')", [u.id]) >= 2);
 });
 
 test("velocity: too many rewards in an hour wait for review instead of posting", async () => {
-  clear(); await admin.req("PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 2 });
+  clear(); await AD(admin, "PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 2 });
   await setSource("quiz_passed", { amount: 1, enabled: true, maxPerRef: 1 });
   const u = await mk("rw_vel");
   for (const r of ["q1", "q2", "q3", "q4"]) await achieve(u.id, "quiz_passed", r);
   assert.equal(await bal(u.id), 2 * UNIT);
   const pend = await db().all("SELECT reason FROM mjt_reward_entries WHERE user_id=$1 AND status='pending'", [u.id]);
   assert.equal(pend.length, 2); for (const x of pend) assert.match(x.reason, /velocity_review/);
-  clear(); await admin.req("PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 10 });
+  clear(); await AD(admin, "PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 10 });
   await setSource("quiz_passed", { enabled: false });
 });
 
 test("admin corrective credit / debit: reason + ikey required, actor and audit recorded, never below zero", async () => {
   const u = await mk("rw_adj");
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: 5, ikey: key("adjk") })).status, 400, "reason required");
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: "2.5", reason: "تصحيح مكافأة ناقصة", ikey: key("adjk") })).code, "bad_amount");
-  clear(); const cr = await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: 5, reason: "تصحيح مكافأة ناقصة", ikey: key("adjk") }); assert.equal(cr.status, 200, cr.error);
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: 5, ikey: key("adjk") })).status, 400, "reason required");
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: "2.5", reason: "تصحيح مكافأة ناقصة", ikey: key("adjk") })).code, "bad_amount");
+  clear(); const cr = await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "credit", amount: 5, reason: "تصحيح مكافأة ناقصة", ikey: key("adjk") }); assert.equal(cr.status, 200, cr.error);
   assert.equal(cr.entry.kind, "adjust_credit"); assert.equal(cr.wallet.balance, "5");
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "debit", amount: 9, reason: "تصحيح مكافأة زائدة", ikey: key("adjk") })).code, "insufficient_balance");
-  clear(); const db1 = await admin.req("POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "debit", amount: 2, reason: "تصحيح مكافأة زائدة", ikey: key("adjk") }); assert.equal(db1.wallet.balance, "3");
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "debit", amount: 9, reason: "تصحيح مكافأة زائدة", ikey: key("adjk") })).code, "insufficient_balance");
+  clear(); const db1 = await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/rw_adj/adjust", { direction: "debit", amount: 2, reason: "تصحيح مكافأة زائدة", ikey: key("adjk") }); assert.equal(db1.wallet.balance, "3");
   const rows = await db().all("SELECT actor_id, reason FROM mjt_reward_entries WHERE user_id=$1 ORDER BY created_at", [u.id]);
   assert.deepEqual(rows.map((r) => r.actor_id), [admin.id, admin.id]);
   assert.equal(await n("SELECT COUNT(*) n FROM mjt_audit WHERE target=$1 AND action IN ('reward_adjust_credit','reward_adjust_debit') AND actor_id=$2", [u.id, admin.id]), 2);
-  const look = await admin.req("GET", "/api/admin/mjt/rewards/wallets/rw_adj"); assert.equal(look.wallet.balance, "3"); assert.equal(look.entries.length, 2);
+  const look = await AD(admin, "GET", "/api/admin/mjt/rewards/wallets/rw_adj"); assert.equal(look.wallet.balance, "3"); assert.equal(look.entries.length, 2);
 });
 
 test("admin endpoints: 403 for members, 401 for guests; stats add up", async () => {
@@ -195,19 +196,19 @@ test("admin endpoints: 403 for members, 401 for guests; stats add up", async () 
     ["POST", "/api/admin/mjt/rewards/wallets/rw_a/adjust", { direction: "credit", amount: 100, reason: "محاولة عضو عادي", ikey: "member_try_123" }], ["PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 999 }], ["POST", "/api/admin/mjt/rewards/entries/x/approve", {}]];
   for (const [m, p, body] of paths) { clear(); assert.equal((await a.req(m, p, body)).status, 403, m + " " + p); clear(); assert.equal((await new H.Client().req(m, p, body)).status, 401, "guest " + p); }
   assert.equal((await db().get("SELECT status FROM mjt_accounts WHERE id=$1", ["user:" + a.id])).status, "active");
-  const s = await admin.req("GET", "/api/admin/mjt/rewards/stats"); assert.equal(s.status, 200, s.error);
+  const s = await AD(admin, "GET", "/api/admin/mjt/rewards/stats"); assert.equal(s.status, 200, s.error);
   assert.ok(Number(s.rewards.earned) > 0); assert.ok(s.wallets.total >= 5); assert.ok(s.ledger.txCount > 0); assert.ok(s.bySource.some((x) => x.source === "course_completed"));
   assert.match(s.note, /ليس له قيمة نقدية/);
   const v = await H.app.ctx.services.mjt.verify(); assert.equal(v.ok, true, v.problems.join(","));
 });
 
 test("a source with history cannot be deleted (disable instead); an unused one can", async () => {
-  clear(); assert.equal((await admin.req("DELETE", "/api/admin/mjt/rewards/sources/course_completed")).code, "in_use");
-  clear(); const d = await admin.req("DELETE", "/api/admin/mjt/rewards/sources/team_created"); assert.ok([200, 409].includes(d.status));
+  clear(); assert.equal((await AD(admin, "DELETE", "/api/admin/mjt/rewards/sources/course_completed")).code, "in_use");
+  clear(); const d = await AD(admin, "DELETE", "/api/admin/mjt/rewards/sources/team_created"); assert.ok([200, 409].includes(d.status));
 });
 
 test("Free / Plus quotas unchanged", async () => {
-  const L = (await admin.req("GET", "/api/admin/membership/limits"));
+  const L = (await AD(admin, "GET", "/api/admin/membership/limits"));
   assert.equal(L.status, 200, L.error);
   const q = Object.fromEntries(Object.entries(L.limits).map(([kk, x]) => [kk, [x.free, x.plus]]));
   assert.deepEqual(q, { saved_searches: [25, 100], collections: [50, 200], quiz_attempts_daily: [10, 30], teams_owned: [5, 20], team_members: [50, 150] });

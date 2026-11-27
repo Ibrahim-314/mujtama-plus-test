@@ -36,7 +36,7 @@ test("price book: admin only, suggested shown but not applied, confirm required,
   const keys = o.items.map((i) => i.key);
   for (const k of ["ai.plan.ai_plus", "fee.tips", "fee.subscriptions", "fee.paid", "fee.market", "fee.transfers", "ads.cpm.min", "ads.cpm.default"]) assert.ok(keys.includes(k), k);
   const tips = o.items.find((i) => i.key === "fee.tips"); assert.equal(tips.current, 0); assert.equal(tips.source, "env"); assert.equal(tips.suggested.value, 500); assert.equal(tips.suggested.applied, false);
-  assert.equal(o.items.find((i) => i.key === "ai.plan.ai_plus").current, null, "no AI price until the admin sets one");
+  assert.equal(o.items.find((i) => i.key === "ai.plan.ai_plus").current, 10, "v2.167: the fixed Plus price (app-defaults, 10 Pi)");
   assert.equal((await admin.req("POST", "/api/admin/pricing", { item: "fee.market", value: 300 })).code, "confirm_required");
   assert.equal((await admin.req("POST", "/api/admin/pricing", { item: "fee.market", value: 9999, confirm: true })).code, "value_invalid");
   assert.equal((await admin.req("POST", "/api/admin/pricing", { item: "nope", value: 1, confirm: true })).code, "item_invalid");

@@ -3,7 +3,7 @@
  *   Subscriber → POST /api/ai/translate, then a tap toggles «عرض الأصل» ⇄ «عرض الترجمة», labelled «ترجمة آلية».
  *   Auto-translate (prefs.auto) batches the visible items. Non-subscriber → upsell sheet (plan, price or «لم يُحدَّد…», Pi note).
  *   E2EE message → disclosure sheet, then the plaintext shown on this device is sent once with consent:true.
- * • #/ai subscription + usage, #/settings/translate prefs, #/admin/ai (price, limits, grants, finance). No inline handlers. */
+ * • #/ai subscription + usage, #/settings/translate prefs (v2.167: #/admin/ai removed — fixed values). No inline handlers. */
 (function AIUI() {
   const api = (m, p, b) => Remote.api(m, p, b);
   const on = () => typeof Remote !== "undefined" && Remote.on && typeof DB !== "undefined" && DB.me;
@@ -225,59 +225,19 @@
     box.querySelectorAll("input,select").forEach((x) => x.addEventListener("change", put));
     window.MPI18n?.apply(view);
   }
-  async function adminView() {
-    if (!DB.isAdmin) return Views.notFound();
-    view.innerHTML = `<div class="wrap">${UI.pageHead({ back: ["#/admin", "الإدارة"], title: "إدارة الذكاء", icon: "sparkle" })}<div id="mp-aa"><div class="skel"></div></div></div>`;
-    const box = view.querySelector("#mp-aa");
-    try {
-      const [pl, f, ql] = await Promise.all([api("GET", "/api/admin/ai/plans"), api("GET", "/api/admin/ai/finance"), api("GET", "/api/admin/membership/limits").catch(() => null)]);
-      const p = pl.plans[0];
-      box.innerHTML = `<div class="card"><h3 class="u-m0 u-mb6 u-t-lg">${esc(p.name)}</h3>
-        <label>السعر (Pi) <input id="mp-price" type="number" min="0" step="0.0000001" value="${p.price ?? ""}" placeholder="لم يُحدَّد سعر الاشتراك بعد"></label>
-        <label>حد الأحرف الشهري <input id="mp-chars" type="number" min="0" value="${p.limits.translate.chars}"></label>
-        <label>حد التكلفة الشهري (USD) <input id="mp-usd" type="number" min="0" step="0.01" value="${p.limits.translate.costUsd}"></label>
-        <fieldset class="u-mt8"><legend>المساعد الذكي — حد شهري لكل عضو Plus</legend><p class="muted u-m0">اتركه فارغاً حتى تعتمد رقماً؛ تبقى ميزانية المزوّد العامة سارية.</p>
-        <label>حد الأحرف <input id="mp-achars" type="number" min="0" value="${p.limits.assistant ? p.limits.assistant.chars : ""}"></label>
-        <label>حد التكلفة (USD) <input id="mp-ausd" type="number" min="0" step="0.01" value="${p.limits.assistant ? p.limits.assistant.costUsd : ""}"></label></fieldset>
-        <label class="chk"><input type="checkbox" id="mp-act" ${p.active ? "checked" : ""}> متاحة للاشتراك</label><button class="btn" type="button" id="mp-psave">حفظ</button></div>
-        ${ql ? `<div class="card" id="mp-ql"><h3 class="u-m0 u-mb6 u-t-lg">حدود العضوية (Free / Plus)</h3><p class="muted">تُطبَّق عند الإنشاء فقط، ولا يُحذف شيء موجود عند الأعضاء.</p>
-          ${Object.entries(ql.limits).map(([k, x]) => `<div class="u-mb6"><b>${esc(x.label)}</b><br><label>Free <input type="number" min="1" data-q="${esc(k)}" data-t="free" value="${x.free}"></label> <label>Plus <input type="number" min="1" data-q="${esc(k)}" data-t="plus" value="${x.plus}"></label></div>`).join("")}
-          <button class="btn" type="button" id="mp-qsave">حفظ الحدود</button></div>` : ""}
-        <div class="card"><h3 class="u-m0 u-mb6 u-t-lg">منح اشتراك</h3><input id="mp-gu" placeholder="@handle"> <input id="mp-gd" type="number" min="1" max="366" value="30" aria-label="أيام"> <button class="btn" type="button" id="mp-grant">منح</button> <button class="btn ghost" type="button" id="mp-revoke">سحب</button></div>
-        <div class="card" data-noi18n><h3 class="u-m0 u-mb6 u-t-lg">${esc(f.period)}</h3><p>Revenue ${f.revenue} Pi · refunds ${f.refunds} · net ${f.net} Pi · ${f.payments} payments · ${f.activeSubscribers} active (${f.grants} grants)</p>
-        <p>Provider cost $${f.providerCostUsd} / budget $${f.budgetUsd}${f.marginUsd != null ? ` · margin $${f.marginUsd}` : ""}</p>
-        ${f.byFeature.map((x) => `<div class="muted">${esc(x.feature)} · ${esc(x.provider)} · ${x.requests} req · ${x.chars} chars · ${x.cacheHits} cache · $${x.costUsd}</div>`).join("")}</div>`;
-      box.querySelector("#mp-psave").addEventListener("click", async () => {
-        const v = box.querySelector("#mp-price").value;
-        try { await api("PUT", "/api/admin/ai/plans/" + p.slug, { price: v === "" ? null : Number(v), active: box.querySelector("#mp-act").checked, limits: { translate: { chars: Number(box.querySelector("#mp-chars").value), costUsd: Number(box.querySelector("#mp-usd").value) }, assistant: box.querySelector("#mp-achars").value === "" ? null : { chars: Number(box.querySelector("#mp-achars").value), costUsd: Number(box.querySelector("#mp-ausd").value || 0) } } }); toast("تم الحفظ"); } catch (e) { toast(e.message); }
-      });
-      box.querySelector("#mp-qsave")?.addEventListener("click", async () => {
-        const limits = {}; box.querySelectorAll("#mp-ql input[data-q]").forEach((i) => { (limits[i.dataset.q] ||= {})[i.dataset.t] = Number(i.value); });
-        try { await api("PUT", "/api/admin/membership/limits", { limits }); toast("تم حفظ الحدود"); } catch (e) { toast(e.message); }
-      });
-      const g = (path) => async () => { try { await api("POST", path, { user: box.querySelector("#mp-gu").value.trim(), days: Number(box.querySelector("#mp-gd").value) }); toast("تم"); } catch (e) { toast(e.message); } };
-      box.querySelector("#mp-grant").addEventListener("click", g("/api/admin/ai/grants"));
-      box.querySelector("#mp-revoke").addEventListener("click", g("/api/admin/ai/grants/revoke"));
-    } catch (e) { box.textContent = e.message; }
-    window.MPI18n?.apply(view);
-  }
+  /* v2.167: #/admin/ai removed — the Plus price (10 Pi / 30 days, env PLUS_PRICE_PI) and the limits are fixed in server/config/app-defaults.js */
   MPRoutes.extend((a, b, prev) => {
     return { ai: () => subView() };
   });
-  MPRoutes.add("admin", (a, b, next) => {
-        if (a === "ai") return adminView();
-        next();
-        if (!a && DB.isAdmin) queueMicrotask(() => { /* v2.149.5: before the next paint (a timer let the hub paint without this row first) */ if (location.hash === "#/admin" && !document.getElementById("mp-adm-ai")) view.querySelector(".wrap h2")?.insertAdjacentHTML("afterend", `<a class="u-db u-ci card" id="mp-adm-ai" href="#/admin/ai"><svg class=ei aria-hidden=true><use href=#i-sparkle /></svg> <b>إدارة الذكاء</b></a>`); });
-      });
   MPRoutes.add("settings", (a, b, next) => (a === "translate" ? prefsView() : next()));
   const setCard = () => { if (/^#\/settings\/?(\?|$)/.test(location.hash) && !document.getElementById("mp-ai-set")) (view.querySelector(".wrap") || view).insertAdjacentHTML("beforeend", `<div class="card" id="mp-ai-set"><h3 class="u-m0 u-mb8 u-t-lg"><svg class="ic hi" aria-hidden="true"><use href="#i-sparkle"/></svg>مجتمع بلس Plus</h3><a class="btn ghost" href="#/ai">اشتراكي</a> <a class="btn ghost" href="#/settings/translate">تفضيلات الترجمة</a> <a class="btn ghost" href="#/settings/language">اللغة</a></div>`); };
   if (typeof Views !== "undefined" && Views.settings) { MPSettings.add(function () { setCard(); }); }
-  window.MPAI = { upsell, subView, prefsView, adminView, detect, translateBtn, state, refresh: () => loadMe(true), version: "2.24.0" };
+  window.MPAI = { upsell, subView, prefsView, detect, translateBtn, state, refresh: () => loadMe(true), version: "2.24.0" };
   loadMe(); window.MPChunks?.load("assistant").catch(() => { }); window.MPChunks?.load("launch").catch(() => { }); window.MPChunks?.load("beta").catch(() => { }); // phase 42/50: assistant button in the composer; help center, tickets, ambassadors, waitlist
   const dev = () => { if (/^#\/(developers|oauth|settings\/?(\?|$))/.test(location.hash) && window.MPChunks && !window.MPDev) window.MPChunks.load("dev").then(() => { if (!/^#\/settings/.test(location.hash)) route(); }).catch(() => { }); }; // phase 47: developer portal + OAuth consent (0 B in core)
   addEventListener("hashchange", dev); dev();
   if (typeof DB !== "undefined" && DB.onboarded) {
-    if (/^#\/(ai|settings\/translate|admin\/ai)(\/|$|\?)/.test(location.hash) && typeof route === "function") route();
+    if (/^#\/(ai|settings\/translate)(\/|$|\?)/.test(location.hash) && typeof route === "function") route();
     else { if (/^#\/settings\/?(\?|$)/.test(location.hash)) setCard(); /* v2.149.2: only a screen that shows posts needs the redraw (their translate button); every other screen (settings, versions, calls, trust…) was redrawn whole ~1–2 s after opening, a visible flicker */ if (typeof rerender === "function" && view.querySelector("[data-react]") && document.getElementById("sheet")?.classList.contains("hidden") && !(window.formDirty && window.formDirty())) try { rerender(); } catch { /* ok */ } } // v2.52: never wipe a form the member started (e.g. the ad wizard)
   }
 })();

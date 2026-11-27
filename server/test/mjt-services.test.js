@@ -7,6 +7,7 @@
  * unchanged · the shared ledger still verifies. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 const { UNIT } = require("../lib/mjt-ledger");
 
 let H, admin, teacher, free1, free2, plusM, gid, course, freeCourse, lessonId, faultOn = false;
@@ -24,7 +25,7 @@ const mk = async (handle) => {
   await db().run("UPDATE users SET created_at=$1 WHERE id=$2", [new Date(Date.now() - 30 * 864e5).toISOString(), cl.id]);
   return cl;
 };
-const edit = async (sid, body) => { clear(); const r = await admin.req("PUT", "/api/admin/mjt/services/" + sid, body); assert.equal(r.status, 200, r.error); return r.service; };
+const edit = async (sid, body) => { clear(); const r = await AD(admin, "PUT", "/api/admin/mjt/services/" + sid, body); assert.equal(r.status, 200, r.error); return r.service; };
 const buy = async (cl, sid, body) => { clear(); return cl.req("POST", `/api/mjt/services/${sid}/purchase`, body); };
 const svcOf = async (cl, sid) => { clear(); const r = await cl.req("GET", "/api/mjt/services"); assert.equal(r.status, 200, r.error); return r.services.find((x) => x.id === sid || x.key === sid); };
 const STUDIO = "svc_studio_extended";
@@ -33,7 +34,7 @@ test.before(async () => {
   H = await boot({ mjtOpts: { autoConvert: false, jobs: false }, studyOpts: { jobs: false }, mjtServicesOpts: { faultAfterGrant: async () => { if (faultOn) throw new Error("injected failure inside the transaction"); } } });
   admin = await mk("sv_admin"); teacher = await mk("sv_teacher"); free1 = await mk("sv_free1"); free2 = await mk("sv_free2"); plusM = await mk("sv_plus");
   await RW().ready; await SV().ready;
-  clear(); const g = await admin.req("POST", "/api/admin/ai/grants", { user: plusM.handle, days: 30 }); assert.equal(g.status, 200, g.error);
+  clear(); const g = await AD(admin, "POST", "/api/admin/ai/grants", { user: plusM.handle, days: 30 }); assert.equal(g.status, 200, g.error);
   // a study group with one paid («product») course and one free course, both published
   clear(); const sg = await teacher.req("POST", "/api/study/groups", { name: "مجموعة خدمات MJT", type: "public", mode: "group", subject: "برمجة" }); assert.equal(sg.status, 200, sg.error); gid = sg.group.id;
   const mkCourse = async (title) => {
@@ -68,18 +69,18 @@ test("migration 091 is additive and reversible; compliance data map lists the me
 });
 
 test("catalog ships disabled with no cost and no term; only real capabilities can be registered; free courses stay free", async () => {
-  const r = await admin.req("GET", "/api/admin/mjt/services"); assert.equal(r.status, 200, r.error);
+  const r = await AD(admin, "GET", "/api/admin/mjt/services"); assert.equal(r.status, 200, r.error);
   assert.deepEqual(r.services.map((s) => s.key), ["studio_extended"]);
   const s = r.services[0]; assert.equal(s.enabled, false); assert.equal(s.cost, null); assert.equal(s.term, null); assert.equal(s.accessMode, "plus_mjt");
   assert.ok(r.policy.length >= 4, "refund policy is shown to admins");
   clear(); assert.deepEqual((await free1.req("GET", "/api/mjt/services")).services, [], "members see nothing while disabled");
   assert.equal((await buy(free1, STUDIO, { priceVersion: 1, ikey: key() })).code, "service_disabled");
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/mjt/services/" + STUDIO, { enabled: true })).code, "cost_required", "no enabling without a cost");
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/mjt/services/" + STUDIO, { cost: 5, enabled: true })).code, "cost_required", "no enabling without a term");
-  for (const f of ["translate", "assistant", "appearance", "post", "messages"]) { clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/services", { kind: "feature", target: f })).code, "not_wireable", f); }
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/services", { kind: "course", target: freeCourse })).code, "not_premium");
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/services", { kind: "post", target: "x" })).code, "bad_kind");
-  clear(); const c = await admin.req("GET", "/api/admin/mjt/services/candidates?kind=course"); assert.deepEqual(c.items.map((x) => x.target), [course], "only paid courses are candidates");
+  clear(); assert.equal((await AD(admin, "PUT", "/api/admin/mjt/services/" + STUDIO, { enabled: true })).code, "cost_required", "no enabling without a cost");
+  clear(); assert.equal((await AD(admin, "PUT", "/api/admin/mjt/services/" + STUDIO, { cost: 5, enabled: true })).code, "cost_required", "no enabling without a term");
+  for (const f of ["translate", "assistant", "appearance", "post", "messages"]) { clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "feature", target: f })).code, "not_wireable", f); }
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "course", target: freeCourse })).code, "not_premium");
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "post", target: "x" })).code, "bad_kind");
+  clear(); const c = await AD(admin, "GET", "/api/admin/mjt/services/candidates?kind=course"); assert.deepEqual(c.items.map((x) => x.target), [course], "only paid courses are candidates");
   assert.equal((await RW().listSources()).sources.every((x) => !x.enabled && x.amount === null), true, "phase-4 sources untouched");
 });
 
@@ -89,7 +90,7 @@ test("admin endpoints: members 403, signed out 401", async () => {
     clear(); assert.equal((await free1.req(m, p, b)).status, 403, `${m} ${p}`);
     clear(); assert.equal((await new H.Client().req(m, p, b)).status, 401, `${m} ${p} signed out`);
   }
-  const s = await admin.req("GET", "/api/admin/mjt/services/" + STUDIO); assert.equal(s.service.enabled, false, "member attempts changed nothing");
+  const s = await AD(admin, "GET", "/api/admin/mjt/services/" + STUDIO); assert.equal(s.service.enabled, false, "member attempts changed nothing");
   clear(); assert.equal((await new H.Client().req("GET", "/api/mjt/services")).status, 401);
 });
 
@@ -138,7 +139,7 @@ test("API price tampering: amounts in the body are rejected; missing / stale pri
   assert.equal(before - (await bal(free2.id)), 8 * UNIT, "server read the cost itself");
   const old = await db().get("SELECT cost, price_version FROM mjt_service_purchases WHERE user_id=$1", [free1.id]);
   assert.equal(Number(old.cost), 5 * UNIT); assert.equal(Number(old.price_version), 2, "the earlier purchase keeps the price it confirmed");
-  const d = await admin.req("GET", "/api/admin/mjt/services/" + STUDIO); assert.deepEqual(d.prices.map((p) => p.version), [3, 2, 1]);
+  const d = await AD(admin, "GET", "/api/admin/mjt/services/" + STUDIO); assert.deepEqual(d.prices.map((p) => p.version), [3, 2, 1]);
 });
 
 test("Free vs Plus: Plus-included → «already have access», no debit; plus-only modes refuse Free members", async () => {
@@ -191,9 +192,9 @@ test("time-limited entitlement: expiry enforced server-side, then buying again d
 
 let courseSvc;
 test("course content unlock: admin registers a paid course (disabled), sets a permanent cost; purchase enrols; re-access never debits", async () => {
-  clear(); const reg = await admin.req("POST", "/api/admin/mjt/services", { kind: "course", target: course }); assert.equal(reg.status, 200, reg.error);
+  clear(); const reg = await AD(admin, "POST", "/api/admin/mjt/services", { kind: "course", target: course }); assert.equal(reg.status, 200, reg.error);
   courseSvc = reg.service; assert.equal(courseSvc.enabled, false); assert.equal(courseSvc.cost, null); assert.equal(courseSvc.term, null);
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/services", { kind: "course", target: course })).code, "exists");
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/services", { kind: "course", target: course })).code, "exists");
   courseSvc = await edit(courseSvc.id, { cost: 4, term: "permanent", enabled: true });
   clear(); assert.equal((await free2.req("POST", `/api/courses/${course}/enrol`)).code, "needs_purchase");
   const v = await svcOf(free2, courseSvc.id); assert.equal(v.canBuy, true); assert.equal(v.href, `#/course/${course}`);
@@ -254,32 +255,32 @@ test("delivery failure after the debit → automatic full refund (compensating, 
 
 test("manual refund: admin only, reason mandatory, full confirmed amount, once, revokes access, audited", async () => {
   const p = await db().get("SELECT * FROM mjt_service_purchases WHERE user_id=$1 AND service_id=$2 AND status='active'", [free2.id, courseSvc.id]);
-  clear(); assert.equal((await free2.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "أريد استرداد المبلغ" })).status, 403);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, {})).status, 400, "reason required");
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "قص" })).status, 400, "≥ 5 chars");
+  clear(); assert.equal((await AD(free2, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "أريد استرداد المبلغ" })).status, 404);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, {})).status, 400, "reason required");
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "قص" })).status, 400, "≥ 5 chars");
   const before = await bal(free2.id);
-  clear(); const r = await admin.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "الدورة لم تعمل كما وُصفت" }); assert.equal(r.status, 200, r.error);
+  clear(); const r = await AD(admin, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "الدورة لم تعمل كما وُصفت" }); assert.equal(r.status, 200, r.error);
   assert.equal(r.purchase.status, "refunded"); assert.equal((await bal(free2.id)) - before, Number(p.cost));
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "مرة ثانية للتجربة" })).code, "already_refunded");
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "مرة ثانية للتجربة" })).code, "already_refunded");
   assert.equal((await bal(free2.id)) - before, Number(p.cost), "refunded once");
   clear(); const lz = await free2.req("GET", "/api/course-lessons/" + lessonId); assert.equal(lz.code, "needs_purchase", "lessons closed after the refund (expiry / refund checked on every lesson)");
   const a = await db().get("SELECT * FROM mjt_audit WHERE action='service_refund' AND target=$1", [free2.id]); assert.ok(a); assert.equal(a.actor_id, admin.id); assert.match(a.detail, /الدورة لم تعمل/);
-  clear(); const list = await admin.req("GET", "/api/admin/mjt/services/purchases?status=refunded"); assert.ok(list.items.some((x) => x.id === p.id && x.refundReason));
-  clear(); const st = await admin.req("GET", "/api/admin/mjt/services"); const cs = st.services.find((x) => x.id === courseSvc.id);
+  clear(); const list = await AD(admin, "GET", "/api/admin/mjt/services/purchases?status=refunded"); assert.ok(list.items.some((x) => x.id === p.id && x.refundReason));
+  clear(); const st = await AD(admin, "GET", "/api/admin/mjt/services"); const cs = st.services.find((x) => x.id === courseSvc.id);
   assert.equal(cs.usage.purchases, 4); assert.equal(cs.usage.refunded, 2); assert.equal(cs.usage.spent, "8", "total MJT spent excludes refunded purchases");
 });
 
 test("frozen wallet: cannot spend (nothing debited); a refund still reaches a frozen wallet", async () => {
   const u = await mk("sv_frz"); await fund(u.id, 30);
   const ok = await buy(u, courseSvc.id, { priceVersion: courseSvc.priceVersion, ikey: key("z") }); assert.equal(ok.status, 200, ok.error);
-  clear(); assert.equal((await admin.req("POST", "/api/admin/mjt/rewards/wallets/sv_frz/freeze", { frozen: true, reason: "مراجعة أمنية للحساب" })).status, 200);
+  clear(); assert.equal((await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/sv_frz/freeze", { frozen: true, reason: "مراجعة أمنية للحساب" })).status, 200);
   const before = await bal(u.id);
   const r = await buy(u, STUDIO, { priceVersion: 3, ikey: key("z") }); assert.equal(r.status, 409); assert.equal(r.code, "account_frozen");
   assert.equal(await bal(u.id), before);
   const p = await db().get("SELECT id FROM mjt_service_purchases WHERE user_id=$1", [u.id]);
-  clear(); const rf = await admin.req("POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "استرداد أثناء المراجعة" }); assert.equal(rf.status, 200, rf.error);
+  clear(); const rf = await AD(admin, "POST", `/api/admin/mjt/services/purchases/${p.id}/refund`, { reason: "استرداد أثناء المراجعة" }); assert.equal(rf.status, 200, rf.error);
   assert.equal((await bal(u.id)) - before, 4 * UNIT);
-  clear(); await admin.req("POST", "/api/admin/mjt/rewards/wallets/sv_frz/freeze", { frozen: false, reason: "انتهت المراجعة الأمنية" });
+  clear(); await AD(admin, "POST", "/api/admin/mjt/rewards/wallets/sv_frz/freeze", { frozen: false, reason: "انتهت المراجعة الأمنية" });
 });
 
 test("free resources stay free: free courses enrol and open lessons with no MJT; basic actions never touch the wallet", async () => {
@@ -297,7 +298,7 @@ test("rate limit on purchases", async () => {
 });
 
 test("Free / Plus quotas unchanged; shared ledger still verifies", async () => {
-  clear(); const L = await admin.req("GET", "/api/admin/membership/limits"); assert.equal(L.status, 200, L.error);
+  clear(); const L = await AD(admin, "GET", "/api/admin/membership/limits"); assert.equal(L.status, 200, L.error);
   assert.deepEqual(Object.fromEntries(Object.entries(L.limits).map(([kk, x]) => [kk, [x.free, x.plus]])), { saved_searches: [25, 100], collections: [50, 200], quiz_attempts_daily: [10, 30], teams_owned: [5, 20], team_members: [50, 150] });
   const v = await H.app.ctx.services.mjt.verify(); assert.equal(v.ok, true, v.problems.join(","));
 });

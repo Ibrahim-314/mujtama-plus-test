@@ -38,7 +38,6 @@ module.exports = (ctx, opts = {}) => {
   const clock = () => (opts.now ? opts.now() : Date.now());
   const iso = (ms = clock()) => new Date(ms).toISOString();
   const FLAG_AT = +(env.PRO_FLAG_REPORTS || 3);
-  const admin = (fn) => A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req); });
   const notify = async (uid, kind, ref, actor = null) => { try { await ctx.services.notify?.notify(uid, kind, { ref, actor }); } catch { /* best effort */ } };
   const isMinor = async (uid) => { try { return !!(await ctx.services.minors?.isMinorUser?.(uid)); } catch { return false; } };
   const fail = (status, code, msg) => Object.assign(status === 403 ? E.forbid(msg) : status === 409 ? E.conflict(msg) : status === 404 ? E.nf(msg) : E.bad(msg), { code });
@@ -392,8 +391,7 @@ ${P.languages && P.languages.length ? `<section><h2>اللغات</h2><div class=
   R.get("/api/pro/search", async (req) => search(req.user || null, req.query || {}));
   R.get("/api/pro/u/:handle", async (req) => view(req.user || null, req.params.handle, req.query || {}));
   R.post("/api/pro/u/:handle/report", A(async (req) => report(req.user, req.params.handle, req.body || {})));
-  R.get("/api/admin/pro", admin(async () => adminView()));
-  R.post("/api/admin/pro/:handle", admin(async (req) => moderate(req.user, req.params.handle, req.body || {})));
+  /* v2.167: /api/admin/pro/* removed — reported profiles are decided by services/auto-rules.js */
 
-  return { badge, view, build, search, ssr, completeness, jsonResume, OPEN, KINDS, SECTIONS, VIS, REASONS, profileRow };
+  return { badge, view, build, search, ssr, completeness, jsonResume, OPEN, KINDS, SECTIONS, VIS, REASONS, profileRow, moderate, FLAG_AT };
 };

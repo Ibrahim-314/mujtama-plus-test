@@ -11,6 +11,7 @@ const { boot } = require("./helpers");
 
 let H, staff, brand, cr, cr2, other, kid, camp, dealId, postId;
 const db = () => H.app.ctx.db;
+const C = () => H.app.ctx.services.collabs, SYS = () => H.app.ctx.services.autoRules.SYS; // v2.167: no staff pages — the same service functions
 async function mk(handle, name) {
   H.app.ctx.rl.w.clear();
   const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: name || "عضو " + handle, handle, password: "secret123" });
@@ -48,9 +49,10 @@ test("brand profile + campaigns: prohibited terms held for staff; approve; apply
   const held = await brand.req("POST", "/api/collabs/campaigns", { title: "عرض خاص للمراهنات", summary: "روّج لتطبيق مراهنات رياضية مع مكافأة تسجيل للمتابعين", deliverables: DL });
   assert.equal(held.status, 200, held.error); assert.equal(held.campaign.status, "review");
   assert.ok(!(await cr.req("GET", "/api/collabs/campaigns")).campaigns.some((c) => c.id === held.campaign.id));
-  assert.equal((await cr.req("GET", "/api/admin/collabs")).status, 403);
-  const adm = await staff.req("GET", "/api/admin/collabs"); assert.equal(adm.held.length, 1);
-  await staff.req("POST", `/api/admin/collabs/campaigns/${held.campaign.id}`, { decision: "reject", note: "مراهنات" });
+  assert.equal((await cr.req("GET", "/api/admin/collabs")).status, 404);
+  assert.equal((await staff.req("GET", "/api/admin/collabs")).status, 404, "v2.167: the staff queue is gone");
+  const adm = await C().adminView(); assert.equal(adm.held.length, 1);
+  await C().decideCampaign(SYS(), held.campaign.id, { decision: "reject", note: "مراهنات" });
   const c = await brand.req("POST", "/api/collabs/campaigns", { title: "إطلاق سماعات لاسلكية", summary: "نبحث عن صنّاع تقنية لمراجعة سماعاتنا الجديدة بصدق، مع ذكر المزايا والعيوب.", deliverables: DL, categories: ["tech"], formats: ["video"], fee: 120, slots: 1, deadline: "2030-01-01" });
   assert.equal(c.campaign.status, "open"); camp = c.campaign;
   const found = await cr.req("GET", "/api/collabs/campaigns?category=tech&q=سماعات"); assert.ok(found.campaigns.some((x) => x.id === camp.id));
@@ -129,8 +131,8 @@ test("self-disclosure (removable), undisclosed-ad reports → staff label (locke
   assert.equal((await other.req("POST", `/api/posts/${sus.post.id}/undisclosed-report`, {})).status, 400); // own post
   assert.equal((await cr.req("POST", `/api/posts/${sus.post.id}/undisclosed-report`, { brand: "مطعم البيت", note: "يبدو إعلاناً" })).status, 200);
   assert.equal((await cr.req("POST", `/api/posts/${sus.post.id}/undisclosed-report`, {})).status, 409);
-  const adm = await staff.req("GET", "/api/admin/collabs"); assert.equal(adm.reports[0].postId, sus.post.id);
-  await staff.req("POST", `/api/admin/collabs/reports/${sus.post.id}`, { decision: "label", kind: "sponsored", brand: "مطعم البيت" });
+  const adm = await C().adminView(); assert.equal(adm.reports[0].postId, sus.post.id);
+  await C().decideReport(SYS(), sus.post.id, { decision: "label", kind: "sponsored", brand: "مطعم البيت" });
   assert.equal((await other.req("DELETE", `/api/posts/${sus.post.id}/partnership`)).status, 400);
   // library: public posts only
   H.app.ctx.rl.w.clear(); const priv = await cr.req("POST", "/api/posts", { type: "post", text: "للمتابعين فقط", visibility: "followers" });
@@ -140,7 +142,7 @@ test("self-disclosure (removable), undisclosed-ad reports → staff label (locke
   assert.ok(!lib.items.some((i) => i.postId === priv.post.id));
   const bp = await new H.Client().req("GET", "/api/collabs/brands/" + brand.id); assert.equal(bp.brand.completedDeals, 1);
   // suspension closes campaigns + blocks new ones
-  await staff.req("POST", `/api/admin/collabs/brands/${brand.id}`, { status: "suspended" });
+  await C().decideBrand(SYS(), brand.id, { status: "suspended" });
   assert.equal((await db().get("SELECT status FROM collab_campaigns WHERE id=$1", [camp.id])).status, "closed");
   assert.equal((await brand.req("POST", "/api/collabs/campaigns", { title: "حملة أخرى", summary: "x".repeat(30), deliverables: DL })).status, 403);
 });

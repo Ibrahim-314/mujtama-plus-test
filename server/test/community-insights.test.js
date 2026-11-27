@@ -225,12 +225,11 @@ test("MJT rewards: owner-funded through the ledger, member + community daily cap
   const rc = await S().cintegrations.reconcileRewards(); assert.ok(rc.reversed >= 1); assert.notEqual((await db().get("SELECT status FROM community_mjt_rewards WHERE ref_id=$1", [p5.id])).status, "paid");
   const iv = await O.req("GET", `/api/communities/${cid}/integrations`); assert.ok(iv.mjt.canEdit); assert.ok(iv.mjt.ownerBalance); assert.ok(iv.mjt.recent.length);
   const ia = await AD.req("GET", `/api/communities/${cid}/integrations`); assert.equal(ia.mjt.canEdit, false); assert.equal(ia.mjt.ownerBalance, null, "the owner's balance is the owner's");
-  /* the platform switch wins */
+  /* v2.167: there is no platform switch any more — an old 'rules' row in mjt_settings is kept but not read; rewards stay on */
   await db().run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('rules',$1,'t',$2) ON CONFLICT (key) DO UPDATE SET value=$1", [JSON.stringify({ rewards: { enabled: false, dailyCap: 150 * M.UNIT } }), new Date().toISOString()]);
-  await new Promise(r => setTimeout(r, 5100)); // mjt settings cache (5 s)
   const q2 = (await post(V, "سؤال آخر؟", { type: "question" })).post; const a2 = (await U.req("POST", "/api/comments", { post: q2.id, text: "جواب" })).comment;
   await V.req("POST", `/api/posts/${q2.id}/accept`, { comment: a2.id }); await settle();
-  assert.equal((await db().get("SELECT reason FROM community_mjt_rewards WHERE ref_id=$1", [a2.id])).reason, "rewards_off");
+  assert.notEqual((await db().get("SELECT reason FROM community_mjt_rewards WHERE ref_id=$1", [a2.id]))?.reason, "rewards_off", "an old switch row no longer turns rewards off");
   await db().run("DELETE FROM mjt_settings WHERE key='rules'"); // (cache expires on its own)
 });
 

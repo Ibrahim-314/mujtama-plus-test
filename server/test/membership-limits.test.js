@@ -5,6 +5,7 @@
  * nothing a member already has is removed when they are over a ceiling · archive → reopen cannot bypass it. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 let H, admin, free, plus, legacy;
 const db = () => H.app.ctx.db;
@@ -17,7 +18,7 @@ const mk = async (handle) => {
   await db().run("UPDATE users SET created_at=$1 WHERE id=$2", [new Date(Date.now() - 30 * 864e5).toISOString(), c.id]);
   return c;
 };
-const grantPlus = async (c) => { clear(); const r = await admin.req("POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
+const grantPlus = async (c) => { clear(); const r = await AD(admin, "POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
 const newTeam = (c, i) => { clear(); return c.req("POST", "/api/teams", { name: "فريق رقم " + i, kind: "project" }); };
 
 test.before(async () => {
@@ -91,18 +92,14 @@ test("team members: the ceiling follows the owner's tier", async () => {
   assert.equal((await free.req("GET", "/api/teams/" + f.id)).options.maxMembers, 50);
 });
 
-test("admin edits the numbers without code; members cannot; bad values refused", async () => {
-  clear(); assert.equal((await free.req("PUT", "/api/admin/membership/limits", { limits: { saved_searches: { free: 999 } } })).status, 403);
-  clear(); assert.equal((await free.req("GET", "/api/admin/membership/limits")).status, 403);
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/membership/limits", { limits: { saved_searches: { free: 10, plus: 5 } } })).status, 400, "Plus below Free");
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/membership/limits", { limits: { nope: { free: 1, plus: 2 } } })).status, 400);
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/membership/limits", { limits: { saved_searches: { free: 0, plus: 2 } } })).status, 400);
-  clear(); const ok = await admin.req("PUT", "/api/admin/membership/limits", { limits: { saved_searches: { free: 30 } } });
-  assert.equal(ok.status, 200, ok.error); assert.equal(ok.limits.saved_searches.free, 30); assert.equal(ok.limits.saved_searches.plus, 100);
-  clear(); assert.equal((await free.req("POST", "/api/search/saved", { q: "صار ممكن" })).status, 200, "the new Free number applies at once");
-  const g = await admin.req("GET", "/api/admin/membership/limits");
-  assert.equal(g.limits.saved_searches.setBy, "admin"); assert.equal(g.limits.collections.setBy, "default");
-  assert.ok(await db().get("SELECT 1 x FROM audit_log WHERE action='membership_quotas_updated'").catch(() => true));
+test("v2.167: the numbers are fixed in app-defaults — the admin limits API is gone for everyone and an old stored override is not read", async () => {
+  for (const c of [free, admin]) {
+    clear(); assert.equal((await c.req("PUT", "/api/admin/membership/limits", { limits: { saved_searches: { free: 999 } } })).status, 404);
+    clear(); assert.equal((await c.req("GET", "/api/admin/membership/limits")).status, 404);
+  }
+  await db().run("INSERT INTO membership_meta(key,value,updated_at) VALUES('quotas',$1,$2) ON CONFLICT (key) DO UPDATE SET value=$1", [JSON.stringify({ saved_searches: { free: 999, plus: 999 } }), new Date().toISOString()]);
+  assert.deepEqual([(await M().quotas()).saved_searches.free, (await M().quotas()).saved_searches.plus], [25, 100]);
+  await db().run("DELETE FROM membership_meta WHERE key='quotas'");
 });
 
 test("Plus ending returns the Free ceiling, without deleting anything", async () => {

@@ -13,7 +13,7 @@
     paid: ["me/purchases", "me/paid-posts", "admin/paid"], // v2.149.5: these screens drew the profile / admin hub first, then swapped
     market: ["market", "admin/market"],
     ads: ["ads", "admin/ads", "settings/ads"],
-    ai: ["ai", "admin/ai", "settings/translate"],
+    ai: ["ai", "settings/translate"],
     i18n: ["i18n", "admin/i18n", "settings/language"],
     a11y: ["a11y", "accessibility", "admin/a11y", "settings/display"],
     prefs: ["appearance", "settings/appearance"],
@@ -27,24 +27,24 @@
     points: ["points", "leaderboard", "admin/points"],
     finance: ["statement", "invoice", "annual", "finance-report", "admin/finance"],
     canalytics: ["analytics"],
-    nearby: ["nearby", "place", "places", "cities", "city", "admin/places"],
+    nearby: ["nearby", "place", "places", "cities", "city"],
     study: ["study"],
     series: ["scheduled", "drafts", "series"],
     biz: ["biz", "admin/biz"],
     courses: ["courses", "course"],
-    collabs: ["collabs", "admin/collabs"],
+    collabs: ["collabs"],
     hijri: ["hijri", "season", "admin/hijri"],
     certs: ["exams", "exam", "attempt", "certificates", "cert", "verify-cert", "mentor-certs"],
-    mentor: ["mentors", "mentor", "msession", "mentoring", "admin/mentors"],
+    mentor: ["mentors", "mentor", "msession", "mentoring"],
     vcreators: ["creator-program", "fund", "admin/creator-program"],
     charity: ["giving", "campaign", "organisation", "opportunity", "admin/charity"],
     knowledge: ["knowledge", "kb", "admin/knowledge"],
-    work: ["cv", "talent", "admin/pro", "jobs", "job", "application", "admin/jobs", "contracts", "contract", "admin/contracts"]
+    work: ["cv", "talent", "jobs", "job", "application", "contracts", "contract", "admin/contracts"]
   };
   ROUTES.feat = ["u", "me"]; // v2.149.1: profile v3 styles ride feat.css — a cold profile waits on the skeleton, never paints the old layout
   ROUTES.membership = ["membership"]; // v2.156: Free / Plus membership page (membership-ui.js)
-  ROUTES.mjt = ["mjt", "admin/mjt", "rewards", "admin/rewards", "admin/mjt-services", "admin/mjt-safety", "admin/mjt-review", "admin/mjt-reputation", "reputation"]; ROUTES.mjteco = ["admin/mjt-economy"]; // v2.166 + phase 8.3 «السمعة 2» #/reputation + admin (reputation-ui.js) // v2.165 + phase 8.1 admin switches / review queue (mjt-safety-ui.js) // v2.162 «اقتصاد MJT» admin analytics (mjt-economy-ui.js + mjt-economy.css) // v2.47 «مجتمع كوين» wallet + admin (mjt-ui.js + mjt.css); v2.160 + rewards wallet (rewards-ui.js); v2.161 + «خدمات MJT» #/mjt/services + admin (mjt-services-ui.js)
-  ROUTES.proreviews = ["reviews", "admin/reviews"]; // v2.46 phase 80: professional reputation (proreviews-ui.js + proreviews.css), loads after the work chunk
+  ROUTES.mjt = ["mjt", "rewards", "reputation"]; // v2.167: the MJT admin pages (#/admin/mjt, rewards, mjt-services, mjt-safety, mjt-review, mjt-reputation, mjt-economy) were removed — values are fixed in server/config/app-defaults.js
+  ROUTES.proreviews = ["reviews"]; // v2.167: #/admin/reviews removed — // v2.46 phase 80: professional reputation (proreviews-ui.js + proreviews.css), loads after the work chunk
   ROUTES.teams = ["teams", "team"]; // v2.45 phase 79: teams & projects (teams-ui.js + teams.css), loads after the work chunk
   ROUTES.creation = ["studio", "rooms", "room"]; // v2.42: studio + live rooms screens (creation-ui.js) with creation.css
   // v2.51: chunks that used to arrive only through the eager preload now also load when their own route opens (guests no longer preload them)
@@ -53,11 +53,11 @@
   ROUTES.aihub = ["aihub", "admin/aihub"]; // v2.77: «مركز الذكاء» — link your own AI account (aihub-ui.js + aihub.css), after the feat chunk for its icons
   ROUTES.nabd = ["city"]; // v2.105 «نبض النواة»: the Godot game (nabd/nabd-ui.js) owns bare #/city; #/city/<name> stays nearby
   ROUTES.clips = ["shorts", "clips"]; // v2.71: «لقطات» full-screen view (clips-ui.js + clips.css); core keeps the route + MPPlayer
-  ROUTES.v12x = ["series", "events", "event", "lists", "list", "interests", "trends", "admin", "decisions"]; // v2.81: the v1.2 screens (v12-screens.js) left the core bundle
+  ROUTES.v12x = ["series", "events", "event", "lists", "list", "interests", "trends", "admin", "decisions", "owner"]; // v2.167 + «لوحة المالك» #/owner (owner-ui.js) // v2.81: the v1.2 screens (v12-screens.js) left the core bundle
   ROUTES.setx = ["settings"]; // v2.81: the settings hub (settings-hub.js) left the core bundle
   ROUTES.launch = ["faq", "tickets", "ambassadors", "waitlist", "about", "staff"]; ROUTES.pwa = ["share", "app", "versions"];
   const loaded = {}, pending = {}, cssDone = {}, cssPend = {};
-  const FEAT = "market nearby study series biz courses collabs hijri certs mentor vcreators charity knowledge work teams proreviews mjt mjteco canalytics points creation communities tips transfers ads dev digital subs wellbeing menu cadmin aihub".split(" ");
+  const FEAT = "market nearby study series biz courses collabs hijri certs mentor vcreators charity knowledge work teams proreviews mjt canalytics points creation communities tips transfers ads dev digital subs wellbeing menu cadmin aihub".split(" ");
   const has = (n) => !!((window.__CHUNKS || {})[n] || (window.__CSS || {})[n]);
   /* v2.32 lazy CSS: a chunk's stylesheet (window.__CSS[name]) is fetched with its JS, and the screen renders only after both
    * arrived, so a module never paints unstyled. A failed stylesheet does not block the screen. */

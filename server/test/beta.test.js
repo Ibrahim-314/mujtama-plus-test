@@ -141,11 +141,13 @@ test("cohort dashboard: activation, D1/D7 retention, client errors, NPS, top fee
 
 test("feature flags: cohort early access + kill switch (API and server-side flagsFor)", async () => {
   const flag = async (c) => (await c.req("GET", "/api/flags")).flags;
-  assert.equal((await flag(t1)).stories, false);
-  assert.equal((await mod.req("PUT", "/api/admin/beta/flags/stories", { cohorts: [wave1.id] })).status, 403);
-  const r = await admin.req("PUT", "/api/admin/beta/flags/stories", { cohorts: [wave1.id] }); assert.equal(r.status, 200, r.error);
-  assert.deepEqual(r.items.find((x) => x.key === "stories").cohorts, [wave1.id]);
-  assert.equal((await flag(t1)).stories, true); assert.equal((await flag(mod)).stories, false);
+  // v2.167: the app's own flags are all ON; a test-only flag that is off by default exercises the cohort early access
+  await db().run("INSERT INTO feature_flags(key,description,enabled,rollout,allow,updated_at) VALUES('beta_test_x','test',1,0,$1,$2) ON CONFLICT (key) DO NOTHING", [[], new Date().toISOString()]); S().cache?.del?.("flags"); H.app.ctx.cache.del("flags");
+  assert.equal((await flag(t1)).beta_test_x, false);
+  assert.equal((await mod.req("PUT", "/api/admin/beta/flags/beta_test_x", { cohorts: [wave1.id] })).status, 403);
+  const r = await admin.req("PUT", "/api/admin/beta/flags/beta_test_x", { cohorts: [wave1.id] }); assert.equal(r.status, 200, r.error);
+  assert.deepEqual(r.items.find((x) => x.key === "beta_test_x").cohorts, [wave1.id]);
+  assert.equal((await flag(t1)).beta_test_x, true); assert.equal((await flag(mod)).beta_test_x, false);
   assert.equal((await admin.req("PUT", "/api/admin/beta/flags/passkeys", { killed: true })).status, 400); // a reason is required
   assert.equal((await flag(mod)).passkeys, true);
   const k = await admin.req("PUT", "/api/admin/beta/flags/passkeys", { killed: true, reason: "خلل في تسجيل الدخول" }); assert.equal(k.status, 200);

@@ -137,15 +137,18 @@ test("talent directory: search, filters, opt-out, members-only, reports flag, st
   const r2 = await fol.req("POST", "/api/pro/u/pro_sara/report", { reason: "scam" }); assert.equal(r2.flagged, false);
   const r3 = await adminC.req("POST", "/api/pro/u/pro_sara/report", { reason: "impersonation" }); assert.equal(r3.flagged, true);
   assert.equal((await fol.req("GET", "/api/pro/search")).total, 0); // flagged → out of the directory
-  assert.equal((await sara.req("GET", "/api/admin/pro")).status, 403);
-  let a = await adminC.req("GET", "/api/admin/pro"); assert.equal(a.queue[0].reports.length, 3); assert.equal(a.queue[0].user.handle, "pro_sara");
-  assert.equal((await adminC.req("POST", "/api/admin/pro/pro_sara", { action: "hide" })).status, 400); // reason required
-  a = await adminC.req("POST", "/api/admin/pro/pro_sara", { action: "hide", reason: "بلاغات متعددة عن شهادات مزيّفة" }); assert.equal(a.hidden.length, 1);
+  // v2.167: no staff queue — the automatic rule (services/auto-rules.js) decides with the same service function
+  assert.equal((await sara.req("GET", "/api/admin/pro")).status, 404);
+  assert.equal((await adminC.req("GET", "/api/admin/pro")).status, 404);
+  assert.equal((await adminC.req("POST", "/api/admin/pro/pro_sara", { action: "hide", reason: "بلاغات متعددة" })).status, 404);
+  const P = H.app.ctx.services.proprofile, SYS = H.app.ctx.services.autoRules.SYS;
+  let a = await (async () => { try { return await P.moderate(SYS, "pro_sara", { action: "hide" }); } catch (e) { return e; } })(); assert.equal(a.status, 400); // reason required
+  a = await P.moderate(SYS, "pro_sara", { action: "hide", reason: "بلاغات متعددة عن شهادات مزيّفة" }); assert.equal(a.hidden.length, 1); assert.equal(a.queue.length, 0);
   assert.ok((await kinds(sara.id)).includes("pro_hidden"));
   assert.equal((await omar.req("GET", "/api/pro/u/pro_sara")).status, 404);
   assert.equal((await sara.req("GET", "/api/pro/u/pro_sara")).hidden, true); // the owner still sees it, with the reason
   assert.equal((await omar.req("GET", "/api/profiles/pro_sara")).pro, null);
-  a = await adminC.req("POST", "/api/admin/pro/pro_sara", { action: "restore" }); assert.equal(a.hidden.length, 0); assert.equal(a.queue.length, 0);
+  a = await P.moderate(SYS, "pro_sara", { action: "restore" }); assert.equal(a.hidden.length, 0); assert.equal(a.queue.length, 0);
   assert.ok((await kinds(sara.id)).includes("pro_restored"));
   assert.equal((await fol.req("GET", "/api/pro/search")).total, 1);
 });

@@ -35,7 +35,6 @@ module.exports = (ctx, opts = {}) => {
   const iso = () => new Date(clock()).toISOString();
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return v ? JSON.parse(v) : d; } catch { return d; } };
   const ph = (a, o = 0) => a.map((_, i) => "$" + (i + 1 + o)).join(",");
-  const admin = (fn) => A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req); });
   const notify = async (uid, kind, ref) => { try { await ctx.services.notify?.notify(uid, kind, { ref }); } catch { /* best effort */ } };
   const isMinor = async (uid) => { try { return !!(await ctx.services.minors?.isMinorUser?.(uid)); } catch { return false; } };
   const adult = async (user) => { if (await isMinor(user.id)) throw Object.assign(E.forbid("التعاونات والرعايات غير متاحة لمن هم دون ١٨ سنة"), { code: "minor_restricted" }); };
@@ -457,9 +456,6 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/posts/:id/undisclosed-report", A(async (req) => reportPost(req.user, req.params.id, req.body || {})));
   R.get("/api/collabs/library", async (req) => library(req.user, req.query));
   R.get("/api/collabs/my-posts", A(async (req) => ({ posts: (await db.all("SELECT id, type, title, text, status, created_at FROM posts WHERE author=$1 AND status IN ('published','scheduled') AND type<>'story' ORDER BY created_at DESC LIMIT 40", [req.user.id])).map((x) => ({ id: x.id, type: x.type, status: x.status, title: (x.title || String(x.text || "")).replace(/\s+/g, " ").slice(0, 80), at: x.created_at })) })));
-  R.get("/api/admin/collabs", admin(async () => adminView()));
-  R.post("/api/admin/collabs/campaigns/:id", admin(async (req) => decideCampaign(req.user, req.params.id, req.body || {})));
-  R.post("/api/admin/collabs/reports/:post", admin(async (req) => decideReport(req.user, req.params.post, req.body || {})));
-  R.post("/api/admin/collabs/brands/:id", admin(async (req) => decideBrand(req.user, req.params.id, req.body || {})));
+  /* v2.167: /api/admin/collabs/* removed — held campaigns are published by services/auto-rules.js (no staff review) */
   return { myKit, saveKit, kit, creators, saveBrand, brandPage, createCampaign, updateCampaign, campaigns, campaign, apply, offer, deals, deal, counter, decide, say, deliver, review, report, selfDisclose, undisclose, library, reportPost, adminView, decideCampaign, decideReport, decideBrand, labelFor, CATEGORIES, FORMATS, KINDS, PROHIBITED };
 };

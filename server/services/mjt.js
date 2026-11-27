@@ -34,6 +34,7 @@
 const { E, HttpError, str, id } = require("../lib/core");
 const L = require("../lib/mjt-ledger");
 const { UNIT, SYS, userAcc, parseAmount, format } = L;
+const DEF = require("../config/app-defaults");
 
 const DAY = 864e5, HOUR = 3600e3;
 const RATE = UNIT; // minor units per contribution point: 1 point = 1 MJT
@@ -43,13 +44,14 @@ const TOKEN = { name: "مجتمع كوين", nameEn: "Mujtama Coin", symbol: "MJ
 /** v2.164: the one answer for «buy MJT» — it is an internal rewards balance, earned only */
 const BUY_OFF = "شراء مجتمع كوين غير متاح: هو رصيد مكافآت داخلي يُكسب بالمساهمة فقط، ولا يُشترى بـ Pi ولا بأي عملة.";
 const KIND_AR = { reward: "مكافأة مساهمة", conversion: "تحويل نقاط المساهمة", conversion_reversal: "إلغاء تحويل النقاط", transfer: "تحويل", tip: "إكرامية", adjustment: "تعديل من الإدارة", clawback: "استرجاع مكافأة محتوى محذوف", spend: "شراء", refund: "استرداد", community_reward: "مكافأة نشاط في مجتمع", community_reward_reversal: "استرجاع مكافأة مجتمع", mining: "تعدين يومي", checkin: "مكافأة الدخول اليومي", earn: "مكافأة إنجاز" }; // v2.160: earn = reward engine (services/mjt-rewards.js) // v2.60: community rewards (services/cintegrations.js)
+/* v2.167: fixed values (app-defaults mjt.rules) — no admin settings. */
 const DEFAULTS = {
-  rewards: { enabled: true, dailyCap: 150 * UNIT },
-  transfers: { enabled: true, maxSingle: 500 * UNIT, maxDaily: 2000 * UNIT, maxPerHour: 10, minAccountDays: 0 } // v2.74.2: no waiting period by default (owner request); admins can still set one
+  rewards: { enabled: true, dailyCap: DEF.mjt.rules.pointRewards.dailyCap * UNIT },
+  transfers: { enabled: true, maxSingle: DEF.mjt.rules.transfers.maxSingle * UNIT, maxDaily: DEF.mjt.rules.transfers.maxDaily * UNIT, maxPerHour: DEF.mjt.rules.transfers.maxPerHour, minAccountDays: DEF.mjt.rules.transfers.minAccountDays }
 };
 const IKEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
 
-/** @param {any} ctx @param {{ env?: Record<string,string|undefined>, now?: () => Date|number, jobs?: boolean, autoConvert?: boolean, linkPoints?: boolean }} [opts] */
+/** @param {any} ctx @param {{ env?: Record<string,string|undefined>, now?: () => Date|number, jobs?: boolean, autoConvert?: boolean, linkPoints?: boolean, testRules?: any }} [opts] */
 module.exports = (ctx, opts = {}) => {
   const { db, rl } = ctx;
   const env = opts.env || process.env;
@@ -59,9 +61,6 @@ module.exports = (ctx, opts = {}) => {
   const nowIso = () => clock().toISOString();
   const dayStart = (iso = nowIso()) => iso.slice(0, 10) + "T00:00:00.000Z";
   const fail = (status, code, msg, details) => Object.assign(new HttpError(status, msg, code), details ? { details } : {});
-  const isStaff = (u) => !!u && ["admin", "moderator"].includes(u.role);
-  const admin = (fn) => A(async (req, res) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req, res); });
-  const staff = (fn) => A(async (req, res) => { if (!isStaff(req.user)) throw E.forbid("للفريق فقط"); return fn(req, res); });
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return JSON.parse(v) ?? d; } catch { return d; } };
   const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const linked = () => opts.linkPoints !== false;
@@ -82,34 +81,15 @@ module.exports = (ctx, opts = {}) => {
   /* ---------- settings ---------- */
   let cfgCache = null;
   async function settings() {
-    if (cfgCache && cfgCache.at > Date.now() - 5e3) return cfgCache.v;
+    if (!opts.testRules && cfgCache && cfgCache.at > Date.now() - 5e3) return cfgCache.v;
     const s = parse((await db.get("SELECT value FROM mjt_settings WHERE key='rules'"))?.value, {});
-    const v = { rewards: { ...DEFAULTS.rewards, ...(s.rewards || {}) }, transfers: { ...DEFAULTS.transfers, ...(s.transfers || {}) }, conversion: { auto: true, ...(s.conversion || {}) } };
+    const T = opts.testRules || {}; // test harness only (server/test): production never passes it — the values are fixed
+    const v = { rewards: { ...DEFAULTS.rewards, ...(T.rewards || {}) }, transfers: { ...DEFAULTS.transfers, ...(T.transfers || {}) }, conversion: { auto: true, ...(s.conversion || {}) } }; // v2.167: only the conversion state is read from the row
     cfgCache = { at: Date.now(), v }; return v;
   }
   async function writeSettings(v, by) {
     await db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('rules',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(v), by || null, nowIso()]);
     cfgCache = null;
-  }
-  async function saveSettings(user, b = {}) {
-    const cur = await settings(), next = JSON.parse(JSON.stringify(cur));
-    const amt = (v, lo, hi) => { const u = parseAmount(String(v)); if (u < lo * UNIT || u > hi * UNIT) throw E.bad("قيمة خارج الحدود"); return u; };
-    if (b.rewards) {
-      if (b.rewards.enabled !== undefined) next.rewards.enabled = !!b.rewards.enabled;
-      if (b.rewards.dailyCap !== undefined) next.rewards.dailyCap = amt(b.rewards.dailyCap, 1, 100000);
-    }
-    if (b.transfers) {
-      const t = b.transfers;
-      if (t.enabled !== undefined) next.transfers.enabled = !!t.enabled;
-      if (t.maxSingle !== undefined) next.transfers.maxSingle = amt(t.maxSingle, 1, 1000000);
-      if (t.maxDaily !== undefined) next.transfers.maxDaily = amt(t.maxDaily, 1, 10000000);
-      if (t.maxPerHour !== undefined) next.transfers.maxPerHour = int(t.maxPerHour, cur.transfers.maxPerHour, 1, 1000);
-      if (t.minAccountDays !== undefined) next.transfers.minAccountDays = int(t.minAccountDays, cur.transfers.minAccountDays, 0, 365);
-      if (next.transfers.maxSingle > next.transfers.maxDaily) throw E.bad("حد التحويل الواحد أكبر من الحد اليومي");
-    }
-    await writeSettings(next, user.id);
-    ctx.audit?.("mjt_settings_saved", "mjt", null, user.id);
-    return { settings: settingsClient(await settings()) };
   }
   const settingsClient = (s) => ({ rewards: { enabled: !!s.rewards.enabled, dailyCap: format(s.rewards.dailyCap) }, transfers: { enabled: !!s.transfers.enabled, maxSingle: format(s.transfers.maxSingle), maxDaily: format(s.transfers.maxDaily), maxPerHour: s.transfers.maxPerHour, minAccountDays: s.transfers.minAccountDays }, conversion: { auto: s.conversion.auto !== false } });
   /** the MJT launch time: awards before it are converted, awards after it are rewards. Set once, never moved. */
@@ -548,12 +528,24 @@ module.exports = (ctx, opts = {}) => {
     });
     return { items, next: rows.length > lim ? String(rows[lim - 1].eid) : null };
   }
+  /** v2.167 — the 13 earn sources and the overall caps, exactly as fixed in app-defaults (read-only, same for everyone) */
+  const SOURCE_AR = { answer_accepted: "إجابة مقبولة", useful_post: "منشور مفيد", article_published: "نشر مقال", wiki_edit: "تعديل في الويكي", report_confirmed: "بلاغ مؤكَّد", newcomer_help: "مساعدة عضو جديد", friend_active: "صديق دعوته صار نشطاً", quiz_passed: "اجتياز اختبار قصير", course_completed: "إكمال دورة", exam_certified: "شهادة اختبار", study_session: "جلسة مذاكرة", daily_activity: "نشاط يومي", active_week: "أسبوع نشط" };
+  function earnTable() {
+    const C = DEF.mjt.safety.caps, CO = DEF.mjt.safety.course;
+    return {
+      sources: Object.entries(DEF.mjt.sources).map(([key, v]) => ({ key, label: SOURCE_AR[key] || key, amount: v.amount, daily: v.daily ?? null, weekly: v.weekly ?? null, monthly: v.monthly ?? null,
+        ...(key === "course_completed" && CO.perLesson ? { perLesson: CO.amountPerLesson, min: CO.min, max: CO.max } : {}) })),
+      caps: { daily: C.daily, weekly: C.weekly, monthly: C.monthly, byLevel: C.byLevel ? { "1-2": C.level12, "3-4": C.level34, "5+": C.level5 } : null },
+      holdHours: DEF.auto.holdReleaseHours
+    };
+  }
   async function config(user) {
     const S = await settings();
     let kinds = []; try { const P = await ctx.services.points?.settings?.(); kinds = EARN_KINDS.map((k) => ({ key: k, label: ctx.services.points?.KIND_INFO?.[k] || k, mjt: format((P?.kinds?.[k]?.points || 0) * RATE), dailyCap: P?.kinds?.[k]?.dailyCap ?? null })); } catch { /* points optional */ }
     return { token: TOKEN, rate: { pointsPerMjt: 1, text: "1 نقطة مساهمة = 1 MJT" }, earn: { kinds, dailyCap: format(S.rewards.dailyCap), enabled: !!S.rewards.enabled && (await legacyOn("pointRewards")) },
       transfers: { enabled: !!S.transfers.enabled, maxSingle: format(S.transfers.maxSingle), maxDaily: format(S.transfers.maxDaily), maxPerHour: S.transfers.maxPerHour, minAccountDays: S.transfers.minAccountDays },
       buy: { available: false, disabled: true, reason: piOn() ? "later_stage" : "pi_off", note: BUY_OFF }, // v2.164: no buy entry in the UI; field kept for old clients
+      table: earnTable(), // v2.167: the fixed earn table (server/config/app-defaults.js → mjt.sources + safety.caps)
       signedIn: !!user };
   }
   async function publicSupply() {
@@ -587,15 +579,7 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/mjt/tips/received", A(async (req) => tipsReceived(req.user)));
   R.put("/api/mjt/receive", A(async (req) => setReceive(req.user, req.body?.receive !== false)));
   R.post("/api/mjt/buy", A(async () => { throw E.off(BUY_OFF); })); // v2.164: permanently disabled (501 not_configured), no UI entry
-  R.get("/api/admin/mjt", staff(async () => adminOverview()));
-  R.get("/api/admin/mjt/verify", staff(async () => led.verify()));
-  R.put("/api/admin/mjt/settings", admin(async (req) => saveSettings(req.user, req.body)));
-  R.post("/api/admin/mjt/adjust", admin(async (req) => adjust(req.user, req.body)));
-  R.post("/api/admin/mjt/accounts/:handle/freeze", admin(async (req) => freeze(req.user, req.params.handle, req.body)));
-  R.get("/api/admin/mjt/conversion/dry-run", admin(async () => dryRun()));
-  R.post("/api/admin/mjt/conversion", admin(async (req) => convert(req.user.id)));
-  R.post("/api/admin/mjt/conversion/:id/rollback", admin(async (req) => rollback(req.params.id, req.user.id, { dryRun: !!req.body?.dryRun })));
-  R.post("/api/admin/mjt/reconcile", admin(async () => reconcile()));
+  // v2.167: the admin MJT API (/api/admin/mjt…) was removed — every value is fixed in server/config/app-defaults.js
 
   /* ---------- boot ---------- */
   const ready = (async () => { await led.ensureSystem(); await launchAt(); })().catch((e) => logger.error?.("mjt init failed", { err: e?.message }));
@@ -642,6 +626,6 @@ module.exports = (ctx, opts = {}) => {
   }
   if (env.MJT_OWNER_GRANT) { const tg = setTimeout(async () => { try { await ready; await ownerGrant(env.MJT_OWNER_GRANT); } catch (e) { logger.error?.("mjt owner grant failed", { err: e?.message }); } }, 6000); tg.unref?.(); }
   if (opts.jobs !== false && ctx.scheduler) ctx.scheduler.every("mjt.reconcile", +(env.MJT_RECONCILE_INTERVAL_MS || 15 * 60e3), () => reconcile());
-  return { ready, onAward, onAwardReversed, reconcile, convert, dryRun, rollback, transfer, executeHold, tipPost, tipRoom, tipSummary, tipsReceived, ownerGrant, ownerGrantUndo, dropMinAge, adjust, freeze, spend, refund, me, history, settings, launchAt, linked, verify: () => led.verify(), supply: () => led.supply(), ledger: led, RATE, TOKEN, EARN_KINDS,
+  return { ready, adminOverview, onAward, onAwardReversed, reconcile, convert, dryRun, rollback, transfer, executeHold, tipPost, tipRoom, tipSummary, tipsReceived, ownerGrant, ownerGrantUndo, dropMinAge, adjust, freeze, spend, refund, me, history, settings, launchAt, linked, verify: () => led.verify(), supply: () => led.supply(), ledger: led, RATE, TOKEN, EARN_KINDS,
     guards: { isMinor, blockedBetween, linkedPair, flagged, walletOf } }; // v2.60: the transfer safety checks, reused by community MJT rewards
 };

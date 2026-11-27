@@ -86,7 +86,7 @@ module.exports = (ctx, opts = {}) => {
       steps: [
         "افتح متصفح Pi ← develop.pi ← تطبيقك ← انسخ API Key.",
         "Railway (التطبيق على الجوال أو railway.com) ← المشروع mujtama-plus ← الخدمة web ← Variables ← أضف PI_API_KEY ثم PI_ENABLED=1.",
-        "ابقَ على Testnet أولاً وجرّب دفعة 0.01 Pi من صفحة التفعيل؛ ثم للانتقال: PI_NETWORK=mainnet و PI_MAINNET_CONFIRM=1 و PI_WALLET_ADDRESS.",
+        "التطبيق يعمل على Testnet فقط: جرّب دفعة 0.01 Pi من صفحة التفعيل.",
         "يعيد Railway تشغيل الخدمة تلقائياً؛ افتح صفحة التفعيل للتأكد أن كل البنود خضراء."
       ]
     };

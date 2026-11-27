@@ -1,4 +1,6 @@
-/* v2.165 — MJT phase 8.1 «محرك آمن»: identity / abuse checks, overall earning caps and the admin review queue for the internal
+/* v2.167: every value below is FIXED in server/config/app-defaults.js (mjt.safety) and always on — no admin switch, no admin
+ * review queue. Held earns / transfers are released automatically by services/auto-rules.js (72 h unless reported / banned).
+ * v2.165 — MJT phase 8.1 «محرك آمن»: identity / abuse checks, overall earning caps and the admin review queue for the internal
  * MJT rewards balance. EVERY new rule ships behind an admin switch that defaults to OFF (mjt_settings key 'safety'; a missing
  * row = all OFF), so deploying this changes nothing for members until an admin turns a switch on.
  *
@@ -21,24 +23,14 @@
  *   course.perLesson (switch, OFF)            «إكمال دورة» pays amountPerLesson × lessons, clamped to [min, max] (2 / 10 / 50).
  *   activeWeek.days                           how many active days in an ISO week earn «أسبوع نشِط» (default 5).
  *
- * Admin API (admin only — 403 members, 401 signed out; rate-limited with the shared mjt_admin limiter; every change audited):
- *   GET  /api/admin/mjt/safety                      settings + suggested source values + which sources are wired
- *   PUT  /api/admin/mjt/safety                      { identity?, caps?, course?, activeWeek?, reason } (reason ≥ 5 chars)
- *   GET  /api/admin/mjt/review?kind=all|earn|transfer   the review queue: waiting earns + held transfers + member signals
- *   POST /api/admin/mjt/review/:kind/:id/approve    kind earn | transfer
- *   POST /api/admin/mjt/review/:kind/:id/reject     { reason ≥ 5 }
+ * v2.167: the admin API (/api/admin/mjt/safety, /api/admin/mjt/review…) was removed; decisions are automatic (services/auto-rules.js).
  * No balance is changed and no data is deleted by this module except through an admin approval. */
 const { E, HttpError, str, id } = require("../lib/core");
 const { format } = require("../lib/mjt-ledger");
+const DEF = require("../config/app-defaults");
 
 const DAY = 864e5;
-const DEFAULTS = {
-  identity: { enabled: false, minAccountDays: 7, requirePi: true, linkedDetection: true, sharedIp: true, ipDays: 30, ipMaxAccounts: 5, clusterMin: 3, fanInDays: 7, fanInSenders: 3, applyEarn: true, applyTransfers: true, maxHeldPerSender: 5 },
-  caps: { enabled: false, daily: 50, weekly: 250, monthly: 800, byLevel: true, level12: 30, level34: 40, level5: 50, countLegacy: true },
-  course: { perLesson: false, amountPerLesson: 2, min: 10, max: 50 },
-  activeWeek: { days: 5 },
-  newcomerDays: 30
-};
+const DEFAULTS = DEF.mjt.safety;
 /* the plan's earn table (master plan §3) — suggested values the admin page offers; no source pays until an admin sets its
  * amount and turns it on. wired = the app already has the event the source listens to. */
 const SUGGESTED = {
@@ -61,53 +53,24 @@ const REASON_AR = {
   linked_counterpart: "حساب مرتبط بالطرف الآخر (جهاز أو شبكة)", own_content: "محتوى العضو نفسه", linked_cluster: "ضمن مجموعة حسابات مرتبطة",
   fan_in: "تحويلات كثيرة من حسابات ضعيفة إلى حساب واحد", unknown_user: "حساب غير موجود"
 };
-const STATUS_AR = { pending: "قيد المراجعة", approved: "أُرسل بعد الموافقة", rejected: "مرفوض", failed: "تعذّر التنفيذ" };
+const STATUS_AR = { pending: "قيد التحقق التلقائي", approved: "أُرسل", rejected: "أُلغي", failed: "تعذّر التنفيذ" };
 const PRIVATE_IP = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|::ffff:127\.|fe80:|fc|fd|0\.0\.0\.0|localhost|unknown)/i;
 
-/** @param {any} ctx @param {{ now?: () => Date|number }} [opts] */
+/** @param {any} ctx @param {{ now?: () => Date|number, testSettings?: any }} [opts] */
 module.exports = (ctx, opts = {}) => {
-  const { db, rl } = ctx;
-  const R = ctx.router, A = ctx.requireUser;
+  const { db } = ctx;
   const clock = () => { const n = opts.now ? opts.now() : new Date(); return n instanceof Date ? n : new Date(n); };
   const nowIso = () => clock().toISOString();
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return JSON.parse(v) ?? d; } catch { return d; } };
-  const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const fail = (status, code, msg) => new HttpError(status, msg, code);
-  const admin = (fn) => A(async (req, res) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); if (!rl.hit("mjt_admin", req.user.id)) throw E.rate(); return fn(req, res); });
   const reasonsText = (list) => list.map((x) => REASON_AR[x] || x).join(" · ");
 
   /* ---------- settings ---------- */
-  let cache = null;
+  /** v2.167: fixed values (app-defaults), always on. The old 'safety' row in mjt_settings is not read. */
   async function settings() {
-    if (cache && cache.at > Date.now() - 3e3) return cache.v;
-    const s = parse((await db.get("SELECT value FROM mjt_settings WHERE key='safety'"))?.value, {}) || {};
-    const v = { identity: { ...DEFAULTS.identity, ...(s.identity || {}) }, caps: { ...DEFAULTS.caps, ...(s.caps || {}) }, course: { ...DEFAULTS.course, ...(s.course || {}) }, activeWeek: { ...DEFAULTS.activeWeek, ...(s.activeWeek || {}) }, newcomerDays: s.newcomerDays ?? DEFAULTS.newcomerDays };
-    cache = { at: Date.now(), v }; return v;
-  }
-  const BOOL = { identity: ["enabled", "requirePi", "linkedDetection", "sharedIp", "applyEarn", "applyTransfers"], caps: ["enabled", "byLevel", "countLegacy"], course: ["perLesson"] };
-  const NUM = { identity: { minAccountDays: [0, 365], ipDays: [1, 365], ipMaxAccounts: [2, 100], clusterMin: [2, 100], fanInDays: [1, 90], fanInSenders: [2, 100], maxHeldPerSender: [1, 100] },
-    caps: { daily: [1, 100000], weekly: [1, 1000000], monthly: [1, 10000000], level12: [1, 100000], level34: [1, 100000], level5: [1, 100000] },
-    course: { amountPerLesson: [1, 1000], min: [1, 10000], max: [1, 10000] }, activeWeek: { days: [1, 7] } };
-  async function saveSettings(user, b = {}) {
-    const reason = typeof b.reason === "string" ? b.reason.trim() : "";
-    if (reason.length < 5 || reason.length > 300) throw fail(400, "reason_required", "اكتب سبب التغيير (5 أحرف على الأقل)");
-    const cur = await settings(), next = JSON.parse(JSON.stringify(cur));
-    for (const g of Object.keys(NUM)) {
-      const x = b[g]; if (!x || typeof x !== "object") continue;
-      for (const k of BOOL[g] || []) if (x[k] !== undefined) { if (typeof x[k] !== "boolean") throw fail(400, "bad_value", "قيمة غير صالحة"); next[g][k] = x[k]; }
-      for (const [k, [lo, hi]] of Object.entries(NUM[g])) if (x[k] !== undefined) { const n = Number(x[k]); if (!Number.isInteger(n) || n < lo || n > hi) throw fail(400, "bad_value", `قيمة غير صالحة: ${k}`); next[g][k] = n; }
-    }
-    if (b.newcomerDays !== undefined) next.newcomerDays = int(b.newcomerDays, cur.newcomerDays, 1, 365);
-    if (next.caps.daily > next.caps.weekly || next.caps.weekly > next.caps.monthly) throw fail(400, "caps_order", "السقف اليومي ≤ الأسبوعي ≤ الشهري");
-    if (next.course.min > next.course.max) throw fail(400, "course_range", "الحد الأدنى للدورة أكبر من الأعلى");
-    const at = nowIso();
-    await db.tx(async (t) => {
-      await t.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('safety',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(next), user.id, at]);
-      await t.run("INSERT INTO mjt_audit(action,actor_id,target,tx_id,detail,created_at) VALUES('safety_settings',$1,'safety',NULL,$2,$3)", [user.id, JSON.stringify({ before: cur, after: next, reason }), at]);
-    });
-    cache = null;
-    ctx.audit?.("mjt_safety_settings", "safety", reason, user.id);
-    return state();
+    const s = JSON.parse(JSON.stringify(DEFAULTS)), T = opts.testSettings; // test harness only (server/test): production never passes it
+    if (T) for (const k of Object.keys(T)) s[k] = { ...(s[k] || {}), ...T[k] };
+    return s;
   }
   async function state() {
     const s = await settings(), row = await db.get("SELECT updated_by, updated_at FROM mjt_settings WHERE key='safety'");
@@ -115,7 +78,7 @@ module.exports = (ctx, opts = {}) => {
     const by = new Map((src?.sources || []).map((x) => [x.key, x]));
     return { settings: s, defaults: DEFAULTS, updatedAt: row?.updated_at || null, stored: !!row,
       sources: Object.entries(SUGGESTED).map(([key, v]) => ({ key, label: by.get(key)?.label || key, suggested: { amount: v.amount, dailyCap: v.dailyCap ?? null, weeklyCap: v.weeklyCap ?? null, monthlyCap: v.monthlyCap ?? null }, wired: v.wired, event: v.event, enabled: !!by.get(key)?.enabled, amount: by.get(key)?.amount ?? null })),
-      note: "كل المفاتيح تبدأ متوقفة. التشغيل يطبّق القواعد على المكافآت والتحويلات الجديدة فقط، ولا يغيّر أي رصيد أو سجل." };
+      note: "كل القواعد تعمل تلقائياً بقيم ثابتة (v2.167)." };
   }
 
   /* ---------- identity checks ---------- */
@@ -220,7 +183,7 @@ module.exports = (ctx, opts = {}) => {
   async function hold(user, other, amount, note, ikey, reasons) {
     const S = await settings();
     const open = Number((await db.get("SELECT COUNT(*) n FROM mjt_transfer_holds WHERE from_id=$1 AND status='pending'", [user.id])).n);
-    if (open >= S.identity.maxHeldPerSender) throw fail(429, "held_limit", "لديك تحويلات كثيرة قيد المراجعة؛ انتظر قرار الإدارة");
+    if (open >= S.identity.maxHeldPerSender) throw fail(429, "held_limit", "لديك تحويلات كثيرة قيد التحقق التلقائي؛ تُرسل خلال 72 ساعة");
     const hid = id("mh"), at = nowIso();
     await db.tx(async (t) => {
       await t.run("INSERT INTO mjt_transfer_holds(id,ikey,from_id,to_id,amount,note,reasons,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8) ON CONFLICT DO NOTHING", [hid, ikey, user.id, other.id, amount, note, JSON.stringify(reasons), at]);
@@ -231,10 +194,10 @@ module.exports = (ctx, opts = {}) => {
   async function holdResponse(h, other, replayed = true) {
     other = other || (await db.get("SELECT handle, name, avatar FROM users WHERE id=$1", [h.to_id]));
     return { replayed, pending: true, transfer: null, hold: { id: h.id, amount: format(h.amount), to: other ? { handle: other.handle, name: other.name, avatar: other.avatar || null } : null, status: h.status, statusLabel: STATUS_AR[h.status], reasons: parse(h.reasons, []), reasonsText: reasonsText(parse(h.reasons, [])), createdAt: h.created_at },
-      note: "التحويل قيد المراجعة: لم يُخصم شيء من رصيدك، وسيُرسل إذا وافقت الإدارة." };
+      note: "التحويل قيد التحقق التلقائي: لم يُخصم شيء من رصيدك، ويُرسل تلقائياً خلال 72 ساعة ما لم يرد بلاغ على الحساب." };
   }
   async function memberHolds(uid) {
-    return (await db.all("SELECT * FROM mjt_transfer_holds WHERE from_id=$1 AND status IN ('pending','rejected','failed') ORDER BY created_at DESC LIMIT 20", [uid])).map((h) => ({ id: h.id, kind: "transfer_hold", label: "تحويل قيد المراجعة", amount: format(h.amount), reason: null, status: h.status === "pending" ? "pending" : "rejected", statusLabel: STATUS_AR[h.status], createdAt: h.created_at }));
+    return (await db.all("SELECT * FROM mjt_transfer_holds WHERE from_id=$1 AND status IN ('pending','rejected','failed') ORDER BY created_at DESC LIMIT 20", [uid])).map((h) => ({ id: h.id, kind: "transfer_hold", label: "تحويل قيد التحقق التلقائي", amount: format(h.amount), reason: null, status: h.status === "pending" ? "pending" : "rejected", statusLabel: STATUS_AR[h.status], createdAt: h.created_at }));
   }
   async function decideHold(user, hid, b, approve) {
     const h = await db.get("SELECT * FROM mjt_transfer_holds WHERE id=$1", [String(hid)]); if (!h) throw E.nf("لا يوجد تحويل معلّق بهذا الرقم");
@@ -243,7 +206,7 @@ module.exports = (ctx, opts = {}) => {
     const at = nowIso();
     let txId = null;
     if (approve) {
-      const r = await ctx.services.mjt.executeHold(h); // throws 409 (insufficient balance / frozen / receive off) → the hold stays pending
+      const r = await ctx.services.mjt.executeHold(h); // throws 409 (insufficient balance / frozen / receive off) → the hold stays pending (auto-rules retries, then cancels)
       txId = r.tx.id;
     }
     const upd = await db.run("UPDATE mjt_transfer_holds SET status=$1, tx_id=$2, decided_by=$3, decision_reason=$4, decided_at=$5 WHERE id=$6 AND status='pending'", [approve ? "approved" : "rejected", txId, user.id, reason, at, h.id]);
@@ -283,13 +246,7 @@ module.exports = (ctx, opts = {}) => {
     throw E.nf();
   }
 
-  R.get("/api/admin/mjt/safety", admin(async () => state()));
-  R.put("/api/admin/mjt/safety", admin(async (req) => saveSettings(req.user, req.body || {})));
-  R.get("/api/admin/mjt/review", admin(async (req) => queue(req.query)));
-  R.post("/api/admin/mjt/review/:kind/:id/approve", admin(async (req) => decide(req.user, req.params.kind, req.params.id, req.body || {}, true)));
-  R.post("/api/admin/mjt/review/:kind/:id/reject", admin(async (req) => decide(req.user, req.params.kind, req.params.id, req.body || {}, false)));
-
-  return { DEFAULTS, SUGGESTED, REASON_AR, settings, saveSettings, state, cluster, earnReasons, identityOn, transferReasons, capRoom, capsOf, hold, heldByKey, holdResponse, memberHolds, queue, decide, reasonsText, invalidate: () => { cache = null; } };
+  return { DEFAULTS, SUGGESTED, REASON_AR, settings, state, decideHold, cluster, earnReasons, identityOn, transferReasons, capRoom, capsOf, hold, heldByKey, holdResponse, memberHolds, queue, decide, reasonsText, invalidate: () => {} };
 };
 module.exports.DEFAULTS = DEFAULTS;
 module.exports.SUGGESTED = SUGGESTED;

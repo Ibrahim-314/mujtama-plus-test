@@ -11,13 +11,19 @@
  * 2. Sign-in reward: once per UTC day, +1 MJT ("checkin"), keyed "checkin:<user>:<day>" + primary key (user, day).
  * 3. Boosts: boostOf(uid) is the single hook the store will use later; it returns 0 today, and the API reports no boosts.
  * 4. Frozen wallets keep mining but cannot claim until unfrozen (the session waits, nothing is lost).
- * Staff: GET/PUT /api/admin/mjt/mining (on/off, rate per day, sign-in reward). Not a blockchain, not Pi mining. */
-const { E, HttpError, id } = require("../lib/core");
+ * v2.167 «تلقائي»: rate and sign-in amount are fixed (app-defaults mjt.mining: 5 / 1); the admin API was removed. Both paths
+ *   now count inside the overall earning caps (services/mjt-safety.js capRoom: 30–50 a day by level, 250 a week, 800 a month):
+ *   a new session's amount is the room left (none left → 409 cap_reached), the sign-in reward likewise. And both pass the
+ *   identity checks: an account that fails them gets its mining / sign-in amount as a WAITING entry in the reward journal
+ *   (mjt_reward_entries, source mining | checkin) that services/auto-rules.js releases after 72 h unless the account is
+ *   reported or banned. Not a blockchain, not Pi mining. */
+const { HttpError, id } = require("../lib/core");
 const L = require("../lib/mjt-ledger");
-const { UNIT, SYS, userAcc, parseAmount, format } = L;
+const { UNIT, SYS, userAcc, format } = L;
+const DEF = require("../config/app-defaults");
 
 const HOUR = 3600e3, SESSION = 24 * HOUR;
-const DEFAULTS = { enabled: true, rate: 5 * UNIT, checkin: 1 * UNIT, checkinOn: true };
+const DEFAULTS = { enabled: true, rate: DEF.mjt.mining.rate * UNIT, checkin: DEF.mjt.mining.checkin * UNIT, checkinOn: true };
 
 /** @param {any} ctx @param {{ now?: () => Date|number }} [opts] */
 module.exports = (ctx, opts = {}) => {
@@ -28,29 +34,17 @@ module.exports = (ctx, opts = {}) => {
   const fail = (status, code, msg) => new HttpError(status, msg, code);
   const mjt = () => ctx.services.mjt;
   const led = () => mjt().ledger;
-  const parse = (v, d) => { try { return JSON.parse(v) ?? d; } catch { return d; } };
   /* v2.163 legacy switches (services/mjt-legacy.js, default ON): mining → no NEW session; checkin → no new +1 MJT.
    * A session started before the switch can still be claimed (its amount was fixed at start; nothing is lost). */
   const legacyOn = async (k) => { const l = ctx.services.mjtLegacy; return l ? l.isOn(k) : true; };
 
-  let cache = null;
-  async function settings() {
-    if (cache && cache.at > Date.now() - 5e3) return cache.v;
-    const s = parse((await db.get("SELECT value FROM mjt_settings WHERE key='mining'"))?.value, {});
-    const v = { ...DEFAULTS, ...s }; cache = { at: Date.now(), v }; return v;
-  }
-  async function saveSettings(user, b = {}) {
-    const cur = await settings(), next = { ...cur };
-    const amt = (v, lo, hi) => { const u = parseAmount(String(v)); if (u < lo * UNIT || u > hi * UNIT) throw E.bad("قيمة خارج الحدود"); return u; };
-    if (b.enabled !== undefined) next.enabled = !!b.enabled;
-    if (b.checkinOn !== undefined) next.checkinOn = !!b.checkinOn;
-    if (b.rate !== undefined) next.rate = amt(b.rate, 0.1, 1000);
-    if (b.checkin !== undefined) next.checkin = amt(b.checkin, 0.1, 100);
-    await db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('mining',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_by=$2, updated_at=$3", [JSON.stringify(next), user.id, nowIso()]);
-    cache = null; ctx.audit?.("mjt_mining_settings", "mjt", null, user.id);
-    return adminView();
-  }
-  const adminView = async () => { const s = await settings(); return { enabled: !!s.enabled, rate: format(s.rate), checkinOn: !!s.checkinOn, checkin: format(s.checkin) }; };
+  async function settings() { return { ...DEFAULTS }; } // v2.167: fixed (app-defaults)
+  const SF = () => ctx.services.mjtSafety, RW = () => ctx.services.mjtRewards;
+  /** identity check codes for this member's own legacy earning ([] = pay now) */
+  const heldFor = async (uid) => (SF() ? SF().earnReasons(uid) : []);
+  /** room left under the overall caps, in minor units */
+  const roomFor = async (uid) => (SF() ? (await SF().capRoom(uid)).room : Infinity);
+  const capErr = () => fail(409, "cap_reached", "وصلت حد الكسب لهذه الفترة (اليوم أو الأسبوع أو الشهر) — يرجع التعدين بعد تجدّد الحد");
 
   /** the store hook (later stage): extra mining percent for a member. Nothing sells boosts yet. */
   async function boostOf(/* uid */) { return 0; }
@@ -76,13 +70,24 @@ module.exports = (ctx, opts = {}) => {
     return { paid: !!up.changes || r.replayed, txId: r.tx.id, amount: Number(s.amount) };
   }
 
+  /** a finished session: held by the identity checks → a waiting journal entry (released automatically), else minted now */
+  async function settle(s) {
+    const why = await heldFor(s.user_id);
+    if (why.length && RW()) {
+      await RW().credit(s.user_id, { amount: Number(s.amount), source: "mining", ref: s.id, reason: "التعدين اليومي", ikey: "mine:" + s.id, pending: why.join(" · ") });
+      await db.run("UPDATE mjt_mining SET status='claimed', claimed_at=$1 WHERE id=$2 AND status='active'", [nowIso(), s.id]);
+      return { paid: false, held: true, amount: Number(s.amount) };
+    }
+    return db.tx((t) => payInside(t, s));
+  }
+
   async function claim(user) {
     const s = await active(user.id);
     if (!s) throw fail(409, "no_session", "لا يوجد تعدين نشط");
     if (Date.parse(s.ends_at) > clock().getTime()) throw fail(409, "not_ready", "لم تكتمل دورة التعدين بعد");
-    const r = await db.tx((t) => payInside(t, s));
-    ctx.realtime?.send?.(user.id, "mjt", { kind: "mining", amount: format(r.amount) });
-    return { claimed: format(r.amount), state: await state(user) };
+    const r = await settle(s);
+    if (!r.held) ctx.realtime?.send?.(user.id, "mjt", { kind: "mining", amount: format(r.amount) });
+    return { claimed: format(r.amount), held: !!r.held, ...(r.held ? { note: "التعدين قيد التحقق التلقائي ويُضاف لرصيدك خلال 72 ساعة" } : {}), state: await state(user) };
   }
 
   async function start(user) {
@@ -93,14 +98,13 @@ module.exports = (ctx, opts = {}) => {
     let claimed = null;
     const cur = await active(user.id);
     if (cur && Date.parse(cur.ends_at) > now) return { started: false, claimed, state: await state(user) }; // already mining
+    if (cur) { const p = await settle(cur); claimed = p.amount; if (!p.held) ctx.realtime?.send?.(user.id, "mjt", { kind: "mining", amount: format(p.amount) }); }
     const boost = Math.max(0, Math.min(500, Math.floor(await boostOf(user.id)) || 0));
-    const amount = Math.floor((S.rate * (100 + boost)) / 100);
-    await db.tx(async (t) => {
-      if (cur) { const p = await payInside(t, cur); claimed = p.amount; }
-      const at = new Date(now).toISOString(), ends = new Date(now + SESSION).toISOString();
-      await t.run("INSERT INTO mjt_mining(id,user_id,started_at,ends_at,rate,boost,amount,status) VALUES($1,$2,$3,$4,$5,$6,$7,'active') ON CONFLICT DO NOTHING", [id("mn"), user.id, at, ends, S.rate, boost, amount]);
-    });
-    if (claimed) ctx.realtime?.send?.(user.id, "mjt", { kind: "mining", amount: format(claimed) });
+    const room = await roomFor(user.id);
+    if (room <= 0) throw capErr();
+    const amount = Math.min(Math.floor((S.rate * (100 + boost)) / 100), room);
+    const at = new Date(now).toISOString(), ends = new Date(now + SESSION).toISOString();
+    await db.run("INSERT INTO mjt_mining(id,user_id,started_at,ends_at,rate,boost,amount,status) VALUES($1,$2,$3,$4,$5,$6,$7,'active') ON CONFLICT DO NOTHING", [id("mn"), user.id, at, ends, S.rate, boost, amount]);
     return { started: true, claimed: claimed ? format(claimed) : null, state: await state(user) };
   }
 
@@ -109,17 +113,28 @@ module.exports = (ctx, opts = {}) => {
     if (!S.checkinOn) return { credited: false, reason: "off", state: await checkinState(user.id) };
     if (!(await legacyOn("checkin"))) throw ctx.services.mjtLegacy.error("checkin");
     const d = day(), acc = userAcc(user.id);
+    if (await db.get("SELECT 1 x FROM mjt_checkins WHERE user_id=$1 AND day=$2", [user.id, d])) return { credited: false, reason: "done", amount: format(S.checkin), state: await checkinState(user.id) };
+    const room = await roomFor(user.id);
+    if (room <= 0) return { credited: false, reason: "cap_reached", note: "وصلت حد الكسب لهذه الفترة", amount: format(S.checkin), state: await checkinState(user.id) };
+    const amount = Math.min(S.checkin, room);
+    const why = await heldFor(user.id);
+    if (why.length && RW()) {
+      const ins = await db.run("INSERT INTO mjt_checkins(user_id,day,amount,tx_id,created_at) VALUES($1,$2,$3,NULL,$4) ON CONFLICT DO NOTHING", [user.id, d, amount, nowIso()]);
+      if (!ins.changes) return { credited: false, reason: "done", amount: format(S.checkin), state: await checkinState(user.id) };
+      await RW().credit(user.id, { amount, source: "checkin", ref: d, reason: "مكافأة الدخول اليومي", ikey: `checkin:${user.id}:${d}`, pending: why.join(" · ") });
+      return { credited: false, held: true, reason: "held", note: "المكافأة قيد التحقق التلقائي وتُضاف لرصيدك خلال 72 ساعة", amount: format(amount), state: await checkinState(user.id) };
+    }
     const r = await db.tx(async (t) => {
-      const ins = await t.run("INSERT INTO mjt_checkins(user_id,day,amount,tx_id,created_at) VALUES($1,$2,$3,NULL,$4) ON CONFLICT DO NOTHING", [user.id, d, S.checkin, nowIso()]);
+      const ins = await t.run("INSERT INTO mjt_checkins(user_id,day,amount,tx_id,created_at) VALUES($1,$2,$3,NULL,$4) ON CONFLICT DO NOTHING", [user.id, d, amount, nowIso()]);
       if (!ins.changes) return { credited: false, reason: "done" };
       await led().lock(t, [acc]);
       const p = await led().post(t, { ikey: `checkin:${user.id}:${d}`, kind: "checkin", userId: user.id, refType: "checkin", refId: d, memo: "daily_signin",
-        lines: [{ account: SYS.mint, amount: -S.checkin }, { account: acc, amount: S.checkin }] });
+        lines: [{ account: SYS.mint, amount: -amount }, { account: acc, amount }] });
       await t.run("UPDATE mjt_checkins SET tx_id=$1 WHERE user_id=$2 AND day=$3", [p.tx.id, user.id, d]);
       return { credited: true };
     });
-    if (r.credited) ctx.realtime?.send?.(user.id, "mjt", { kind: "checkin", amount: format(S.checkin) });
-    return { ...r, amount: format(S.checkin), state: await checkinState(user.id) };
+    if (r.credited) ctx.realtime?.send?.(user.id, "mjt", { kind: "checkin", amount: format(amount) });
+    return { ...r, amount: format(r.credited ? amount : S.checkin), state: await checkinState(user.id) };
   }
 
   /** consecutive UTC days ending today (or yesterday, when today is not done yet) */
@@ -158,8 +173,6 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/mjt/mining/start", A(async (req) => start(req.user)));
   R.post("/api/mjt/mining/claim", A(async (req) => claim(req.user)));
   R.post("/api/mjt/checkin", A(async (req) => checkin(req.user)));
-  R.get("/api/admin/mjt/mining", A(async (req) => { if (!["admin", "moderator"].includes(req.user.role)) throw E.forbid("للفريق فقط"); return adminView(); }));
-  R.put("/api/admin/mjt/mining", A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return saveSettings(req.user, req.body || {}); }));
 
   return { state, start, claim, checkin, settings, boostOf, SESSION };
 };

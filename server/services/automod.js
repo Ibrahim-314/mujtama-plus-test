@@ -385,11 +385,7 @@ module.exports = (ctx) => {
   }));
 
   /* admin */
-  R.get("/api/admin/automod", admin(async (req) => {
-    const state = oneOf(req.query.state, ["delayed", "held", "escalated", "released", "removed", "flagged", "cleared", "open"], "open");
-    const rows = state === "open" ? await db.all("SELECT * FROM automod_items WHERE state IN ('delayed','held','escalated') ORDER BY score DESC, created_at LIMIT 200") : await db.all("SELECT * FROM automod_items WHERE state=$1 ORDER BY created_at DESC LIMIT 200", [state]);
-    return { items: await Promise.all(rows.map(r => present(r, { forAdmin: true }))) };
-  }));
+  /* v2.167: the review queue GET /api/admin/automod and POST /api/admin/automod/:id were removed — held items are released / removed by services/auto-rules.js */
   R.get("/api/admin/automod/lists", admin(async () => ({ domains: await db.all("SELECT * FROM automod_domains ORDER BY created_at DESC LIMIT 500"), hashes: await db.all("SELECT hash, kind, label, created_at FROM automod_hashes ORDER BY created_at DESC LIMIT 500"), seed: [...L.SEED_BAD] })));
   R.post("/api/admin/automod/domains", admin(async (req) => {
     const domain = L.normalizeDomain(str(req.body.domain, 253, { required: true }));
@@ -425,17 +421,6 @@ module.exports = (ctx) => {
   }));
 
   /* registered last: the router matches in order, and the literal admin paths above must win over :id */
-  R.post("/api/admin/automod/:id", admin(async (req) => {
-    const r = await db.get("SELECT * FROM automod_items WHERE id=$1", [req.params.id]); if (!r) throw E.nf();
-    const item = { ...r, reasons: jp(r.reasons) || [], signals: jp(r.signals) || {} };
-    const action = oneOf(req.body.action, ["release", "remove", "escalate"], null); if (!action) throw E.bad();
-    const note = str(req.body.reason, 300);
-    if (!["delayed", "held", "escalated"].includes(item.state)) throw E.conflict("تمت معالجة هذا العنصر");
-    if (action === "release") await release(item, req.user.id, note);
-    if (action === "remove") return { ok: true, decision: await remove(item, req.user.id, note) };
-    if (action === "escalate") await escalate(item, req.user.id, note);
-    return { ok: true };
-  }));
 
   return { assess, gate, classify: C.classify, scanLinks: (t, d) => getLists().then(l => L.scan(t, d, { bad: l.bad, allow: l.ok })), screenImage: async (buf) => { const l = await getLists(); return IS.screen(buf, { blockSha: l.sha, blockHashes: l.ahash, env }); }, tierFor, scanPost, scanComment, scanMessage, deep, releaseDue, release, remove, itemFor, TIERS, ACTIONS };
 };
