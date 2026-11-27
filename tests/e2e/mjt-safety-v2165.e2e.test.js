@@ -1,9 +1,8 @@
-/* v2.165 MJT phase 8.1 «محرك آمن» — e2e against the REAL server (production build), phone viewport (390, Pi Browser UA).
- * #/admin/mjt-safety: every switch shows OFF by default, the 13 earn sources with suggested values and «موصول»; saving needs a
- * reason and turns the identity checks on. A member transfer from a brand-new account is then held (nothing deducted) and shows
- * in the member's «قيد المراجعة»; #/admin/mjt-review lists it with the member's signals and approving sends it once. Members
- * get 403 on the admin APIs; «كيف أكسب» shows no new source while they are off. No page errors; axe: no serious/critical WCAG
- * A/AA issues; tap targets ≥ 44 px; no inline handlers / styles. */
+/* v2.165 MJT phase 8.1 «محرك آمن» → v2.167: the identity checks and overall caps are ALWAYS ON with fixed values; the admin pages
+ * #/admin/mjt-safety and #/admin/mjt-review were removed. e2e against the REAL server (production build), phone viewport (390, Pi
+ * Browser UA): a member transfer from a brand-new account is held (nothing deducted) and shows in the member's «قيد المراجعة»; the
+ * automatic rule sends it once after 72 h. «كيف أكسب» lists the approved sources. No page errors; axe: no serious/critical
+ * WCAG A/AA issues; no inline handlers / styles. */
 const test = require("node:test"), assert = require("node:assert");
 const fs = require("node:fs"), path = require("node:path");
 const { startStack, onboard, MOBILE } = require("./harness");
@@ -40,43 +39,31 @@ test.before(async () => {
 });
 test.after(async () => { await ctx?.close(); await ctx2?.close(); await S?.close(); });
 
-test("#/admin/mjt-safety: every switch OFF by default, sources listed as wired; members get 403", async () => {
-  rl(); await go(p, "#/admin/mjt-safety"); await textHas(p, /ضوابط الهوية والحسابات المرتبطة/);
-  assert.equal(await p.evaluate(() => document.querySelector('#sf-f [name="i_enabled"]').checked), false);
-  assert.equal(await p.evaluate(() => document.querySelector('#sf-f [name="c_enabled"]').checked), false);
-  assert.equal(await p.evaluate(() => document.querySelector('#sf-f [name="c_daily"]').value), "50");
-  const t = await p.textContent("#view");
-  for (const re of [/السقوف الشاملة للكسب/, /إجابة مقبولة/, /مكافأة النشاط اليومي/, /أسبوع نشِط/, /موصول/]) assert.match(t, re);
-  assert.ok((await minTap(p, "#sf-f input, #sf-f .btn, .mj-seg a")) >= 44, "tap targets");
-  assert.deepEqual(await axe(p), [], "safety"); await shot(p, "settings-390");
-  rl(); assert.equal((await call(m, "GET", "/api/admin/mjt/safety")).status, 403);
-  rl(); assert.equal((await call(m, "GET", "/api/admin/mjt/review")).status, 403);
+test("v2.167: the admin safety / review pages and APIs are gone", async () => {
+  rl(); await go(p, "#/admin/mjt-safety"); await p.waitForTimeout(1200);
+  assert.equal(await p.evaluate(() => !!document.querySelector("#sf-f")), false, "no switches page");
+  rl(); assert.equal((await call(p, "GET", "/api/admin/mjt/safety")).status, 404);
+  rl(); assert.equal((await call(m, "GET", "/api/admin/mjt/review")).status, 404);
 });
 
-test("identity ON → a new account's transfer is held, shows under review, and the admin queue approves it once", async () => {
-  rl(); await call(p, "POST", "/api/admin/mjt/adjust", { handle: "sf_member", amount: "30", reason: "رصيد اختبار الحماية", ikey: "e2e-sf-fund-1" });
-  rl(); await go(p, "#/admin/mjt-safety"); await textHas(p, /ضوابط الهوية والحسابات المرتبطة/);
-  await p.check('#sf-f [name="i_enabled"]'); await p.fill('#sf-f [name="reason"]', "تشغيل ضوابط الهوية للاختبار");
-  rl(); await p.click('#sf-f button.btn'); await until(p, () => document.querySelector('#sf-f [name="i_enabled"]')?.checked === true);
+test("identity always ON → a new account's transfer is held, shows under review, and the automatic rule sends it once after 72 h", async () => {
+  const uid = (await S.app.ctx.db.get("SELECT id FROM users WHERE handle='sf_member'")).id;
+  await S.app.ctx.services.mjtRewards.credit(uid, { amount: 30 * 1e7, source: "admin", reason: "e2e funding", ikey: "e2e-sf-fund-1" });
   rl(); const before = Number((await call(m, "GET", "/api/mjt/me")).balance.mjt); assert.ok(before >= 30);
   rl(); const r = await call(m, "POST", "/api/mjt/transfers", { to: "sf_payee", amount: "10", ikey: "e2e-sf-x-1" });
   assert.equal(r.pending, true, JSON.stringify(r)); assert.equal(Number(r.balance.mjt), before, "nothing deducted");
   rl(); await go(m, "#/mjt?tab=review"); await textHas(m, /تحويل قيد المراجعة/);
-  rl(); await go(p, "#/admin/mjt-review"); await textHas(p, /@sf_member ← @sf_payee/);
-  assert.match(await p.textContent("#view"), /عمر الحساب أقل من الحد/);
-  assert.deepEqual(await axe(p), [], "review"); await shot(p, "review-390");
-  rl(); await p.click("[data-ok]"); await textHas(p, /لا شيء بانتظار المراجعة/);
-  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10, "sent once on approval");
-  // switch it off again: the next transfer goes through at once (v2.164 behaviour)
-  rl(); await call(p, "PUT", "/api/admin/mjt/safety", { identity: { enabled: false }, reason: "إيقاف بعد الاختبار" });
-  rl(); const r2 = await call(m, "POST", "/api/mjt/transfers", { to: "sf_payee", amount: "5", ikey: "e2e-sf-x-2" }); assert.ok(r2.transfer && !r2.pending);
+  assert.deepEqual(await axe(m), [], "review tab"); await shot(m, "review-390");
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 73 * 3600e3) });
+  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10, "sent once by the automatic rule");
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 80 * 3600e3) });
+  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10, "never twice");
 });
 
-test("members see no change: «كيف أكسب» lists no new source while they are off; CSP hygiene; no page errors", async () => {
-  rl(); await go(m, "#/mjt/earn"); await textHas(m, /مكافآت المساهمات المفيدة/);
-  assert.doesNotMatch(await m.textContent("#view"), /مكافأة النشاط اليومي|أسبوع نشِط|منشور مفيد/);
-  const html = await p.evaluate(() => document.querySelector("#view").innerHTML);
+test("«كيف أكسب» lists the approved sources; CSP hygiene; no page errors", async () => {
+  rl(); await go(m, "#/mjt/earn"); await textHas(m, /إجابة مقبولة/);
+  assert.match(await m.textContent("#view"), /منشور مفيد/);
+  const html = await m.evaluate(() => document.querySelector("#view").innerHTML);
   assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i);
-  const src = fs.readFileSync(path.join(__dirname, "../..", "mjt-safety-ui.js"), "utf8"); assert.doesNotMatch(src, /\son(click|input|change|submit)=|["'`]javascript:|style="/);
   assert.deepEqual(errors, []);
 });

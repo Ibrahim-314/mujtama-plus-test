@@ -41,27 +41,21 @@ test.before(async () => {
   await tourDone(S.base, ck);
   await u.goto(S.base + "/?nosw#/home"); await u.waitForTimeout(800); await u.evaluate(() => { try { DB.onboarded = true; window.save?.(); } catch { } });
   await S.app.ctx.services.mjtRewards.ready; await S.app.ctx.services.mjtServices.ready;
-  await S.app.ctx.services.mjtRewards.credit(uid, { amount: 9 * 1e7, source: "admin", reason: "e2e funding", ikey: "e2e_fund_sv_reem" });
+  await S.app.ctx.services.mjtRewards.credit(uid, { amount: 159 * 1e7, source: "admin", reason: "e2e funding", ikey: "e2e_fund_sv_reem" });
 });
 test.after(async () => { await uctx?.close(); await actx?.close(); await S?.close(); });
 
-test("admin: #/admin/mjt-services — seeded disabled with no cost; set cost + 30-day term, enable; refund policy shown", async () => {
-  rl(); await go(p, "#/admin/mjt-services"); await until(p, () => !!document.querySelector('.sv-f[data-id="svc_studio_extended"]'));
-  assert.equal(await p.evaluate(() => { const f = document.querySelector(".sv-f"); return !f.elements.enabled.checked && f.elements.cost.value === "" && f.elements.term.value === ""; }), true, "ships off, no cost, no term");
-  await textHas(p, /سياسة الاسترداد/); await textHas(p, /ليس له قيمة نقدية/);
-  await p.evaluate(() => { const f = document.querySelector(".sv-f"); f.elements.cost.value = "4"; f.elements.term.value = "days"; f.elements.durationDays.value = "30"; f.elements.enabled.checked = true; });
-  rl(); await p.locator('.sv-f button.btn:not([data-pur]):not([data-det])').click(); await p.waitForTimeout(700);
-  const s = await S.app.ctx.db.get("SELECT cost, term, duration_days, enabled, price_version FROM mjt_services WHERE id='svc_studio_extended'");
-  assert.equal(Number(s.enabled), 1); assert.equal(Number(s.cost), 4 * 1e7); assert.equal(s.term, "days"); assert.equal(Number(s.duration_days), 30); assert.equal(Number(s.price_version), 2);
-  assert.deepEqual(await axe(p), []);
-  assert.ok((await minTap(p, "#view .btn")) >= 44, "tap targets");
-  await shot(p, "admin-390-light");
+test("v2.167: fixed catalog — studio_extended 150 MJT / 30 days is ON with no admin step; #/admin/mjt-services is gone", async () => {
+  const sv = await S.app.ctx.db.get("SELECT cost, term, duration_days, enabled FROM mjt_services WHERE id='svc_studio_extended'");
+  assert.equal(Number(sv.enabled), 1); assert.equal(Number(sv.cost), 150 * 1e7); assert.equal(sv.term, "days"); assert.equal(Number(sv.duration_days), 30);
+  rl(); await go(p, "#/admin/mjt-services"); await p.waitForTimeout(1500);
+  assert.equal(await p.evaluate(() => !!document.querySelector(".sv-f")), false, "no admin pricing form");
 });
 
 test("member: #/rewards → #/mjt → خدمات مجتمع كوين; confirmation sheet with cost / balance / balance after; success; my services; history; wallet history", async () => {
   rl(); await go(u, "#/rewards"); await until(u, () => location.hash === "#/mjt" && !!document.querySelector('#view a[href="#/mjt/services"]')); // v2.164: one wallet page
   assert.equal(await u.evaluate(() => !!window.MPMjtServices), true, "rides the mjt chunk loaded with #/rewards");
-  assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), "9");
+  assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), "159");
   await u.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   rl(); await u.locator('#view a.btn[href="#/mjt/services"]').click(); await until(u, () => !!document.querySelector("[data-buy]"));
   assert.equal(await u.evaluate(() => !!document.querySelector("#view .mj-big")), false, "v2.164: the balance is not repeated here");
@@ -71,13 +65,13 @@ test("member: #/rewards → #/mjt → خدمات مجتمع كوين; confirmati
   assert.deepEqual(await axe(u), []);
   assert.ok((await minTap(u, "#view .btn")) >= 44, "tap targets");
   await shot(u, "list-360-dark");
-  await u.locator("[data-buy]").click(); await until(u, () => !!document.querySelector("#sv-go"));
+  await u.locator("[data-buy]").first().click(); await until(u, () => !!document.querySelector("#sv-go"));
   await sheetHas(u, /تحليلات الاستوديو الممتدة/); await sheetHas(u, /رصيدك الحالي/); await sheetHas(u, /رصيدك بعد العملية/);
-  assert.deepEqual(await u.evaluate(() => [...document.querySelectorAll(".sv-conf dd bdi")].map((x) => x.textContent)), ["4", "9", "5"], "cost · balance · balance after");
-  assert.equal(await bal(), 9 * 1e7, "nothing debited before confirming");
+  assert.deepEqual(await u.evaluate(() => [...document.querySelectorAll(".sv-conf dd bdi")].map((x) => x.textContent)), ["150", "159", "9"], "cost · balance · balance after");
+  assert.equal(await bal(), 159 * 1e7, "nothing debited before confirming");
   await shot(u, "confirm-360-dark");
   rl(); await u.locator("#sv-go").click(); await sheetHas(u, /تمت العملية بنجاح/);
-  assert.equal(await bal(), 5 * 1e7);
+  assert.equal(await bal(), 9 * 1e7);
   await u.locator("#sv-x2").click();
   await until(u, () => /لديك وصول|تملك هذه الخدمة/.test(document.querySelector("#view")?.textContent || ""));
   rl(); await go(u, "#/mjt/services?tab=mine"); await textHas(u, /فعّالة/); await textHas(u, /حتى/);
@@ -91,19 +85,19 @@ test("stale price: the sheet re-reads the server price and asks again (nothing d
   // a new member who has not bought yet; admin changes the price while the sheet is open
   rl(); const reg = await fetch(S.base + "/api/auth/register", { method: "POST", headers: H(), body: JSON.stringify({ name: "خالد", handle: "sv_khalid", password: "secret123" }) });
   const kid = (await reg.json()).user.id, ck = reg.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
-  await S.app.ctx.services.mjtRewards.credit(kid, { amount: 20 * 1e7, source: "admin", reason: "e2e funding", ikey: "e2e_fund_sv_khalid" });
+  await S.app.ctx.services.mjtRewards.credit(kid, { amount: 200 * 1e7, source: "admin", reason: "e2e funding", ikey: "e2e_fund_sv_khalid" });
   const kctx = await S.browser.newContext({ ...MOBILE, userAgent: PI_UA, viewport: { width: 360, height: 780 }, reducedMotion: "reduce" });
   const [n, ...val] = ck.split("="); await kctx.addCookies([{ name: n, value: val.join("="), url: S.base }]);
   const k = await kctx.newPage(); k.on("pageerror", (e) => errors.push("khalid: " + e.message)); await tourDone(S.base, ck);
   await k.goto(S.base + "/?nosw#/home"); await k.waitForTimeout(800); await k.evaluate(() => { try { DB.onboarded = true; window.save?.(); } catch { } });
   rl(); await go(k, "#/mjt/services"); await until(k, () => !!document.querySelector("[data-buy]"));
-  await k.locator("[data-buy]").click(); await until(k, () => !!document.querySelector("#sv-go"));
-  await S.app.ctx.services.mjtServices.edit({ id: (await S.app.ctx.db.get("SELECT id FROM users WHERE handle='sv_admin'")).id }, "svc_studio_extended", { cost: 6 });
+  await k.locator("[data-buy]").first().click(); await until(k, () => !!document.querySelector("#sv-go"));
+  await S.app.ctx.services.mjtServices.edit({ id: (await S.app.ctx.db.get("SELECT id FROM users WHERE handle='sv_admin'")).id }, "svc_studio_extended", { cost: 160 }); // test fixture: a price change while the sheet is open
   rl(); await k.locator("#sv-go").click(); await sheetHas(k, /تغيّرت تكلفة الخدمة/);
-  assert.equal(await k.evaluate(() => document.querySelector(".sv-conf dd bdi").textContent !== undefined && [...document.querySelectorAll(".sv-conf dd bdi")][0].textContent), "6", "sheet shows the new server price");
-  const kb = Number((await S.app.ctx.db.get("SELECT balance FROM mjt_accounts WHERE id=$1", ["user:" + kid])).balance); assert.equal(kb, 20 * 1e7, "nothing debited on a stale price");
+  assert.equal(await k.evaluate(() => document.querySelector(".sv-conf dd bdi").textContent !== undefined && [...document.querySelectorAll(".sv-conf dd bdi")][0].textContent), "160", "sheet shows the new server price");
+  const kb = Number((await S.app.ctx.db.get("SELECT balance FROM mjt_accounts WHERE id=$1", ["user:" + kid])).balance); assert.equal(kb, 200 * 1e7, "nothing debited on a stale price");
   rl(); await k.locator("#sv-go").click(); await sheetHas(k, /تمت العملية بنجاح/);
-  assert.equal(Number((await S.app.ctx.db.get("SELECT balance FROM mjt_accounts WHERE id=$1", ["user:" + kid])).balance), 14 * 1e7);
+  assert.equal(Number((await S.app.ctx.db.get("SELECT balance FROM mjt_accounts WHERE id=$1", ["user:" + kid])).balance), 40 * 1e7);
   await k.evaluate(() => closeSheet());
   await kctx.setOffline(true); await go(k, "#/home"); rl(); await go(k, "#/mjt/services");
   await until(k, () => /غير متصل|تعذّر/.test(document.querySelector("#view")?.textContent || "")); await kctx.setOffline(false);
