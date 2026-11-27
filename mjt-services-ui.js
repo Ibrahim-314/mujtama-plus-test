@@ -153,6 +153,12 @@
 
   MPRoutes.add("mjt", (a, b, next) => (a === "services" ? servicesView() : next()));
   /* v2.167: #/admin/mjt-services removed — prices are fixed (server/config/app-defaults.js) */
-  window.MPMjtServices = { servicesView, version: "2.167.0" };
+  /* v2.167 «تقدير»: burn 5 / 10 / 25 MJT to appreciate a public post (server: POST /api/mjt/posts/:id/appreciate) */
+  function appr(pid) {
+    const s = sheet(`<h4>تقدير المنشور</h4><p class="muted">يُحرق المبلغ من رصيد مجتمع كوين، ويكسب صاحب المنشور سمعة.</p><div class="u-g8 row">${[5, 10, 25].map(v => `<button class="btn grow" data-v="${v}">${v} MJT</button>`).join("")}</div>`);
+    const key = "ap" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    s.querySelectorAll("[data-v]").forEach(b => b.onclick = async () => { b.disabled = true; try { await Remote.api("POST", "/api/mjt/posts/" + encodeURIComponent(pid) + "/appreciate", { amount: +b.dataset.v, ikey: key + b.dataset.v }); closeSheet(); toast("شكراً لتقديرك ✓"); } catch (e) { b.disabled = false; toast(e.message || "تعذّر التقدير"); } });
+  }
+  window.MPMjtServices = { servicesView, appr, version: "2.167.0" };
   if (/^#\/mjt\/services\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

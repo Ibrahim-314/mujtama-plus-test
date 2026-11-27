@@ -4051,5 +4051,11 @@
 "إيقاف الحساب": "Ban account",
 "اكتب سبب الإيقاف (5 أحرف على الأقل)": "Write the reason for the ban (at least 5 characters)",
 "إيقاف @{name}؟": "Ban @{name}?",
-"ثابتة في إعدادات التطبيق (v2.167) — لا تُغيَّر من هنا.": "Fixed in the app settings (v2.167) — not changed from here."
+"ثابتة في إعدادات التطبيق (v2.167) — لا تُغيَّر من هنا.": "Fixed in the app settings (v2.167) — not changed from here.",
+"التطبيق يعمل على Testnet فقط: جرّب دفعة 0.01 Pi من صفحة التفعيل.": "The app runs on Testnet only: try a 0.01 Pi payment from the activation page.",
+"مشارك": "Participant",
+"مساهم": "Contributor",
+"موثوق": "Trusted",
+"مرشد": "Mentor",
+"قدوة المجتمع": "Community role model"
 });
