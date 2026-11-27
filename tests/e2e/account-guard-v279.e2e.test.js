@@ -95,7 +95,7 @@ test("1440 dark EN admin: platform security page, policy on, sign-out sheet guar
   assert.equal((await p.evaluate(async h => (await fetch("/api/me", { headers: h })).status, H)), 200, "still signed in");
   await p.keyboard.press("Escape");
   await p.evaluate(() => { location.hash = "#/menu"; });
-  await p.waitForSelector('a[href="#/admin/security"]', { timeout: 15000 });
+  await p.waitForSelector('a[href="#/owner"]', { timeout: 15000 }); // v2.167: the admin menu is the single «لوحة المالك» entry
   assert.deepEqual(errs, []);
   await c.close();
 });

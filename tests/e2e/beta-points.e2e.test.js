@@ -41,7 +41,7 @@ test("beta: feedback button → triage board reply → tester sees it; waves, da
   await p.goto(S.base + "/?nosw#/admin/beta/dash");
   await until(() => /العودة D7/.test(document.querySelector("#bt-a")?.textContent || ""));
   await p.goto(S.base + "/?nosw#/admin/beta/flags");
-  await until(() => !!document.querySelector('[data-k="stories"] [data-kill]'));
+  await until(() => !!document.querySelector('[data-k="passkeys"]')); // v2.167: the dead «stories» flag was deleted; the app's flags are all ON
   await p.goto(S.base + "/?nosw#/beta");
   await until(() => /ملاحظاتي/.test(document.querySelector("#bt-m")?.textContent || "") && /قيد التنفيذ/.test(document.querySelector("#bt-m")?.textContent || ""));
   assert.deepEqual(errors, []);
