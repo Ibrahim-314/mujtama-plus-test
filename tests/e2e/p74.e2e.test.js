@@ -137,7 +137,7 @@ test("completed session: star rating → profile shows the rating; directory", a
   await go(k, "#/mentor/p74_mentor"); await until(k, () => !!document.querySelector(".mt-dist")); await textHas(k, /شرح واضح/);
   assert.deepEqual(await axe(k), []);
   // v2.167: #/admin/mentors was removed (mentors are listed automatically) — the public directory shows the mentor
-  await go(p, "#/mentors"); await textHas(p, /سارة القحطاني/);
+  await go(k, "#/mentors"); await textHas(k, /سارة القحطاني/); // a member sees her (the directory leaves out your own profile)
   assert.deepEqual(await axe(p), []);
 });
 

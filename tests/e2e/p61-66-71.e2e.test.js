@@ -98,10 +98,8 @@ test("P66: nearby by city, map pins + attribution (tiles only when shown), devic
   assert.deepEqual(await axe(), []);
   await p.click("#nb-pf .btn.block");
   await until(() => /^#\/place\//.test(location.hash) && /بانتظار المراجعة/.test(document.querySelector("#nb-p")?.textContent || ""));
-  await p.goto(S.base + "/?nosw#/admin/places");
-  await p.waitForSelector('[data-rv="approve"]', { timeout: 20000 });
-  await p.click('[data-rv="approve"]');
-  await until(() => !document.querySelector('[data-rv="approve"]'));
+  // v2.167: #/admin/places was removed — a place nobody reported is published by the automatic rules (24 h, or at once for level ≥ 3)
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 25 * 3600e3) });
   await p.goto(S.base + "/?nosw#/city/" + encodeURIComponent("جدة"));
   await until(() => /مسجد الحي الكبير/.test(document.querySelector("#nb-cy")?.textContent || "") && /الرائج في جدة/.test(document.querySelector("#nb-cy").textContent));
   assert.deepEqual(await axe(), []);
