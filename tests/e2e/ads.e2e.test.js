@@ -370,7 +370,7 @@ test("real P40 server (no ads / Pi stubs): wizard on own post → submit → adm
   await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 25 * 3600e3) });
   assert.equal((await db.get("SELECT status FROM ad_campaigns WHERE id=$1", [mine.id])).status, "awaiting_funds");
   // 3) dashboard: awaiting funds, fund disabled with the Arabic note, budget from the server's budget object
-  await go("#/ads/campaigns/" + mine.id, p); await p.waitForSelector("#ad-fund", { timeout: 15000 });
+  await go("#/home", p); await go("#/ads/campaigns/" + mine.id, p); await p.waitForSelector("#ad-fund", { timeout: 15000 }); // re-open: the page was showing the pre-sweep status
   assert.equal(await p.isDisabled("#ad-fund"), true); assert.match(await p.textContent("#ad-fn"), /مدفوعات Pi غير مفعّلة بعد/);
   const dash = await p.textContent(`[data-ad-camp="${mine.id}"]`); assert.match(dash, /بانتظار التمويل/);
   assert.match(await p.textContent("#ad-db"), /0 π \/ 2 π/); assert.match(await p.textContent("#ad-kpi"), /أقل من 10/);
