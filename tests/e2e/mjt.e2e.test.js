@@ -27,6 +27,7 @@ const shot = async (pg, name) => { fs.mkdirSync(SHOTS, { recursive: true }); awa
 const minTap = (pg, sel) => pg.evaluate((s) => Math.min(...[...document.querySelectorAll(s)].filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect().height)), sel);
 const dark = (pg) => pg.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
 
+let released = { mjt_khaled: 0, mjt_admin: 0 };
 test.before(async () => {
   S = await startStack();
   // v2.140.2: the daily sign-in reward (v2.87, +1 MJT on first load) would move the exact balances this test reads; it has its own tests
@@ -54,17 +55,16 @@ test.before(async () => {
 });
 test.after(async () => { await uctx?.close(); await actx?.close(); await S?.close(); });
 
-test("staff: settings entry → #/admin/mjt → ledger check, dry run, apply conversion", async () => {
+test("staff: settings entry; v2.167: #/admin/mjt is gone — the conversion runs automatically (dry run, then apply as «system»)", async () => {
   rl(); await go(p, "#/settings?s=money"); await until(p, () => !!document.querySelector('#view .set-sec a[href="#/mjt"]'));
   assert.equal(await p.evaluate(() => !!window.MPMjt), false, "lazy chunk not loaded yet");
-  rl(); await go(p, "#/admin/mjt"); await until(p, () => !!document.querySelector("#mj-dry"));
-  assert.equal(await p.evaluate(() => !!window.MPMjt && !!window.MPFeat), true, "mjt chunk loads after feat");
-  await textHas(p, /متوازن/);
-  rl(); await tap(p, "#mj-dry"); await until(p, () => /سيُحوَّل 2 عضو: 44 نقطة/.test(document.querySelector("#mj-dr")?.textContent || ""));
-  assert.ok((await minTap(p, "#mj-a .btn")) >= 44, "44px buttons");
-  assert.deepEqual(await axe(p), [], "admin light"); await shot(p, "admin-390-light");
-  rl(); await tap(p, "#mj-apply"); await until(p, () => !!document.querySelector("[data-rb]"));
-  await textHas(p, /مطبّق/);
+  rl(); await go(p, "#/admin/mjt"); await p.waitForTimeout(1200);
+  assert.equal(await p.evaluate(() => !!document.querySelector("#mj-dry, #mj-apply")), false, "no admin conversion page");
+  rl(); assert.equal(await p.evaluate(async () => (await fetch("/api/admin/mjt", { headers: { "X-Requested-With": "mujtama" }, credentials: "include" })).status), 404);
+  const M = S.app.ctx.services.mjt;
+  const dr = await M.dryRun(); assert.equal(dr.dryRun, true);
+  const r = await M.convert("system"); assert.equal(r.applied, true, JSON.stringify(r));
+  assert.equal((await M.convert("system")).applied === true && (await M.convert("system")).batch?.users > 0, false, "idempotent: nobody converted twice");
 });
 
 test("member: converted balance, in-app label, earn rules, send with confirm, history (360 dark)", async () => {
@@ -85,16 +85,23 @@ test("member: converted balance, in-app label, earn rules, send with confirm, hi
   rl(); await tap(u, "#mj-sf [type=submit]");
   // v2.140.2: the send asks first in the in-app MPConfirm sheet (native confirm() is suppressed in some webviews)
   await u.waitForSelector("#mp-cf-ok"); assert.match(await u.textContent("#mp-cf-t"), /إرسال 2\.5 MJT إلى @mjt_admin/); await tap(u, "#mp-cf-ok");
-  await until(u, () => location.hash === "#/mjt?tab=history");
+  await until(u, () => location.hash === "#/mjt?tab=history" || location.hash === "#/mjt?tab=review");
+  if (await u.evaluate(() => location.hash === "#/mjt?tab=review")) { // v2.167: identity checks always ON — held, nothing deducted, then sent once by the automatic rule
+    await textHas(u, /تحويل قيد التحقق التلقائي/); assert.match(await u.textContent(".mj-big"), /39/);
+    const held = async (h) => Number((await S.app.ctx.db.get("SELECT COALESCE(SUM(e.amount),0) s FROM mjt_reward_entries e JOIN users x ON x.id=e.user_id WHERE x.handle=$1 AND e.kind='earn' AND e.status='pending' AND e.decides IS NULL", [h])).s) / 1e7;
+    released = { mjt_khaled: await held("mjt_khaled"), mjt_admin: await held("mjt_admin") }; // the same sweep releases each one's held sign-in reward
+    await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 73 * 3600e3) });
+    rl(); await go(u, "#/home"); await go(u, "#/mjt?tab=history"); await until(u, () => !!document.querySelector(".mj-big"));
+  }
   await until(u, () => /تحويل مُرسَل/.test(document.querySelector("#mj-hl")?.textContent || ""));
-  assert.match(await u.textContent(".mj-big"), /36\.5/);
+  assert.match(await u.textContent(".mj-big"), new RegExp(String(36.5 + released.mjt_khaled).replace(".", "\\.")));
   assert.equal(await u.evaluate(() => !!document.querySelector("#mj-more")), false, "no «المزيد» when everything fits");
   assert.deepEqual(await axe(u), [], "history dark"); await shot(u, "history-360-dark");
 });
 
 test("staff wallet (390 light), points page links to MJT, Pi redemption gone, CSP hygiene", async () => {
   rl(); await go(p, "#/mjt"); await until(p, () => !!document.querySelector("#mj-hl"));
-  assert.match(await p.textContent(".mj-big"), /7\.5/); // 5 converted + 2.5 received
+  assert.match(await p.textContent(".mj-big"), new RegExp(String(7.5 + released.mjt_admin).replace(".", "\\."))); // 5 converted + 2.5 received
   await textHas(p, /تحويل مُستلَم/); await textHas(p, /شكراً على المراجعة/);
   assert.deepEqual(await axe(p), [], "wallet light"); await shot(p, "wallet-390-light");
   rl(); await go(p, "#/points"); await until(p, () => !!document.querySelector(".pt-mjt"));

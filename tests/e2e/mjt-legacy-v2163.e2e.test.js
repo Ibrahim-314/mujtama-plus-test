@@ -46,55 +46,27 @@ test.before(async () => {
 });
 test.after(async () => { await uctx?.close(); await actx?.close(); await S?.close(); });
 
-test("admin: legacy switches on the economy page — all ON by default next to their numbers; short reason refused; pause «transfers» with a reason (audited)", async () => {
-  rl(); await go(p, "#/admin/mjt-economy"); await until(p, () => !!document.querySelector("#ech-lg"));
-  await textHas(p, /مفاتيح المسارات القديمة/);
-  const rows = await p.evaluate(() => [...document.querySelectorAll('[aria-labelledby="ech-lg"] tbody tr')].map((tr) => [...tr.cells].map((c) => c.textContent.trim())));
-  assert.equal(rows.length, 9, "8 switches + buy");
-  assert.ok(rows.slice(0, 8).every((r) => r[1].startsWith("يعمل")), "all ON by default: " + JSON.stringify(rows.map((r) => r[1])));
-  assert.equal(rows[8][1], "غير متاح", "buy listed as not available");
-  const mining = rows.find((r) => r[0] === "التعدين اليومي"); assert.equal(mining[3], "5", "mining numbers next to its switch");
-  assert.equal(await stored().then((s) => Object.keys(s).length), 0, "nothing stored by default");
-  await p.evaluate(() => { document.querySelector(".ec-lgd").open = true; });
-  assert.deepEqual(await lgRow(p, "transfers"), { on: "0", btn: "إيقاف" });
-  // a reason under 5 characters is refused in the page — nothing written
-  await p.fill('.ec-lg[data-k="transfers"] input[name="reason"]', "قصير");
-  rl(); await p.locator('.ec-lg[data-k="transfers"] button').click(); await p.waitForTimeout(400);
-  assert.equal(await S.app.ctx.db.get("SELECT value FROM mjt_settings WHERE key='legacy'"), undefined);
-  assert.deepEqual(await axe(p), []);
-  assert.ok((await minTap(p, '[aria-labelledby="ech-lg"] .btn')) >= 44, "tap targets");
-  assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true, "no horizontal page overflow at 390");
-  const html = await p.evaluate(() => document.querySelector('[aria-labelledby="ech-lg"]').outerHTML);
-  assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i, "CSP-safe markup");
-  await shot(p, "admin-390-default");
-  // pause with a real reason
-  await p.fill('.ec-lg[data-k="transfers"] input[name="reason"]', "مراجعة التحويلات بين الأعضاء");
-  rl(); await p.locator('.ec-lg[data-k="transfers"] button').click();
-  await until(p, () => document.querySelector('.ec-lg[data-k="transfers"]')?.dataset.on === "1");
-  assert.equal((await stored()).transfers, false);
-  const a = await S.app.ctx.db.get("SELECT actor_id, detail FROM mjt_audit WHERE action='legacy_switch' AND target='transfers' ORDER BY id DESC LIMIT 1");
-  assert.equal(a.actor_id, aid); assert.match(JSON.parse(a.detail).reason, /مراجعة التحويلات/);
-  const st = await p.evaluate(() => [...document.querySelectorAll('[aria-labelledby="ech-lg"] tbody tr')].find((tr) => tr.cells[0].textContent.trim() === "التحويل بين الأعضاء").cells[1].textContent.trim());
-  assert.equal(st, "متوقف");
-  assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector("#view .wrap")).direction), "rtl");
-  await shot(p, "admin-390-paused");
+test("v2.167: the legacy switches and their admin API are gone; a stale stored «off» value is ignored — every path is ON", async () => {
+  rl(); assert.equal(await p.evaluate(async () => (await fetch("/api/admin/mjt/legacy", { headers: { "X-Requested-With": "mujtama" }, credentials: "include" })).status), 404);
+  rl(); assert.equal(await p.evaluate(async () => (await fetch("/api/admin/mjt/legacy/transfers", { method: "PUT", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ enabled: false, reason: "e2e إيقاف" }), credentials: "include" })).status), 404);
+  // a value an admin stored before v2.167 must not pause anything any more
+  await S.app.ctx.db.run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('legacy',$1,$2,$3) ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=$3", [JSON.stringify({ transfers: false, mining: false, checkin: false }), aid, new Date().toISOString()]);
+  const LG = S.app.ctx.services.mjtLegacy; LG.invalidate();
+  for (const k of LG.KEYS) assert.equal(await LG.isOn(k), true, k);
+  assert.equal(await LG.isOn("buy"), false, "buying MJT with Pi stays unavailable");
+  assert.equal(Object.keys(await stored()).length, 3, "the member data / old row is kept, never deleted");
 });
 
-test("member (360): wallet send button disabled with «متوقف مؤقتاً»; API 409 mjt_legacy_disabled; back ON → enabled", async () => {
+test("member (360): wallet send button enabled; the API never answers mjt_legacy_disabled", async () => {
   rl(); await go(u, "#/mjt?tab=send"); await until(u, () => !!document.querySelector("#mj-sf"));
-  assert.equal(await u.evaluate(() => document.querySelector('#mj-sf button[type="submit"]').disabled), true, "send disabled");
-  await textHas(u, /التحويل بين الأعضاء» متوقف مؤقتاً/);
+  assert.equal(await u.evaluate(() => document.querySelector('#mj-sf button[type="submit"]').disabled), false, "send enabled");
+  assert.doesNotMatch(await u.textContent("#view"), /متوقف مؤقتاً/);
   rl(); const r = await u.evaluate(async () => { const x = await fetch("/api/mjt/transfers", { method: "POST", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ to: "lg_admin", amount: "1", ikey: "e2elegacy0001" }) }); return { s: x.status, b: await x.json() }; });
-  assert.equal(r.s, 409); assert.equal(r.b.code, "mjt_legacy_disabled"); assert.equal(r.b.path, "transfers"); assert.match(r.b.messageEn, /temporarily paused/);
+  assert.notEqual(r.b.code, "mjt_legacy_disabled", JSON.stringify(r));
   assert.deepEqual(await axe(u), []);
-  await shot(u, "member-360-send-paused");
-  // admin turns it back on from the page
-  await p.evaluate(() => { document.querySelector(".ec-lgd").open = true; });
-  await p.fill('.ec-lg[data-k="transfers"] input[name="reason"]', "انتهت المراجعة");
-  rl(); await p.locator('.ec-lg[data-k="transfers"] button').click();
-  await until(p, () => document.querySelector('.ec-lg[data-k="transfers"]')?.dataset.on === "0");
-  assert.equal((await stored()).transfers, true);
-  rl(); await go(u, "#/mjt?tab=history"); await go(u, "#/mjt?tab=send"); await until(u, () => !!document.querySelector("#mj-sf"));
-  assert.equal(await u.evaluate(() => document.querySelector('#mj-sf button[type="submit"]').disabled), false, "send enabled again");
+  assert.ok((await minTap(u, "#mj-sf input, #mj-sf .btn")) >= 44, "tap targets");
+  const html = await u.evaluate(() => document.querySelector("#view").innerHTML);
+  assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i, "CSP-safe markup");
+  await shot(u, "member-360-send");
   assert.deepEqual(errors, []);
 });
