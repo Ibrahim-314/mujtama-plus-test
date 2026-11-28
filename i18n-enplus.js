@@ -3526,6 +3526,7 @@
 "لا مكافآت على تسجيل الدخول أو الإعجابات أو الأفعال المتكررة البسيطة. قد تمر بعض المكافآت بمراجعة قبل إضافتها.": "There are no rewards for signing in, likes or small repeated actions. Some rewards may be reviewed before they are added.",
 "سيظهر هنا كل ما يُضاف إلى رصيدك أو يُخصم منه.": "Everything added to or taken from your balance will appear here.",
 "المكافآت قيد المراجعة لا تُحتسب في رصيدك حتى توافق عليها الإدارة.": "Rewards under review don't count toward your balance until the admins approve them.",
+"المكافآت قيد المراجعة تُضاف إلى رصيدك تلقائياً بعد 72 ساعة ما لم يصل بلاغ على حسابك.": "Rewards under review are added to your balance automatically after 72 hours unless your account is reported.",
 "لا شيء قيد المراجعة": "Nothing under review",
 "كل مكافآتك أُضيفت إلى رصيدك.": "All your rewards have been added to your balance.",
 "هذه الصفحة لمديري المنصة.": "This page is for platform admins.",

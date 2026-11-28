@@ -39,34 +39,34 @@ test.before(async () => {
 });
 test.after(async () => { await uctx?.close(); await actx?.close(); await S?.close(); });
 
-test("admin: #/admin/rewards shows stats + sources (all off, no amount); enable «إكمال دورة» with an amount", async () => {
-  rl(); await go(p, "#/admin/rewards"); await until(p, () => !!document.querySelector('.rw-src[data-key="course_completed"]'));
-  assert.equal(await p.evaluate(() => [...document.querySelectorAll(".rw-src")].every((f) => !f.elements.enabled.checked && f.elements.amount.value === "")), true, "everything ships off with no amount");
-  await textHas(p, /ليس له قيمة نقدية/);
-  await p.evaluate(() => { const f = document.querySelector('.rw-src[data-key="course_completed"]'); f.elements.amount.value = "6"; f.elements.enabled.checked = true; });
-  rl(); await p.locator('.rw-src[data-key="course_completed"] button.btn:not([data-del])').click();
-  await until(p, async () => true); await p.waitForTimeout(600);
+test("v2.167: the admin rewards page and its API are gone; the fixed earn sources are always on", async () => {
+  rl(); await go(p, "#/admin/rewards"); await p.waitForTimeout(1200);
+  assert.equal(await p.evaluate(() => !!document.querySelector(".rw-src")), false, "no admin sources page");
+  rl(); const st = await p.evaluate(async () => (await fetch("/api/admin/mjt/rewards/sources", { headers: { "X-Requested-With": "mujtama" }, credentials: "include" })).status);
+  assert.equal(st, 404);
   const src = await S.app.ctx.db.get("SELECT amount, enabled FROM mjt_reward_sources WHERE key='course_completed'");
-  assert.equal(Number(src.enabled), 1); assert.equal(Number(src.amount), 6 * 1e7);
-  assert.deepEqual(await axe(p), []);
-  assert.ok((await minTap(p, "#view .btn")) >= 44, "tap targets");
+  if (src) assert.equal(Number(src.enabled), 1, "course reward ON automatically");
   await shot(p, "admin-390-light");
 });
 
 test("member: real achievement → reward; v2.164: #/rewards opens the one wallet page #/mjt (balance, note, history, review tab); offline state", async () => {
   await S.app.ctx.services.achievements.record(uid, "course_completed", "course-e2e");
   await S.app.ctx.services.mjtRewards.settle();
+  // v2.167: a brand-new account's earn is held by the always-ON identity checks and released by the automatic rule after 72 h
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 73 * 3600e3) });
+  const bal = String((await u.evaluate(async () => Remote.api("GET", "/api/mjt/me"))).balance.mjt);
+  assert.ok(Number(bal) > 0, "the course reward reached the balance");
   rl(); await go(u, "#/settings?s=money"); await until(u, () => !!document.querySelector('#view a[href="#/mjt"]'));
   assert.equal(await u.evaluate(() => !!document.querySelector('#view a[href="#/rewards"]')), false, "no second wallet row in settings");
   assert.equal(await u.evaluate(() => !!window.MPRewards), false, "lazy: not loaded before the route opens");
   await u.evaluate(() => document.documentElement.setAttribute("data-theme", "dark"));
   rl(); await go(u, "#/rewards"); await until(u, () => location.hash === "#/mjt" && !!document.querySelector(".mj-big"));
-  assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), "6");
+  assert.equal(await u.evaluate(() => document.querySelector(".mj-big bdi").textContent), bal);
   await textHas(u, /بلا قيمة نقدية/);
   assert.deepEqual(await axe(u), []);
   await shot(u, "wallet-360-dark");
   rl(); await go(u, "#/rewards?tab=history"); await until(u, () => location.hash === "#/mjt?tab=history" && !!document.querySelector("#mj-hl .li"));
-  rl(); await go(u, "#/rewards?tab=review"); await until(u, () => location.hash === "#/mjt?tab=review"); await textHas(u, /لا شيء قيد المراجعة/);
+  rl(); await go(u, "#/rewards?tab=review"); await until(u, () => location.hash === "#/mjt?tab=review"); await textHas(u, /لا شيء قيد المراجعة|تُضاف إلى رصيدك تلقائياً بعد 72 ساعة/);
   await uctx.setOffline(true); await go(u, "#/home"); rl(); await go(u, "#/mjt");
   await textHas(u, /غير متصل|تعذّر/); await uctx.setOffline(false);
   const html = await u.evaluate(() => document.querySelector("#view").innerHTML);

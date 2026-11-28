@@ -77,7 +77,7 @@
     let d; try { d = await api("GET", "/api/mjt/wallet/review"); } catch (e) { t.innerHTML = errBox(e); return; }
     if (!t.isConnected) return;
     const row = (i) => `<li class="li"><span class="ico">${ic("award")}</span><span class="t"><b>${h(i.label || i.kindLabel || "")}${i.source ? ` · ${h(i.source)}` : ""}</b><small>${h(day(i.createdAt))}${i.reason ? ` · ${h(i.reason)}` : ""} · <span class="sbadge ${ST_CLS[i.status] || ""}">${h(i.statusLabel || i.status)}</span></small></span><span class="mj-amt in">${amt("+" + String(i.amount).replace(/^-/, ""))}</span></li>`;
-    t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة لا تُحتسب في رصيدك حتى توافق عليها الإدارة.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
+    t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة تُضاف إلى رصيدك تلقائياً بعد 72 ساعة ما لم يصل بلاغ على حسابك.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
   }
 
   /* ---------- #/mjt/earn «كيف أكسب» (v2.164; v2.167 + the fixed earn table from /api/mjt/config → table) — no amount is written here ---------- */
