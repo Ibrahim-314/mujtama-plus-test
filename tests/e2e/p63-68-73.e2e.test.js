@@ -92,7 +92,9 @@ test("P63: disclosure form, report form, library, about, admin queue; axe clean"
   await go(p, "#/collabs/report/" + own.id); await until(p, () => !!document.querySelector("#cb-rpf")); assert.deepEqual(await axe(p), []);
   await go(p, "#/collabs/library"); await textHas(p, /متجر العطور/); assert.deepEqual(await axe(p), []);
   await go(p, "#/collabs/about"); await textHas(p, /قواعدنا/); assert.deepEqual(await axe(p), []);
-  await go(p, "#/admin/collabs"); await textHas(p, /حملات بانتظار المراجعة/); assert.deepEqual(await axe(p), []);
+  // v2.167: #/admin/collabs and /api/admin/collabs/* were removed — held campaigns are published by the automatic rules
+  await go(p, "#/admin/collabs"); await p.waitForTimeout(800); assert.doesNotMatch(await p.textContent("#view"), /حملات بانتظار المراجعة/);
+  assert.equal(await p.evaluate(async () => (await fetch("/api/admin/collabs/queue", { headers: { "X-Requested-With": "mujtama" }, credentials: "include" })).status), 404);
   await go(k, "#/collabs/kit/p5_creator"); await textHas(k, /مراجعات تقنية بالعربية/); assert.deepEqual(await axe(k), []);
 });
 

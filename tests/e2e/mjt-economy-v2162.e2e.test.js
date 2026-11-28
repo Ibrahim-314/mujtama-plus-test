@@ -24,6 +24,6 @@ test("v2.167: #/admin/mjt-economy and its API are gone; «لوحة المالك�
   assert.equal(b.files.some((f) => /chunk-mjteco-/.test(f.file)), false, "the mjteco chunk is gone");
   await p.evaluate(() => { location.hash = "#/owner"; });
   await p.waitForFunction(() => /لوحة المالك/.test(document.querySelector("#view")?.textContent || ""), null, { timeout: 15000 });
-  assert.match(await p.textContent("#view"), /مجتمع كوين المتداول/);
+  await p.waitForFunction(() => /مجتمع كوين المتداول/.test(document.querySelector("#view")?.textContent || ""), null, { timeout: 15000 }); // the status card loads after the title
   assert.deepEqual(errors, []);
 });
