@@ -52,12 +52,14 @@ test("identity always ON → a new account's transfer is held, shows under revie
   rl(); const before = Number((await call(m, "GET", "/api/mjt/me")).balance.mjt); assert.ok(before >= 30);
   rl(); const r = await call(m, "POST", "/api/mjt/transfers", { to: "sf_payee", amount: "10", ikey: "e2e-sf-x-1" });
   assert.equal(r.pending, true, JSON.stringify(r)); assert.equal(Number(r.balance.mjt), before, "nothing deducted");
-  rl(); await go(m, "#/mjt?tab=review"); await textHas(m, /تحويل قيد المراجعة/);
+  rl(); await go(m, "#/mjt?tab=review"); await textHas(m, /تحويل قيد التحقق التلقائي/); // v2.167: the hold is released by the automatic rule
   assert.deepEqual(await axe(m), [], "review tab"); await shot(m, "review-390");
+  // the same sweep also releases the member's own held earn entries (e.g. the daily sign-in reward) — count them in
+  const held = Number((await S.app.ctx.db.get("SELECT COALESCE(SUM(amount),0) s FROM mjt_reward_entries WHERE user_id=$1 AND kind='earn' AND status='pending' AND decides IS NULL", [uid])).s) / 1e7;
   await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 73 * 3600e3) });
-  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10, "sent once by the automatic rule");
+  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10 + held, "sent once by the automatic rule");
   await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 80 * 3600e3) });
-  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10, "never twice");
+  rl(); assert.equal(Number((await call(m, "GET", "/api/mjt/me")).balance.mjt), before - 10 + held, "never twice");
 });
 
 test("«كيف أكسب» lists the approved sources; CSP hygiene; no page errors", async () => {

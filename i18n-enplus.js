@@ -3959,6 +3959,7 @@
 "الأعضاء في القائمة": "Members in the queue",
 "تمت الموافقة": "Approved",
 "التحويل قيد المراجعة — لم يُخصم شيء من رصيدك": "The transfer is under review — nothing was deducted from your balance",
+"تحويل قيد التحقق التلقائي": "Transfer pending the automatic check",
 "الحماية والسقوف": "Protection and caps",
 "مكافآت المساهمات اليوم:": "Contribution rewards today:", /* v2.165: fixes the EN sweep on #/mjt (v2.164 label renders as separate text nodes) */
 /* v2.166 MJT phase 8.3 «السمعة 2» (#/reputation, profile level, #/admin/mjt-reputation) */
