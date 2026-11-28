@@ -31,7 +31,7 @@
     const missing = [...(d.ai?.missingKeys || []), ...(d.assistantNeeds ? [d.assistantNeeds] : []), ...(!d.pi?.enabled ? ["مدفوعات Pi: PI_ENABLED=1"] : []), ...(!d.pi?.apiKeyPresent ? ["مدفوعات Pi: PI_API_KEY"] : [])];
     box.innerHTML = `<p class="muted">${h(d.note || "")}</p>
       <section class="card"><h4>${ic("chart")} الحالة</h4>
-        ${row("الإصدار", `<bdi dir="ltr">${h(d.version)}</bdi>`)}${row("الشبكة", `<bdi dir="ltr">${h(d.network)}</bdi>`)}${row("قاعدة البيانات", `<bdi dir="ltr">${h(d.database)}</bdi>`)}
+        ${row("الإصدار", `<bdi dir="ltr">${h(d.version)}</bdi>`)}${row("الشبكة", `<bdi dir="ltr">${h(d.network)}</bdi>`)}${row("قاعدة البيانات", `<bdi dir="ltr">${h(d.database)}</bdi>`)}${d.dbSize ? row("حجم قاعدة البيانات", `<bdi dir="ltr">${h((d.dbSize.bytes / 1048576).toFixed(1))} MB · ${num(d.dbSize.bytes)} bytes</bdi>`) + (d.dbSize.tables?.length ? `<div class="u-py8 u-bb"><small class="muted">أكبر الجداول (عدد الصفوف): ${d.dbSize.tables.map((t) => `<bdi dir="ltr">${h(t.name)}</bdi> ${num(t.rows)}`).join(" · ")}</small></div>` : "") : ""}
         ${row("مدفوعات Pi", yes(d.pi?.enabled))}${row("مفتاح Pi", yes(d.pi?.apiKeyPresent, "موجود", "غير موجود"))}
         ${row("الترجمة", yes(d.ai?.translate))}${row("المساعد", yes(d.ai?.assistant))}
         ${row("سعر بلس", d.plus?.pricePi === null || d.plus?.pricePi === undefined ? "السعر يُحدد قريباً" : `${num(d.plus.pricePi)} Pi / ${num(d.plus.periodDays)} يوماً · بلا تجديد تلقائي`)}

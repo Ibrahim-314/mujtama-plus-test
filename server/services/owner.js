@@ -25,13 +25,29 @@ module.exports = (ctx) => {
     if (!S.translate?.status?.().available) out.push("الترجمة: DEEPL_API_KEY أو OPENAI_API_KEY أو TRANSLATE_URL");
     return out;
   }
+  /** v2.167: database size in bytes (+ the 5 largest tables by rows) — for checking the hosting plan's storage limit. Read only. */
+  async function dbSize() {
+    try {
+      if (db.dialect === "postgres") {
+        const b = await db.get("SELECT pg_database_size(current_database()) AS b");
+        const top = await db.all("SELECT relname AS name, n_live_tup AS rows, pg_total_relation_size(relid) AS bytes FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 5");
+        return { bytes: Number(b?.b || 0), tables: top.map((t) => ({ name: t.name, rows: Number(t.rows || 0), bytes: Number(t.bytes || 0) })) };
+      }
+      const pc = await db.get("PRAGMA page_count"), ps = await db.get("PRAGMA page_size");
+      const bytes = Number(pc?.page_count || 0) * Number(ps?.page_size || 0);
+      const names = (await db.all("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")).map((r) => r.name).filter((x) => /^[A-Za-z0-9_]+$/.test(x));
+      const rows = [];
+      for (const nm of names.slice(0, 400)) rows.push({ name: nm, rows: await n(`SELECT COUNT(*) n FROM "${nm}"`) });
+      return { bytes, tables: rows.sort((a, b) => b.rows - a.rows).slice(0, 5) };
+    } catch { return null; }
+  }
   async function status() {
     const S = ctx.services, pi = S.pi?.diag?.() || {};
     const plan = await db.get("SELECT price FROM ai_plans WHERE slug='ai_plus'").catch(() => null);
     const supply = await S.mjt?.supply?.().catch(() => null);
     const auto = S.autoRules?.last || {};
     return {
-      version: config.version, network: DEF.network, database: db.dialect,
+      version: config.version, network: DEF.network, database: db.dialect, dbSize: await dbSize(),
       pi: { enabled: !!pi.enabled, apiKeyPresent: !!pi.apiKeyPresent, sandbox: !!pi.sandbox, authEnabled: pi.authEnabled !== false },
       plus: { pricePi: plan?.price === null || plan?.price === undefined ? null : Number(plan.price) / 1e7, periodDays: DEF.plus.periodDays, autoRenew: false, subscribers: await n("SELECT COUNT(DISTINCT s.user_id) n FROM ai_subscriptions s JOIN ai_plans p ON p.id=s.plan_id WHERE p.slug='ai_plus' AND s.period_end > $1", [new Date().toISOString()]) },
       ai: { translate: !!S.translate?.status?.().available, assistant: !!(await S.assistant?.status?.().catch(() => null))?.available, missingKeys: missingKeys(S) },

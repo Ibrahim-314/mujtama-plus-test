@@ -134,6 +134,7 @@ test("owner endpoints: owner only (403 member, 401 guest); status; ban needs a r
   clear(); const st = await owner.req("GET", "/api/owner/status"); assert.equal(st.status, 200, st.error);
   assert.equal(st.version, "2.167.0"); assert.equal(st.network, "testnet"); assert.equal(st.plus.periodDays, 30); assert.equal(st.plus.autoRenew, false);
   assert.ok(st.autoRules.rules.holdReleaseHours === 72); assert.ok(st.counts.users >= 3);
+  assert.ok(st.dbSize && st.dbSize.bytes > 0, "database size in bytes"); assert.ok(st.dbSize.tables.length > 0 && st.dbSize.tables[0].rows >= st.dbSize.tables[st.dbSize.tables.length - 1].rows, "largest tables by rows");
   const victim = await mk("w1_victim"); const vp = await post(victim, "منشور يبقى بعد الإيقاف");
   clear(); assert.equal((await owner.req("POST", "/api/owner/ban", { handle: victim.handle })).status, 400, "reason required");
   clear(); assert.equal((await owner.req("POST", "/api/owner/ban", { handle: owner.handle, reason: "إيقاف حساب المالك" })).status, 400, "an admin account cannot be banned");
