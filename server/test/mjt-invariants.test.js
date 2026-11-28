@@ -13,6 +13,7 @@ const L = require("../lib/mjt-ledger");
 const U = L.UNIT;
 
 let H, staff; const people = [];
+const RULES = { rewards: { dailyCap: 100000 * U }, transfers: { maxSingle: 1000000 * U, maxDaily: 10000000 * U, maxPerHour: 1000, minAccountDays: 0 } };
 const db = () => H.app.ctx.db, M = () => H.app.ctx.services.mjt;
 const OLD = new Date(Date.now() - 40 * 864e5).toISOString();
 async function mk(handle) {
@@ -32,11 +33,12 @@ async function newAward(uid, pts) {
 }
 
 test.before(async () => {
-  H = await boot({ mjtOpts: { autoConvert: false, jobs: false }, pointsOpts: { jobs: false } });
+  // v2.167: the MJT rules are fixed (app-defaults); this property test needs wide limits and no identity holds, so it uses the
+  // test-only overrides (never set in production)
+  H = await boot({ mjtOpts: { autoConvert: false, jobs: false, testRules: RULES }, mjtSafetyOpts: { testSettings: { identity: { enabled: false }, caps: { enabled: false } } }, pointsOpts: { jobs: false } });
   await M().ready;
   staff = await mk("inv_staff"); await db().run("UPDATE users SET role='admin' WHERE id=$1", [staff.id]);
   for (let i = 0; i < 6; i++) people.push(await mk("inv_u" + i));
-  await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { dailyCap: "100000" }, transfers: { maxSingle: "1000000", maxDaily: "10000000", maxPerHour: 1000, minAccountDays: 0 } });
 });
 test.after(() => H.app.close());
 
@@ -120,12 +122,12 @@ test("concurrency: one award rewarded once; parallel rewards respect the daily c
   const a = await newAward(x.id, 7);
   const r = await Promise.all(Array.from({ length: 10 }, () => M().onAward(a)));
   assert.equal(r.filter((y) => y.minted).length, 1); assert.equal(await balOf(x.id), 7 * U);
-  await H.app.ctx.services.mjt.ledger; await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { dailyCap: "30" } });
+  RULES.rewards.dailyCap = 30 * U;
   const many = []; for (let i = 0; i < 12; i++) many.push(await newAward(x.id, 4));
   const rs = await Promise.all(many.map((w) => M().onAward(w)));
   assert.equal(await balOf(x.id), 30 * U, "7 + 23 (the last reward is cut to what is left) = the cap");
   assert.equal(rs.filter((y) => y.reason === "daily_cap").length, 6);
-  await staff.req("PUT", "/api/admin/mjt/settings", { rewards: { dailyCap: "100000" } });
+  RULES.rewards.dailyCap = 100000 * U;
   assert.equal((await M().verify()).ok, true);
 });
 

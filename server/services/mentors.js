@@ -65,7 +65,6 @@ module.exports = (ctx, opts = {}) => {
   const NOTICE = +(env.MENTOR_NOTICE_HOURS || 12) * 3600e3, HORIZON = 14;
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return v ? JSON.parse(v) : d; } catch { return d; } };
   const ph = (a, o = 0) => a.map((_, i) => "$" + (i + 1 + o)).join(",");
-  const admin = (fn) => A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req); });
   const notify = async (uid, kind, ref, actor = null) => { try { await ctx.services.notify?.notify(uid, kind, { ref, actor }); } catch { /* best effort */ } };
   const isMinor = async (uid) => { try { return !!(await ctx.services.minors?.isMinorUser?.(uid)); } catch { return false; } };
   /** ids of minors among `ids` in ONE age_profiles query (minors.minorIds); falls back to per-id isMinor when absent. Same answers as isMinor. */
@@ -1123,10 +1122,8 @@ module.exports = (ctx, opts = {}) => {
   R.put("/api/mentor-goals/:id", A(async (req) => updateGoal(req.user, req.params.id, req.body || {})));
   R.del("/api/mentor-goals/:id", A(async (req) => deleteGoal(req.user, req.params.id)));
   R.get("/api/mentor-sessions/:id/goals", A(async (req) => goalsOfSession(req.user, req.params.id)));
-  R.get("/api/admin/mentors", admin(async () => adminView()));
-  R.post("/api/admin/mentors/:uid/status", admin(async (req) => setStatus(req.user, req.params.uid, req.body || {})));
-  R.post("/api/admin/mentors/:uid/review", admin(async (req) => setReviewed(req.user, req.params.uid, req.body || {})));
+  /* v2.167: /api/admin/mentors/* removed — mentoring has no staff step */
 
   const settle = async () => { for (let i = 0; i < 5; i++) { await new Promise((r) => setImmediate(r)); while (inflight.size) await Promise.all([...inflight]); } };
-  return { roomAccess, ssr, tick, weeklySummaries, slotAlert, isoWeek, settle, freeSlots, directory, match, book, act, adminView, TOPICS, STATUSES, _tz: { zoned, partsAt, offsetMin } };
+  return { roomAccess, ssr, tick, weeklySummaries, slotAlert, isoWeek, settle, freeSlots, directory, match, book, act, adminView, setStatus, setReviewed, TOPICS, STATUSES, _tz: { zoned, partsAt, offsetMin } };
 };

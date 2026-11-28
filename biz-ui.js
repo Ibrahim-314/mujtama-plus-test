@@ -236,26 +236,10 @@
     box.innerHTML = `${r.businesses.length ? `<ul class="bz-ul">${r.businesses.map((b) => `<li><a class="bz-grow" href="${h(b.href)}"><b>${h(b.name)}</b> ${verified(b.verified)}<div class="u-m0 bz-sub">${h(b.categoryLabel || "")}${b.city ? ` · ${h(b.city)}` : ""}</div></a>${b.status !== "approved" ? `<span class="bz-st ${b.status === "pending" ? "pending" : "rejected"}">${b.status === "pending" ? "بانتظار المراجعة" : "مرفوض"}</span>` : b.mine ? `<a class="u-mh44 btn ghost" href="#/biz/${enc(b.id)}/edit">تعديل</a>` : ""}</li>`).join("")}</ul>` : `<div class="empty"><b>لا أنشطة لك بعد</b>أضف نشاطك ليجده عملاء يقبلون الدفع بـ Pi في مدينتك.<br><a class="btn" href="#/biz/new"><svg class=ix aria-hidden=true><use href=#i-plus /></svg>أضف نشاطك</a></div>`}
       ${r.claims.length ? `<h3>طلبات الإدارة</h3><ul class="bz-ul">${r.claims.map((c) => `<li><a class="bz-grow" href="#/biz/${enc(c.placeId)}"><b>${h(c.name)}</b><div class="u-m0 bz-sub">${rel(c.at)}${c.note ? ` · ${h(c.note)}` : ""}</div></a><span class="bz-st ${c.status}">${ST[c.status] || c.status}</span></li>`).join("")}</ul>` : ""}`;
   }
-  async function adminView() {
-    const st = qs().get("status") || "pending";
-    page("طلبات إدارة الأنشطة", `<nav class="bz-tabs seg" aria-label="الحالة">${[["pending", "قيد المراجعة"], ["approved", "مقبولة"], ["rejected", "مرفوضة"]].map(([k, l]) => `<a href="#/admin/biz?status=${k}" ${k === st ? 'aria-current="page"' : ""}>${l}</a>`).join("")}</nav><div id="bz-a">${skel(2)}</div>`, ["#/admin", "الإدارة"], "تحقق من الأدلة قبل القبول. القبول يمنح الملكية وعلامة «موثّق»؛ الرفض يحتاج سبباً يصل لصاحب الطلب. الأماكن الجديدة تُراجع في <a href=\"#/admin/places\">طابور الأماكن</a>.");
-    let r; try { r = await api("GET", "/api/admin/biz/claims?status=" + enc(st)); } catch (e) { if ($("#bz-a")) $("#bz-a").innerHTML = errBox(e); return; }
-    const box = $("#bz-a"); if (!box) return;
-    box.innerHTML = r.claims.length ? r.claims.map((c) => `<article class="bz-card bz-cl" data-c="${h(c.id)}"><div class="u-m0 bz-row"><a class="u-ci u-fw8 u-tdn bz-grow" href="#/biz/${enc(c.placeId)}">${h(c.place.name)}</a>${c.place.status !== "approved" ? `<span class="bz-st pending">المكان ${c.place.status === "pending" ? "بانتظار المراجعة" : h(c.place.status)}</span>` : ""}${c.hasOwner ? `<span class="bz-st rejected">له مالك موثّق</span>` : ""}</div>
-      <div class="u-m0 bz-sub">${h(c.place.categoryLabel)}${c.place.city ? ` · ${h(c.place.city)}` : ""} · ${c.roleLabel} · <a href="#/u/${enc(c.by.handle)}"><bdi dir="ltr">@${h(c.by.handle)}</bdi></a> (انضم ${rel(c.by.since)}) · ${rel(c.at)}</div>
-      <blockquote>${h(c.evidence)}</blockquote>${c.contact ? `<div class="u-m0 bz-sub"><svg class=ix aria-hidden=true><use href=#i-phone /></svg> للمشرفين: <bdi dir="ltr">${h(c.contact)}</bdi></div>` : ""}${c.note ? `<div class="bz-sub">ملاحظة: ${h(c.note)}</div>` : ""}
-      ${c.status === "pending" ? `<div class="bz-row"><button type="button" class="btn" data-ok>✓ قبول وتوثيق</button><button type="button" class="btn ghost" data-no>رفض…</button></div>` : ""}</article>`).join("") : `<div class="empty"><b>لا طلبات هنا</b>${st === "pending" ? "كل الطلبات رُوجعت." : ""}</div>`;
-    box.addEventListener("click", async (e) => {
-      const card = e.target.closest("[data-c]"); if (!card) return; const ok = e.target.closest("[data-ok]"), no = e.target.closest("[data-no]"); if (!ok && !no) return;
-      const note = no ? prompt("سبب الرفض (يصل لصاحب الطلب):") : null; if (no && !note) return;
-      try { await api("POST", "/api/admin/biz/claims/" + enc(card.dataset.c), { decision: ok ? "approve" : "reject", note: note || undefined }); card.style.opacity = ".5"; card.querySelector(".bz-row:last-child").outerHTML = `<p class="bz-sub">${ok ? "✓ قُبل ووُثّق" : "رُفض"}</p>`; } catch (x) { say(x.message); }
-    });
-  }
-
   MPRoutes.extend((a, b, base) => {
     return { biz: () => (!a ? listView() : a === "new" ? newView() : a === "mine" ? mineView() : b === "edit" ? editView(a) : bizView(a)) };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "biz" ? adminView() : next()));
-  window.MPBiz = { listView, bizView, newView, editView, mineView, adminView, version: "__APP_VERSION__" };
-  if (/^#\/(biz|admin\/biz)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+  /* v2.167: #/admin/biz removed — ownership claims are granted automatically to Pi-verified accounts (services/auto-rules.js) */
+  window.MPBiz = { listView, bizView, newView, editView, mineView, version: "__APP_VERSION__" };
+  if (/^#\/biz\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

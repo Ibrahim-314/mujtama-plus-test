@@ -2,7 +2,7 @@
 /* Phase 77 e2e (jobs & freelance board) against the REAL server (production build), mobile viewport.
  * Employer = staff (first account → admin, 390 light): posts a job through #/jobs/new (published at once), sees the Pi-off
  *   notice on «تمييز الإعلان», opens #/job/:id/applicants, the application (applicant's professional profile, next step with a
- *   message, private note, messages), sees the scam warning on a risky message, reviews a held posting in #/admin/jobs.
+ *   message, private note, messages), sees the scam warning on a risky message, a held posting is published by the automatic rules (v2.167).
  * Applicant (new member, 360 dark): browses #/jobs (search + filter sheet), opens the job, is told to create a professional
  *   profile, then applies (cover + screening answer) in the sheet, follows #/application/:id, messages, sees «إعلاناتي وطلباتي»;
  *   posts a freelance project from a new account with a messaging-app link → held for review with reasons.
@@ -133,19 +133,16 @@ test("employer pipeline: applicants, profile, next step, note, messages + scam w
   assert.deepEqual(await axe(u), [], "new form dark"); await shot(u, "new-360-dark");
   await tap(u, "#wk-jform [type=submit]"); await until(u, () => /^#\/job\//.test(location.hash)); await textHas(u, /قيد المراجعة/); await textHas(u, /خارج المنصة/);
   const held = await u.evaluate(() => location.hash.split("/")[2]);
-  // staff queue: remove the held posting; a report on the open job then dismiss
-  await light(p); rl(); await go(p, "#/admin/jobs"); await until(p, () => !!document.querySelector('[data-jm="approve"]')); await textHas(p, /تصميم شعار/);
-  assert.deepEqual(await axe(p), [], "admin light"); await shot(p, "admin-390-light");
-  await tap(p, `[data-jm="remove"][data-j="${held}"]`); await until(p, () => /لا إعلانات بانتظار المراجعة/.test(document.querySelector("#wk-aj")?.textContent || ""));
-  assert.equal((await S.app.ctx.db.get("SELECT status FROM jobs WHERE id=$1", [held])).status, "removed");
+  // v2.167: #/admin/jobs was removed — a held posting by a new account is published automatically after 24 h when nobody
+  // reported it; a report on an open job is recorded for the automatic report rules
+  assert.equal((await S.app.ctx.db.get("SELECT status FROM jobs WHERE id=$1", [held])).status, "review");
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 25 * 3600e3) });
+  assert.notEqual((await S.app.ctx.db.get("SELECT status FROM jobs WHERE id=$1", [held])).status, "review", "published automatically");
   rl(); const r = await fetch(S.base + "/api/auth/register", { method: "POST", headers: H(), body: JSON.stringify({ name: "مبلّغ", handle: "p77_rep", password: "secret123" }) });
   const ck = r.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
   const rep = await fetch(S.base + `/api/jobs/${jobId}/report`, { method: "POST", headers: { ...H(), Cookie: ck }, body: JSON.stringify({ reason: "other", note: "تجربة" }) }); assert.equal(rep.status, 200);
-  await go(p, "#/jobs"); await go(p, "#/admin/jobs"); await until(p, () => !!document.querySelector('[data-jm="dismiss"]'));
-  await dark(p); await p.waitForTimeout(200); assert.deepEqual(await axe(p), [], "admin dark");
-  await tap(p, '[data-jm="dismiss"]'); await until(p, () => /لا بلاغات مفتوحة/.test(document.querySelector("#wk-aj")?.textContent || ""));
-  await go(u, "#/jobs"); await go(u, "#/job/" + held); await textHas(u, /أُزيل/); await shot(u, "removed-360-dark");
-  assert.ok(await S.app.ctx.db.get("SELECT 1 x FROM notifications WHERE kind='job_removed'"));
+  assert.ok(await S.app.ctx.db.get("SELECT 1 x FROM job_reports WHERE job_id=$1 AND status='open'", [jobId]), "report recorded");
+  await dark(u); await go(u, "#/jobs"); await go(u, "#/job/" + held); await textHas(u, /تصميم شعار/); assert.deepEqual(await axe(u), [], "published job dark"); await shot(u, "published-360-dark");
   // hire → job filled
   await light(p); rl(); await go(p, "#/application/" + appId); await until(p, () => !!document.querySelector('[data-next="offered"]'));
   await tap(p, '[data-next="offered"]'); await until(p, () => !!document.querySelector('[data-next="hired"]'));

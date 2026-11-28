@@ -1,6 +1,7 @@
 /* v2.87 «التعدين» — 24-hour MJT mining sessions + daily sign-in reward (services/mining.js, migration 079). */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 const L = require("../lib/mjt-ledger");
 
 const T0 = Date.parse("Sat 2026-10-24 12:00 PM (UTC+03:00)");
@@ -9,7 +10,11 @@ const db = () => H.app.ctx.db, M = () => H.app.ctx.services.mjt;
 async function mk(handle) {
   H.app.ctx.rl.w.clear();
   const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: "عضو " + handle, handle, password: "secret123" });
-  assert.equal(r.status, 200, r.error); c.id = r.user.id; return c;
+  assert.equal(r.status, 200, r.error); c.id = r.user.id;
+  // v2.167: mining and the sign-in reward pass the identity checks (always on) — these members are Pi-verified and 40 days old;
+  // a new / non-Pi account is held and released after 72 h (server/test/wave1-auto-v2167.test.js)
+  await db().run("UPDATE users SET created_at=$1, pi_uid=$2 WHERE id=$3", [new Date(Date.now() - 40 * 864e5).toISOString(), "pi_" + handle, c.id]);
+  return c;
 }
 const bal = async (uid) => Number((await db().get("SELECT balance FROM mjt_accounts WHERE id=$1", ["user:" + uid]))?.balance || 0);
 
@@ -59,18 +64,17 @@ test("daily sign-in pays 1 MJT once per day and counts a streak", async () => {
   const h = await c.req("GET", "/api/mjt/history"); assert.ok(h.items.some((i) => i.label === "مكافأة الدخول اليومي"));
 });
 
-test("frozen wallet keeps the session until unfrozen; admin settings; guests refused", async () => {
+test("frozen wallet keeps the session until unfrozen; fixed rates (no admin settings); guests refused", async () => {
   now = T0; const d = await mk("mine_d"), adm = await mk("mine_adm");
   await db().run("UPDATE users SET role='admin' WHERE id=$1", [adm.id]);
   await d.req("POST", "/api/mjt/mining/start");
-  await adm.req("POST", "/api/admin/mjt/accounts/mine_d/freeze", { frozen: true, reason: "مراجعة اختبار" });
+  await AD(adm, "POST", "/api/admin/mjt/accounts/mine_d/freeze", { frozen: true, reason: "مراجعة اختبار" });
   now = T0 + 25 * 3600e3;
   const f = await d.req("POST", "/api/mjt/mining/claim"); assert.equal(f.status, 409); assert.equal(f.code, "account_frozen");
-  await adm.req("POST", "/api/admin/mjt/accounts/mine_d/freeze", { frozen: false, reason: "انتهت المراجعة" });
+  await AD(adm, "POST", "/api/admin/mjt/accounts/mine_d/freeze", { frozen: false, reason: "انتهت المراجعة" });
   const ok = await d.req("POST", "/api/mjt/mining/claim"); assert.equal(ok.claimed, "5");
-  const s = await adm.req("PUT", "/api/admin/mjt/mining", { rate: "7", checkin: "2" }); assert.equal(s.rate, "7"); assert.equal(s.checkin, "2");
-  const no = await d.req("PUT", "/api/admin/mjt/mining", { rate: "50" }); assert.equal(no.status, 403);
-  const st = await d.req("POST", "/api/mjt/mining/start"); assert.equal(st.state.session.amount, "7");
-  await adm.req("PUT", "/api/admin/mjt/mining", { rate: "5", checkin: "1" });
+  // v2.167: the rates are fixed (app-defaults: 5 per session, 1 per sign-in); the admin settings route is gone for everyone
+  for (const c of [adm, d]) assert.equal((await c.req("PUT", "/api/admin/mjt/mining", { rate: "7", checkin: "2" })).status, 404);
+  const st = await d.req("POST", "/api/mjt/mining/start"); assert.equal(st.state.session.amount, "5");
   const g = await new H.Client().req("GET", "/api/mjt/mining"); assert.equal(g.status, 401);
 });

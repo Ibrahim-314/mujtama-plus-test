@@ -115,7 +115,7 @@ function moreMenu(pid) {
   const s = sheet(`<div class="menu">
     <button data-a="why"><svg class=ei aria-hidden=true><use href=#i-bulb /></svg> لماذا أرى هذا؟</button>
     ${mine ? `<button data-a="edit"><svg class=ei aria-hidden=true><use href=#i-pen /></svg> تعديل</button><button data-a="del" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-trash /></svg> حذف</button>` :
-      `<button data-a="ni"><svg class=ei aria-hidden=true><use href=#i-eyeOff /></svg> غير مهتم</button><button data-a="mt"><svg class=ei aria-hidden=true><use href=#i-volumeX /></svg> كتم موضوع ${esc(S.topic(p.topic)?.name || "")}</button><button data-a="mu"><svg class=ei aria-hidden=true><use href=#i-bellOff /></svg> كتم ${esc(u.name)}</button><button data-a="bl"><svg class=ei aria-hidden=true><use href=#i-ban /></svg> حظر ${esc(u.name)}</button><button data-a="rep" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-flag /></svg> إبلاغ</button>`}
+      `${p.visibility === "public" || !p.visibility ? `<button data-a="appr"><svg class=ei aria-hidden=true><use href=#i-heart /></svg> تقدير بمجتمع كوين</button>` : ""}<button data-a="ni"><svg class=ei aria-hidden=true><use href=#i-eyeOff /></svg> غير مهتم</button><button data-a="mt"><svg class=ei aria-hidden=true><use href=#i-volumeX /></svg> كتم موضوع ${esc(S.topic(p.topic)?.name || "")}</button><button data-a="mu"><svg class=ei aria-hidden=true><use href=#i-bellOff /></svg> كتم ${esc(u.name)}</button><button data-a="bl"><svg class=ei aria-hidden=true><use href=#i-ban /></svg> حظر ${esc(u.name)}</button><button data-a="rep" class="u-c-dg"><svg class=ei aria-hidden=true><use href=#i-flag /></svg> إبلاغ</button>`}
   </div>`);
   s.querySelectorAll("[data-a]").forEach(b => b.onclick = () => {
     const a = b.dataset.a;
@@ -128,6 +128,7 @@ function moreMenu(pid) {
     if (a === "mu") { Cmd.mute("users", p.author); toast("تم الكتم"); }
     if (a === "bl") { Cmd.block(p.author); toast("تم الحظر"); }
     if (a === "rep") return reportFlow(pid, "post");
+    if (a === "appr") return MPChunks.load("mjt").then(() => MPMjtServices.appr(pid)); // v2.167 «تقدير» sheet lives in the lazy mjt chunk
     rerender();
   });
 }

@@ -7,6 +7,8 @@
  * review queue lists, approves and rejects both kinds; admin only. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
+const DEF = require("../config/app-defaults");
 const { UNIT } = require("../lib/mjt-ledger");
 
 const DAY = 864e5;
@@ -23,22 +25,34 @@ async function mk(handle, { ageDays = 40, pi = true } = {}) {
   return cl;
 }
 const age = (u, days) => db().run("UPDATE users SET created_at=$1 WHERE id=$2", [new Date(Date.now() - days * DAY).toISOString(), u.id]);
-const fund = async (u, amount) => { clear(); const r = await admin.req("POST", "/api/admin/mjt/adjust", { ikey: key("f"), handle: u.handle, amount: String(amount), reason: "رصيد اختبار الأمان" }); assert.equal(r.status, 200, r.error); };
-const safety = async (body, reason = "تغيير إعداد للاختبار") => { clear(); const r = await admin.req("PUT", "/api/admin/mjt/safety", { ...body, reason }); assert.equal(r.status, 200, r.error); return r; };
-const setSource = async (k, body) => { clear(); const r = await admin.req("PUT", "/api/admin/mjt/rewards/sources/" + k, body); assert.equal(r.status, 200, r.error); return r.source; };
+const fund = async (u, amount) => { clear(); const r = await AD(admin, "POST", "/api/admin/mjt/adjust", { ikey: key("f"), handle: u.handle, amount: String(amount), reason: "رصيد اختبار الأمان" }); assert.equal(r.status, 200, r.error); };
+/* v2.167: production runs these rules always ON with fixed values (app-defaults; see the «fixed ON» test below). This file tests
+ * each RULE on its own, so it drives them through the test-only override (mjtSafetyOpts.testSettings, read on every call) and sets
+ * source rows directly — the admin switch / source editor no longer exist. */
+const T = { identity: { enabled: false }, caps: { enabled: false }, course: { perLesson: false } };
+const safety = async (body) => { for (const [k, v] of Object.entries(body)) T[k] = { ...(T[k] || {}), ...v }; };
+const COLS = { amount: "amount", enabled: "enabled" };
+const setSource = async (k, body) => {
+  for (const [f, v] of Object.entries(body)) await db().run(`UPDATE mjt_reward_sources SET ${COLS[f]}=$1 WHERE key=$2`, [f === "amount" ? Number(v) * UNIT : v ? 1 : 0, k]);
+  if (body.enabled) { // the «no back-pay» gate: a source switched on pays only events from now (as ensureSources marks it)
+    const m = JSON.parse((await db().get("SELECT value FROM mjt_settings WHERE key='reward_since'"))?.value || "{}"); m[k] = new Date().toISOString();
+    await db().run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('reward_since',$1,'test',$2) ON CONFLICT (key) DO UPDATE SET value=$1", [JSON.stringify(m), new Date().toISOString()]);
+  }
+};
 const achieve = async (uid, type, ref) => { await ACH().record(uid, type, ref); await RW().settle(); };
 const entry = (uid, type, ref) => db().get("SELECT * FROM mjt_reward_entries WHERE idempotency_key=$1", [`ach:${uid}:${type}:${ref}`]);
 const xfer = async (from, to, amount) => { clear(); return from.req("POST", "/api/mjt/transfers", { to: to.handle, amount: String(amount), ikey: key("x") }); };
 const sessionIp = (u, ip) => db().run("INSERT INTO sessions(token_hash,user_id,ip,ua,created_at,expires_at) VALUES($1,$2,$3,'test',$4,$5)", ["th_" + key(), u.id, ip, new Date().toISOString(), new Date(Date.now() + DAY).toISOString()]);
-const offAll = () => safety({ identity: { enabled: false }, caps: { enabled: false }, course: { perLesson: false } }, "إعادة الإعدادات إلى الإيقاف");
+const offAll = async () => { for (const k of Object.keys(T)) delete T[k]; Object.assign(T, { identity: { enabled: false }, caps: { enabled: false }, course: { perLesson: false } }); };
 
 test.before(async () => {
-  H = await boot({ mjtOpts: { autoConvert: false, jobs: false }, pointsOpts: { jobs: false } });
+  H = await boot({ mjtOpts: { autoConvert: false, jobs: false }, pointsOpts: { jobs: false }, mjtSafetyOpts: { testSettings: T }, mjtRewardsOpts: { testEngine: { velocityPerHour: 1000 } } });
   await S().mjt.ready; await RW().ready;
+  // production boot turns every approved source ON (checked in the «fixed ON» test); the rule tests below start from all off
+  await db().run("UPDATE mjt_reward_sources SET enabled=0, amount=NULL");
   admin = await mk("sf_admin"); a = await mk("sf_a"); b = await mk("sf_b"); c = await mk("sf_c"); d = await mk("sf_d");
   await db().run("UPDATE users SET role='admin' WHERE id=$1", [admin.id]); await db().run("UPDATE users SET role='member' WHERE id<>$1", [admin.id]);
   await S().mjt.dropMinAge();
-  clear(); assert.equal((await admin.req("PUT", "/api/admin/mjt/rewards/settings", { velocityPerHour: 1000 })).status, 200);
 });
 test.after(() => H.app.close());
 test.beforeEach(clear);
@@ -52,31 +66,29 @@ test("migration 093 is additive and reversible", async () => {
   assert.deepEqual(await mig.up(db()), ["093_mjt_safety", ...later]);
 });
 
-test("defaults: no 'safety' row, every switch OFF; the 10 new sources ship disabled with no amount (plan caps pre-filled)", async () => {
-  assert.equal(await db().get("SELECT value FROM mjt_settings WHERE key='safety'"), undefined);
-  const r = await admin.req("GET", "/api/admin/mjt/safety"); assert.equal(r.status, 200, r.error);
-  assert.equal(r.settings.identity.enabled, false); assert.equal(r.settings.caps.enabled, false); assert.equal(r.settings.course.perLesson, false);
-  assert.equal(r.settings.identity.minAccountDays, 7); assert.deepEqual([r.settings.caps.daily, r.settings.caps.weekly, r.settings.caps.monthly], [50, 250, 800]);
-  assert.deepEqual([r.settings.caps.level12, r.settings.caps.level34, r.settings.caps.level5], [30, 40, 50]);
-  assert.equal(r.sources.length, 13); assert.ok(r.sources.every((x) => x.wired && !x.enabled && x.amount === null), "all wired, all off");
+test("v2.167 fixed ON: identity checks + overall caps + per-lesson course amount always on with the plan values; the approved sources are ON; the old 'safety' row is not read", async () => {
+  const P = SF().DEFAULTS;
+  assert.equal(P.identity.enabled, true); assert.equal(P.caps.enabled, true); assert.equal(P.course.perLesson, true);
+  assert.equal(P.identity.minAccountDays, 7); assert.equal(P.identity.requirePi, true); assert.deepEqual([P.caps.daily, P.caps.weekly, P.caps.monthly], [50, 250, 800]);
+  assert.deepEqual([P.caps.level12, P.caps.level34, P.caps.level5], [30, 40, 50]);
+  assert.deepEqual(P, JSON.parse(JSON.stringify(DEF.mjt.safety)));
+  await db().run("INSERT INTO mjt_settings(key,value,updated_by,updated_at) VALUES('safety',$1,'old_admin',$2) ON CONFLICT (key) DO UPDATE SET value=$1", [JSON.stringify({ identity: { enabled: false }, caps: { enabled: false } }), new Date().toISOString()]);
+  const st = await SF().state(); assert.equal(st.defaults.identity.enabled, true, "an old stored 'safety' row is ignored");
+  assert.equal(st.sources.length, 13); assert.ok(st.sources.every((x) => x.wired), "all wired");
+  // a fresh sync turns every approved source ON with its plan amount and caps (no admin step)
+  await RW().ensureSources();
   const src = (await RW().listSources()).sources;
-  for (const k of ["answer_accepted", "useful_post", "wiki_edit", "report_confirmed", "newcomer_help", "friend_active", "exam_certified", "study_session", "daily_activity", "active_week"]) {
-    const x = src.find((s) => s.key === k); assert.ok(x, k); assert.equal(x.enabled, false, k); assert.equal(x.amount, null, k);
-  }
+  for (const [k, d] of Object.entries(DEF.mjt.sources)) { const x = src.find((s) => s.key === k); assert.ok(x, k); assert.equal(x.enabled, true, k); assert.equal(x.amount, String(d.amount), k); }
   assert.equal(src.find((s) => s.key === "answer_accepted").dailyCap, 5); assert.equal(src.find((s) => s.key === "friend_active").monthlyCap, 10); assert.equal(src.find((s) => s.key === "exam_certified").weeklyCap, 2);
-  assert.equal(src.find((s) => s.key === "quiz_passed").dailyCap, null, "the v2.160 sources keep their own seed");
+  await db().run("UPDATE mjt_reward_sources SET enabled=0, amount=NULL"); // back to the rule-test baseline
 });
 
-test("admin only: members 403, signed out 401, nothing written; a change needs a reason and valid values", async () => {
-  for (const [m, p, body] of [["GET", "/api/admin/mjt/safety"], ["PUT", "/api/admin/mjt/safety", { identity: { enabled: true }, reason: "محاولة عضو" }], ["GET", "/api/admin/mjt/review"], ["POST", "/api/admin/mjt/review/transfer/x/approve", {}]]) {
-    clear(); assert.equal((await a.req(m, p, body)).status, 403, `${m} ${p}`);
-    clear(); assert.equal((await new H.Client().req(m, p, body)).status, 401);
+test("v2.167: the admin safety / review API is gone — 404 for members, admins and guests; nothing written", async () => {
+  const row0 = await db().get("SELECT value FROM mjt_settings WHERE key='safety'");
+  for (const [m, p, body] of [["GET", "/api/admin/mjt/safety"], ["PUT", "/api/admin/mjt/safety", { identity: { enabled: true }, reason: "محاولة تغيير" }], ["GET", "/api/admin/mjt/review"], ["POST", "/api/admin/mjt/review/transfer/x/approve", {}]]) {
+    for (const cl of [a, admin, new H.Client()]) { clear(); assert.equal((await cl.req(m, p, body)).status, 404, `${m} ${p}`); }
   }
-  assert.equal(await db().get("SELECT value FROM mjt_settings WHERE key='safety'"), undefined);
-  clear(); let r = await admin.req("PUT", "/api/admin/mjt/safety", { identity: { enabled: true }, reason: "قصير" }); assert.equal(r.code, "reason_required");
-  clear(); r = await admin.req("PUT", "/api/admin/mjt/safety", { caps: { daily: 900 }, reason: "سبب كافٍ هنا" }); assert.equal(r.code, "caps_order");
-  clear(); r = await admin.req("PUT", "/api/admin/mjt/safety", { identity: { enabled: "yes" }, reason: "سبب كافٍ هنا" }); assert.equal(r.status, 400);
-  assert.equal(await db().get("SELECT value FROM mjt_settings WHERE key='safety'"), undefined, "a refused change writes nothing");
+  assert.deepEqual(await db().get("SELECT value FROM mjt_settings WHERE key='safety'"), row0, "nothing written");
 });
 
 test("switches OFF = old behaviour: a 1-day-old, non-Pi account earns and transfers at once; no overall cap; new sources pay and write nothing", async () => {
@@ -106,14 +118,14 @@ test("identity ON: a new / non-Pi earner waits as pending (not lost); the queue 
   assert.equal((await entry(a.id, "quiz_passed", "les_ok1")).status, "posted", "an old, Pi-authenticated member is paid as before");
   assert.equal(await bal(young), 0); assert.equal(await bal(nopi), 0);
   const mr = await young.req("GET", "/api/mjt/wallet/review"); assert.equal(mr.items[0].status, "pending"); assert.match(mr.items[0].reason, /عمر الحساب/);
-  const q = await admin.req("GET", "/api/admin/mjt/review"); assert.equal(q.status, 200, q.error);
+  const q = await AD(admin, "GET", "/api/admin/mjt/review"); assert.equal(q.status, 200, q.error);
   const qy = q.items.find((x) => x.id === ey.id); assert.ok(qy); assert.equal(qy.kind, "earn"); assert.match(qy.reasonsText, /عمر الحساب/);
   const sy = q.members.find((m) => m.member.handle === "sf_young"); assert.ok(sy && sy.signals.ageDays <= 2 && sy.signals.piLinked === true);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/earn/${ey.id}/approve`, {})).status, 200);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/earn/${ey.id}/approve`, {})).status, 200);
   assert.equal(await bal(young), 4 * UNIT);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/earn/${ey.id}/approve`, {})).status, 409, "decided once");
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/earn/${ep.id}/reject`, {})).status, 400, "reason required");
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/earn/${ep.id}/reject`, { reason: "حساب غير موثّق" })).status, 200);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/earn/${ey.id}/approve`, {})).status, 409, "decided once");
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/earn/${ep.id}/reject`, {})).status, 400, "reason required");
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/earn/${ep.id}/reject`, { reason: "حساب غير موثّق" })).status, 200);
   assert.equal(await bal(nopi), 0); assert.equal(await n("SELECT COUNT(*) n FROM mjt_reward_entries WHERE id=$1", [ep.id]), 1, "nothing deleted");
   await setSource("quiz_passed", { enabled: false }); await offAll();
 });
@@ -149,17 +161,17 @@ test("identity ON: a transfer from a new account is held (nothing moves); approv
   const rv = await young.req("GET", "/api/mjt/wallet/review"); assert.ok(rv.items.some((x) => x.kind === "transfer_hold" && x.status === "pending"));
   const h1 = r.hold.id;
   r = await xfer(young, b, 15); const h2 = r.hold.id;
-  const q = await admin.req("GET", "/api/admin/mjt/review?kind=transfer"); assert.equal(q.counts.transfer, 2); assert.ok(q.items.every((x) => x.kind === "transfer"));
-  clear(); r = await admin.req("POST", `/api/admin/mjt/review/transfer/${h1}/approve`, {}); assert.equal(r.status, 200, r.error); assert.equal(r.item.status, "approved");
+  const q = await AD(admin, "GET", "/api/admin/mjt/review?kind=transfer"); assert.equal(q.counts.transfer, 2); assert.ok(q.items.every((x) => x.kind === "transfer"));
+  clear(); r = await AD(admin, "POST", `/api/admin/mjt/review/transfer/${h1}/approve`, {}); assert.equal(r.status, 200, r.error); assert.equal(r.item.status, "approved");
   assert.equal(await bal(young), 80 * UNIT); assert.equal(await bal(b), b0 + 20 * UNIT);
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/transfer/${h1}/approve`, {})).status, 409, "decided once");
-  clear(); r = await admin.req("POST", `/api/admin/mjt/review/transfer/${h2}/reject`, { reason: "حساب جديد جداً" }); assert.equal(r.status, 200, r.error);
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/transfer/${h1}/approve`, {})).status, 409, "decided once");
+  clear(); r = await AD(admin, "POST", `/api/admin/mjt/review/transfer/${h2}/reject`, { reason: "حساب جديد جداً" }); assert.equal(r.status, 200, r.error);
   assert.equal(await bal(young), 80 * UNIT); assert.equal(await bal(b), b0 + 20 * UNIT);
   assert.equal(await n("SELECT COUNT(*) n FROM mjt_audit WHERE action IN ('transfer_held','transfer_hold_approved','transfer_hold_rejected')"), 4);
   // approval re-checks the balance: an approval the sender can no longer cover fails and the hold stays pending
   r = await xfer(young, b, 70); const h3 = r.hold.id; await fund(young, 1); clear();
-  await admin.req("POST", "/api/admin/mjt/adjust", { ikey: key("dn"), handle: young.handle, amount: "-60", reason: "خصم اختبار الأمان" });
-  clear(); assert.equal((await admin.req("POST", `/api/admin/mjt/review/transfer/${h3}/approve`, {})).code, "insufficient_balance");
+  await AD(admin, "POST", "/api/admin/mjt/adjust", { ikey: key("dn"), handle: young.handle, amount: "-60", reason: "خصم اختبار الأمان" });
+  clear(); assert.equal((await AD(admin, "POST", `/api/admin/mjt/review/transfer/${h3}/approve`, {})).code, "insufficient_balance");
   assert.equal((await db().get("SELECT status FROM mjt_transfer_holds WHERE id=$1", [h3])).status, "pending");
   await offAll();
   r = await xfer(young, b, 5); assert.ok(r.transfer && !r.pending, "switch off again → sent at once");
@@ -185,8 +197,8 @@ test("caps ON: 50/day with the level cap (level 1 → 30); the earn is reduced t
   assert.equal(await bal(m), 30 * UNIT, "level 1 daily cap 30: 25 + 5, then nothing");
   assert.equal(Number((await entry(m.id, "quiz_passed", "cap2")).amount), 5 * UNIT); assert.equal(await entry(m.id, "quiz_passed", "cap3"), undefined, "skipped above the cap");
   const caps = await SF().capsOf(m.id); assert.equal(caps.daily, 30); assert.equal(caps.used.day, "30");
-  // level 5 (points level index 4) → 50
-  const hi = await mk("sf_level5"); await db().run("INSERT INTO points_balances(user_id,total,redeemable,redeemed,level,optout,updated_at) VALUES($1,1000,0,0,4,0,$2)", [hi.id, new Date().toISOString()]);
+  // level 5 → 50 (v2.167: «السمعة 2» is always on, so the cap level is the unified reputation level: 2000 points × 0.5 = 1000 → level 5)
+  const hi = await mk("sf_level5"); await db().run("INSERT INTO points_balances(user_id,total,redeemable,redeemed,level,optout,updated_at) VALUES($1,2000,0,0,4,0,$2)", [hi.id, new Date().toISOString()]);
   for (const r of ["l1", "l2", "l3"]) await achieve(hi.id, "quiz_passed", r);
   assert.equal(await bal(hi), 50 * UNIT);
   // flat daily cap without levels; the weekly cap

@@ -305,20 +305,9 @@ test("#/settings/ads prefs: personalized switch + hidden advertisers", async () 
   assert.equal(await P.isChecked("#ad-pz"), false);
 });
 
-test("admin: card on #/admin + #/admin/ads/review (reasons required for reject, approve)", async () => {
-  await go("#/admin"); await P.waitForSelector("#ad-adm", { timeout: 15000 });
-  await P.click("#ad-adm"); await P.waitForSelector("#ad-rq [data-ad-rv]");
-  assert.equal(await P.$$eval("#ad-rq [data-ad-rv]", n => n.length), 2);
-  assert.match(await P.textContent("[data-ad-rv=ac_q1]"), /promo_claim/);
-  assert.deepEqual(await axeOn(P, "#view"), []);
-  await P.click("[data-ad-rv=ac_q1] [data-ad-dec=reject]");
-  await until(() => /سبباً واحداً/.test(document.querySelector("[data-ad-rv=ac_q1] [data-ad-err]").textContent));
-  assert.equal(calls("/api/admin/ads/review/ac_q1").length, 0);
-  await P.check("[data-ad-rv=ac_q1] input[value=misleading]"); await P.fill("[data-ad-rv=ac_q1] [data-ad-note]", "الخصم غير موضّح");
-  await P.click("[data-ad-rv=ac_q1] [data-ad-dec=reject]"); await until(() => !document.querySelector("[data-ad-rv=ac_q1]"));
-  assert.deepEqual(calls("/api/admin/ads/review/ac_q1", "POST").at(-1).body, { decision: "reject", reasons: ["misleading"], note: "الخصم غير موضّح" });
-  await P.click("[data-ad-rv=ac_q2] [data-ad-dec=approve]"); await until(() => /لا حملات بانتظار المراجعة/.test(document.getElementById("ad-rq").textContent));
-  assert.deepEqual(calls("/api/admin/ads/review/ac_q2", "POST").at(-1).body, { decision: "approve", reasons: [], note: "" });
+test("v2.167: no ad review card on #/admin (campaigns are approved by the automatic rules)", async () => {
+  await go("#/admin"); await P.waitForTimeout(1500);
+  assert.equal(await P.$("#ad-adm"), null, "the admin review card was removed");
 });
 
 test("minors: 403 minor_restricted on #/ads shows the Arabic reason (no retry)", async () => {
@@ -377,14 +366,11 @@ test("real P40 server (no ads / Pi stubs): wizard on own post → submit → adm
   assert.equal(Number(mine.freq_impressions), 3); assert.equal(Number(mine.freq_hours), 12);
   assert.deepEqual(JSON.parse(mine.targeting), { topics: [topic], languages: ["ar"], countries: [] });
   assert.match(await p.textContent(`[data-ad-camp="${mine.id}"]`), /قيد المراجعة/);
-  // 2) admin review queue (real rows) → approve
-  await go("#/admin/ads/review", p); await p.waitForSelector(`[data-ad-rv="${mine.id}"]`, { timeout: 15000 });
-  assert.ok(await p.waitForSelector(`[data-ad-rv="${mine.id}"] input[data-ad-rs][value=guidelines]`, { state: "attached", timeout: 15000 }).catch(() => null), "reject reasons come from the server"); // reasons arrive after the row renders: wait, don't sample
-  assert.match(await p.textContent(`[data-ad-rv="${mine.id}"]`), /2 π/);
-  await p.click(`[data-ad-rv="${mine.id}"] [data-ad-dec=approve]`); await until((cid) => !document.querySelector(`[data-ad-rv="${cid}"]`), mine.id, 12000, p);
+  // 2) v2.167: the admin review queue was removed — the automatic rules approve it (now for a level 3+ advertiser, else after 24 h)
+  await S.app.ctx.services.autoRules.sweep({ now: new Date(Date.now() + 25 * 3600e3) });
   assert.equal((await db.get("SELECT status FROM ad_campaigns WHERE id=$1", [mine.id])).status, "awaiting_funds");
   // 3) dashboard: awaiting funds, fund disabled with the Arabic note, budget from the server's budget object
-  await go("#/ads/campaigns/" + mine.id, p); await p.waitForSelector("#ad-fund", { timeout: 15000 });
+  await go("#/home", p); await go("#/ads/campaigns/" + mine.id, p); await p.waitForSelector("#ad-fund", { timeout: 15000 }); // re-open: the page was showing the pre-sweep status
   assert.equal(await p.isDisabled("#ad-fund"), true); assert.match(await p.textContent("#ad-fn"), /مدفوعات Pi غير مفعّلة بعد/);
   const dash = await p.textContent(`[data-ad-camp="${mine.id}"]`); assert.match(dash, /بانتظار التمويل/);
   assert.match(await p.textContent("#ad-db"), /0 π \/ 2 π/); assert.match(await p.textContent("#ad-kpi"), /أقل من 10/);

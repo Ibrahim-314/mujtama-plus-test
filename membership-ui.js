@@ -63,7 +63,7 @@
   const fresh = () => { cache = null; };
   function compare(c, m) {
     const p = c.plus;
-    const price = p && p.price != null ? `${amt(p.price)} / ${h(p.periodDays)} يوماً` : h(p?.priceNote || "لم يُحدَّد سعر الاشتراك بعد");
+    const price = p && p.price != null ? `${amt(p.price)} / ${h(p.periodDays)} يوماً` : h(p?.priceNote || "السعر يُحدد قريباً");
     return `<div class="mb-cmp"><div class="mb-col"><h3>Free</h3><div class="muted">مجانية دائماً</div><ul>${c.free.features.map((f) => `<li>${h(f)}</li>`).join("")}</ul></div>
       ${p ? `<div class="mb-col plus"><h3>Plus</h3><div><b>${price}</b></div><div class="muted">${h(p.renewal)}</div><div class="muted">كل مزايا Free، وفوقها:</div>
         <ul>${p.features.map((f) => `<li>${h(f.label)}</li>`).join("")}${(p.quotas || []).filter((q) => q.plus > q.free).map((q) => `<li>${h(q.label)}: ${h(q.plus)} <small class="muted">(Free ${h(q.free)})</small></li>`).join("")}</ul>
@@ -72,7 +72,7 @@
   function actions(m, p) {
     if (m.minor) return `<p class="muted">الاشتراكات المدفوعة غير متاحة لمن هم دون ١٨ سنة.</p>`;
     if (!m.piEnabled) return `<p class="muted">${h(m.piNote || "مدفوعات Pi غير مفعّلة بعد")}</p>`;
-    if (p.price == null) return `<p class="muted">${h(p.priceNote || "لم يُحدَّد سعر الاشتراك بعد")}</p>`;
+    if (p.price == null) return `<button class="btn" type="button" id="mb-buy" disabled>رقِّ إلى Plus</button><p class="muted">السعر يُحدد قريباً</p>`; // v2.167: the button stays visible
     const net = m.network !== "mainnet" ? `<small class="muted">على الشبكة التجريبية (Testnet) — لا أموال حقيقية.</small>` : "";
     if (m.state === "payment_pending") return `<button class="btn" type="button" disabled>بانتظار تأكيد الدفعة…</button>`;
     const plus = m.tier === "plus";

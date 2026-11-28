@@ -51,7 +51,6 @@ module.exports = (ctx, opts = {}) => {
   const FLAG_AT = +(env.JOBS_FLAG_REPORTS || 3), NEW_DAYS = +(env.JOBS_NEW_ACCOUNT_DAYS || 3), MAX_OPEN = +(env.JOBS_MAX_OPEN || 10), MAX_PI = +(env.JOBS_MAX_PI || 100000);
   const BOOST_PER_DAY = toUnits(+(env.JOBS_BOOST_PI_PER_DAY || 0.5));
   const { postJournal } = createLedger({ now: () => iso() });
-  const admin = (fn) => A(async (req) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); return fn(req); });
   const notify = async (uid, kind, ref, actor = null) => { try { await ctx.services.notify?.notify(uid, kind, { ref, actor }); } catch { /* best effort */ } };
   const isMinor = async (uid) => { try { return !!(await ctx.services.minors?.isMinorUser?.(uid)); } catch { return false; } };
   const piOn = () => !!ctx.services.pi?.enabled?.();
@@ -380,8 +379,7 @@ module.exports = (ctx, opts = {}) => {
   R.put("/api/job-applications/:id/note", A(async (req) => setNote(req.user, req.params.id, req.body || {})));
   R.post("/api/job-applications/:id/messages", A(async (req) => message(req.user, req.params.id, req.body || {})));
   R.post("/api/job-applications/:id/withdraw", A(async (req) => withdraw(req.user, req.params.id)));
-  R.get("/api/admin/jobs", admin(async () => adminView()));
-  R.post("/api/admin/jobs/:id", admin(async (req) => moderate(req.user, req.params.id, req.body || {})));
+  /* v2.167: /api/admin/jobs removed — held job posts are published by services/auto-rules.js (no staff review) */
 
-  return { search, jobView, risks, appRow, KIND, CATS, APP, STATUS, PI_OFF, flush: () => Promise.all([...inflight]) };
+  return { search, jobView, risks, appRow, moderate, adminView, FLAG_AT, KIND, CATS, APP, STATUS, PI_OFF, flush: () => Promise.all([...inflight]) };
 };

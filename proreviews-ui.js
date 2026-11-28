@@ -6,7 +6,7 @@
  *   #/reviews/new?kind=&ref=&to=             write a review (overall + three criteria + text + endorse skills)
  *   #/reviews/u/:handle                      a member's reputation: score, badges, endorsed skills, reviews, report,
  *                                             endorse (verified collaborators)
- *   #/admin/reviews                           staff: reported / flagged reviews, reciprocal pairs
+ *   (v2.167 removed) #/admin/reviews                           staff: reported / flagged reviews, reciprocal pairs
  * CSP: no inline handlers, no javascript: URLs, no inline styles.
  * ===================================================================== */
 (function ProReviewsUI() {
@@ -132,31 +132,17 @@
       <h3 class="wk-st u-mt12">${ic("comment")}التقييمات ${d.reviews.length ? `<small class="pr-n">${num(d.reviews.length)}</small>` : ""}</h3>
       ${d.reviews.length ? `<ol class="pr-list">${d.reviews.map((r) => reviewHtml(r, { actions: r.can.report && signed() ? `<details class="pr-more"><summary class="u-mh44 u-dflex u-aic u-g8 u-cp">${ic("flag", "xs")} إبلاغ</summary><form class="f-form u-mt8" data-rep="${h(r.id)}"><label>السبب<select name="reason" required><option value="">اختر…</option>${reasons}</select></label><label>تفاصيل (اختياري)<textarea name="note" rows="2" maxlength="600"></textarea></label><button class="btn outline sm" type="submit">إرسال البلاغ</button></form></details>` : "" })).join("")}</ol>`
         : UI.empty({ title: "لا تقييمات ظاهرة بعد", text: "التقييمات هنا من عقود ومشاريع مكتملة فقط، ويكتبها من عمل مع صاحب الملف." })}
-      ${d.staff ? `<p class="u-mt8"><a class="btn ghost sm" href="#/admin/reviews">${ic("shield")}إدارة التقييمات</a></p>` : ""}`;
+      `;
     box.querySelectorAll("[data-rep]").forEach((f) => f.addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { await api("POST", `/api/proreviews/${enc(f.dataset.rep)}/report`, { reason: f.reason.value, note: f.note.value.trim() || undefined }); say("وصل بلاغك لفريق المنصة"); f.closest("details").open = false; f.reset(); }); }));
     $("#pr-en")?.addEventListener("submit", (e) => { e.preventDefault(); const skills = [...e.target.querySelectorAll('input[name="skill"]:checked')].map((x) => x.value); busy(e.submitter, async () => { await api("PUT", `/api/proreviews/endorse/${enc(U.handle)}`, { skills }); say("حُفظ التأييد"); userPage(handle); }); });
   }
 
-  /* ---------- #/admin/reviews ---------- */
-  async function adminView() {
-    page({ title: "إدارة التقييمات المهنية", icon: "shield", back: ["#/admin", "الإدارة"] }, `<div id="pr-a">${skel(4)}</div>`);
-    const box = $("#pr-a");
-    let d; try { d = await api("GET", "/api/admin/proreviews"); } catch (e) { box.innerHTML = errBox(e); return; }
-    if (!box.isConnected) return; const t = d.totals;
-    box.innerHTML = `<dl class="wk-facts card wk-sec"><div><dt>التقييمات</dt><dd>${num(t.reviews)}</dd></div><div><dt>بلاغات مفتوحة</dt><dd>${num(t.reports)}</dd></div><div><dt>معلّقة</dt><dd>${num(t.flagged)}</dd></div><div><dt>تأييد المهارات</dt><dd>${num(t.endorsements)}</dd></div></dl>
-      <h3 class="wk-st">${ic("flag")}بلاغات وتقييمات معلّقة</h3>
-      ${d.queue.length ? `<ol class="pr-list">${d.queue.map((r) => reviewHtml(r, { actions: `<p class="f-hint">إلى: ${h(r.target?.name || "")}</p><ul class="pr-reps">${r.reports.map((x) => `<li>${ic("flag", "xs")}<span><b>${h(x.reason)}</b><small>${h(x.by?.name || "")} · ${h(day(x.at))}${x.note ? ` — ${h(x.note)}` : ""}</small></span></li>`).join("")}</ul>
-          <form class="f-form" data-mod="${h(r.id)}"><label>ملاحظة للكاتب (مطلوبة عند الإخفاء)<input name="note" maxlength="600"></label><div class="wk-acts"><button class="btn outline sm" type="button" data-act="dismiss">رفض البلاغات</button><button class="btn sm" type="button" data-act="hide">إخفاء التقييم</button>${r.status === "hidden" ? `<button class="btn ghost sm" type="button" data-act="restore">إعادة النشر</button>` : ""}</div></form>` })).join("")}</ol>` : UI.empty({ title: "لا بلاغات مفتوحة", text: "تصل هنا التقييمات المبلّغ عنها." })}
-      <h3 class="wk-st u-mt12">${ic("users")}أزواج تقييم متبادل متكرر</h3>
-      ${d.pairs.length ? `<ul class="list">${d.pairs.map((p) => `<li><span class="li"><span class="ico">${ic("alert", "xs")}</span><span class="t"><b><a href="#/reviews/u/${enc(p.a?.handle || "")}">${h(p.a?.name || "")}</a> و<a href="#/reviews/u/${enc(p.b?.handle || "")}">${h(p.b?.name || "")}</a></b><small>${num(p.engagements)} تعاملات متبادلة · معدّل ${dec(p.avg)} — يُحتسب آخر تقييم فقط لكل زوج</small></span></span></li>`).join("")}</ul>` : `<p class="wk-none">لا أنماط متكررة.</p>`}`;
-    box.querySelectorAll("[data-mod] [data-act]").forEach((b) => b.addEventListener("click", () => { const f = b.closest("form"); if (b.dataset.act === "hide" && !f.note.value.trim()) { say("اكتب سبب الإخفاء"); f.note.focus(); return; } busy(b, async () => { await api("POST", `/api/admin/proreviews/${enc(f.dataset.mod)}`, { action: b.dataset.act, note: f.note.value.trim() || undefined }); say("تم"); adminView(); }); }));
-  }
+  /* v2.167: #/admin/reviews removed — flagged reviews are restored or hidden automatically after 7 days (server/services/auto-rules.js) */
 
   /* =================== routes =================== */
   MPRoutes.extend((a, b, prev) => {
     return { reviews: () => (a === "new" ? form() : a === "u" && b ? userPage(decodeURIComponent(b)) : hub()) };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "reviews" ? adminView() : next()));
-  window.MPProReviews = { hub, form, userPage, adminView, scoreCard, badgesHtml };
+  window.MPProReviews = { hub, form, userPage, scoreCard, badgesHtml };
   if (!window.__deferRoute && /^#\/(reviews|admin\/reviews)(\/|\?|$)/.test(location.hash)) route();
 })();

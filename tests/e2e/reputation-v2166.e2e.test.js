@@ -40,40 +40,26 @@ test.before(async () => {
 });
 test.after(async () => { await ctx?.close(); await ctx2?.close(); await S?.close(); });
 
-test("switch OFF: profile unchanged (old chip, no level card) and #/reputation is the not-found page", async () => {
-  rl(); await go(m, "#/u/rp_member"); await until(m, () => !!document.querySelector("#rep"));
-  assert.match(await m.textContent("#rep"), /120/); assert.match(await m.textContent("#rep"), /السمعة/);
-  assert.equal(await m.evaluate(() => !!document.querySelector("#rep-lvl")), false);
-  rl(); await go(m, "#/reputation"); await textHas(m, /الصفحة غير موجودة/);
-  rl(); assert.equal((await call(m, "GET", "/api/rep-levels")).enabled, false);
-  rl(); assert.equal((await call(m, "GET", "/api/admin/reputation")).status, 403);
-  rl(); assert.equal((await call(m, "POST", "/api/admin/reputation/penalties", { handle: "rp_admin", amount: 10, reason: "محاولة عضو" })).status, 403);
-});
-
-test("#/admin/mjt-reputation: OFF by default; saving with a reason turns it on", async () => {
-  rl(); await go(p, "#/admin/mjt-reputation"); await textHas(p, /السمعة الموحّدة والمستويات/);
-  assert.equal(await p.evaluate(() => document.querySelector('#rp-f [name="enabled"]').checked), false);
-  assert.match(await p.textContent("#view"), /قدوة المجتمع/);
-  assert.ok((await minTap(p, "#rp-f input, #rp-f .btn, #rp-p input, #rp-p select, .mj-seg a")) >= 44, "tap targets");
-  assert.deepEqual(await axe(p), [], "admin"); await shot(p, "admin-390");
-  await p.check('#rp-f [name="enabled"]'); await p.fill('#rp-f [name="reason"]', "تشغيل السمعة الموحدة للاختبار");
-  rl(); await p.click("#rp-f button.btn"); await until(p, () => document.querySelector('#rp-f [name="enabled"]')?.checked === true);
-});
-
-test("switch ON: profile level card + #/reputation levels; an admin penalty lowers the number and is listed", async () => {
-  await m.reload(); await m.waitForTimeout(1500); await m.evaluate(() => { try { DB.onboarded = true; } catch { } });
+test("v2.167 always ON: profile level card + #/reputation levels; the admin page and APIs are gone", async () => {
   rl(); await go(m, "#/u/rp_member"); await until(m, () => !!document.querySelector("#rep-lvl"));
   const card = await m.textContent("#rep-lvl"); assert.match(card, /مساهم/); assert.match(card, /170/); assert.match(card, /المستوى 3 من 8/);
   rl(); await go(m, "#/reputation"); await textHas(m, /المستويات الثمانية/);
   const t = await m.textContent("#view"); for (const re of [/مبتدئ/, /مشارك/, /مساهم/, /نشِط/, /موثوق/, /خبير/, /مرشد/, /قدوة المجتمع/, /قريباً/, /170/]) assert.match(t, re);
   assert.deepEqual(await axe(m), [], "reputation"); await shot(m, "levels-390");
-  rl(); await go(p, "#/admin/mjt-reputation"); await textHas(p, /تطبيق عقوبة/);
-  await p.fill('#rp-p [name="handle"]', "rp_member"); await p.selectOption('#rp-p [name="kind"]', "warning"); await p.fill('#rp-p [name="reason"]', "إنذار رسمي بسبب مخالفة");
-  rl(); await p.click("#rp-p button.btn"); await textHas(p, /@rp_member · −25/);
+  rl(); assert.equal((await call(m, "GET", "/api/rep-levels")).enabled, true);
+  rl(); await go(p, "#/admin/mjt-reputation"); await p.waitForTimeout(1200);
+  assert.equal(await p.evaluate(() => !!document.querySelector("#rp-f, #rp-p")), false, "no admin switch page");
+  rl(); assert.equal((await call(p, "GET", "/api/admin/reputation")).status, 404);
+  rl(); assert.equal((await call(m, "POST", "/api/admin/reputation/penalties", { handle: "rp_admin", amount: 10, reason: "محاولة عضو" })).status, 404);
+});
+
+test("a penalty (as the owner panel's suspension applies it) lowers the number; CSP hygiene; no page errors", async () => {
+  const admin = await S.app.ctx.db.get("SELECT id FROM users WHERE handle='rp_admin'");
+  await S.app.ctx.services.repLevels.applyPenalty({ id: admin.id }, { handle: "rp_member", kind: "warning", reason: "إنذار رسمي بسبب مخالفة" });
   rl(); assert.equal((await call(m, "GET", "/api/rep-levels")).me.score, 145);
-  // CSP hygiene
-  const html = await p.evaluate(() => document.querySelector("#view").innerHTML); assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i);
+  rl(); await go(m, "#/u/rp_member"); await until(m, () => /145/.test(document.querySelector("#rep-lvl")?.textContent || ""));
+  rl(); await go(m, "#/reputation"); await textHas(m, /المستويات الثمانية/);
+  const html = await m.evaluate(() => document.querySelector("#view").innerHTML); assert.doesNotMatch(html, /\son[a-z]+=|javascript:|style="/i);
   const src = fs.readFileSync(path.join(__dirname, "../..", "reputation-ui.js"), "utf8"); assert.doesNotMatch(src, /\son(click|input|change|submit)=|["'`]javascript:|style="/);
-  rl(); await call(p, "PUT", "/api/admin/reputation", { enabled: false, reason: "إيقاف بعد الاختبار" });
   assert.deepEqual(errors, []);
 });

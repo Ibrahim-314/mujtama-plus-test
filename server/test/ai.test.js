@@ -10,6 +10,7 @@
  * no provider → 503 not_configured, maintenance (reminder once, expiry), finance (revenue vs provider cost), compliance map. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 const KEY = "sk_test_ai_41";
 const TOKEN = (uid, name) => `at-secret-${uid}-${name}`;
@@ -189,11 +190,11 @@ test("i18n (free): languages, user language, admin string overrides, versions, a
   assert.equal((await anon.req("GET", "/api/i18n/strings?lang=en")).strings["الرئيسية"], undefined);
 });
 
-test("entitlements: 402 + upsell for non-subscribers, minors 403, price unset, Pi off, admin sets price", async () => {
+test("entitlements: 402 + upsell for non-subscribers, minors 403, fixed price, Pi off", async () => {
   const cfg = await new H.Client().req("GET", "/api/ai/config");
   assert.equal(cfg.status, 200);
   assert.equal(cfg.plans[0].slug, "ai_plus"); assert.equal(cfg.plans[0].name, "مجتمع بلس Plus"); // v2.156: the plan is the Plus membership assert.deepEqual(cfg.plans[0].features, ["translate"]);
-  assert.equal(cfg.plans[0].price, null, "no hard-coded price"); assert.equal(cfg.plans[0].priceNote, "لم يُحدَّد سعر الاشتراك بعد");
+  assert.equal(cfg.plans[0].price, 10, "v2.167: the fixed Plus price (app-defaults)"); assert.equal(cfg.plans[0].priceNote, undefined);
   assert.deepEqual(cfg.features.translate, { available: true, provider: "stub", private: true });
   assert.deepEqual(cfg.languages, ["ar", "en", "fr", "ur"]);
   const me = await sara.req("GET", "/api/ai/me");
@@ -204,14 +205,12 @@ test("entitlements: 402 + upsell for non-subscribers, minors 403, price unset, P
   assert.equal(calls.length, 0, "nothing sent to the provider");
   assert.equal((await minnie.req("POST", "/api/ai/subscribe", {})).code, "minor_restricted");
   assert.equal((await sara.req("POST", "/api/ai/subscribe", { plan: "nope" })).status, 404);
-  const pu = await sara.req("POST", "/api/ai/subscribe", {});
-  assert.equal(pu.status, 409); assert.equal(pu.code, "price_unset");
-  // admin price (no hard-coded price; admin wins)
-  assert.equal((await sara.req("PUT", "/api/admin/ai/plans/ai_plus", { price: 1 })).status, 403);
-  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { price: -1 })).code, "plan_invalid");
-  const up = await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { price: 2.5, limits: { translate: { chars: 100000, costUsd: 1 } } });
+  // v2.167: no admin price route (404); the fixture below sets 2.5 through the service so the numbers of the later tests hold
+  assert.equal((await AD(sara, "PUT", "/api/admin/ai/plans/ai_plus", { price: 1 })).status, 404);
+  assert.equal((await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { price: -1 })).code, "plan_invalid");
+  const up = await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { price: 2.5, limits: { translate: { chars: 100000, costUsd: 1 } } });
   assert.equal(up.status, 200, up.error); assert.equal(up.plan.price, 2.5); assert.equal(up.plan.limits.translate.chars, 100000);
-  assert.equal((await admin.req("GET", "/api/admin/ai/plans")).plans[0].priceSetBy, "admin");
+  assert.equal((await AD(admin, "GET", "/api/admin/ai/plans")).plans[0].priceSetBy, "admin");
   // Pi off
   const pis = H.app.ctx.services.pi, orig = pis.enabled;
   pis.enabled = () => false;
@@ -338,10 +337,10 @@ test("messages: membership, chat-scoped cache, E2EE plaintext with consent never
 
 test("caps: monthly char limit → 429 usage_limit, global provider budget → 503 budget_exhausted; prefs", async () => {
   const big = await post(lina, "Une très longue phrase en français pour tester la limite mensuelle de caractères de la traduction ".repeat(6));
-  await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { translate: { chars: 400, costUsd: 1 } } });
+  await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { translate: { chars: 400, costUsd: 1 } } });
   const r = await tr(omar, { kind: "post", id: big, target: "ar" });
   assert.deepEqual([r.status, r.code], [429, "usage_limit"]); assert.equal(r.usage.limitChars, 400);
-  await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { translate: { chars: 100000, costUsd: 1 } } });
+  await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { translate: { chars: 100000, costUsd: 1 } } });
   const period = new Date().toISOString().slice(0, 7);
   await db().run("INSERT INTO ai_period_stats(period,feature,provider,requests,chars,cache_hits,cost_micros) VALUES($1,'translate','other',1,0,0,$2)", [period, 5e6]);
   const b = await tr(omar, { kind: "post", id: big, target: "ar" });
@@ -370,16 +369,16 @@ test("no provider → 503 not_configured «خدمة الترجمة غير مفع
 });
 
 test("staff grants/revoke, refund cuts the period, maintenance (reminder once, expiry), finance, compliance map", async () => {
-  assert.equal((await sara.req("POST", "/api/admin/ai/grants", { user: "ai_lina", days: 7 })).status, 403);
-  assert.equal((await admin.req("POST", "/api/admin/ai/grants", { user: "ai_lina", days: 0 })).status, 400);
-  const g = await admin.req("POST", "/api/admin/ai/grants", { user: "@ai_lina", days: 7, note: "شريك" });
+  assert.equal((await AD(sara, "POST", "/api/admin/ai/grants", { user: "ai_lina", days: 7 })).status, 404);
+  assert.equal((await AD(admin, "POST", "/api/admin/ai/grants", { user: "ai_lina", days: 0 })).status, 400);
+  const g = await AD(admin, "POST", "/api/admin/ai/grants", { user: "@ai_lina", days: 7, note: "شريك" });
   assert.equal(g.status, 200, g.error); assert.equal(g.subscription.source, "grant"); assert.equal(g.subscription.daysLeft, 7);
   assert.equal((await lina.req("GET", "/api/ai/me")).entitlements.translate, true);
-  assert.equal((await admin.req("POST", "/api/admin/ai/grants", { user: "ai_minnie", days: 3 })).status, 200, "grants are allowed for minors (no payment)");
-  const rv = await admin.req("POST", "/api/admin/ai/grants/revoke", { user: "ai_minnie" });
+  assert.equal((await AD(admin, "POST", "/api/admin/ai/grants", { user: "ai_minnie", days: 3 })).status, 200, "grants are allowed for minors (no payment)");
+  const rv = await AD(admin, "POST", "/api/admin/ai/grants/revoke", { user: "ai_minnie" });
   assert.equal(rv.subscription.state, "revoked");
   assert.equal((await minnie.req("GET", "/api/ai/me")).entitlements.translate, false);
-  assert.ok((await admin.req("GET", "/api/admin/ai/subscribers?state=active")).items.some((x) => x.user.handle === "ai_lina"));
+  assert.ok((await AD(admin, "GET", "/api/admin/ai/subscribers?state=active")).items.some((x) => x.user.handle === "ai_lina"));
   // refund omar's only payment → period cut, access ends, reversing journal
   const op = await db().get("SELECT * FROM ai_payments WHERE user_id=$1 AND status='completed'", [omar.id]);
   await H.app.ctx.services.pi.refund({ id: admin.id }, op.intent_id, { note: "طلب استرداد" });
@@ -402,12 +401,12 @@ test("staff grants/revoke, refund cuts the period, maintenance (reminder once, e
   const href = require("../lib/notify-lib").hrefFor({ kind: "ai_expired", ref: "ai_plus" });
   assert.equal(href, "/#/ai");
   // finance
-  const f = await admin.req("GET", "/api/admin/ai/finance");
+  const f = await AD(admin, "GET", "/api/admin/ai/finance");
   assert.equal(f.status, 200, f.error);
   assert.equal(f.revenue, 7.5); assert.equal(f.refunds, 2.5); assert.equal(f.net, 5); assert.equal(f.payments, 3);
   assert.ok(f.providerCostUsd > 0); assert.ok(f.byFeature.some((x) => x.provider === "stub" && x.chars > 0)); assert.ok(f.byFeature.some((x) => x.provider === "cache" && x.cacheHits > 0));
   assert.equal(f.marginUsd, null, "no Pi/USD rate configured"); assert.equal(f.months.length, 6);
-  assert.equal((await sara.req("GET", "/api/admin/ai/finance")).status, 403);
+  assert.equal((await AD(sara, "GET", "/api/admin/ai/finance")).status, 404);
   const stats = (await db().all("SELECT * FROM ai_period_stats")).flatMap((r) => Object.values(r).map(String));
   for (const u of [sara.id, omar.id, lina.id]) assert.ok(!stats.includes(u), "no user ids in ai_period_stats");
   // compliance data map

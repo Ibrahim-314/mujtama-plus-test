@@ -3,7 +3,7 @@
  * Client = staff (first account, 390 light) and worker (360 dark) complete an unpaid contract; the client reviews from
  * #/reviews (pending → form with stars, criteria, skill endorsement), the review stays hidden until the worker reviews back,
  * the worker responds, the CV shows the reputation strip, #/reviews/u/:handle shows score + badges + endorsements, the talent
- * directory shows the rating, endorsements from the reputation page, a report reaches #/admin/reviews and is dismissed.
+ * directory shows the rating, endorsements from the reputation page, a report is recorded for the automatic rules (v2.167).
  * axe: no serious/critical WCAG A/AA issues on every new screen (light + dark); no page errors; lazy `proreviews` chunk
  * (after `work`); no inline handlers / styles / javascript: URLs; tap targets ≥ 44 px. Screenshots → tests/visual/output/p80-*. */
 const test = require("node:test"), assert = require("node:assert");
@@ -95,13 +95,12 @@ test("talent directory rating, endorsements, report → staff queue, CSP", async
   rl(); await go(p, "#/reviews/u/p80_sara"); await until(p, () => !!document.querySelector("#pr-en"));
   await p.locator(".pr-more summary").first().click(); await p.click("#pr-en .pr-chk label:nth-child(2) span");
   rl(); await p.click("#pr-en [type=submit]"); await until(p, () => /كتابة المحتوى/.test(document.querySelector(".pr-sum")?.textContent || ""));
-  // the client reports the review about them; staff dismisses it
+  // the client reports the review about them; v2.167: #/admin/reviews was removed — the automatic rules decide reports
   rl(); await go(p, "#/reviews/u/p80_admin"); await until(p, () => !!document.querySelector("[data-rep]"));
   await p.locator(".pr-rev details summary").first().click(); await p.selectOption("[data-rep] [name=reason]", "offtopic");
   rl(); await p.click("[data-rep] [type=submit]"); await p.waitForTimeout(300);
-  rl(); await go(p, "#/admin/reviews"); await until(p, () => !!document.querySelector("[data-mod]"));
-  assert.ok((await minTap(p, "[data-mod] .btn")) >= 44); assert.deepEqual(await axe(p), [], "admin light"); await shot(p, "admin-390-light");
-  rl(); await tap(p, '[data-mod] [data-act="dismiss"]'); await textHas(p, /لا بلاغات مفتوحة/);
+  assert.ok(await S.app.ctx.db.get("SELECT 1 x FROM pr_reports WHERE status='open'"), "the report is recorded for the automatic rules");
+  assert.deepEqual(await axe(p), [], "reputation page light");
   assert.deepEqual(errors, []);
   for (const pg of [p, u]) {
     const inline = await pg.evaluate(() => [...document.querySelectorAll("*")].filter((e) => [...e.attributes].some((a) => /^on/.test(a.name)) || (!!e.getAttribute("style") && !!e.closest("#view .wk-page"))).map((e) => e.outerHTML.slice(0, 160)));

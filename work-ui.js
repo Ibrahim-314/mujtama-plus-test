@@ -5,12 +5,12 @@
  *                             volunteering / awards) with reorder, skills, languages & links, privacy, export (PDF / HTML / JSON)
  *   #/cv/:handle[?as=stranger|member|follower]   a member's professional profile (owner preview as others see it)
  *   #/talent[?q=&open=&skill=&city=]             talent directory
- *   #/admin/pro               staff: reported profiles, hide / restore
+ *   (v2.167 removed) #/admin/pro               staff: reported profiles, hide / restore
  * Phase 77: jobs & freelance.
  *   #/jobs[?tab=mine&q=&kind=&category=&mode=&city=&skill=&minPay=&sort=]   browse (search + filter sheet) · my postings,
  *                             applications and saved · #/jobs/new · #/job/:id[/edit|/applicants[?status=]] · #/application/:id
  *                             (both sides: status, cover, answers, timeline + messages, employer next step + private note)
- *   #/admin/jobs              staff: review queue with reasons, reports
+ *   (v2.167 removed) #/admin/jobs              staff: review queue with reasons, reports
  * Phase 78: contracts & escrow.
  *   #/contracts[?tab=closed]  my contracts · #/contracts/new[?app=|to=] offer (milestones, revisions) · #/contract/:id (offer reply,
  *                             milestones: fund / submit / approve / revision / dispute, timeline + messages, cancel)
@@ -220,7 +220,7 @@
       ${(P.languages && P.languages.length) || (P.links && P.links.length) ? `<section class="card wk-sec" aria-labelledby="wk-v-la"><h3 id="wk-v-la" class="wk-st">${ic("globe")}اللغات والروابط</h3>${P.languages && P.languages.length ? `<ul class="wk-skills">${P.languages.map((l) => `<li><b>${h(l.name)}</b><small>${h(l.levelLabel || "")}</small></li>`).join("")}</ul>` : ""}${P.links && P.links.length ? `<span class="wk-links">${P.links.map((l) => `<a class="wk-link" href="${h(l.url)}" target="_blank" rel="noopener noreferrer nofollow">${ic("link", "xs")}${h(l.label)}</a>`).join("")}</span>` : ""}</section>` : ""}
       <p class="f-hint">آخر تحديث ${h(String(P.updatedAt || "").slice(0, 10))}${v.self ? ` · ${num(P.views || 0)} مشاهدة` : ""}</p>
       ${signed() && !v.self && !as ? `<details class="card u-mt12"><summary class="u-mh44 u-dflex u-aic u-g8 u-fw7 u-cp">${ic("flag")} الإبلاغ عن هذا الملف</summary><form class="f-form u-mt8" id="wk-rp"><label>السبب<select name="reason" required><option value="">اختر…</option><option value="fake">بيانات أو شهادات مزيّفة</option><option value="impersonation">انتحال شخصية</option><option value="scam">احتيال أو طلب أموال</option><option value="inappropriate">محتوى غير لائق</option><option value="other">سبب آخر</option></select></label><label>تفاصيل (اختياري)<textarea name="note" rows="2" maxlength="600"></textarea></label><button class="btn outline" type="submit">إرسال البلاغ</button></form></details>` : ""}
-      ${v.staff && !v.self ? `<p class="u-mt8"><a class="btn ghost sm" href="#/admin/pro">${ic("shield")}إدارة الملفات المهنية</a></p>` : ""}`;
+      `;
     $("#wk-pp").addEventListener("click", () => printCv(U.handle));
     $("#wk-rp")?.addEventListener("submit", (e) => { e.preventDefault(); busy(e.submitter, async () => { await api("POST", `/api/pro/u/${enc(U.handle)}/report`, { reason: e.target.reason.value, note: e.target.note.value.trim() || undefined }); say("وصل بلاغك لفريق المنصة"); e.target.closest("details").open = false; e.target.reset(); }); });
   }
@@ -244,23 +244,9 @@
     window.MPFeat?.filters?.({ host: tf, move: [$("#wk-tsk"), $("#wk-tci")], form: tf, title: "تصفية", defaults: { skill: "", city: "" } });
   }
 
-  /* =================== #/admin/pro =================== */
-  async function adminView() {
-    page({ title: "الملفات المهنية — الإشراف", icon: "shield", back: ["#/admin", "الإدارة"] }, `<div id="wk-a">${skel(3)}</div>`);
-    const box = $("#wk-a");
-    let d; try { d = await api("GET", "/api/admin/pro"); } catch (e) { box.innerHTML = errBox(e); return; }
-    if (!box.isConnected) return; const T = d.totals;
-    box.innerHTML = `<div class="f-kpis"><div class="kpi-tile"><b>${num(T.profiles)}</b><span>ملف مهني</span></div><div class="kpi-tile"><b>${num(T.listed)}</b><span>في الدليل</span></div><div class="kpi-tile"><b>${num(T.open)}</b><span>بلاغ مفتوح</span></div></div>
-      <p class="f-hint">يُخرج الملف من دليل المواهب تلقائياً عند ${num(d.flagAt)} بلاغات مفتوحة حتى تقرّر.</p>
-      <div class="f-h">بلاغات بانتظار القرار</div>${d.queue.length ? `<ul class="wk-q">${d.queue.map((g) => `<li class="card"><div class="wk-sh"><span class="u-f1 u-mw0"><a class="u-fw7" href="#/cv/${enc(g.user.handle)}">${h(g.user.name)}</a> <small class="f-hint">@${h(g.user.handle)}</small><br><small>${h(g.headline || "")}</small></span><span class="sbadge warn">${num(g.reports.length)} بلاغ</span></div>
-          <ul class="wk-rl">${g.reports.map((r) => `<li><b>${h(r.reasonLabel)}</b>${r.note ? ` — ${h(r.note)}` : ""}</li>`).join("")}</ul>
-          <div class="wk-acts"><button class="btn danger sm" type="button" data-mod="hide" data-u="${h(g.user.handle)}">إخفاء الملف</button><button class="btn ghost sm" type="button" data-mod="dismiss" data-u="${h(g.user.handle)}">رفض البلاغات</button></div></li>`).join("")}</ul>` : UI.empty({ title: "لا بلاغات مفتوحة", text: "كل شيء على ما يرام." })}
-      <div class="f-h">ملفات مخفية</div>${d.hidden.length ? `<ul class="list">${d.hidden.map((x) => `<li class="li"><span class="t"><b>${h(x.user.name)}</b><small>${h(x.reason)}</small></span><button class="btn ghost sm" type="button" data-mod="restore" data-u="${h(x.user.handle)}">إعادة العرض</button></li>`).join("")}</ul>` : `<p class="f-hint">لا ملفات مخفية.</p>`}`;
-    box.querySelectorAll("[data-mod]").forEach((b) => b.addEventListener("click", () => { let reason; if (b.dataset.mod === "hide") { reason = prompt("سبب الإخفاء (يصل لصاحب الملف ويُسجَّل)"); if (!reason || reason.trim().length < 3) return; } busy(b, async () => { await api("POST", "/api/admin/pro/" + enc(b.dataset.u), { action: b.dataset.mod, reason }); say("تم"); adminView(); }); }));
-  }
+  /* v2.167: #/admin/pro removed — reported profiles are decided automatically (server/services/auto-rules.js) */
 
   /* =================== Phase 77 — jobs & freelance =================== */
-  const payTxt = (p) => (!p || p.type === "none" ? "بدون أجر" : `\u2066${p.min === p.max ? num(p.min, { maximumFractionDigits: 2 }) : `${num(p.min, { maximumFractionDigits: 2 })}–${num(p.max, { maximumFractionDigits: 2 })}`} π\u2069 · ${p.label}`); // v2.149.16: LRI…PDI keeps «300–500 π» in reading order inside RTL
   const TONE = { open: "ok", review: "info", paused: "warn", closed: "", filled: "ok", removed: "bad", submitted: "info", viewed: "info", shortlisted: "warn", interview: "warn", offered: "ok", hired: "ok", rejected: "bad", withdrawn: "" };
   const badge = (st, label) => `<span class="sbadge ${TONE[st] || ""}">${h(label)}</span>`;
   const day = (s) => { try { return new Intl.DateTimeFormat("ar", { numberingSystem: "latn", day: "numeric", month: "long", year: "numeric" }).format(new Date(s)); } catch { return String(s || "").slice(0, 10); } };
@@ -379,7 +365,7 @@
         ${me.signedIn && !me.owner ? `<button class="btn ghost sm" type="button" id="wk-save" aria-pressed="${j.saved}">${ic(j.saved ? "bookmarkF" : "bookmark")}${j.saved ? "محفوظة" : "حفظ"}</button>` : ""}</div>
       ${me.owner && j.status === "open" ? `<section class="card wk-sec"><h3 class="wk-st">${ic("star")}تمييز الإعلان</h3><p class="f-hint">يظهر إعلانك أولاً في نتائج البحث. ${num(d.options.boostPerDay, { maximumFractionDigits: 2 })} π لليوم.</p>${d.piEnabled ? `<div class="wk-acts">${d.options.boostDays.map((n) => `<button class="btn outline sm" type="button" data-boost="${n}">${num(n)} يوماً · ${num(n * d.options.boostPerDay, { maximumFractionDigits: 2 })} π</button>`).join("")}</div>` : `<div class="wk-lock">${ic("wallet")}<span class="u-f1 u-mw0">${h(d.piNotice)}</span><span class="wk-soon">غير مفعّل بعد</span></div>`}${j.featuredUntil ? `<p class="f-hint">مميّز حتى ${h(day(j.featuredUntil))}</p>` : ""}</section>` : ""}
       ${me.canReport ? `<details class="card u-mt12"><summary class="u-mh44 u-dflex u-aic u-g8 u-fw7 u-cp">${ic("flag")} الإبلاغ عن الإعلان</summary><form class="f-form u-mt8" id="wk-jr"><label>السبب<select name="reason" required><option value="">اختر…</option>${Object.entries(d.options.reasons).map(([k, v]) => `<option value="${k}">${h(v)}</option>`).join("")}</select></label><label>تفاصيل (اختياري)<textarea name="note" rows="2" maxlength="600"></textarea></label><button class="btn outline" type="submit">إرسال البلاغ</button></form></details>` : ""}
-      ${me.staff && !me.owner ? `<p class="u-mt8"><a class="btn ghost sm" href="#/admin/jobs">${ic("shield")}مراجعة الإعلانات</a></p>` : ""}`;
+      `;
     $("#wk-apply")?.addEventListener("click", () => applySheet(j, d));
     $("#wk-save")?.addEventListener("click", (e) => busy(e.currentTarget, async () => { const on = e.currentTarget.getAttribute("aria-pressed") !== "true"; await api("POST", `/api/jobs/${enc(j.id)}/save`, { saved: on }); say(on ? "حُفظت الفرصة" : "أُزيلت من المحفوظة"); jobView(jid); }));
     box.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => { if (b.dataset.st !== "open" && !confirm(b.dataset.st === "paused" ? "إيقاف استقبال الطلبات مؤقتاً؟" : "سيُغلق الإعلان وتُبلَّغ الطلبات المفتوحة. متابعة؟")) return; busy(b, async () => { await api("POST", `/api/jobs/${enc(j.id)}/state`, { status: b.dataset.st }); say("تم"); jobView(jid); }); }));
@@ -426,7 +412,7 @@
       e.preventDefault();
       const b = { title: f.title.value.trim(), body: f.body.value.trim(), category: f.category.value, employment: f.employment.value, skills: f.skills.value, mode: f.mode.value, city: f.city.value.trim() || null, payType: f.payType.value, payMin: f.payMin.value || null, payMax: f.payMax.value || null, minorsOk: f.minorsOk.checked, deadline: f.deadline.value || null, questions: [0, 1, 2].map((i) => f["q" + i].value.trim()).filter(Boolean) };
       if (!J) b.kind = f.querySelector("[name=kind]:checked").value;
-      busy(e.submitter, async () => { const r = J ? await api("PATCH", "/api/jobs/" + enc(J.id), b) : await api("POST", "/api/jobs", b); say(r.state === "review" ? "أُرسل للمراجعة قبل النشر" : "نُشرت الفرصة"); location.hash = "#/job/" + enc(r.id); });
+      busy(e.submitter, async () => { const r = J ? await api("PATCH", "/api/jobs/" + enc(J.id), b) : await api("POST", "/api/jobs", b); say(r.state === "review" ? "سيُنشر الإعلان تلقائياً خلال 24 ساعة ما لم يُبلَّغ عنه" : "نُشرت الفرصة"); location.hash = "#/job/" + enc(r.id); });
     });
   }
 
@@ -466,18 +452,7 @@
     $("#wk-wd")?.addEventListener("click", (e) => { if (!confirm("سحب طلبك؟ لا يمكن التراجع.")) return; busy(e.currentTarget, async () => { await api("POST", `/api/job-applications/${enc(aid)}/withdraw`); say("سُحب الطلب"); applicationView(aid); }); });
   }
 
-  async function adminJobs() {
-    page({ title: "الوظائف — المراجعة", icon: "shield", back: ["#/admin", "الإدارة"] }, `<div id="wk-aj">${skel(3)}</div>`);
-    const box = $("#wk-aj");
-    let d; try { d = await api("GET", "/api/admin/jobs"); } catch (e) { box.innerHTML = errBox(e); return; }
-    if (!box.isConnected) return; const T = d.totals;
-    box.innerHTML = `<div class="f-kpis"><div class="kpi-tile"><b>${num(T.open)}</b><span>فرصة مفتوحة</span></div><div class="kpi-tile"><b>${num(T.review)}</b><span>بانتظار المراجعة</span></div><div class="kpi-tile"><b>${num(T.reports)}</b><span>بلاغ مفتوح</span></div><div class="kpi-tile"><b>${num(T.applications)}</b><span>طلب توظيف</span></div></div>
-      <div class="f-h">بانتظار المراجعة</div>${d.review.length ? `<ul class="wk-q">${d.review.map((j) => `<li class="card"><div class="wk-sh"><a class="u-fw7 u-f1" href="#/job/${enc(j.id)}">${h(j.title)}</a>${badge("review", j.kind.label)}</div><small class="f-hint">${h(j.poster?.name || "")} · ${h(payTxt(j.pay))}</small><ul class="wk-rl">${j.reasons.map((r) => `<li>${h(r.label)}</li>`).join("")}</ul><p class="wk-about">${h(j.body)}</p>
-          <div class="wk-acts"><button class="btn sm" type="button" data-jm="approve" data-j="${h(j.id)}">اعتماد ونشر</button><button class="btn danger sm" type="button" data-jm="remove" data-j="${h(j.id)}">إزالة</button></div></li>`).join("")}</ul>` : UI.empty({ title: "لا إعلانات بانتظار المراجعة", text: "كل شيء على ما يرام." })}
-      <div class="f-h">بلاغات</div>${d.reports.length ? `<ul class="wk-q">${d.reports.map((g) => `<li class="card"><div class="wk-sh"><a class="u-fw7 u-f1" href="#/job/${enc(g.job.id)}">${h(g.job.title)}</a><span class="sbadge warn">${num(g.reports.length)} بلاغ</span></div><ul class="wk-rl">${g.reports.map((r) => `<li><b>${h(r.reasonLabel)}</b>${r.note ? ` — ${h(r.note)}` : ""}</li>`).join("")}</ul>
-          <div class="wk-acts"><button class="btn danger sm" type="button" data-jm="remove" data-j="${h(g.job.id)}">إزالة الإعلان</button><button class="btn ghost sm" type="button" data-jm="dismiss" data-j="${h(g.job.id)}">رفض البلاغات</button></div></li>`).join("")}</ul>` : `<p class="f-hint">لا بلاغات مفتوحة.</p>`}`;
-    box.querySelectorAll("[data-jm]").forEach((b) => b.addEventListener("click", () => { let reason; if (b.dataset.jm === "remove") { reason = prompt("سبب الإزالة (يصل لصاحب الإعلان ويُسجَّل)"); if (!reason || reason.trim().length < 3) return; } busy(b, async () => { await api("POST", "/api/admin/jobs/" + enc(b.dataset.j), { action: b.dataset.jm, reason }); say("تم"); adminJobs(); }); }));
-  }
+  /* v2.167: #/admin/jobs removed — held job posts publish automatically (server/services/auto-rules.js) */
 
 
   /* =================== Phase 78 — contracts, milestones & escrow =================== */
@@ -609,7 +584,7 @@
       application: () => applicationView(a),
       contracts: () => (a === "new" ? contractForm() : contractsHub()), contract: () => contractView(a) };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "pro" ? adminView() : a === "jobs" ? adminJobs() : a === "contracts" ? adminContracts() : next()));
+  MPRoutes.add("admin", (a, b, next) => (a === "contracts" ? adminContracts() : next()));
   /* v2.151.1: in-page jobs links (kind chips, «المزيد», section tabs, the empty state's «تصفّح الفرص») swap in place */
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -649,6 +624,6 @@
   for (const t of ["pointerup", "pointercancel"]) document.addEventListener(t, pfStop, { passive: true });
   addEventListener("scroll", pfStop, { passive: true });
 
-  window.MPWork = { cache: { has: (k) => !!cGet(k), size: () => [...JC.keys()].filter((k) => cGet(k)).length, forUser: (who) => { for (const [k, e] of JC) if (e.who !== who) JC.delete(k); } }, editorView, profileView, talentView, adminView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, adminJobs, contractsHub, contractForm, contractView, adminContracts };
+  window.MPWork = { cache: { has: (k) => !!cGet(k), size: () => [...JC.keys()].filter((k) => cGet(k)).length, forUser: (who) => { for (const [k, e] of JC) if (e.who !== who) JC.delete(k); } }, editorView, profileView, talentView, printCv, jobsHub, jobView, jobForm, applicantsView, applicationView, contractsHub, contractForm, contractView, adminContracts };
   if (!window.__deferRoute && /^#\/(cv|talent|jobs|job|application|contracts|contract|admin\/(pro|jobs|contracts))(\/|\?|$)/.test(location.hash)) route();
 })();

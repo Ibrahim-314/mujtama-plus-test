@@ -13,6 +13,7 @@
  * ai_payments), the comparison for the membership page, and the routes under /api/membership.
  * The client never sends a tier: everything is derived from the server rows for req.user. */
 const { HttpError, id } = require("../lib/core");
+const DEF = require("../config/app-defaults");
 
 const PLUS = "ai_plus";
 /* what every member keeps for free (existing features — nothing is moved behind Plus) */
@@ -33,16 +34,17 @@ const STATE_AR = { free: "مجانية", plus_active: "Plus فعّالة", plus_
 const EVENT_KINDS = { AI_SUBSCRIPTION_STARTED: "started", AI_SUBSCRIPTION_RENEWED: "renewed", AI_SUBSCRIPTION_CANCELLED: "cancelled",
   AI_SUBSCRIPTION_RESUMED: "resumed", AI_SUBSCRIPTION_EXPIRED: "expired" };
 /* v2.157 — usage limits per tier (approved by the owner 2026-11-23). Free keeps working at its own ceiling; Plus raises it.
- * Defaults here; an admin overrides any number from #/admin/ai (stored in membership_meta key 'quotas', no code change).
+ * v2.167: the numbers are FIXED in server/config/app-defaults.js (quotas); the admin override (membership_meta 'quotas') is no
+ * longer read. An MJT quota top-up (services/mjt-services.js, 30 days) adds to the Free ceiling, never more than half the
+ * Free→Plus gap.
  * Every limit is enforced on the server at the moment of creation only: nothing a member already has is hidden, trimmed or deleted. */
 const QUOTAS = {
-  saved_searches: { free: 25, plus: 100, label: "عمليات البحث المحفوظة مع التنبيهات" },
-  collections: { free: 50, plus: 200, label: "المجموعات المحفوظة" },
-  quiz_attempts_daily: { free: 10, plus: 30, label: "محاولات اختبار الدرس الواحد خلال 24 ساعة" },
-  teams_owned: { free: 5, plus: 20, label: "الفرق النشطة التي تملكها" },
-  team_members: { free: 50, plus: 150, label: "أعضاء الفريق الواحد (حسب عضوية مالكه)" }
+  saved_searches: { ...DEF.quotas.saved_searches, label: "عمليات البحث المحفوظة مع التنبيهات" },
+  collections: { ...DEF.quotas.collections, label: "المجموعات المحفوظة" },
+  quiz_attempts_daily: { ...DEF.quotas.quiz_attempts_daily, label: "محاولات اختبار الدرس الواحد خلال 24 ساعة" },
+  teams_owned: { ...DEF.quotas.teams_owned, label: "الفرق النشطة التي تملكها" },
+  team_members: { ...DEF.quotas.team_members, label: "أعضاء الفريق الواحد (حسب عضوية مالكه)" }
 };
-const QMAX = 100000;
 const PAY_AR = { pending: "قيد التحقق", completed: "مكتملة", cancelled: "ملغاة", failed: "فشلت", refunded: "مستردّة" };
 
 /** @param {any} ctx @param {{ now?: () => Date }} [opts] */
@@ -72,7 +74,7 @@ module.exports = (ctx, opts = {}) => {
   async function require_(uid, feature) { await ensure(); return ai().requireFeature(uid, feature); }
 
   /* ---------- v2.157 usage limits ---------- */
-  async function quotaOverrides() { const r = await db.get("SELECT value FROM membership_meta WHERE key='quotas'"); const o = parse(r?.value, {}); return o && typeof o === "object" ? o : {}; }
+  async function quotaOverrides() { return {}; } // v2.167: fixed values only (app-defaults)
   /** the limits table: admin value > the service's env default (free side only, kept for existing deployments/tests) > approved default */
   async function quotas(envFree = {}) {
     const o = await quotaOverrides(), out = {};
@@ -88,7 +90,15 @@ module.exports = (ctx, opts = {}) => {
   async function limitFor(uid, key, envFree) {
     if (!QUOTAS[key]) throw new Error("unknown quota " + key);
     const q = (await quotas(envFree ? { [key]: envFree } : {}))[key], plus = await isPlus(uid);
-    return { limit: plus ? Math.max(q.plus, q.free) : q.free, tier: plus ? "plus" : "free", free: q.free, plus: Math.max(q.plus, q.free) };
+    const bonus = plus ? 0 : await topUp(uid, key, q);
+    return { limit: plus ? Math.max(q.plus, q.free) : q.free + bonus, tier: plus ? "plus" : "free", free: q.free, plus: Math.max(q.plus, q.free), ...(bonus ? { topUp: bonus } : {}) };
+  }
+  /** v2.167: an active MJT quota top-up for this key → its addition, capped at half the Free→Plus gap (no stacking) */
+  async function topUp(uid, key, q) {
+    const t = DEF.mjt.services.quota[key]; if (!t) return 0;
+    const svc = ctx.services.mjtServices; if (!svc?.allows) return 0;
+    if (!(await svc.allows(uid, "feature:quota_" + key).catch(() => false))) return 0;
+    return Math.max(0, Math.min(t.add, Math.floor((q.plus - q.free) / 2)));
   }
   /* v2.158 — what the member can do when a ceiling is reached (shown with used / allowed; never deletes anything for them) */
   const ADVICE = {
@@ -146,22 +156,6 @@ module.exports = (ctx, opts = {}) => {
       out.push({ key, label: x.label, used, limit, tier: plus ? "plus" : "free", plusLimit: Math.max(x.plus, x.free), pct, near: pct != null && pct >= 80 && used < limit, full: used != null && used >= limit, over: used != null && used > limit, advice: ADVICE[key] });
     }
     return out;
-  }
-  async function setQuotas(user, b) {
-    const L = b?.limits, bad = () => new HttpError(400, "قيم الحدود غير صالحة", "quotas_invalid");
-    if (!L || typeof L !== "object" || Array.isArray(L)) throw bad();
-    const cur = await quotas(), next = await quotaOverrides(); let n = 0;
-    for (const [k, v] of Object.entries(L)) {
-      if (!QUOTAS[k] || !v || typeof v !== "object") throw bad();
-      const free = v.free === undefined ? cur[k].free : Number(v.free), plus = v.plus === undefined ? cur[k].plus : Number(v.plus);
-      if (!Number.isInteger(free) || !Number.isInteger(plus) || free < 1 || plus < 1 || free > QMAX || plus > QMAX || plus < free) throw bad();
-      next[k] = { free, plus }; n++;
-    }
-    if (!n) throw bad();
-    const v = JSON.stringify(next), at = nowIso();
-    await db.run("INSERT INTO membership_meta(key,value,updated_at) VALUES('quotas',$1,$2) ON CONFLICT (key) DO UPDATE SET value=$1, updated_at=$2", [v, at]);
-    try { ctx.audit?.("membership_quotas_updated", "quotas", v, user.id); } catch { /* best effort */ }
-    return { limits: await quotas() };
   }
   async function myQuotas(uid) {
     const [q, plus] = await Promise.all([quotas(), isPlus(uid)]);
@@ -242,10 +236,6 @@ module.exports = (ctx, opts = {}) => {
   R.post("/api/membership/subscribe", A(safe(async (req) => { await ensure(); return ai().subscribe(req.user, { plan: PLUS }); }))); // also renews: extends from the current end
   R.post("/api/membership/cancel", A(safe(async (req) => ai().cancel(req.user, { plan: PLUS }, true))));
   R.post("/api/membership/resume", A(safe(async (req) => ai().cancel(req.user, { plan: PLUS }, false))));
-
-  const adminOnly = (fn) => A(safe(async (req, res) => { if (req.user?.role !== "admin") throw new HttpError(403, "للإدارة فقط", "forbidden"); return fn(req, res); }));
-  R.get("/api/admin/membership/limits", adminOnly(async () => ({ limits: await quotas() })));
-  R.put("/api/admin/membership/limits", adminOnly(async (req) => setQuotas(req.user, req.body || {})));
 
   return { can, require: require_, state, history, ensure, isPlus, quotas, limitFor, enforce, guarded, serial, quotaError, usage, PLUS, FREE, QUOTAS };
 };

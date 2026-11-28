@@ -8,6 +8,7 @@
  * (verification drops unsupported points → extractive fallback), caps (usage_limit) + metering, deletion forgets vectors, admin status. */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 const L = require("../lib/assistant-lib");
 
 const DIM = 64;
@@ -44,7 +45,7 @@ const mk = async (handle) => {
   return c;
 };
 const post = async (c, text, extra = {}) => { H.app.ctx.rl.w.clear(); const r = await c.req("POST", "/api/posts", { text, ...extra }); assert.equal(r.status, 200, r.error); return r.post.id; };
-const grant = async (c) => { const r = await admin.req("POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
+const grant = async (c) => { const r = await AD(admin, "POST", "/api/admin/ai/grants", { user: c.handle, days: 30 }); assert.equal(r.status, 200, r.error); };
 
 test.before(async () => {
   H = await boot({ piOpts: { jobs: false }, marketOpts: { jobs: false }, adsOpts: { jobs: false }, aiOpts: { env: { AI_PROVIDER_MONTHLY_USD: "5" }, jobs: false },
@@ -108,9 +109,9 @@ test("gate: 401, non-subscriber 402 + upsell, plan seeded once with assistant, c
   const me = await sara.req("GET", "/api/assistant/me"); assert.equal(me.entitled, false); assert.equal(me.available, true);
   assert.equal((await sara.req("GET", "/api/ai/me")).entitlements.assistant, false);
   // an admin removing the feature is respected (seed runs once)
-  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { features: ["translate"] })).status, 200);
+  assert.equal((await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { features: ["translate"] })).status, 200);
   await as().seed(); assert.ok(!(await anon.req("GET", "/api/ai/config")).plans[0].features.includes("assistant"));
-  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { features: ["translate", "assistant"] })).status, 200);
+  assert.equal((await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { features: ["translate", "assistant"] })).status, 200);
   await grant(sara); await grant(bob);
   assert.equal((await sara.req("GET", "/api/assistant/me")).entitled, true);
   // no provider key → 503 «المساعد الذكي غير مفعّل بعد»
@@ -185,8 +186,8 @@ test("vector index (public only) + semantic search + cited Q&A with verification
 test("caps: plan limits for assistant → 429 usage_limit; admin status", async () => {
   const p = await db().get("SELECT limits FROM ai_plans WHERE slug='ai_plus'");
   const lim = typeof p.limits === "string" ? JSON.parse(p.limits) : p.limits || {};
-  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: -1, costUsd: 1 } } })).status, 400);
-  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 10, costUsd: 1 } } })).status, 200);
+  assert.equal((await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: -1, costUsd: 1 } } })).status, 400);
+  assert.equal((await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { limits: { assistant: { chars: 10, costUsd: 1 } } })).status, 200);
   const pl = await db().get("SELECT limits FROM ai_plans WHERE slug='ai_plus'"); const pj = typeof pl.limits === "string" ? JSON.parse(pl.limits) : pl.limits;
   assert.deepEqual(pj.assistant, { chars: 10, costUsd: 1 }); if (lim.translate) assert.deepEqual(pj.translate, lim.translate);
   const r = await bob.req("POST", "/api/assistant/write", { text: "نص طويل يتجاوز الحد المسموح", mode: "improve" });

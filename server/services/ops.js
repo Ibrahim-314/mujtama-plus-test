@@ -3,23 +3,22 @@
  * verification. Beacon endpoints accept navigator.sendBeacon (no custom header possible) but only
  * write append-only telemetry, so they carry no CSRF risk. */
 const crypto = require("node:crypto");
-const { E, str, sha, now } = require("../lib/core");
+const { E, sha, now } = require("../lib/core");
 const M = require("../lib/migrations");
-const DEFAULT_FLAGS = [
-  ["passkeys", "تسجيل الدخول بمفاتيح المرور", 1, 100],
-  ["data_saver", "وضع توفير البيانات", 1, 100],
-  ["rum", "قياس أداء المستخدمين الحقيقيين", 1, 100],
-  ["new_composer", "المحرر الجديد (المرحلة 11)", 0, 0],
-  ["stories", "القصص (المرحلة 13)", 0, 0],
-  ["community_lean_bootstrap", "bootstrap خفيف للمجتمعات: عضوياتك ومجتمعات تشرف عليها فقط (v2.57)", 1, 100]
-];
+const DEF = require("../config/app-defaults");
+/* v2.167: feature flags are fixed in app-defaults (all ON: passkeys, rum); the four dead flags were deleted. */
+const DEFAULT_FLAGS = Object.entries(DEF.flags).map(([key, on]) => [key, { passkeys: "تسجيل الدخول بمفاتيح المرور", rum: "قياس أداء المستخدمين الحقيقيين", community_lean_bootstrap: "bootstrap خفيف للمجتمعات: عضوياتك ومجتمعات تشرف عليها فقط (v2.57)" }[key] || key, on ? 1 : 0, on ? 100 : 0]);
 module.exports = (ctx) => {
   const { db, router: R, rl, config, realtime, bus } = ctx;
   const started = Date.now();
   ctx.jobsState = ctx.jobsState || {};
   const admin = (fn) => ctx.requireUser(async (req, res) => { if (req.user.role !== "admin") throw E.forbid(); return fn(req, res); });
 
-  (async () => { for (const [key, d, en, ro] of DEFAULT_FLAGS) await db.run("INSERT INTO feature_flags(key,description,enabled,rollout,allow,updated_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (key) DO NOTHING", [key, d, en, ro, [], now()]); })().catch(() => { });
+  (async () => {
+    for (const [key, d, en, ro] of DEFAULT_FLAGS) await db.run("INSERT INTO feature_flags(key,description,enabled,rollout,allow,updated_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (key) DO UPDATE SET enabled=$3, rollout=$4, updated_at=$6", [key, d, en, ro, [], now()]);
+    for (const key of DEF.deadFlags) await db.run("DELETE FROM feature_flags WHERE key=$1", [key]); // configuration rows only — no member data
+    ctx.cache?.del?.("flags");
+  })().catch(() => { });
 
   const bucket = (key, uid) => crypto.createHash("sha1").update(key + ":" + uid).digest().readUInt16BE(0) % 100;
   async function flagsFor(user) {
@@ -67,14 +66,8 @@ module.exports = (ctx) => {
   }, { beacon: true });
 
   R.get("/api/flags", async (req) => ({ flags: await flagsFor(req.user) }));
-  R.get("/api/admin/flags", admin(async () => ({ flags: await db.all("SELECT * FROM feature_flags ORDER BY key") })));
-  R.put("/api/admin/flags/:key", admin(async (req) => {
-    const key = req.params.key; if (!/^[a-z0-9_]{2,40}$/.test(key)) throw E.bad();
-    const enabled = req.body.enabled ? 1 : 0, rollout = Math.max(0, Math.min(100, Math.round(+req.body.rollout || 0))), allow = Array.isArray(req.body.allow) ? req.body.allow.filter(x => typeof x === "string").slice(0, 200) : [];
-    await db.run("INSERT INTO feature_flags(key,description,enabled,rollout,allow,updated_at) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (key) DO UPDATE SET enabled=$3, rollout=$4, allow=$5, updated_at=$6, description=COALESCE($2, feature_flags.description)", [key, str(req.body.description, 120), enabled, rollout, allow, now()]);
-    ctx.cache.del("flags"); ctx.audit("flag_changed", key, `${enabled}:${rollout}`, req.user.id);
-    return { ok: true };
-  }));
+  // v2.167: /api/admin/flags removed — flags are fixed in app-defaults
+
 
   /* Right to data portability (Phase 3): everything the user created or that is about them. */
   R.get("/api/me/export", ctx.requireUser(async (req, res) => {

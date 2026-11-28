@@ -783,6 +783,6 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/admin/ads/review", staff(async (req) => reviewQueue(req.query || {})));
   R.post("/api/admin/ads/review/:id", staff(async (req) => decide(req.user, req.params.id, req.body || {})));
 
-  return { config: cfg, inject, pick, maintain, flushCharges, settle, viewerHash, matchTargeting, stats };
+  return { config: cfg, decide, reviewQueue, inject, pick, maintain, flushCharges, settle, viewerHash, matchTargeting, stats };
 };
 Object.assign(module.exports, { matchTargeting, audienceBucket, slotsFor, isSensitive, SENSITIVE, STATUSES });

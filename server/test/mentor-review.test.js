@@ -1,4 +1,5 @@
-/* مسار الإرشاد M5-2 «مراجَع من الفريق» — POST /api/admin/mentors/:uid/review sets / clears mentor_profiles.reviewed_at (067).
+/* مسار الإرشاد M5-2 «مراجَع من الفريق» — mentors.setReviewed sets / clears mentor_profiles.reviewed_at (067).
+ * v2.167: the staff route POST /api/admin/mentors/:uid/review was removed (404 for everyone); the badge data and its service stay.
  * Admin only: 401 visitors, 403 members and the mentor themself; 404 unknown mentor; 400 non-boolean. Audited (audit_log).
  * Public payloads (page, directory, /api/mentor/me) expose `reviewed` as a boolean only — never who / when; the staff list
  * carries reviewedAt + needsReview (allowMinors && !reviewed) and totals. Accepting minors is flagged, never blocked. */
@@ -13,7 +14,8 @@ async function mk(handle) {
   const c = new H.Client(); const r = await c.req("POST", "/api/auth/register", { name: "عضو " + handle, handle, password: "secret123" });
   assert.equal(r.status, 200, r.error); c.id = r.user.id; return c;
 }
-const review = (c, reviewed, uid = mentor.id) => c.req("POST", `/api/admin/mentors/${uid}/review`, { reviewed });
+const M = () => H.app.ctx.services.mentors;
+const review = async (c, reviewed, uid = mentor.id) => { try { return { status: 200, ...(await M().setReviewed({ id: c.id, role: "admin" }, uid, { reviewed })) }; } catch (e) { return { status: e.status || 500, error: e.message }; } };
 const noLeak = (o) => { const j = JSON.stringify(o); assert.ok(!/reviewed_?at/i.test(j), "reviewedAt must not reach non-staff: " + j.slice(0, 200)); };
 
 test.before(async () => {
@@ -25,17 +27,17 @@ test.before(async () => {
 });
 test.after(() => H.app.close());
 
-test("permissions: visitor 401, member 403, mentor self 403, bad body 400, unknown 404", async () => {
-  assert.equal((await review(guest(), true)).status, 401);
-  assert.equal((await review(member, true)).status, 403);
-  assert.equal((await review(mentor, true)).status, 403);
+test("permissions (v2.167): the staff route is gone for everyone; the service still validates", async () => {
+  for (const c of [guest(), member, mentor, staff]) assert.ok([401, 404].includes((await c.req("POST", `/api/admin/mentors/${mentor.id}/review`, { reviewed: true })).status));
+  assert.equal((await staff.req("POST", `/api/admin/mentors/${mentor.id}/review`, { reviewed: true })).status, 404);
+  assert.equal((await staff.req("GET", "/api/admin/mentors")).status, 404);
   assert.equal((await review(staff, "yes")).status, 400);
   assert.equal((await review(staff, true, "usr_nope")).status, 404);
   assert.equal((await db().get("SELECT reviewed_at FROM mentor_profiles WHERE user_id=$1", [mentor.id])).reviewed_at, null);
 });
 
 test("unreviewed mentor accepting minors: flagged for staff, still listed and bookable (not blocked)", async () => {
-  const a = await staff.req("GET", "/api/admin/mentors"); assert.equal(a.status, 200, a.error);
+  const a = await M().adminView();
   const row = a.mentors.find((m) => m.user.id === mentor.id);
   assert.equal(row.reviewed, false); assert.equal(row.needsReview, true); assert.equal(row.reviewedAt, null);
   assert.ok(a.totals.needsReview >= 1 && a.totals.unreviewed >= 1);
@@ -53,7 +55,7 @@ test("staff sets reviewed → boolean on page / directory / me, no who/when; aud
     const d = await c.req("GET", "/api/mentors"); const m = d.mentors.find((x) => x.user.id === mentor.id); assert.equal(m.reviewed, true); noLeak(d);
   }
   const me = await mentor.req("GET", "/api/mentor/me"); assert.equal(me.profile.reviewed, true); noLeak(me);
-  const a = await staff.req("GET", "/api/admin/mentors"); const row = a.mentors.find((m) => m.user.id === mentor.id);
+  const a = await M().adminView(); const row = a.mentors.find((m) => m.user.id === mentor.id);
   assert.equal(row.reviewed, true); assert.equal(row.needsReview, false); assert.ok(row.reviewedAt);
   await new Promise((res) => setTimeout(res, 60));
   const log = await db().all("SELECT action, target, by_user FROM audit_log WHERE target=$1 ORDER BY id", [mentor.id]);

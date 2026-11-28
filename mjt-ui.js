@@ -6,8 +6,7 @@
  *                                   No «buy with Pi» entry (POST /api/mjt/buy stays a disabled 501). ?tab=earn → #/mjt/earn.
  *   #/mjt/earn                      «كيف أكسب»: every earning path that is live right now, read from the server's own settings
  *   #/mjt/terms                     «شروط مجتمع كوين»
- *   #/admin/mjt                     staff: supply + ledger verification, conversion dry run / apply / rollback, settings,
- *                                   adjustments with a reason, freeze, recent transactions
+ *   (v2.167: #/admin/mjt was removed — values are fixed in server/config/app-defaults.js)
  * CSP: no inline handlers, no javascript: URLs, no inline styles.
  * ===================================================================== */
 (function MjtUI() {
@@ -78,10 +77,10 @@
     let d; try { d = await api("GET", "/api/mjt/wallet/review"); } catch (e) { t.innerHTML = errBox(e); return; }
     if (!t.isConnected) return;
     const row = (i) => `<li class="li"><span class="ico">${ic("award")}</span><span class="t"><b>${h(i.label || i.kindLabel || "")}${i.source ? ` · ${h(i.source)}` : ""}</b><small>${h(day(i.createdAt))}${i.reason ? ` · ${h(i.reason)}` : ""} · <span class="sbadge ${ST_CLS[i.status] || ""}">${h(i.statusLabel || i.status)}</span></small></span><span class="mj-amt in">${amt("+" + String(i.amount).replace(/^-/, ""))}</span></li>`;
-    t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة لا تُحتسب في رصيدك حتى توافق عليها الإدارة.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
+    t.innerHTML = d.items.length ? `<ul class="list mj-hist">${d.items.map(row).join("")}</ul><p class="f-hint">المكافآت قيد المراجعة تُضاف إلى رصيدك تلقائياً بعد 72 ساعة ما لم يصل بلاغ على حسابك.</p>` : UI.empty({ title: "لا شيء قيد المراجعة", text: "كل مكافآتك أُضيفت إلى رصيدك." });
   }
 
-  /* ---------- #/mjt/earn «كيف أكسب» (v2.164) — only what the server says is live right now; no amount is written here ---------- */
+  /* ---------- #/mjt/earn «كيف أكسب» (v2.164; v2.167 + the fixed earn table from /api/mjt/config → table) — no amount is written here ---------- */
   async function earnView() {
     page({ title: "كيف أكسب", icon: "award", sub: "طرق كسب مجتمع كوين المفعّلة الآن", back: ["#/mjt", "مجتمع كوين"] }, `<div id="mj-e">${skel(4)}</div>`);
     const box = $("#mj-e");
@@ -92,6 +91,13 @@
     const lg = (me && me.legacy) || {};
     const sec = (icon, title, body) => `<section class="card mj-sec"><h3 class="f-h">${ic(icon)}${title}</h3>${body}</section>`;
     const out = [];
+    const T = cfg.table; // v2.167: the fixed earn table — the same values for everyone, set in the app (no admin changes them)
+    if (T && T.sources && T.sources.length) {
+      const win = (x) => [x.daily != null ? `${amt(x.daily)} مرات يومياً` : "", x.weekly != null ? `${amt(x.weekly)} مرات أسبوعياً` : "", x.monthly != null ? `${amt(x.monthly)} مرات شهرياً` : ""].filter(Boolean).join(" · ");
+      out.push(sec("coin", "جدول الكسب", `<ul class="list mj-kinds mj-table">${T.sources.map((x) => `<li class="li"><span class="t"><b>${h(x.label)}</b><small>${x.perLesson != null ? `${amt(x.perLesson)} MJT لكل درس (من ${amt(x.min)} إلى ${amt(x.max)}) · ` : ""}حتى ${win(x)}</small></span><span class="sbadge role">${amt("+" + x.amount + " MJT")}</span></li>`).join("")}</ul>
+        <p class="f-hint">الحد الأعلى لكل المكافآت معاً: ${amt(T.caps.daily)} MJT يومياً، و${amt(T.caps.weekly)} أسبوعياً، و${amt(T.caps.monthly)} شهرياً.${T.caps.byLevel ? ` الحد اليومي حسب مستوى سمعتك: ${amt(T.caps.byLevel["1-2"])} للمستويين 1–2، و${amt(T.caps.byLevel["3-4"])} للمستويين 3–4، و${amt(T.caps.byLevel["5+"])} من المستوى 5.` : ""}</p>
+        <p class="f-hint">قد تُحجز مكافأة حساب جديد أو مرتبط بحسابات أخرى للتحقق، وتُضاف تلقائياً بعد ${amt(T.holdHours)} ساعة إذا لم يُبلَّغ عن الحساب.</p>`));
+    }
     if (cfg.earn.enabled) out.push(sec("award", "مكافآت المساهمات المفيدة", `<p class="f-hint">كل نقطة مساهمة جديدة تضيف ${amt("1")} MJT إلى رصيدك تلقائياً.</p>
         <ul class="list mj-kinds">${cfg.earn.kinds.map((k) => `<li class="li"><span class="t"><b>${h(k.label)}</b>${k.dailyCap != null ? `<small>حتى ${amt(k.dailyCap)} مرات يومياً</small>` : ""}</span><span class="sbadge role">${amt("+" + k.mjt + " MJT")}</span></li>`).join("")}</ul>
         <p class="f-hint">بحد أقصى ${amt(cfg.earn.dailyCap)} MJT من مكافآت المساهمات يومياً. لا تُحتسب المساهمات من حسابات جديدة جداً أو مرتبطة أو مشبوهة، ويُسترجع ما كُسب من محتوى حُذف.</p>
@@ -155,59 +161,12 @@
     $("#mj-rcv").addEventListener("change", (e) => busy(null, async () => { const r = await api("PUT", "/api/mjt/receive", { receive: e.target.checked }); say(r.receive ? "سيصلك ما يرسله الأعضاء" : "أوقفت استقبال التحويلات"); }));
   }
 
-  /* ---------- #/admin/mjt ---------- */
-  async function adminView() {
-    page({ title: "إدارة مجتمع كوين", icon: "wallet", back: ["#/admin", "الإدارة"] }, `<div id="mj-a">${skel(4)}</div>`);
-    const box = $("#mj-a");
-    let d; try { d = await api("GET", "/api/admin/mjt"); } catch (e) { box.innerHTML = errBox(e); return; }
-    if (!box.isConnected) return;
-    const S = d.settings;
-    box.innerHTML = `<p class="notice">${ic("lock")}<span>${h(d.token.stageNote)}</span></p>
-      <div class="f-kpis"><div class="kpi-tile"><span>المتداول</span><b>${amt(d.supply.circulating)}</b></div><div class="kpi-tile"><span>المُصدَر</span><b>${amt(d.supply.minted)}</b></div><div class="kpi-tile"><span>المحروق</span><b>${amt(d.supply.burned)}</b></div><div class="kpi-tile"><span>حاملون</span><b>${UI.num(d.supply.holders)}</b></div></div>
-      <section class="card mj-sec"><h3 class="f-h">${ic("check")}سلامة الدفتر</h3><p class="${d.verify.ok ? "mj-ok" : "mj-bad"}" role="status">${d.verify.ok ? "متوازن: كل رصيد يطابق قيوده، ومجموع كل معاملة صفر، ولا رصيد سالب." : "تنبيه: " + h(d.verify.problems.join("، "))}</p><p class="f-hint">آخر فحص ${h(day(d.verify.checkedAt))} · خزينة المنصة ${amt(d.supply.treasury)} MJT</p></section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("swap")}تحويل نقاط المساهمة (1 نقطة = 1 MJT)</h3>
-        <div class="mj-acts"><button type="button" class="btn outline" id="mj-dry">تجربة بلا كتابة</button><button type="button" class="btn" id="mj-apply">تطبيق التحويل</button></div><div id="mj-dr"></div>
-        ${d.batches.length ? `<ul class="list mj-batches">${d.batches.map((b) => `<li class="li"><span class="t"><b>${h(b.id)} · ${b.status === "applied" ? "مطبّق" : "أُلغي"}</b><small>${UI.num(b.users)} عضو · ${amt(b.amount)} MJT · ${h(day(b.createdAt))}</small></span>${b.status === "applied" ? `<button type="button" class="btn ghost sm" data-rb="${h(b.id)}">إلغاء</button>` : ""}</li>`).join("")}</ul>` : `<p class="f-hint">لم يُطبّق تحويل بعد.</p>`}</section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("settings")}الإعدادات</h3><form class="f-form" id="mj-set">
-        <label class="switch-row"><span>المكافآت مفعّلة</span><input type="checkbox" role="switch" class="switch" name="rew" ${S.rewards.enabled ? "checked" : ""}></label>
-        <label>الحد اليومي للمكافآت (MJT)<input name="cap" dir="ltr" inputmode="decimal" value="${h(S.rewards.dailyCap)}"></label>
-        <label class="switch-row"><span>التحويل بين الأعضاء مفعّل</span><input type="checkbox" role="switch" class="switch" name="tr" ${S.transfers.enabled ? "checked" : ""}></label>
-        <label>حد التحويل الواحد (MJT)<input name="single" dir="ltr" inputmode="decimal" value="${h(S.transfers.maxSingle)}"></label>
-        <label>الحد اليومي للتحويل (MJT)<input name="daily" dir="ltr" inputmode="decimal" value="${h(S.transfers.maxDaily)}"></label>
-        <label>تحويلات في الساعة<input name="hour" type="number" min="1" dir="ltr" value="${S.transfers.maxPerHour}"></label>
-        <label>عمر الحساب للتحويل (أيام)<input name="age" type="number" min="0" dir="ltr" value="${S.transfers.minAccountDays}"></label>
-        <div class="mj-acts"><button class="btn" type="submit">حفظ</button></div></form></section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("shield")}تعديل رصيد عضو</h3><form class="f-form" id="mj-adj">
-        <label>العضو<input name="handle" dir="ltr" required placeholder="@handle"></label><label>المبلغ (موجب أو سالب)<input name="amount" dir="ltr" inputmode="decimal" required placeholder="-5 أو 10"></label>
-        <label>السبب (يُحفظ في السجل)<input name="reason" required minlength="5" maxlength="300"></label><div class="mj-acts"><button class="btn" type="submit">تطبيق</button></div></form></section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("lock")}إيقاف محفظة</h3><form class="f-form" id="mj-frz">
-        <label>العضو<input name="handle" dir="ltr" required placeholder="@handle"></label><label>السبب<input name="reason" required minlength="5" maxlength="300"></label>
-        <div class="mj-acts"><button class="btn" type="submit" name="on" value="1">إيقاف</button><button class="btn ghost" type="submit" name="on" value="0">إعادة تفعيل</button></div></form>
-        ${d.frozen.length ? `<p class="f-hint">موقوفة: ${d.frozen.map((x) => "@" + h(x)).join("، ")}</p>` : ""}</section>
-      <section class="card mj-sec"><h3 class="f-h">${ic("chart")}آخر المعاملات</h3>${d.recent.length ? `<ul class="list mj-hist">${d.recent.map((r) => `<li class="li"><span class="t"><b>${h(r.label)}${r.handle ? ` · @${h(r.handle)}` : ""}</b><small>${h(day(r.createdAt))}${r.memo ? " · " + h(r.memo) : ""}</small></span><span class="mj-amt">${amt(r.amount)}</span></li>`).join("")}</ul>` : `<p class="f-hint">لا معاملات بعد.</p>`}</section>`;
-    const reload = () => adminView();
-    $("#mj-dry").addEventListener("click", (e) => busy(e.currentTarget, async () => {
-      const r = await api("GET", "/api/admin/mjt/conversion/dry-run");
-      $("#mj-dr").innerHTML = `<p class="notice" role="status">${ic("help")}<span>سيُحوَّل ${UI.num(r.totals.users)} عضو: ${UI.num(r.totals.pts)} نقطة = ${amt(r.totals.amount)} MJT. مستبعد (تعديلات إدارية موجبة): ${UI.num(r.totals.excludedPts)} نقطة · مخصوم (طلبات استبدال سابقة): ${UI.num(r.totals.redeemedPts)} نقطة.</span></p>`;
-    }));
-    $("#mj-apply").addEventListener("click", (e) => { if (!confirm("تطبيق تحويل نقاط المساهمة إلى مجتمع كوين؟ لا يُحوَّل أحد مرتين، ويمكن الإلغاء لاحقاً.")) return; busy(e.currentTarget, async () => { const r = await api("POST", "/api/admin/mjt/conversion", {}); say(r.applied ? `حُوّل ${r.batch.users} عضو (${r.batch.amount} MJT)` : "لا شيء للتحويل"); reload(); }); });
-    box.querySelectorAll("[data-rb]").forEach((b) => b.addEventListener("click", () => busy(b, async () => {
-      const chk = await api("POST", `/api/admin/mjt/conversion/${enc(b.dataset.rb)}/rollback`, { dryRun: true });
-      if (!chk.possible) { say(`لا يمكن الإلغاء: ${chk.blocked} عضو صرفوا جزءاً من الرصيد`); return; }
-      if (!confirm(`إلغاء تحويل ${chk.users} عضو (${chk.amount} MJT)؟`)) return;
-      await api("POST", `/api/admin/mjt/conversion/${enc(b.dataset.rb)}/rollback`, {}); say("أُلغي التحويل"); reload();
-    })));
-    $("#mj-set").addEventListener("submit", (e) => { e.preventDefault(); const f = e.target; busy(e.submitter, async () => { await api("PUT", "/api/admin/mjt/settings", { rewards: { enabled: f.rew.checked, dailyCap: f.cap.value.trim() }, transfers: { enabled: f.tr.checked, maxSingle: f.single.value.trim(), maxDaily: f.daily.value.trim(), maxPerHour: +f.hour.value, minAccountDays: +f.age.value } }); say("حُفظت الإعدادات"); reload(); }); });
-    let adjKey = newKey(); $("#mj-adj").addEventListener("input", () => { adjKey = newKey(); });
-    $("#mj-adj").addEventListener("submit", (e) => { e.preventDefault(); const f = e.target; if (!confirm(`تعديل رصيد @${f.handle.value.trim().replace(/^@/, "")} بمقدار ${f.amount.value.trim()} MJT؟`)) return; busy(e.submitter, async () => { const r = await api("POST", "/api/admin/mjt/adjust", { handle: f.handle.value.trim(), amount: f.amount.value.trim(), reason: f.reason.value.trim(), ikey: adjKey }); adjKey = newKey(); say(`رصيد @${r.handle} الآن ${r.balance.mjt} MJT`); reload(); }); });
-    $("#mj-frz").addEventListener("submit", (e) => { e.preventDefault(); const f = e.target, on = e.submitter?.value === "1"; busy(e.submitter, async () => { await api("POST", `/api/admin/mjt/accounts/${enc(f.handle.value.trim().replace(/^@/, ""))}/freeze`, { frozen: on, reason: f.reason.value.trim() }); say(on ? "أُوقفت المحفظة" : "أُعيد تفعيل المحفظة"); reload(); }); });
-  }
+  /* v2.167: #/admin/mjt removed — every MJT value is fixed and automatic (server/config/app-defaults.js) */
 
   MPRoutes.extend((a, b, prev) => {
     return { mjt: () => walletView() };
   });
   MPRoutes.add("mjt", (a, b, next) => (a === "earn" ? earnView() : a === "terms" ? termsView() : next()));
-  MPRoutes.add("admin", (a, b, next) => (a === "mjt" ? adminView() : next()));
-  window.MPMjt = { walletView, earnView, termsView, adminView, version: "2.164.0" };
-  if (/^#\/(mjt|admin\/mjt)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
+  window.MPMjt = { walletView, earnView, termsView, version: "2.167.0" };
+  if (/^#\/mjt\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

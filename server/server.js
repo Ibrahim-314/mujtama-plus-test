@@ -181,6 +181,8 @@ async function createApp(overrides = {}) {
   ctx.services.cinsights = require("./services/cinsights")(ctx);                                // v2.60: community insights (live counters + nightly reconciler), events section, community calendar, member notifications per community
   ctx.services.cintegrations = require("./services/cintegrations")(ctx, config.cintegrationsOpts || {}); // v2.60: community webhooks (signed like phase 47), partner search, integrations view, MJT rewards paid by the owner through the MJT ledger
   await Scale.wireScale(ctx);                                               // Phase 48: realtime fan-out via Redis + /api/admin/scale
+  ctx.services.autoRules = require("./services/auto-rules")(ctx, config.autoRulesOpts || {});      // v2.167: every former admin decision made by fixed rules (holds 72 h, auto-publish, reports) — server/config/app-defaults.js
+  ctx.services.owner = require("./services/owner")(ctx);                                            // v2.167: «لوحة المالك» — read-only status + emergency ban / unban
   ctx.services.minors = require("./services/minors")(ctx, config.minorsOpts);     // Phase 35 (must stay last: wraps content/search routes)
   if (config.seedDemo && !Scale.isWorker(scale.role)) await require("./services/seed")(ctx, process.env.SEED_ROOT || config.webRoot);
   ctx.services.demoMessages = require("./services/demo-messages")(ctx);              // v2.134: demo DMs/groups for messages-AI testing (DEMO_MESSAGES=1 on Render test only; removed when off)

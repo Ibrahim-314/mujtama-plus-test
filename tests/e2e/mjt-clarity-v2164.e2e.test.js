@@ -41,7 +41,7 @@ test("one wallet page: #/rewards and ?tab=earn redirect; no buy entry; services 
   for (const h of ["#/mjt/earn", "#/mjt/services", "#/mjt/terms", "#/mjt?tab=review"]) assert.equal(await p.evaluate((x) => !!document.querySelector(`#view a[href="${x}"]`), h), true, h);
   assert.ok((await minTap(p, ".mj-links .btn, .mj-seg a, .mj-hero .btn")) >= 44, "tap targets");
   assert.deepEqual(await axe(p), [], "wallet"); await shot(p, "wallet-390");
-  rl(); await go(p, "#/rewards?tab=review"); await until(p, () => location.hash === "#/mjt?tab=review"); await textHas(p, /لا شيء قيد المراجعة/);
+  rl(); await go(p, "#/rewards?tab=review"); await until(p, () => location.hash === "#/mjt?tab=review"); await textHas(p, /لا شيء قيد المراجعة|تُضاف إلى رصيدك تلقائياً بعد 72 ساعة/); // v2.167: a new account's earn (daily sign-in) may be held by the always-ON identity checks
   rl(); await go(p, "#/mjt?tab=earn"); await until(p, () => location.hash === "#/mjt/earn");
   rl(); await go(p, "#/mjt/services"); await until(p, () => !!document.querySelector(".sv-wal"));
   assert.equal(await p.evaluate(() => !!document.querySelector("#view .mj-big")), false, "balance not repeated");
@@ -59,11 +59,10 @@ test("«كيف أكسب» lists the live paths from the server and drops a pause
   assert.ok(t.includes(mine.rate), "mining rate comes from /api/mjt/mining");
   assert.equal(await p.evaluate(() => !!document.querySelector('#view a[href="#/mjt/terms"]')), true);
   assert.deepEqual(await axe(p), [], "earn"); await shot(p, "earn-390");
-  // pausing the sign-in reward (admin switch) removes it from the page; the page itself changes nothing
-  rl(); const off = await call("PUT", "/api/admin/mjt/legacy/checkin", { enabled: false, reason: "e2e فحص صفحة الكسب" }); assert.ok(!off.error, off.error);
-  rl(); await go(p, "#/home"); await go(p, "#/mjt/earn"); await textHas(p, /مكافآت المساهمات المفيدة/);
-  assert.doesNotMatch(await p.textContent("#view"), /مكافأة الدخول اليومي/);
-  rl(); await call("PUT", "/api/admin/mjt/legacy/checkin", { enabled: true, reason: "e2e إعادة التشغيل" });
+  // v2.167: the sign-in reward is always ON — the admin pause switch and its API are gone
+  rl(); const off = await p.evaluate(async () => (await fetch("/api/admin/mjt/legacy/checkin", { method: "PUT", headers: { "Content-Type": "application/json", "X-Requested-With": "mujtama" }, body: JSON.stringify({ enabled: false, reason: "e2e" }), credentials: "include" })).status);
+  assert.equal(off, 404, "pause route removed");
+  rl(); await go(p, "#/home"); await go(p, "#/mjt/earn"); await textHas(p, /مكافآت المساهمات المفيدة/); await textHas(p, /مكافأة الدخول اليومي/);
   // English UI
   await until(p, () => !!window.MPI18n?.setLang); await p.evaluate(() => window.MPI18n.setLang("en")); await until(p, () => document.documentElement.dir === "ltr");
   rl(); await go(p, "#/home"); await go(p, "#/mjt/earn"); await textHas(p, /Rewards for helpful contributions|How to earn/);

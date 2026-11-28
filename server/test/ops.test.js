@@ -22,14 +22,14 @@ test("client errors are grouped by fingerprint; RUM accepts header-less beacons"
   const csrf = await fetch(H.base + "/api/posts", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "{}" }); assert.equal(csrf.status, 403, "non-beacon routes still need the CSRF header");
 });
 
-test("feature flags: defaults, percentage rollout, allow-list, admin-only edits", async () => {
+test("feature flags (v2.167): fixed in app-defaults, all ON; the admin flag switches are gone", async () => {
   await new Promise(r => setTimeout(r, 50));
-  const r = await B.req("GET", "/api/flags"); assert.equal(r.flags.passkeys, true); assert.equal(r.flags.stories, false);
-  assert.equal((await B.req("PUT", "/api/admin/flags/stories", { enabled: true, rollout: 100 })).status, 403);
-  const salma = (await B.req("GET", "/api/me")).user.id;
-  assert.equal((await A.req("PUT", "/api/admin/flags/stories", { enabled: true, rollout: 0, allow: [salma] })).status, 200);
-  assert.equal((await B.req("GET", "/api/flags")).flags.stories, true, "allow-listed user sees it");
-  assert.equal((await A.req("GET", "/api/flags")).flags.stories, false, "others do not at 0%");
+  const r = await B.req("GET", "/api/flags");
+  assert.equal(r.flags.passkeys, true); assert.equal(r.flags.rum, true); assert.equal(r.flags.community_lean_bootstrap, true);
+  assert.equal(r.flags.stories, undefined, "dead flags were deleted");
+  assert.equal((await B.req("PUT", "/api/admin/flags/stories", { enabled: true, rollout: 100 })).status, 404);
+  assert.equal((await A.req("PUT", "/api/admin/flags/stories", { enabled: true, rollout: 100 })).status, 404, "no admin switch, even for the owner");
+  assert.equal((await A.req("GET", "/api/admin/flags")).status, 404);
 });
 
 test("data export returns the user's own data without secrets", async () => {

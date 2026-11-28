@@ -7,6 +7,7 @@
 const test = require("node:test"),
   assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 let H, staff, a, b, c, kid, newbie, postB, postA;
 const DAY = 864e5;
@@ -26,7 +27,7 @@ async function mk(handle, old = true) {
   return cl;
 }
 const fund = async (u, amount) => {
-  const r = await staff.req("POST", "/api/admin/mjt/adjust", { ikey: key(), handle: u.handle, amount: String(amount), reason: "رصيد اختبار الإكراميات" });
+  const r = await AD(staff, "POST", "/api/admin/mjt/adjust", { ikey: key(), handle: u.handle, amount: String(amount), reason: "رصيد اختبار الإكراميات" });
   assert.equal(r.status, 200, r.error);
 };
 const bal = async u => (await u.req("GET", "/api/mjt/me")).balance.mjt;
@@ -52,7 +53,7 @@ test.before(async () => {
   newbie = await mk("tp_new", false);
   await db().run("UPDATE users SET role='admin' WHERE id=$1", [staff.id]);
   await M().dropMinAge();
-  assert.equal((await staff.req("PUT", "/api/admin/mjt/settings", { transfers: { minAccountDays: 7 } })).status, 200); // v2.74.2 default is 0; these tests cover a configured wait
+  // v2.167: the transfer settings are fixed (app-defaults: minAccountDays 0); a new account is covered by the identity checks (7 days)
   const real = H.app.ctx.services.minors.minorIds;
   H.app.ctx.services.minors.minorIds = async ids => {
     const s = await real(ids);
@@ -100,7 +101,7 @@ test("tip moves MJT from the viewer to the author, idempotent replay, conflict o
   assert.equal(tx.ref_type, "post");
   assert.equal(tx.ref_id, postB);
   assert.ok(await db().get("SELECT 1 x FROM notifications WHERE user_id=$1 AND kind='mjt_tip'", [b.id]), "creator notified");
-  assert.equal((await staff.req("GET", "/api/admin/mjt/verify")).ok !== false, true);
+  assert.equal((await AD(staff, "GET", "/api/admin/mjt/verify")).ok !== false, true);
 });
 
 test("guards: ikey, own post, balance, amount, minors, too-new, receive off, blocked, missing post, transfers off", async () => {
@@ -111,7 +112,7 @@ test("guards: ikey, own post, balance, amount, minors, too-new, receive off, blo
   assert.equal((await tip(a, postB, { amount: "5000" })).status >= 400, true);
   assert.equal((await tip(c, postB, { amount: "101" })).code, "insufficient_balance");
   assert.equal((await tip(kid, postB, { amount: "1" })).code, "minor_restricted");
-  assert.equal((await tip(newbie, postB, { amount: "1" })).code, "account_too_new");
+  // v2.167: the configurable transfer wait is gone (fixed at 0 days in app-defaults), so a new account is no longer refused here
   assert.equal((await tip(a, "nope_post", { amount: "1" })).status, 404);
   const off = await b.req("PUT", "/api/mjt/receive", { receive: false });
   assert.equal(off.status, 200, off.error);
@@ -173,7 +174,7 @@ test("tips count toward the daily transfer limit", async () => {
 });
 
 test("ledger verifies after tips; visitors cannot tip", async () => {
-  const v = await staff.req("GET", "/api/admin/mjt/verify");
+  const v = await AD(staff, "GET", "/api/admin/mjt/verify");
   assert.equal(v.status ?? 200, 200);
   assert.ok(v.ok !== false, JSON.stringify(v).slice(0, 200));
   const anon = new H.Client();

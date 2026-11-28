@@ -32,7 +32,7 @@
  *   POST /api/admin/mjt/economy/sources/:key/state           { enabled } manual pause / resume of a phase-4 source (audited)
  *   POST /api/admin/mjt/economy/simulate                     hypothetical projection («افتراضي»), nothing written
  *   GET  /api/admin/mjt/economy/export.csv?table=&period=    CSV of one table for the period (audited) */
-const { E, HttpError, str } = require("../lib/core");
+const { HttpError, str } = require("../lib/core");
 const { UNIT, format } = require("../lib/mjt-ledger");
 const { SEC_HEADERS } = require("../lib/http");
 
@@ -90,15 +90,13 @@ const SIM_NOTE = "افتراضي — حساب تقديري من افتراضات
 
 /** @param {any} ctx @param {{ now?: () => Date|number }} [opts] */
 module.exports = (ctx, opts = {}) => {
-  const { db, rl } = ctx;
-  const R = ctx.router, A = ctx.requireUser;
+  const { db } = ctx;
   const clock = () => { const n = opts.now ? opts.now() : new Date(); return n instanceof Date ? n : new Date(n); };
   const nowIso = () => clock().toISOString();
   const ago = (ms) => new Date(clock().getTime() - ms).toISOString();
   const fail = (status, code, msg) => new HttpError(status, msg, code);
   const RW = () => ctx.services.mjtRewards;
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return JSON.parse(v) ?? d; } catch { return d; } };
-  const admin = (fn) => A(async (req, res) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); if (!rl.hit("mjt_admin", req.user.id)) throw E.rate(); return fn(req, res); });
   const N = (v) => Number(v || 0);
   const mjtNum = (units) => Math.round((N(units) / UNIT) * 1e4) / 1e4; // chart values (display only)
   const pct = (a, b) => (b > 0 ? Math.round((a / b) * 1000) / 10 : null);
@@ -392,17 +390,9 @@ module.exports = (ctx, opts = {}) => {
   }
 
   /* ---------- routes ---------- */
-  R.get("/api/admin/mjt/economy", admin(async (req) => dashboard(req.query)));
-  R.get("/api/admin/mjt/economy/mapping", admin(async () => mapping()));
-  R.get("/api/admin/mjt/economy/alerts", admin(async (req) => alertsOnly(req.query)));
-  R.get("/api/admin/mjt/economy/reconciliation", admin(async () => reconciliation()));
-  R.get("/api/admin/mjt/economy/settings", admin(async () => ({ settings: settingsClient(await settings()) })));
-  R.put("/api/admin/mjt/economy/settings", admin(async (req) => saveSettings(req.user, req.body || {})));
-  R.post("/api/admin/mjt/economy/sources/:key/state", admin(async (req) => setSourceState(req.user, req.params.key, req.body || {})));
-  R.post("/api/admin/mjt/economy/simulate", admin(async (req) => simulate(req.body || {})));
-  R.get("/api/admin/mjt/economy/export.csv", admin(async (req, res) => exportCsv(req, res)));
+  // v2.167: the admin economy page and its API were removed (no admin decisions left); the owner page reads dashboard().
 
-  return { classify, RULES, CLASSES, KNOWN_KINDS, ACTIVE_DAYS, dashboard, mapping, reconciliation, concentration, activeWallets, simulate, settings, saveSettings, byClass };
+  return { classify, RULES, CLASSES, KNOWN_KINDS, ACTIVE_DAYS, dashboard, alertsOnly, exportCsv, setSourceState, mapping, reconciliation, concentration, activeWallets, simulate, settings, saveSettings, byClass };
 };
 module.exports.classify = classify;
 module.exports.RULES = RULES;

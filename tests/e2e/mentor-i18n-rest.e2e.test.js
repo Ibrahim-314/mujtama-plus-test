@@ -16,7 +16,7 @@ async function axe(pg) {
 const call = (pg, m, u, b) => pg.evaluate(async ([m, u, b]) => { const r = await fetch(u, { method: m, headers: { "X-Requested-With": "mujtama", "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined }); return r.status; }, [m, u, b]);
 const shot = async (name) => { if (SHOTS) { fs.mkdirSync(SHOTS, { recursive: true }); await p.screenshot({ path: path.join(SHOTS, name + ".png"), fullPage: true }); } };
 const noOverflow = () => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
-const routes = () => ({ upcoming: ["#/msession/" + sid.up, ".mt-who"], done: ["#/msession/" + sid.done, "#mt-fb"], refund: ["#/msession/" + sid.cx, ".mt-who"], admin: ["#/admin/mentors", ".f-kpis"] });
+const routes = () => ({ upcoming: ["#/msession/" + sid.up, ".mt-who"], done: ["#/msession/" + sid.done, "#mt-fb"], refund: ["#/msession/" + sid.cx, ".mt-who"] }); // v2.167: #/admin/mentors was removed
 const open = async (k) => {
   const [h, sel] = routes()[k];
   await p.evaluate(() => { location.hash = "#/home"; }); await p.waitForTimeout(120);
@@ -73,11 +73,9 @@ test("EN 390 light + 360: translated, no overflow, axe 0 serious/critical, user 
   for (const sel of ["#mt-nf textarea", "#mt-cf [name=reason]"]) assert.equal(await p.getAttribute(sel, "dir"), "auto", sel);
   await open("done"); assert.equal(await p.getAttribute("#mt-fb textarea", "dir"), "auto");
   await open("refund"); assert.match(await p.textContent(".notice.warn"), /Cancelled by the mentor:/);
-  await open("admin"); assert.match(await p.textContent(".mt-page .page-head h2"), /Mentorship — Admin/);
-  assert.match(await p.textContent("#mt-a"), /Refund due/);
   await p.setViewportSize({ width: 360, height: 780 });
   for (const k of Object.keys(routes())) { await open(k); assert.ok(await noOverflow(), k + " overflow at 360"); }
-  await shot("360-light-en-admin"); await open("upcoming"); await shot("360-light-en-upcoming");
+  await open("upcoming"); await shot("360-light-en-upcoming");
 });
 
 test("EN 1440 dark: axe 0 serious/critical, no overflow, translated", async () => {
@@ -93,11 +91,10 @@ test("EN 1440 dark: axe 0 serious/critical, no overflow, translated", async () =
   }
 });
 
-test("en admin + Arabic RTL spot checks, then Arabic source intact (v2.67: ar + en only)", async () => {
+test("en refund + Arabic RTL spot checks, then Arabic source intact (v2.67: ar + en only)", async () => {
   await p.setViewportSize({ width: 390, height: 844 });
-  await setLang("en"); await open("admin");
-  assert.match(await p.textContent(".mt-page .page-head h2"), /Mentorship — Admin/);
-  assert.deepEqual(await arabicLeft(), [], "en admin");
+  await setLang("en"); await open("refund");
+  assert.deepEqual(await arabicLeft(), [], "en refund");
   await setLang("ar"); await open("upcoming");
   assert.match(await p.textContent(".mt-page"), /إلغاء الجلسة/);
   await shot("390-dark-ar-upcoming");

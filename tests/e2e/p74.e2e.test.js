@@ -127,7 +127,7 @@ test("mentor: confirm, accept open request, shared summary; learner sees it; can
   assert.deepEqual(await axe(k), []);
 });
 
-test("completed session: star rating → profile shows the rating; admin screen", async () => {
+test("completed session: star rating → profile shows the rating; directory", async () => {
   await S.app.ctx.db.run("UPDATE mentor_sessions SET status='completed', completed_at=$1 WHERE id=$2", [new Date().toISOString(), sid]);
   await go(k, "#/mentors"); await go(k, "#/msession/" + sid); await until(k, () => !!document.querySelector("#mt-fb"));
   assert.deepEqual(await axe(k), []);
@@ -136,7 +136,8 @@ test("completed session: star rating → profile shows the rating; admin screen"
   await tap(k, "#mt-fb [type=submit]"); await textHas(k, /تقييمك: 5 من 5/);
   await go(k, "#/mentor/p74_mentor"); await until(k, () => !!document.querySelector(".mt-dist")); await textHas(k, /شرح واضح/);
   assert.deepEqual(await axe(k), []);
-  await go(p, "#/admin/mentors"); await until(p, () => !!document.querySelector(".kpi-tile")); await textHas(p, /سارة القحطاني/);
+  // v2.167: #/admin/mentors was removed (mentors are listed automatically) — the public directory shows the mentor
+  await go(k, "#/mentors"); await textHas(k, /سارة القحطاني/); // a member sees her (the directory leaves out your own profile)
   assert.deepEqual(await axe(p), []);
 });
 

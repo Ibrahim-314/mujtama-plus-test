@@ -5,7 +5,7 @@
  *   #/mentor/:handle                                 expert profile: rating, topics, slot picker + booking, direct request, reviews
  *   #/msession/:id                                   one session: time in my zone, actions, live room, notes, rating, .ics
  *   #/mentoring[?tab=sessions|requests|insights|profile|availability]  mentor dashboard: confirm, requests (direct + open), profile, weekly grid
- *   #/admin/mentors                                  staff: totals, refund-due paid sessions, low-rated mentors, suspend / restore
+ *   (v2.167 removed) #/admin/mentors                                  staff: totals, refund-due paid sessions, low-rated mentors, suspend / restore
  * CSP: no inline handlers, no javascript: URLs, no inline styles.
  * ===================================================================== */
 (function MentorUI() {
@@ -714,31 +714,11 @@
     return sec;
   }
 
-  /* =================== #/admin/mentors =================== */
-  async function adminView() {
-    page({ title: "الإرشاد — الإدارة", icon: "shield", back: ["#/admin", "الإدارة"] }, `<div id="mt-a">${skel(3)}</div>`);
-    let d; try { d = await api("GET", "/api/admin/mentors"); } catch (e) { const b = $("#mt-a"); if (b) b.innerHTML = errBox(e); return; }
-    const box = $("#mt-a"); if (!box) return; const t = d.totals;
-    const f = ["all", "reviewed", "unreviewed", "minors"].includes(qs().get("tab")) ? qs().get("tab") : "all";
-    const keep = (m) => f === "reviewed" ? m.reviewed : f === "unreviewed" ? !m.reviewed : f === "minors" ? m.needsReview : true;
-    let rid = 0; // unique ids per render: a mentor can appear in two lists (low-rated + all)
-    const revBtn = (m, k) => `<button class="btn ${m.reviewed ? "" : "outline "}sm mt-rev-t" type="button" data-rv="${m.reviewed ? "0" : "1"}" data-u="${h(m.user.id)}" aria-pressed="${m.reviewed}" aria-labelledby="mt-rv-l${k} mt-rv-n${k}">${ic(m.reviewed ? "check" : "shield", "xs")}<span id="mt-rv-l${k}">مراجَع</span></button>`;
-    const row = (m) => { const k = ++rid; return `<li><div class="li">${av(m.user)}<a class="t u-tdn" href="#/mentor/${enc(m.user.handle)}"><b id="mt-rv-n${k}">${u(m.user.name)}</b><small>${u(m.headline.length > 60 ? m.headline.slice(0, 58) + "…" : m.headline)}${m.statusReason ? ` · ${u(m.statusReason)}` : ""}</small></a>${stars(m.rating)}${revBtn(m, k)}${m.status === "suspended" ? `<button class="btn sm" type="button" data-st="active" data-u="${h(m.user.id)}">إعادة</button>` : `<button class="btn ghost sm" type="button" data-st="suspended" data-u="${h(m.user.id)}">إيقاف</button>`}</div>${m.needsReview ? `<p class="mt-rev-warn" role="note">${ic("shield", "xs")}<span>يقبل متعلّمين دون ١٨ ولم يُراجَع بعد — راجِع ملفه.</span></p>` : ""}</li>`; };
-    const shown = d.mentors.filter(keep);
-    box.innerHTML = `<div class="f-kpis"><div class="kpi-tile"><b>${num(t.mentors)}</b><span>مرشد نشط</span></div><div class="kpi-tile"><b>${num(t.upcoming)}</b><span>جلسة قادمة</span></div><div class="kpi-tile"><b>${num(t.completed)}</b><span>جلسة مكتملة</span></div><div class="kpi-tile"><b>${num(t.openRequests)}</b><span>طلب مفتوح</span></div></div>
-      ${!d.piEnabled ? `<div class="notice warn">${ic("wallet")}<span>مدفوعات Pi غير مفعّلة: لا جلسات مدفوعة.</span></div>` : ""}
-      <div class="f-h">مبالغ يجب إعادتها</div>${d.refunds.length ? `<ul class="list">${d.refunds.map((s) => `<li><a class="li" href="#/msession/${enc(s.id)}">${ic("wallet")}<span class="t"><b><span>${num(s.price)} Pi</span> · ${u(s.learner?.name)}</b><small>${s.cancelReason ? `${u(s.cancelReason)} · ` : ""}<span>${h(dayLong(s.startsAt))}</span></small></span>${badge("warn", "إعادة المبلغ")}</a></li>`).join("")}</ul>` : UI.empty({ title: "لا مبالغ معلّقة" })}
-      ${d.lowRated.length ? `<div class="f-h">تقييمات منخفضة</div><ul class="list">${d.lowRated.map(row).join("")}</ul>` : ""}
-      ${t.needsReview ? `<div class="notice warn" id="mt-rev-flag">${ic("shield")}<span><span>مرشدون يقبلون متعلّمين دون ١٨ بانتظار مراجعة الفريق:</span> <b>${num(t.needsReview)}</b></span></div>` : ""}
-      <div class="f-h">المرشدون (${num(t.mentors + t.suspended)})</div>${seg("#/admin/mentors", [["all", "الكل"], ["reviewed", "مراجَعون"], ["unreviewed", "غير مراجَعين"], ["minors", "تحتاج مراجعة"]], f, "تصفية المرشدين حسب المراجعة")}${shown.length ? `<ul class="list" id="mt-a-list">${shown.map(row).join("")}</ul>` : UI.empty({ title: d.mentors.length ? "لا نتائج لهذا التصنيف" : "لا مرشدين بعد" })}`;
-    box.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", () => busy(b, async () => { const on = b.dataset.rv === "1"; await api("POST", `/api/admin/mentors/${enc(b.dataset.u)}/review`, { reviewed: on }); say(on ? "عُلِّم الملف مراجَعاً" : "أُزيلت علامة المراجعة"); adminView(); })));
-    box.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () => { let reason; if (b.dataset.st === "suspended") { reason = prompt(tr("سبب الإيقاف (يُلغي الجلسات القادمة ويُبلَّغ المتعلّمون)")); if (!reason || reason.trim().length < 3) return; } busy(b, async () => { await api("POST", `/api/admin/mentors/${enc(b.dataset.u)}/status`, { status: b.dataset.st, reason }); say(b.dataset.st === "suspended" ? "أُوقف الملف" : "أُعيد الملف"); adminView(); }); }));
-  }
+  /* v2.167: #/admin/mentors removed — mentoring runs with no staff step */
 
   MPRoutes.extend((a, b, base) => {
     return { mentors: () => hub(), mentor: () => (a ? profileView(decodeURIComponent(a)) : hub()), msession: () => sessionView(a), mentoring: () => dashboard() };
   });
-  MPRoutes.add("admin", (a, b, next) => (a === "mentors" ? ((() => { try { return S.me()?.role === "admin"; } catch { return false; } })() ? adminView() : page({ title: "الإرشاد — الإدارة", back: ["#/mentors", "الإرشاد"] }, UI.empty({ title: "للإدارة فقط" }))) : next()));
-  window.MPMentor = { hub, profileView, sessionView, dashboard, adminView, version: "__APP_VERSION__" };
+  window.MPMentor = { hub, profileView, sessionView, dashboard, version: "__APP_VERSION__" };
   if (/^#\/(mentors|mentor|msession|mentoring|admin\/mentors)\b/.test(location.hash) && typeof DB !== "undefined" && DB.onboarded) route();
 })();

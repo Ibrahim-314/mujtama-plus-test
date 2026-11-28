@@ -102,12 +102,16 @@ test("anti-abuse: latest per pair counts, young accounts, quick jobs, blocks, re
   for (const u of [wrk, ana, bdr]) assert.equal((await u.req("POST", `/api/proreviews/${target}/report`, { reason: "abusive", note: "تقييم انتقامي" })).status, 200);
   assert.equal((await ana.req("POST", `/api/proreviews/${target}/report`, { reason: "abusive" })).code, "reported");
   assert.ok(!(await new H.Client().req("GET", "/api/proreviews/u/pr_wrk")).reviews.some((x) => x.id === target), "flagged → off the public page");
-  assert.equal((await cli.req("GET", "/api/admin/proreviews")).status, 403);
-  const q = await staff.req("GET", "/api/admin/proreviews"); const item = q.queue.find((x) => x.id === target);
+  // v2.167: no staff queue — the automatic rule (services/auto-rules.js) decides with the same service function
+  assert.equal((await cli.req("GET", "/api/admin/proreviews")).status, 404);
+  assert.equal((await staff.req("GET", "/api/admin/proreviews")).status, 404);
+  assert.equal((await staff.req("POST", "/api/admin/proreviews/" + target, { action: "dismiss" })).status, 404);
+  const PR = H.app.ctx.services.proreviews, SYS = H.app.ctx.services.autoRules.SYS;
+  const q = await PR.adminView(); const item = q.queue.find((x) => x.id === target);
   assert.equal(item.status, "flagged"); assert.equal(item.reports.length, 3); assert.ok(q.pairs.some((p) => p.engagements >= 2), "reciprocal pair cli ↔ wrk");
-  assert.equal((await staff.req("POST", "/api/admin/proreviews/" + target, { action: "dismiss" })).status, "published");
-  assert.equal((await staff.req("POST", "/api/admin/proreviews/" + target, { action: "hide" })).status, 400, "hide needs a reason");
-  assert.equal((await staff.req("POST", "/api/admin/proreviews/" + target, { action: "hide", note: "تقييم مسيء لا يصف العمل" })).status, "hidden");
+  assert.equal((await PR.moderate(SYS, target, { action: "dismiss" })).status, "published");
+  assert.equal(await PR.moderate(SYS, target, { action: "hide" }).then(() => 200, (e) => e.status), 400, "hide needs a reason");
+  assert.equal((await PR.moderate(SYS, target, { action: "hide", note: "تقييم مسيء لا يصف العمل" })).status, "hidden");
   assert.ok((await kinds(out.id)).includes("prr_moderated"));
   assert.equal((await out.req("GET", "/api/proreviews")).given.find((x) => x.id === target).staffNote, "تقييم مسيء لا يصف العمل");
   assert.ok(!(await new H.Client().req("GET", "/api/proreviews/u/pr_wrk")).reviews.some((x) => x.id === target));

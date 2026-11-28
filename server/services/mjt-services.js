@@ -41,11 +41,18 @@
  *
  * Member API (rate-limited, never accepts an amount): GET /api/mjt/services, POST /api/mjt/services/:id/purchase,
  * GET /api/mjt/services/mine, GET /api/mjt/services/history.
- * Admin API (admin only — 403 otherwise; rate-limited): /api/admin/mjt/services[...] — catalog + stats, candidates,
- * register, edit (new price version), enable / disable, purchases, manual refund. */
+ * v2.167 «تلقائي»: the admin API was removed. The catalog is synced from server/config/app-defaults.js (mjt.services) at boot
+ * and by services/auto-rules.js: studio_extended 150 MJT / 30 days (free inside Plus); every PUBLISHED paid course (access
+ * 'product') is listed automatically at 200 / 400 / 800 MJT by size (≤5 / ≤15 / more published lessons) — the creator's
+ * consent is automatic when they publish a paid course, and the creator receives 50% of each sale as MJT (source
+ * course_sale, after a successful enrolment); quota top-ups (kind 'quota', 30 days, no stacking, capped at half the
+ * Free→Plus gap by services/membership.js). «تقدير» (POST /api/mjt/posts/:id/appreciate, 5 / 10 / 25) is a burn: the author
+ * gains +1 reputation per appreciation (max +10 a day). Every spend is burned (no treasury). A price change bumps the
+ * price version as before, so a member always confirms the current price. Refunds stay automatic on delivery failure. */
 const crypto = require("node:crypto");
 const { E, HttpError, str } = require("../lib/core");
 const { UNIT, format } = require("../lib/mjt-ledger");
+const DEF = require("../config/app-defaults");
 
 const DAY = 864e5;
 const IKEY_RE = /^[A-Za-z0-9_-]{8,80}$/;
@@ -72,19 +79,20 @@ module.exports = (ctx, opts = {}) => {
   const int = (v, d, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
   const parse = (v, d) => { if (v && typeof v === "object") return v; try { return JSON.parse(v) ?? d; } catch { return d; } };
   const member = (lim, fn) => A(async (req, res) => { if (!rl.hit(lim, req.user.id)) throw E.rate(); return fn(req, res); });
-  const admin = (fn) => A(async (req, res) => { if (req.user.role !== "admin") throw E.forbid("للإدارة فقط"); if (!rl.hit("mjt_admin", req.user.id)) throw E.rate(); return fn(req, res); });
   const audit = (q, action, actor, target, txId, detail) => q.run("INSERT INTO mjt_audit(action,actor_id,target,tx_id,detail,created_at) VALUES($1,$2,$3,$4,$5,$6)", [action, actor || null, target || null, txId || null, JSON.stringify(detail || {}), nowIso()]);
   const wholeMjt = (v, max = 100000) => { const s = String(v ?? "").trim().replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))); if (!/^\d{1,6}$/.test(s) || +s < 1 || +s > max) throw fail(400, "bad_amount", `التكلفة عدد صحيح من 1 إلى ${max}`); return +s * UNIT; };
   const targetKey = (s) => `${s.kind}:${s.target}`;
+  const isQuota = (t) => String(t || "").startsWith("quota_");
+  const quotaKey = (t) => String(t).slice(6);
   const purchasable = (mode) => mode === "mjt" || mode === "plus_mjt";
 
   /* ---------- handlers: one per kind of REAL capability ---------- */
   const courses = () => ctx.services.courses;
   const H = {
     feature: {
-      async validate(target) { if (!FEATURES[target]) throw fail(400, "not_wireable", "هذه الميزة غير قابلة للربط بخدمات مجتمع كوين"); return { title: FEATURES[target].title, benefit: FEATURES[target].benefit }; },
-      async view(user, s) { return { href: FEATURES[s.target]?.href || null, available: !!FEATURES[s.target] }; },
-      async native(user, s) { return M().can(user.id, s.target); },
+      async validate(target) { if (isQuota(target)) return H.quota.validate(quotaKey(target)); if (!FEATURES[target]) throw fail(400, "not_wireable", "هذه الميزة غير قابلة للربط بخدمات مجتمع كوين"); return { title: FEATURES[target].title, benefit: FEATURES[target].benefit }; },
+      async view(user, s) { if (isQuota(s.target)) return H.quota.view(); return { href: FEATURES[s.target]?.href || null, available: !!FEATURES[s.target] }; },
+      async native(user, s) { if (isQuota(s.target)) return H.quota.native(user); return M().can(user.id, s.target); },
       async precheck() { /* the entitlement itself is the delivery */ },
       async deliver() { /* nothing outside the transaction */ }
     },
@@ -106,16 +114,48 @@ module.exports = (ctx, opts = {}) => {
       },
       async precheck(user, s) { const v = await H.course.view(user, s); if (!v.available) throw fail(409, "not_available", "هذه الدورة غير متاحة لك الآن"); },
       async deliver(user, s) { await courses().enrol(user, s.target); }
+    },
+    /* v2.167: quota top-ups (catalog kind 'feature', target 'quota_<key>' — the table's kind CHECK is unchanged). The
+     * entitlement itself raises the member's ceiling in services/membership.js limitFor(). Not a separate kind in H. */
+    quota: {
+      async validate(target) { const q = DEF.mjt.services.quota[target]; if (!q) throw fail(400, "not_wireable", "حصة غير معروفة"); return { title: q.title, benefit: q.benefit }; },
+      async view() { return { href: "#/membership", available: true }; },
+      async native(user) { return M().isPlus(user.id); }, // Plus already has the higher ceiling
+      async precheck() { /* the entitlement itself is the delivery */ },
+      async deliver() { /* nothing outside the transaction */ }
     }
   };
 
-  /* ---------- seed: only real capabilities, disabled, no cost, no term ---------- */
-  async function ensureSeed() {
+  /* ---------- v2.167: catalog synced from app-defaults (no admin pricing) ---------- */
+  const SYS_USER = { id: "system" };
+  /** create or update one fixed catalog row; a cost / term change bumps the price version (members re-confirm) */
+  async function syncFixed(f) {
     const at = nowIso();
-    for (const [key, f] of Object.entries(FEATURES)) {
-      const r = await db.run("INSERT INTO mjt_services(id,key,kind,target,title,benefit,access_mode,eligible,cost,term,duration_days,price_version,enabled,created_by,updated_by,created_at,updated_at) VALUES($1,$2,'feature',$3,$4,$5,'plus_mjt','all',NULL,NULL,NULL,1,0,'system','system',$6,$6) ON CONFLICT DO NOTHING", ["svc_" + key, key, key, f.title, f.benefit, at]);
-      if (r.changes) await db.run("INSERT INTO mjt_service_prices(service_id,version,cost,term,duration_days,set_by,created_at) VALUES($1,1,NULL,NULL,NULL,'system',$2) ON CONFLICT DO NOTHING", ["svc_" + key, at]);
+    const r = await db.run("INSERT INTO mjt_services(id,key,kind,target,title,benefit,access_mode,eligible,cost,term,duration_days,price_version,enabled,created_by,updated_by,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,'all',NULL,NULL,NULL,1,0,'system','system',$8,$8) ON CONFLICT DO NOTHING", [f.id, f.key, f.kind, f.target, f.title, f.benefit, f.mode, at]);
+    if (r.changes) await db.run("INSERT INTO mjt_service_prices(service_id,version,cost,term,duration_days,set_by,created_at) VALUES($1,1,NULL,NULL,NULL,'system',$2) ON CONFLICT DO NOTHING", [f.id, at]);
+    const cur = await db.get("SELECT * FROM mjt_services WHERE kind=$1 AND target=$2", [f.kind, f.target]); if (!cur) return null;
+    const cost = f.cost * UNIT, term = f.days ? "days" : "permanent", days = f.days || null;
+    const same = Number(cur.enabled) === 1 && cur.access_mode === f.mode && cur.eligible === "all" && Number(cur.cost) === cost && cur.term === term && (cur.duration_days === null || cur.duration_days === undefined ? null : Number(cur.duration_days)) === days;
+    if (same) return cur;
+    await edit(SYS_USER, cur.id, { accessMode: f.mode, eligible: "all", cost: f.cost, term, durationDays: days, enabled: true });
+    return load(db, cur.id);
+  }
+  const courseCost = (lessons) => DEF.mjt.services.course.tiers.find((t) => lessons <= t.maxLessons).cost;
+  /** every published paid course is listed (creator consent = publishing it as a paid course); size decides the tier */
+  async function syncCourses() {
+    const rows = await db.all("SELECT c.id, c.title, c.subtitle, (SELECT COUNT(*) FROM course_lessons l WHERE l.course_id=c.id AND l.status='published') n FROM courses c WHERE c.access='product' AND c.status='published'").catch(() => []);
+    let n = 0;
+    for (const c of rows) {
+      try { await syncFixed({ id: "svc_course_" + String(c.id).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 40), key: `course_${c.id}`.slice(0, 80), kind: "course", target: c.id, title: c.title, benefit: c.subtitle ? `وصول إلى دورة «${c.title}»: ${c.subtitle}` : `وصول كامل إلى دورة «${c.title}» ودروسها.`, mode: "mjt", cost: courseCost(Number(c.n || 0)) }); n++; }
+      catch (e) { logger.warn?.("mjt course listing failed", { course: c.id, err: e?.message }); }
     }
+    return { listed: n };
+  }
+  async function ensureSeed() {
+    const se = DEF.mjt.services.studio_extended;
+    for (const [key, f] of Object.entries(FEATURES)) await syncFixed({ id: "svc_" + key, key, kind: "feature", target: key, title: f.title, benefit: f.benefit, mode: se.mode, cost: se.cost, days: se.days });
+    for (const [key, q] of Object.entries(DEF.mjt.services.quota)) await syncFixed({ id: "svc_quota_" + key, key: "quota_" + key, kind: "feature", target: "quota_" + key, title: q.title, benefit: q.benefit, mode: "mjt", cost: q.cost, days: q.days });
+    await syncCourses();
   }
 
   /* ---------- reads ---------- */
@@ -165,7 +205,9 @@ module.exports = (ctx, opts = {}) => {
         hasAccess: !!reason, accessReason: reason, accessReasonLabel: reason ? REASON_AR[reason] : null, expiresAt: ent?.expires_at || null,
         canBuy: !reason && !needsPlus && purchasable(s.access_mode) && s.cost !== null && s.cost !== undefined && !!s.term, needsPlus });
     }
-    return { services: out, wallet: await wallet(user.id), plus: isPlus, note: NOTE };
+    const A2 = DEF.mjt.services.appreciation;
+    return { services: out, wallet: await wallet(user.id), plus: isPlus, note: NOTE,
+      appreciation: { amounts: A2.amounts, minLevel: A2.minLevel, howTo: "من قائمة «⋯» على أي منشور عام: «تقدير» بـ 5 أو 10 أو 25. يُحرق المبلغ، ويكسب صاحب المنشور سمعة (+1 لكل تقدير، حتى +10 يومياً)." } };
   }
   async function mine(user) {
     const rows = await db.all("SELECT e.*, s.title, s.kind, s.target, s.key, p.cost, p.price_version, p.term, p.duration_days FROM mjt_entitlements e JOIN mjt_services s ON s.id=e.service_id LEFT JOIN mjt_service_purchases p ON p.id=e.purchase_id WHERE e.user_id=$1 ORDER BY e.created_at DESC LIMIT 100", [user.id]);
@@ -238,10 +280,43 @@ module.exports = (ctx, opts = {}) => {
       catch (e2) { logger.error?.("mjt service auto-refund failed", { purchase: p.id, err: e2?.message }); await audit(db, "service_refund_failed", null, user.id, p.tx_id, { purchase: p.id, err: String(e2?.message || "") }).catch(() => {}); }
       throw fail(409, "delivery_failed_refunded", "تعذّر تسليم الخدمة، وأُعيد المبلغ كاملاً إلى رصيدك", { refunded: true, wallet: await wallet(user.id) });
     }
+    if (s.kind === "course") await creatorShare(s, p).catch((e) => logger.warn?.("mjt course creator share failed", { purchase: p.id, err: e?.message }));
     const fresh = await db.get("SELECT p.*, s.title FROM mjt_service_purchases p JOIN mjt_services s ON s.id=p.service_id WHERE p.id=$1", [p.id]);
     const ent = await db.get("SELECT expires_at FROM mjt_entitlements WHERE purchase_id=$1", [p.id]);
     return { purchased: true, purchase: purchaseClient(fresh), expiresAt: ent?.expires_at || null, balanceAfter: format(r.entry.balance_after), wallet: await wallet(user.id) };
   }
+
+  /** v2.167: the course creator receives 50% of the confirmed price as MJT (idempotent per purchase) */
+  async function creatorShare(s, p) {
+    const c = await db.get("SELECT author FROM courses WHERE id=$1", [s.target]); if (!c?.author || c.author === p.user_id) return null;
+    const amount = Math.floor(Number(p.cost) * DEF.mjt.services.course.creatorShare); if (!(amount > 0)) return null;
+    return RW().credit(c.author, { amount, source: "course_sale", ref: p.id, reason: `بيع دورة «${s.title}» بمجتمع كوين`, ikey: "coursesale:" + p.id });
+  }
+
+  /* ---------- «تقدير» (v2.167): burn 5 / 10 / 25 MJT to appreciate a post; the author gains reputation ---------- */
+  async function appreciate(user, pid, b = {}) {
+    const A2 = DEF.mjt.services.appreciation;
+    const amount = Number(b.amount);
+    if (!A2.amounts.includes(amount)) throw fail(400, "bad_amount", `اختر ${A2.amounts.join(" أو ")} من مجتمع كوين`);
+    const ikeyIn = String(b.ikey || ""); if (!IKEY_RE.test(ikeyIn)) throw fail(400, "ikey_required", "مفتاح العملية مطلوب");
+    const post = await db.get("SELECT id, author, status, visibility FROM posts WHERE id=$1", [String(pid || "")]);
+    if (!post || post.status !== "published") throw E.nf("المنشور غير موجود");
+    if (post.author === user.id) throw fail(400, "own_post", "لا يمكنك تقدير منشورك");
+    if (post.visibility && post.visibility !== "public") throw E.nf("المنشور غير موجود"); // public posts only
+    const lvl = (await ctx.services.repLevels?.unified?.(user.id).catch(() => null))?.level || 1;
+    if (lvl < A2.minLevel) throw fail(403, "level_required", "«تقدير» يُفتح من مستوى «مشارك» (50 سمعة)");
+    const G = ctx.services.mjt?.guards;
+    if (G && (await G.linkedPair(user.id, post.author))) throw fail(403, "linked_accounts", "لا يمكن تقدير منشور حساب مرتبط بحسابك");
+    if (G && (await G.blockedBetween(user.id, post.author))) throw fail(403, "blocked", "لا يمكن تقدير هذا المنشور");
+    const since = new Date(clock().getTime() - DAY).toISOString();
+    const today = Number((await db.get("SELECT COUNT(*) n FROM mjt_reward_entries WHERE user_id=$1 AND kind='spend' AND source='appreciation' AND created_at >= $2", [user.id, since]))?.n || 0);
+    if (today >= A2.perDay) throw fail(429, "daily_limit", `وصلت حد التقدير اليومي (${A2.perDay})`);
+    const r = await RW().debit(user.id, { amount: amount * UNIT, source: "appreciation", ref: `u:${post.author}:p:${post.id}`, reason: "تقدير", ikey: `appr:${user.id}:${ikeyIn}` });
+    if (r.skipped) throw fail(409, "not_allowed", "تعذّر التقدير الآن");
+    if (!r.replayed) { ctx.audit?.("mjt_appreciation", post.id, String(amount), user.id); ctx.realtime?.send?.(post.author, "mjt", { kind: "appreciation", post: post.id }); }
+    return { appreciated: true, replayed: !!r.replayed, amount, count: await appreciationCount(post.id), wallet: await wallet(user.id) };
+  }
+  async function appreciationCount(pid) { return Number((await db.get("SELECT COUNT(*) n FROM mjt_reward_entries WHERE kind='spend' AND status='posted' AND source='appreciation' AND ref LIKE $1", ["%:p:" + pid]))?.n || 0); }
 
   /* ---------- refunds (auto: policy 2; manual: policy 3) ---------- */
   async function refund(actor, pid, { reason, auto = false } = {}) {
@@ -352,14 +427,9 @@ module.exports = (ctx, opts = {}) => {
   R.get("/api/mjt/services/mine", member("mjt_wallet", async (req) => mine(req.user)));
   R.get("/api/mjt/services/history", member("mjt_wallet", async (req) => history(req.user, req.query)));
   R.post("/api/mjt/services/:id/purchase", member("mjt_services", async (req) => purchase(req.user, req.params.id, req.body || {})));
-  R.get("/api/admin/mjt/services", admin(async () => adminList()));
-  R.get("/api/admin/mjt/services/candidates", admin(async (req) => candidates(req.query)));
-  R.get("/api/admin/mjt/services/purchases", admin(async (req) => purchases(req.query)));
-  R.post("/api/admin/mjt/services/purchases/:pid/refund", admin(async (req) => refund(req.user, req.params.pid, { reason: req.body?.reason })));
-  R.post("/api/admin/mjt/services", admin(async (req) => register(req.user, req.body || {})));
-  R.get("/api/admin/mjt/services/:id", admin(async (req) => detail(req.params.id)));
-  R.put("/api/admin/mjt/services/:id", admin(async (req) => edit(req.user, req.params.id, req.body || {})));
+  R.post("/api/mjt/posts/:id/appreciate", member("mjt_services", async (req) => appreciate(req.user, req.params.id, req.body || {})));
+  R.get("/api/mjt/posts/:id/appreciation", async (req) => ({ count: await appreciationCount(String(req.params.id)), amounts: DEF.mjt.services.appreciation.amounts, minLevel: DEF.mjt.services.appreciation.minLevel }));
 
   const ready = ensureSeed().catch((e) => logger.error?.("mjt services init failed", { err: e?.message }));
-  return { ready, FEATURES, MODES, NOTE, H, allows, accessReason, purchase, refund, register, edit, memberList, mine, history, adminList };
+  return { ready, FEATURES, MODES, NOTE, H, allows, accessReason, purchase, refund, register, edit, memberList, mine, history, syncCourses, ensureSeed, appreciate, appreciationCount, adminList, candidates, purchases, detail };
 };

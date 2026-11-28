@@ -3,6 +3,7 @@
 const test = require("node:test"),
   assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 let H, staff, host, fan, room;
 const db = () => H.app.ctx.db,
@@ -27,7 +28,7 @@ test.before(async () => {
   host = await mk("rt_host");
   fan = await mk("rt_fan");
   await db().run("UPDATE users SET role='admin' WHERE id=$1", [staff.id]);
-  const f = await staff.req("POST", "/api/admin/mjt/adjust", { ikey: key(), handle: "rt_fan", amount: "100", reason: "رصيد اختبار البث" });
+  const f = await AD(staff, "POST", "/api/admin/mjt/adjust", { ikey: key(), handle: "rt_fan", amount: "100", reason: "رصيد اختبار البث" });
   assert.equal(f.status, 200, f.error);
   H.app.ctx.rl.w.clear();
   const r = await host.req("POST", "/api/rooms", { title: "بث تجريبي للإكراميات" });

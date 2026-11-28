@@ -5,6 +5,7 @@
  * tier · history is right · the rest of the app is untouched (free features stay free, migration 088 reversible). */
 const test = require("node:test"), assert = require("node:assert");
 const { boot } = require("./helpers");
+const AD = (...a) => require("./admin-shim").shim(H)(...a); // v2.167: removed admin routes → service fixtures (see admin-shim.js)
 
 const KEY = "sk_test_mb_156";
 const TOKEN = (uid, name) => `at-secret-${uid}-${name}`;
@@ -88,15 +89,15 @@ test("1 · a new member is Free, with the comparison and no hard-coded price", a
   assert.deepEqual(m.features, { translate: false, assistant: false, studio_extended: false });
   assert.equal(m.network, "testnet"); assert.deepEqual(m.payments, []);
   const c = await new H.Client().req("GET", "/api/membership/plans");
-  assert.equal(c.status, 200); assert.equal(c.plus.label, "مجتمع بلس Plus"); assert.equal(c.plus.price, null, "no price until an admin sets one");
+  assert.equal(c.status, 200); assert.equal(c.plus.label, "مجتمع بلس Plus"); assert.equal(c.plus.price, 10, "v2.167: the fixed Plus price (app-defaults, env PLUS_PRICE_PI)");
   assert.ok(c.free.features.length >= 8); assert.deepEqual(c.plus.features.map((f) => f.key).sort(), ["studio_extended", "translate"]);
-  assert.equal((await free.req("POST", "/api/membership/subscribe", {})).code, "price_unset");
   assert.equal((await new H.Client().req("GET", "/api/membership/me")).status, 401);
 });
 
-test("admin sets the Plus price (protected); members cannot", async () => {
-  assert.equal((await free.req("PUT", "/api/admin/ai/plans/ai_plus", { price: 1 })).status, 403);
-  const r = await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { price: 2.5 });
+test("v2.167: the admin price route is gone (404); a test fixture still sets a price through the service", async () => {
+  assert.equal((await admin.req("PUT", "/api/admin/ai/plans/ai_plus", { price: 2.5 })).status, 404);
+  assert.equal((await AD(free, "PUT", "/api/admin/ai/plans/ai_plus", { price: 1 })).status, 404);
+  const r = await AD(admin, "PUT", "/api/admin/ai/plans/ai_plus", { price: 2.5 });
   assert.equal(r.status, 200, r.error); assert.equal(r.plan.price, 2.5);
   assert.equal((await new H.Client().req("GET", "/api/membership/plans")).plus.price, 2.5);
 });
@@ -172,7 +173,7 @@ test("10 · the client cannot give itself Plus", async () => {
     await free.req("POST", "/api/membership/resume", b);
   }
   assert.equal((await free.req("POST", "/api/membership/resume", {})).code, "invalid_state");
-  assert.equal((await free.req("POST", "/api/admin/ai/grants", { user: free.id, days: 30 })).status, 403);
+  assert.equal((await AD(free, "POST", "/api/admin/ai/grants", { user: free.id, days: 30 })).status, 404);
   const m = await me(free);
   assert.equal(m.tier, "free"); assert.equal((await free.req("GET", "/api/studio/overview?days=365")).status, 402);
   // a forged header / cookie does not matter either: the tier is read from server rows for the session user
@@ -218,11 +219,11 @@ test("11 · history shows the member's own payments and events only", async () =
 });
 
 test("existing «مجتمع بلس Plus» subscribers are Plus (same plan)", async () => {
-  const g = await admin.req("POST", "/api/admin/ai/grants", { user: free.id, days: 5, note: "legacy" });
+  const g = await AD(admin, "POST", "/api/admin/ai/grants", { user: free.id, days: 5, note: "legacy" });
   assert.equal(g.status, 200, g.error);
   const m = await me(free);
   assert.equal(m.tier, "plus"); assert.equal(m.subscription.plan.slug, "ai_plus");
-  await admin.req("POST", "/api/admin/ai/grants/revoke", { user: free.id });
+  await AD(admin, "POST", "/api/admin/ai/grants/revoke", { user: free.id });
   assert.equal((await me(free)).tier, "free");
 });
 

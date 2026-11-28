@@ -11,6 +11,7 @@ const { boot } = require("./helpers");
 // Sunday 3 Jan 2027, 09:00 Riyadh (06:00 UTC)
 let H, adminC, mentor, learner, other, NOW = Date.parse("2027-01-03T06:00:00Z");
 const db = () => H.app.ctx.db;
+const SYS = () => H.app.ctx.services.autoRules.SYS; // v2.167: /api/admin/mentors/* removed — the service functions stay
 const M = () => H.app.ctx.services.mentors;
 async function mk(handle, name) {
   H.app.ctx.rl.w.clear();
@@ -216,7 +217,7 @@ test("Pi: priced mentor not bookable while payments are off; with Pi on → escr
     await mentor.req("POST", `/api/mentor-sessions/${b2.session.id}/decline`, {});
     s = await db().get("SELECT * FROM mentor_sessions WHERE id=$1", [b2.session.id]); assert.equal(s.pay_status, "refund_due"); assert.equal(s.status, "cancelled");
     const held2 = await db().get("SELECT SUM(credit)-SUM(debit) n FROM ledger_entries WHERE account='platform:held'"); assert.equal(Number(held2.n), 0);
-    assert.equal((await adminC.req("GET", "/api/admin/mentors")).refunds.length, 1);
+    assert.equal((await M().adminView()).refunds.length, 1);
     // amount mismatch is ignored
     const b3 = await other.req("POST", "/api/mentors/mt_mentor/book", { startsAt: "2027-01-04T16:00:00.000Z" });
     H.app.ctx.bus.emit("PI_PAYMENT_COMPLETED", { tx: b3.intent.id, purpose: "mentor", amount: 1 }); await M().settle();
@@ -242,16 +243,17 @@ test("job: reminders once, unconfirmed sessions expire; staff suspend cancels up
   // suspend
   NOW = Date.parse("2027-01-03T06:00:00Z");
   const c = await learner.req("POST", "/api/mentors/mt_mentor/book", { startsAt: "2027-01-10T07:00:00.000Z" }); assert.equal(c.status, 200, c.error);
-  assert.equal((await learner.req("GET", "/api/admin/mentors")).status, 403);
-  assert.equal((await adminC.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "suspended" })).status, 400);
-  const s = await adminC.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "suspended", reason: "شكاوى متكررة" }); assert.equal(s.status, 200, s.error);
+  assert.equal((await learner.req("GET", "/api/admin/mentors")).status, 404);
+  assert.equal((await adminC.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "suspended", reason: "شكاوى متكررة" })).status, 404, "v2.167: no staff route");
+  assert.equal(await M().setStatus(SYS(), mentor.id, { status: "suspended" }).then(() => 200, (e) => e.status), 400);
+  const s = await M().setStatus(SYS(), mentor.id, { status: "suspended", reason: "شكاوى متكررة" }); assert.equal(s.ok, true);
   assert.equal((await db().get("SELECT status FROM mentor_sessions WHERE id=$1", [c.session.id])).status, "cancelled");
   assert.equal((await learner.req("GET", "/api/mentors")).mentors.length, 0);
   assert.equal((await mentor.req("PUT", "/api/mentor/me", { headline: "تعديل بعد الإيقاف" })).status, 403);
   await new Promise((r) => setTimeout(r, 50));
   assert.ok(await db().get("SELECT 1 x FROM audit_log WHERE action='mentor_suspended' AND target=$1", [mentor.id]));
-  const v = await adminC.req("GET", "/api/admin/mentors"); assert.equal(v.totals.suspended, 1);
-  await adminC.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "active" });
+  const v = await M().adminView(); assert.equal(v.totals.suspended, 1);
+  await M().setStatus(SYS(), mentor.id, { status: "active" });
   assert.equal((await learner.req("GET", "/api/mentors")).mentors.length, 1);
 });
 
@@ -263,10 +265,10 @@ test("M1-1 auth audit: visitor 401 on every private route, ownership → 404, gu
     ["GET", "/api/mentor/requests"], ["POST", "/api/mentor/requests"], ["POST", "/api/mentor/requests/x/accept"], ["POST", "/api/mentor/requests/x/decline"], ["POST", "/api/mentor/requests/x/withdraw"],
     ["GET", "/api/mentor/sessions"], ["GET", "/api/mentor/feed"], ["POST", "/api/mentor/feed"], ["DELETE", "/api/mentor/feed"], ["GET", "/api/mentor-sessions/x"], ["GET", "/api/mentor-sessions/x/ics"],
     ...["confirm", "decline", "cancel", "complete", "no-show", "join", "pay"].map((a) => ["POST", `/api/mentor-sessions/x/${a}`]), ["PUT", "/api/mentor-sessions/x/note"], ["POST", "/api/mentor-sessions/x/feedback"],
-    ["GET", "/api/admin/mentors"], ["POST", `/api/admin/mentors/${mentor.id}/status`]];
+  ];
   for (const [m, u] of priv) assert.equal((await anon.req(m, u, m === "GET" || m === "DELETE" ? undefined : {})).status, 401, `${m} ${u}`);
   for (const u of ["/api/mentors", "/api/mentors/mt_mentor", "/api/mentors/mt_mentor/slots"]) assert.equal((await anon.req("GET", u)).status, 200, u);
-  assert.equal((await learner.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "suspended", reason: "اختبار" })).status, 403);
+  assert.equal((await learner.req("POST", `/api/admin/mentors/${mentor.id}/status`, { status: "suspended", reason: "اختبار" })).status, 404); // v2.167: route removed
 
   // a fresh free mentor for this audit
   const m2 = await mk("mt_m2", "مرشد التدقيق"), l2 = await mk("mt_l2"), x = await mk("mt_x");
